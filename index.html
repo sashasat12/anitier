@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AniTier — база аниме и тир-листы</title>
+<meta name="description" content="База аниме, уведомления о премьерах, тир-листы просмотренного и запланированного, календарь скорых премьер.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23ff4d8d'/%3E%3Cstop offset='1' stop-color='%238a5cff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Ctext x='32' y='45' font-family='Arial' font-size='34' font-weight='700' fill='white' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="bg-orbs" aria-hidden="true"><span></span><span></span><span></span></div>
+
+<header class="topbar">
+  <a class="brand" href="#" data-action="tab" data-tab="db" aria-label="AniTier — на главную">
+    <span class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 32 32" width="22" height="22"><rect x="4" y="5" width="24" height="6" rx="3" fill="#fff" opacity=".95"/><rect x="4" y="13.5" width="17" height="6" rx="3" fill="#fff" opacity=".7"/><rect x="4" y="22" width="10" height="6" rx="3" fill="#fff" opacity=".45"/></svg>
+    </span>
+    <span class="brand-name">Ani<span>Tier</span></span>
+  </a>
+
+  <nav class="tabs" role="tablist" aria-label="Разделы">
+    <button class="tab is-active" role="tab" data-action="tab" data-tab="db"><span class="tab-ico" aria-hidden="true">▦</span><span>База аниме</span></button>
+    <button class="tab" role="tab" data-action="tab" data-tab="notifications">
+      <span class="tab-ico" aria-hidden="true">✦</span><span>Уведомления</span>
+      <b class="badge" id="bell-badge" hidden>0</b>
+    </button>
+    <button class="tab" role="tab" data-action="tab" data-tab="watched">
+      <span class="tab-ico" aria-hidden="true">✓</span><span>Просмотрено</span>
+      <b class="count" id="count-watched">0</b>
+    </button>
+    <button class="tab" role="tab" data-action="tab" data-tab="planned">
+      <span class="tab-ico" aria-hidden="true">◷</span><span>Запланировано</span>
+      <b class="count" id="count-planned">0</b>
+    </button>
+    <button class="tab" role="tab" data-action="tab" data-tab="upcoming"><span class="tab-ico" aria-hidden="true">↗</span><span>Скоро выйдут</span></button>
+  </nav>
+
+  <div class="topbar-actions">
+    <button class="icon-btn" data-action="refresh" title="Обновить текущую вкладку" aria-label="Обновить">⟳</button>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="offline-banner" id="offline-banner" hidden>
+    <span id="offline-text">⚠ Нет связи с API — показаны демо-данные.</span>
+    <button class="btn btn-tiny" data-action="retry-all">Повторить</button>
+  </div>
+
+  <!-- ================= БАЗА ================= -->
+  <section class="view" id="view-db" role="tabpanel" aria-label="База аниме">
+    <div class="section-head">
+      <div class="section-title">
+        <h1>База аниме</h1>
+        <p class="sub">Тысячи тайтлов из AniList и Kitsu. Ищи, оценивай и раскладывай по тир-листам.</p>
+      </div>
+      <div class="db-tools">
+        <div class="search">
+          <input id="search-input" type="search" placeholder="Поиск: «Фрирен», «Jujutsu Kaisen»…" autocomplete="off" aria-label="Поиск аниме">
+        </div>
+        <button class="btn btn-ghost filter-toggle" data-action="toggle-filters" aria-expanded="false" aria-controls="db-filters">
+          Фильтры <b class="filter-count" id="filter-count" hidden>0</b>
+        </button>
+      </div>
+    </div>
+
+    <div class="filters" id="db-filters" hidden>
+      <label class="filter-field">
+        <span>Тип</span>
+        <select id="filter-type" data-filter="type">
+          <option value="">Любой</option>
+          <option value="tv">ТВ-сериал</option>
+          <option value="movie">Фильм</option>
+          <option value="ova">OVA</option>
+          <option value="ona">ONA</option>
+          <option value="special">Спешл</option>
+        </select>
+      </label>
+      <label class="filter-field">
+        <span>Статус</span>
+        <select id="filter-status" data-filter="status">
+          <option value="">Любой</option>
+          <option value="airing">В эфире</option>
+          <option value="complete">Завершено</option>
+          <option value="upcoming">Анонс</option>
+        </select>
+      </label>
+      <label class="filter-field">
+        <span>Год</span>
+        <select id="filter-year" data-filter="year">
+          <option value="">Любой</option>
+        </select>
+      </label>
+      <label class="filter-field">
+        <span>Жанр</span>
+        <select id="filter-genre" data-filter="genre">
+          <option value="">Любой</option>
+        </select>
+      </label>
+      <label class="filter-field">
+        <span>Рейтинг</span>
+        <select id="filter-score" data-filter="minScore">
+          <option value="">Любой</option>
+          <option value="6">от 6</option>
+          <option value="7">от 7</option>
+          <option value="8">от 8</option>
+          <option value="9">от 9</option>
+        </select>
+      </label>
+      <button class="btn btn-ghost filter-reset" data-action="reset-filters">Сбросить</button>
+    </div>
+
+    <div class="chips" id="db-modes">
+      <button class="chip is-active" data-action="mode" data-mode="popular">Популярное</button>
+      <button class="chip" data-action="mode" data-mode="score">Топ по рейтингу</button>
+      <button class="chip" data-action="mode" data-mode="airing">Сейчас выходит</button>
+      <button class="chip" data-action="mode" data-mode="movie">Фильмы</button>
+    </div>
+
+    <div class="db-status" id="db-status" aria-live="polite"></div>
+    <div class="grid" id="db-grid" aria-live="polite"></div>
+    <div class="load-row">
+      <button class="btn btn-ghost" data-action="load-more" id="db-more" hidden>Следующая страница</button>
+    </div>
+    <div class="db-sentinel" id="db-sentinel" aria-hidden="true"></div>
+  </section>
+
+  <!-- ================= УВЕДОМЛЕНИЯ ================= -->
+  <section class="view" id="view-notifications" role="tabpanel" aria-label="Уведомления" hidden>
+    <div class="section-head">
+      <div class="section-title">
+        <h1>Уведомления</h1>
+        <p class="sub">Свежие премьеры и только что завершившиеся тайтлы. Отмечай просмотренные серии прямо в списке.</p>
+      </div>
+      <button class="btn btn-ghost" data-action="refresh-notifications">Обновить</button>
+    </div>
+    <div class="notif-list" id="notif-list" aria-live="polite"></div>
+  </section>
+
+  <!-- ================= ПРОСМОТРЕНО ================= -->
+  <section class="view" id="view-watched" role="tabpanel" aria-label="Просмотрено" hidden>
+    <div class="section-head">
+      <div class="section-title">
+        <h1>Просмотрено</h1>
+        <p class="sub">Разложи тайтлы по тирам — от S до F. Карточки перетаскиваются мышью.</p>
+      </div>
+      <div class="head-actions">
+        <button class="btn btn-ghost" data-action="exchange-export" data-list="watched">Экспорт</button>
+        <button class="btn btn-ghost" data-action="exchange-import">Импорт</button>
+        <button class="btn btn-ghost" data-action="find-more">+ Добавить тайтл</button>
+      </div>
+    </div>
+    <div class="stats" id="stats-watched"></div>
+    <div class="tierlist" id="tiers-watched"></div>
+  </section>
+
+  <!-- ================= ЗАПЛАНИРОВАНО ================= -->
+  <section class="view" id="view-planned" role="tabpanel" aria-label="Запланировано посмотреть" hidden>
+    <div class="section-head">
+      <div class="section-title">
+        <h1>Запланировано посмотреть</h1>
+        <p class="sub">Собери вишлист и расставь приоритеты по тирам: что смотреть первым.</p>
+      </div>
+      <div class="head-actions">
+        <button class="btn btn-ghost" data-action="exchange-export" data-list="planned">Экспорт</button>
+        <button class="btn btn-ghost" data-action="exchange-import">Импорт</button>
+        <button class="btn btn-ghost" data-action="find-more">+ Добавить тайтл</button>
+      </div>
+    </div>
+    <div class="stats" id="stats-planned"></div>
+    <div class="tierlist" id="tiers-planned"></div>
+  </section>
+
+  <!-- ================= СКОРО ВЫЙДУТ ================= -->
+  <section class="view" id="view-upcoming" role="tabpanel" aria-label="Скоро выйдут" hidden>
+    <div class="section-head">
+      <div class="section-title">
+        <h1>Скоро выйдут</h1>
+        <p class="sub">Премьеры с завтрашнего дня до трёх месяцев вперёд.</p>
+      </div>
+      <button class="btn btn-ghost" data-action="refresh-upcoming">Обновить</button>
+    </div>
+    <div class="grid upcoming-grid" id="upcoming-grid" aria-live="polite"></div>
+  </section>
+
+  <footer class="footer">
+    <p>Данные: <a href="https://anilist.co" target="_blank" rel="noopener">AniList</a> и <a href="https://kitsu.io" target="_blank" rel="noopener">Kitsu</a> · Списки и тиры хранятся в этом браузере (localStorage).</p>
+    <p>Сделано для аниме-марафонов · <span id="footer-year"></span></p>
+  </footer>
+</main>
+
+<!-- ================= МОДАЛКА ================= -->
+<div class="modal" id="modal" hidden>
+  <div class="modal-backdrop" data-action="close-modal"></div>
+  <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modal-title" tabindex="-1">
+    <button class="modal-close" data-action="close-modal" aria-label="Закрыть">✕</button>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<!-- ================= ОБМЕН ТИР-ЛИСТАМИ ================= -->
+<div class="modal" id="exchange-modal" hidden>
+  <div class="modal-backdrop" data-action="close-exchange"></div>
+  <div class="modal-panel exchange-panel" id="exchange-panel" role="dialog" aria-modal="true" aria-labelledby="exchange-title" tabindex="-1">
+    <button class="modal-close" data-action="close-exchange" aria-label="Закрыть">✕</button>
+    <div class="exchange-content" id="exchange-content"></div>
+  </div>
+</div>
+
+<div id="toasts" aria-live="polite" aria-atomic="false"></div>
+
+<script src="core.js" defer></script>
+<script src="app.js" defer></script>
+</body>
+</html>

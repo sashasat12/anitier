@@ -1,0 +1,13 @@
+# Android signing key — never publish
+android/anitier.keystore
+*.keystore
+*.jks
+
+# Generated build files
+AniTier.apk.idsig
+android/assets/index.html
+
+# Local OS/editor files
+.DS_Store
+Thumbs.db
+*.log

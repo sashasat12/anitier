@@ -1,0 +1,501 @@
+(() => {
+  'use strict';
+  const T = window.AniTierTests;
+
+  function fuzzyDate(offsetDays) {
+    const d = new Date(Date.now() + offsetDays * 86400000);
+    return { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate() };
+  }
+
+  function rawAniList(id, title, extra = {}) {
+    return {
+      id,
+      idMal: id,
+      title: { romaji: title, english: title, native: '' },
+      synonyms: [],
+      format: 'TV',
+      episodes: 12,
+      status: 'FINISHED',
+      seasonYear: 2024,
+      startDate: { year: 2024, month: 1, day: 1 },
+      endDate: { year: 2024, month: 3, day: 31 },
+      averageScore: 80,
+      description: '',
+      genres: ['Action'],
+      studios: { nodes: [] },
+      coverImage: { large: '' },
+      siteUrl: `https://anilist.co/anime/${id}`,
+      nextAiringEpisode: null,
+      ...extra,
+    };
+  }
+
+  function anilistResponse(media, hasNext = false) {
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: {
+          Page: {
+            pageInfo: { hasNextPage: hasNext },
+            media,
+          },
+        },
+      }),
+    };
+  }
+
+  function okJson(payload) {
+    return { ok: true, status: 200, json: async () => payload };
+  }
+
+  function dbPage(page) {
+    const start = (page - 1) * 20;
+    const count = page === 1 ? 20 : 5;
+    return Array.from({ length: count }, (_, index) => (
+      rawAniList(1000 + start + index, `База ${start + index + 1}`)
+    ));
+  }
+
+  function frierenAniList() {
+    return rawAniList(1, 'Sousou no Frieren', {
+      idMal: 52991,
+      episodes: 28,
+      seasonYear: 2023,
+      startDate: { year: 2023, month: 9, day: 29 },
+      endDate: { year: 2024, month: 3, day: 22 },
+      averageScore: 91,
+      description: 'Elf mage Frieren.',
+      genres: ['Adventure', 'Drama', 'Fantasy'],
+      studios: { nodes: [{ name: 'MADHOUSE' }] },
+      siteUrl: 'https://anilist.co/anime/1',
+    });
+  }
+
+  function anilistUnique() {
+    return rawAniList(2, 'AniList Unique', {
+      idMal: 60001,
+      format: 'MOVIE',
+      episodes: 1,
+      status: 'RELEASING',
+      seasonYear: 2024,
+      averageScore: 80,
+      description: 'Only from AniList.',
+      genres: ['Action'],
+      siteUrl: 'https://anilist.co/anime/2',
+    });
+  }
+
+  function searchMedia(query, page) {
+    if (page !== 1) return [];
+    const value = String(query || '').toLowerCase();
+    if (value.includes('frieren')) return [frierenAniList(), anilistUnique()];
+    if (value.includes('naruto')) {
+      return [rawAniList(402, 'Naruto', {
+        idMal: 404,
+        startDate: { year: 2002, month: 10, day: 3 },
+        endDate: { year: 2007, month: 2, day: 8 },
+        averageScore: 82,
+      })];
+    }
+    return [];
+  }
+
+  function baseFetch(calls, options = {}) {
+    let dbRequests = 0;
+
+    return async (url, fetchOptions = {}) => {
+      const parsed = new URL(url);
+      const record = { url, host: parsed.hostname, vars: null };
+
+      if (parsed.hostname === 'graphql.anilist.co') {
+        const body = JSON.parse(fetchOptions.body || '{}');
+        record.vars = body.variables || {};
+        calls.push(record);
+        if (options.onAniList) options.onAniList(record.vars);
+
+        const vars = record.vars;
+        const page = Number(vars.page) || 1;
+
+        if (vars.search) return anilistResponse(searchMedia(vars.search, page), false);
+
+        if (vars.status === 'RELEASING') {
+          return anilistResponse([
+            rawAniList(101, 'В эфире 1', {
+              status: 'RELEASING',
+              startDate: fuzzyDate(-10),
+              endDate: null,
+              nextAiringEpisode: {
+                episode: 6,
+                airingAt: Math.floor((Date.now() + 7 * 86400000) / 1000),
+              },
+            }),
+          ], false);
+        }
+
+        if (vars.status === 'FINISHED' && vars.endDateGreater) {
+          return anilistResponse([
+            rawAniList(102, 'Завершилось 1', {
+              startDate: fuzzyDate(-100),
+              endDate: fuzzyDate(-2),
+            }),
+          ], false);
+        }
+
+        if (vars.status === 'NOT_YET_RELEASED') {
+          return anilistResponse(page === 1 ? [
+            rawAniList(103, 'Скоро 1', {
+              status: 'NOT_YET_RELEASED',
+              startDate: fuzzyDate(5),
+              endDate: null,
+            }),
+          ] : [], false);
+        }
+
+        if (vars.format === 'MOVIE') {
+          return anilistResponse([
+            rawAniList(201, 'Фильм 1', { format: 'MOVIE' }),
+            rawAniList(202, 'Фильм 2', { format: 'MOVIE' }),
+          ], false);
+        }
+
+        if (vars.sort && vars.sort[0] === 'POPULARITY_DESC') {
+          dbRequests += 1;
+          if (dbRequests === 1 && options.firstDB) {
+            await options.firstDB;
+            return anilistResponse([
+              rawAniList(401, 'Старый результат', { startDate: fuzzyDate(-500) }),
+            ], false);
+          }
+          return anilistResponse(dbPage(page), page === 1);
+        }
+
+        return anilistResponse([], false);
+      }
+
+      calls.push(record);
+
+      if (parsed.hostname === 'kitsu.io') {
+        const text = String(parsed.searchParams.get('filter[text]') || '').toLowerCase();
+        const offset = Number(parsed.searchParams.get('page[offset]') || 0);
+        const data = offset === 0 && text.includes('frieren') ? [
+          {
+            id: '10',
+            type: 'anime',
+            attributes: {
+              canonicalTitle: 'Sousou no Frieren',
+              titles: { en: "Frieren: Beyond Journey's End", en_jp: 'Sousou no Frieren', ja_jp: '葬送のフリーレン' },
+              synopsis: 'Elf mage Frieren.',
+              subtype: 'TV',
+              status: 'finished',
+              episodeCount: 28,
+              averageRating: '88.8',
+              startDate: '2023-09-29',
+              endDate: '2024-03-22',
+              slug: 'sousou-no-frieren',
+              posterImage: { large: '' },
+            },
+            relationships: {
+              categories: { data: [{ type: 'categories', id: 'c1' }] },
+              mappings: { data: [{ type: 'mappings', id: 'm1' }] },
+            },
+          },
+          {
+            id: '20',
+            type: 'anime',
+            attributes: {
+              canonicalTitle: 'Kitsu Unique',
+              titles: { en: 'Kitsu Unique', en_jp: 'Kitsu Unique', ja_jp: '' },
+              synopsis: 'Only from Kitsu.',
+              subtype: 'movie',
+              status: 'current',
+              episodeCount: 1,
+              averageRating: '75.0',
+              startDate: '2024-02-02',
+              endDate: null,
+              slug: 'kitsu-unique',
+              posterImage: { large: '' },
+            },
+            relationships: {
+              categories: { data: [] },
+              mappings: { data: [] },
+            },
+          },
+        ] : [];
+
+        return okJson({
+          data,
+          included: [
+            { type: 'categories', id: 'c1', attributes: { title: 'Adventure' } },
+            { type: 'mappings', id: 'm1', attributes: { externalSite: 'myanimelist/anime', externalId: '52991' } },
+          ],
+          links: { next: null },
+        });
+      }
+
+      throw new Error(`Неожиданный запрос: ${url}`);
+    };
+  }
+
+  T.test('app: сначала уведомления и премьеры, потом база по 20', async () => {
+    const calls = [];
+    const app = await T.mountApp({
+      query: '?test=1',
+      setup(win) { win.fetch = baseFetch(calls); },
+    });
+
+    try {
+      await app.win.__anitierTest.init();
+      const state = app.win.__anitierTest.state;
+
+      const dbIndex = calls.findIndex(call => (
+        call.vars
+        && call.vars.sort
+        && call.vars.sort[0] === 'POPULARITY_DESC'
+        && !call.vars.format
+        && !call.vars.status
+        && !call.vars.search
+      ));
+      T.assert(dbIndex >= 0, 'Запрос базы должен быть выполнен');
+
+      const priorityCalls = calls.filter(call => (
+        call.vars && ['RELEASING', 'FINISHED', 'NOT_YET_RELEASED'].includes(call.vars.status)
+      ));
+      T.eq(priorityCalls.length, 3, 'Должны быть запросы уведомлений и премьер');
+      for (const call of priorityCalls) {
+        T.assert(calls.indexOf(call) < dbIndex, `Запрос до базы: ${call.url}`);
+      }
+
+      T.assert(calls.every(call => ['graphql.anilist.co', 'kitsu.io'].includes(call.host)), 'Запросы должны идти только в AniList и Kitsu');
+      T.eq(calls[dbIndex].vars.perPage, 20);
+      T.eq(state.db.items.length, 20);
+      T.eq(app.win.document.querySelectorAll('#db-grid .card').length, 20);
+      T.eq(state.db.hasNext, true);
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: фильтры меняют переменные AniList и сбрасываются', async () => {
+    const calls = [];
+    const app = await T.mountApp({
+      query: '?test=1',
+      setup(win) { win.fetch = baseFetch(calls); },
+    });
+
+    try {
+      await app.win.__anitierTest.init();
+      const doc = app.win.document;
+      const toggle = doc.querySelector('[data-action="toggle-filters"]');
+      T.assert(toggle, 'Кнопка фильтров должна существовать');
+      toggle.click();
+      T.eq(doc.querySelector('#db-filters').hidden, false);
+
+      const type = doc.querySelector('#filter-type');
+      T.assert(type, 'Фильтр типа должен существовать');
+      type.value = 'movie';
+      type.dispatchEvent(new app.win.Event('change', { bubbles: true }));
+
+      await T.waitFor(
+        () => !app.win.__anitierTest.state.db.loading
+          && calls.some(call => call.vars && call.vars.format === 'MOVIE'),
+        'Запрос с фильтром format=MOVIE не выполнился',
+      );
+
+      const filteredCall = [...calls].reverse().find(call => call.vars && call.vars.format === 'MOVIE');
+      T.eq(filteredCall.vars.perPage, 20);
+      T.eq(doc.querySelectorAll('#db-grid .card').length, 2);
+      T.eq(doc.querySelector('#filter-count').textContent, '1');
+      T.eq(doc.querySelector('#filter-count').hidden, false);
+
+      doc.querySelector('[data-action="reset-filters"]').click();
+      await T.waitFor(
+        () => !app.win.__anitierTest.state.db.loading
+          && doc.querySelectorAll('#db-grid .card').length === 20,
+        'Сброс фильтров не вернул популярную базу',
+      );
+      T.eq(doc.querySelector('#filter-count').hidden, true);
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: поиск не теряется, если предыдущая загрузка ещё идёт', async () => {
+    const calls = [];
+    let resolveFirstDB;
+    const firstDB = new Promise(resolve => { resolveFirstDB = resolve; });
+
+    const app = await T.mountApp({
+      query: '?test=1',
+      setup(win) { win.fetch = baseFetch(calls, { firstDB }); },
+    });
+
+    try {
+      const initPromise = app.win.__anitierTest.init();
+      const doc = app.win.document;
+
+      await T.waitFor(
+        () => calls.some(call => call.vars && call.vars.sort && call.vars.sort[0] === 'POPULARITY_DESC'),
+        'Первая загрузка базы не началась',
+      );
+
+      const input = doc.querySelector('#search-input');
+      input.value = 'naruto';
+      input.dispatchEvent(new app.win.Event('input', { bubbles: true }));
+
+      await T.waitFor(
+        () => app.win.__anitierTest.state.db.query === 'naruto',
+        'Поисковый запрос не применился',
+      );
+
+      resolveFirstDB();
+      await initPromise;
+
+      await T.waitFor(
+        () => {
+          const grid = doc.querySelector('#db-grid');
+          return grid && grid.textContent.includes('Naruto') && !grid.textContent.includes('Старый результат');
+        },
+        'После гонки запросов показан старый результат',
+      );
+
+      const searchCall = [...calls].reverse().find(call => call.vars && call.vars.search === 'naruto');
+      T.assert(searchCall, 'Должен был выполниться поиск в AniList с search=naruto');
+      T.eq(searchCall.host, 'graphql.anilist.co');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: ползунок только для длинных тайтлов, у коротких — кнопки серий', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+
+    try {
+      await app.win.__anitierTest.init();
+      const doc = app.win.document;
+      doc.querySelector('[data-action="tab"][data-tab="notifications"]').click();
+
+      await T.waitFor(
+        () => doc.querySelector('input[data-action="ep-slider"][data-id="5114"]'),
+        'У длинного тайтла нет ползунка прогресса серий',
+      );
+
+      const longBlock = doc.querySelector('[data-ep-block="5114"]');
+      const slider = longBlock.querySelector('input[data-action="ep-slider"]');
+      T.eq(Number(slider.max), 64);
+      T.eq(longBlock.querySelectorAll('.ep-chip').length, 0, 'У длинного тайтла не должно быть кнопок серий');
+      T.eq(longBlock.querySelectorAll('.ep-step').length, 0, 'У длинного тайтла не должно быть шагов − / +');
+
+      const shortBlock = doc.querySelector('[data-ep-block="52991"]');
+      T.eq(shortBlock.querySelectorAll('input[data-action="ep-slider"]').length, 0, 'У короткого тайтла не должно быть ползунка');
+      T.eq(shortBlock.querySelectorAll('.ep-chip').length, 7, 'У короткого тайтла должны быть кнопки серий');
+
+      const id = Number(slider.dataset.id);
+      slider.value = '5';
+      slider.dispatchEvent(new app.win.Event('input', { bubbles: true }));
+      slider.dispatchEvent(new app.win.Event('change', { bubbles: true }));
+
+      await T.waitFor(
+        () => {
+          const progress = app.win.__anitierTest.state.progress[id];
+          return progress && progress.watched.length === 5;
+        },
+        'Ползунок не сохранил просмотренные серии',
+      );
+
+      const updated = doc.querySelector(`input[data-action="ep-slider"][data-id="${id}"]`);
+      T.eq(updated.value, '5');
+      T.includes(doc.querySelector(`[data-ep-block="${id}"] .ep-watched`).textContent, '5');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: поиск идёт через AniList и Kitsu без повторов', async () => {
+    const calls = [];
+    let anilistSearch = '';
+    const app = await T.mountApp({
+      query: '?test=1',
+      setup(win) {
+        win.fetch = baseFetch(calls, {
+          onAniList(vars) { if (vars.search) anilistSearch = vars.search; },
+        });
+      },
+    });
+
+    try {
+      await app.win.__anitierTest.init();
+      const doc = app.win.document;
+      const input = doc.querySelector('#search-input');
+      input.value = 'Фрирен';
+      input.dispatchEvent(new app.win.Event('input', { bubbles: true }));
+
+      await T.waitFor(
+        () => {
+          const s = app.win.__anitierTest.state.db;
+          return !s.loading && s.query === 'Фрирен' && s.items.length === 3;
+        },
+        'Поиск через AniList и Kitsu не вернул результаты',
+        8000,
+      );
+
+      const state = app.win.__anitierTest.state;
+      T.eq(anilistSearch, 'Sousou no Frieren', 'Русский запрос должен уходить в AniList как английское название');
+      T.eq(state.db.sources, ['AniList', 'Kitsu']);
+      T.eq(state.db.items.filter(item => item.title.includes('Фрирен')).length, 1, 'Фрирен не должна повторяться');
+      T.eq(new Set(state.db.items.map(item => item.id)).size, 3, 'В выдаче не должно быть повторов по id');
+      T.eq(doc.querySelectorAll('#db-grid .card').length, 3);
+      T.includes(doc.querySelector('#db-status').textContent, 'AniList + Kitsu');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: демо-база листается по 20 и фильтруется', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+
+    try {
+      await app.win.__anitierTest.init();
+      const doc = app.win.document;
+
+      T.eq(doc.querySelectorAll('#db-grid .card').length, 20);
+      T.includes(doc.querySelector('#db-status').textContent, '20');
+      T.eq(doc.querySelector('#db-more').textContent, 'Следующая страница');
+
+      doc.querySelector('#db-more').click();
+      await T.waitFor(
+        () => doc.querySelectorAll('#db-grid .card').length === 27,
+        'Вторая страница демо-базы не загрузилась',
+      );
+      T.eq(doc.querySelector('#db-more').hidden, true);
+
+      doc.querySelector('[data-action="toggle-filters"]').click();
+      const type = doc.querySelector('#filter-type');
+      type.value = 'movie';
+      type.dispatchEvent(new app.win.Event('change', { bubbles: true }));
+
+      await T.waitFor(
+        () => doc.querySelectorAll('#db-grid .card').length === 2,
+        'Фильтр «Фильм» не применился к демо-базе',
+      );
+      T.eq(doc.querySelector('#filter-count').textContent, '1');
+
+      doc.querySelector('[data-action="reset-filters"]').click();
+      await T.waitFor(
+        () => doc.querySelectorAll('#db-grid .card').length === 20,
+        'Сброс фильтра не вернул первую страницу',
+      );
+
+      const input = doc.querySelector('#search-input');
+      input.value = 'Фрирен';
+      input.dispatchEvent(new app.win.Event('input', { bubbles: true }));
+      await T.waitFor(
+        () => doc.querySelectorAll('#db-grid .card').length === 1
+          && doc.querySelector('#db-grid').textContent.includes('Фрирен'),
+        'Поиск по демо-базе не сработал',
+      );
+    } finally {
+      app.close();
+    }
+  });
+})();

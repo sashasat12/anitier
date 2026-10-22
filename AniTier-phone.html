@@ -1,0 +1,5395 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AniTier Phone — без сервера</title>
+<meta name="description" content="Автономная версия AniTier для телефона: база аниме, уведомления о премьерах, тир-листы и календарь. Работает как приложение.">
+<meta name="theme-color" content="#0c0d14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AniTier">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23ff4d8d'/%3E%3Cstop offset='1' stop-color='%238a5cff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Ctext x='32' y='45' font-family='Arial' font-size='36' font-weight='700' fill='white' text-anchor='middle'%3EA%3C/text%3E%3C/svg%3E">
+<style>
+/* ============================================================
+   AniTier — anime database & tier lists
+   ============================================================ */
+
+:root {
+  --bg: #07080e;
+  --panel: rgba(19, 23, 34, .78);
+  --panel-solid: #12151f;
+  --panel-2: #151a26;
+  --line: rgba(255, 255, 255, .085);
+  --line-strong: rgba(255, 255, 255, .16);
+  --text: #e9ecf6;
+  --muted: #8b93ac;
+  --accent: #ff4d8d;
+  --accent-2: #8a5cff;
+  --accent-3: #38bdf8;
+  --good: #34d399;
+  --radius: 16px;
+  --shadow: 0 22px 60px rgba(0, 0, 0, .45);
+  --font: 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--text);
+  background: var(--bg);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.45;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+body.no-scroll { overflow: hidden; }
+
+a { color: inherit; text-decoration: none; }
+a:hover { color: #fff; }
+
+img { max-width: 100%; }
+button { font-family: inherit; }
+
+::selection { background: rgba(255, 77, 141, .35); }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- фон ---------- */
+.bg-orbs {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(900px 600px at 12% -10%, rgba(255, 77, 141, .10), transparent 60%),
+    radial-gradient(900px 700px at 95% 8%, rgba(138, 92, 255, .12), transparent 60%),
+    radial-gradient(700px 500px at 50% 110%, rgba(56, 189, 248, .07), transparent 65%),
+    #07080e;
+}
+.bg-orbs span {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: .35;
+  animation: float 20s ease-in-out infinite alternate;
+}
+.bg-orbs span:nth-child(1) { width: 420px; height: 420px; background: #ff2d7a; top: -140px; left: -110px; }
+.bg-orbs span:nth-child(2) { width: 460px; height: 460px; background: #6d3bff; top: 18%; right: -160px; animation-delay: -6s; }
+.bg-orbs span:nth-child(3) { width: 380px; height: 380px; background: #0ea5e9; bottom: -180px; left: 35%; animation-delay: -12s; opacity: .2; }
+
+@keyframes float {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(30px, 40px, 0) scale(1.08); }
+}
+
+/* ---------- шапка ---------- */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 12px clamp(14px, 3.4vw, 38px);
+  background: rgba(7, 8, 14, .74);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -.02em;
+}
+.brand-mark {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #ff4d8d, #8a5cff);
+  box-shadow: 0 8px 22px rgba(255, 77, 141, .35);
+}
+.brand-name span {
+  background: linear-gradient(135deg, #ff8bb5, #b79bff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px;
+}
+.tabs::-webkit-scrollbar { display: none; }
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 13px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color .18s, background .18s, border-color .18s, box-shadow .18s;
+}
+.tab:hover { color: #fff; background: rgba(255, 255, 255, .05); }
+.tab.is-active {
+  color: #fff;
+  background: linear-gradient(135deg, rgba(255, 77, 141, .20), rgba(138, 92, 255, .20));
+  border-color: rgba(255, 77, 141, .38);
+  box-shadow: inset 0 0 24px rgba(255, 77, 141, .10), 0 6px 18px rgba(0, 0, 0, .25);
+}
+.tab-ico { font-size: 12px; opacity: .85; }
+
+.badge {
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff4d8d, #ff2d6f);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 16px;
+  text-align: center;
+  box-shadow: 0 0 12px rgba(255, 77, 141, .6);
+}
+.count {
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .09);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 16px;
+  text-align: center;
+}
+.tab.is-active .count { color: #fff; background: rgba(255, 255, 255, .18); }
+
+.topbar-actions { display: flex; align-items: center; gap: 8px; flex: none; }
+
+.icon-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, .04);
+  color: var(--text);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: .2s;
+}
+.icon-btn:hover { background: rgba(255, 255, 255, .1); border-color: var(--line-strong); transform: translateY(-1px); }
+.icon-btn:active { transform: translateY(0) rotate(90deg); }
+
+/* ---------- каркас ---------- */
+.wrap {
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 26px clamp(14px, 3.4vw, 38px) 60px;
+}
+
+.view { animation: fadeUp .35s ease both; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.section-title h1 {
+  margin: 0 0 6px;
+  font-size: clamp(24px, 2.8vw, 34px);
+  letter-spacing: -.03em;
+  line-height: 1.1;
+  background: linear-gradient(110deg, #fff 10%, #ffb3cd 45%, #b79bff 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.sub { margin: 0; color: var(--muted); font-size: 13.5px; max-width: 620px; }
+.head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.db-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.footer {
+  margin-top: 56px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.footer p { margin: 0; }
+.footer a { color: #ff9dbc; }
+
+/* ---------- уведомление об офлайне ---------- */
+.offline-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+  padding: 11px 16px;
+  border-radius: 13px;
+  border: 1px solid rgba(255, 190, 90, .35);
+  background: rgba(255, 190, 90, .08);
+  color: #ffd79a;
+  font-size: 13px;
+}
+
+/* ---------- поиск ---------- */
+.search { position: relative; }
+.search::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  width: 15px;
+  height: 15px;
+  transform: translateY(-50%);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238b93ac' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") center/contain no-repeat;
+  pointer-events: none;
+}
+.search input {
+  width: min(390px, 78vw);
+  padding: 12px 16px 12px 42px;
+  border-radius: 13px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  transition: border-color .2s, box-shadow .2s, background .2s;
+  -webkit-appearance: none;
+}
+.search input::placeholder { color: #6c7490; }
+.search input:focus {
+  outline: none;
+  border-color: rgba(255, 77, 141, .55);
+  box-shadow: 0 0 0 4px rgba(255, 77, 141, .10);
+  background: rgba(24, 28, 42, .95);
+}
+.search input::-webkit-search-cancel-button { filter: invert(.6); }
+
+.filter-toggle.is-active {
+  color: #fff;
+  border-color: rgba(255, 77, 141, .45);
+  background: rgba(255, 77, 141, .12);
+}
+.filter-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 3px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff4d8d, #8a5cff);
+  color: #fff;
+  font-size: 10px;
+  line-height: 1;
+}
+.filter-count[hidden] { display: none; }
+
+/* ---------- фильтры поиска ---------- */
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  align-items: end;
+  gap: 10px;
+  margin: -4px 0 18px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, .025);
+}
+.filters[hidden] { display: none; }
+.filter-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.filter-field > span {
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.filter-field select {
+  width: 100%;
+  min-height: 37px;
+  padding: 7px 30px 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.filter-field select:focus {
+  outline: none;
+  border-color: rgba(255, 77, 141, .55);
+  box-shadow: 0 0 0 3px rgba(255, 77, 141, .10);
+}
+.filter-reset { min-height: 37px; }
+
+.db-status {
+  min-height: 18px;
+  margin: -6px 0 12px;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.db-status:empty { display: none; }
+.db-sentinel { width: 100%; height: 1px; }
+
+/* ---------- чипы ---------- */
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+.chip {
+  padding: 8px 15px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, .03);
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: .18s;
+}
+.chip:hover { color: #fff; border-color: var(--line-strong); }
+.chip.is-active {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg, #ff4d8d, #8a5cff);
+  box-shadow: 0 8px 22px rgba(138, 92, 255, .28);
+}
+
+/* ---------- сетка и карточки ---------- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 18px;
+}
+
+.card {
+  position: relative;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+  animation: fadeUp .3s ease both;
+}
+.card:hover, .card:focus-visible {
+  transform: translateY(-4px);
+  border-color: rgba(255, 77, 141, .4);
+  box-shadow: 0 20px 44px rgba(0, 0, 0, .5);
+}
+.card .poster {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  background: #0b0e16;
+}
+.card .poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform .6s cubic-bezier(.2, .7, .3, 1);
+}
+.card:hover .poster img { transform: scale(1.055); }
+.poster-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(5, 6, 11, .95) 0%, rgba(5, 6, 11, .18) 32%, transparent 58%);
+  pointer-events: none;
+}
+
+.badge-score, .badge-eps {
+  position: absolute;
+  top: 8px;
+  z-index: 2;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+  backdrop-filter: blur(8px);
+  background: rgba(6, 8, 14, .72);
+  border: 1px solid rgba(255, 255, 255, .12);
+}
+.badge-score { left: 8px; color: #ffd166; }
+.badge-eps { right: 8px; color: #dbe2f4; }
+
+.card-actions {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 28px 10px 10px;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(to top, rgba(5, 6, 11, .92), transparent);
+  transform: translateY(110%);
+  opacity: 0;
+  transition: transform .26s ease, opacity .2s ease;
+}
+.card:hover .card-actions,
+.card:focus-within .card-actions { transform: none; opacity: 1; }
+
+.mini-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, .2);
+  background: rgba(255, 255, 255, .12);
+  color: #fff;
+  font-size: 15px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: .18s;
+}
+.mini-btn:hover { background: var(--accent); border-color: var(--accent); transform: translateY(-2px); }
+.mini-btn.is-on {
+  background: linear-gradient(135deg, #ff4d8d, #8a5cff);
+  border-color: transparent;
+  box-shadow: 0 6px 16px rgba(255, 77, 141, .4);
+}
+
+.card-body { padding: 10px 12px 13px; }
+.card-title {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 800;
+  line-height: 1.28;
+  letter-spacing: -.01em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.56em;
+}
+.card-meta {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card-date {
+  margin: 5px 0 0;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #ffb3cd;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.card-date .dot { width: 3px; height: 3px; border-radius: 50%; background: currentColor; opacity: .6; }
+.card-date .soon { color: #9df0c7; }
+
+.load-row { display: flex; justify-content: center; margin-top: 26px; }
+
+/* ---------- кнопки ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--text);
+  background: transparent;
+  cursor: pointer;
+  transition: .18s;
+  white-space: nowrap;
+}
+.btn:disabled { opacity: .6; cursor: default; }
+.btn-primary {
+  color: #fff;
+  background: linear-gradient(135deg, #ff4d8d, #8a5cff);
+  box-shadow: 0 10px 26px rgba(255, 77, 141, .28);
+}
+.btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 14px 30px rgba(255, 77, 141, .36); }
+.btn-ghost {
+  border-color: var(--line);
+  background: rgba(255, 255, 255, .045);
+}
+.btn-ghost:hover:not(:disabled) { background: rgba(255, 255, 255, .1); border-color: var(--line-strong); }
+.btn.is-on {
+  color: #04170f;
+  background: linear-gradient(135deg, #6ee7b7, #34d399);
+  border-color: transparent;
+  box-shadow: 0 8px 22px rgba(52, 211, 153, .3);
+}
+.btn-tiny { padding: 6px 12px; font-size: 12px; border-radius: 9px; background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .2); }
+
+/* ---------- уведомления ---------- */
+.notif-group { margin-bottom: 28px; }
+.notif-group:last-child { margin-bottom: 0; }
+.group-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.group-head b {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .08);
+  color: var(--text);
+  font-size: 11px;
+  letter-spacing: 0;
+}
+.group-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.group-dot.live { background: var(--accent); box-shadow: 0 0 0 4px rgba(255, 77, 141, .12); animation: dotPulse 2.2s ease-in-out infinite; }
+.group-dot.done { background: var(--good); box-shadow: 0 0 0 4px rgba(52, 211, 153, .12); }
+@keyframes dotPulse { 50% { opacity: .45; } }
+.group-empty {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.notif-list { display: flex; flex-direction: column; gap: 10px; }
+
+.notif {
+  display: grid;
+  grid-template-columns: 58px 56px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 16px;
+  padding: 14px 16px 14px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--panel);
+  cursor: pointer;
+  transition: .2s;
+  animation: fadeUp .3s ease both;
+}
+.notif:hover {
+  border-color: rgba(255, 77, 141, .34);
+  background: rgba(28, 33, 48, .9);
+  transform: translateX(3px);
+}
+.notif-date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 7px 4px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, .045);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.1;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.notif-date b { font-size: 17px; color: var(--text); letter-spacing: -.02em; }
+.notif-poster {
+  width: 56px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 9px;
+  display: block;
+  background: #0b0e16;
+}
+.notif-body { min-width: 0; }
+.notif-title {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 800;
+  letter-spacing: -.01em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.flag-new {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff4d8d, #ff2d6f);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  box-shadow: 0 0 14px rgba(255, 77, 141, .5);
+}
+.notif-alt {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.notif-meta {
+  margin-top: 6px;
+  font-size: 11.5px;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+.notif-meta b { color: #ffb3cd; font-weight: 700; }
+.notif-actions { display: flex; gap: 7px; }
+
+/* ---------- прогресс серий ---------- */
+.ep-block {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, .028);
+}
+.ep-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.ep-release { font-size: 12px; font-weight: 800; color: #ffd1e1; }
+.ep-watched { font-size: 11px; font-weight: 700; color: var(--muted); }
+.ep-bar {
+  height: 4px;
+  margin: 8px 0 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .08);
+  overflow: hidden;
+}
+.ep-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ff4d8d, #8a5cff);
+  transition: width .3s ease;
+}
+.ep-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 9px;
+}
+.ep-slider-bound {
+  min-width: 12px;
+  color: var(--muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.ep-slider {
+  flex: 1;
+  width: 100%;
+  height: 6px;
+  margin: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ff4d8d var(--ep-fill, 0%), rgba(255, 255, 255, .12) var(--ep-fill, 0%));
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.ep-slider::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  border: 3px solid #ff4d8d;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .4);
+  cursor: grab;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.ep-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 3px solid #ff4d8d;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .4);
+  cursor: grab;
+}
+.ep-slider:active::-webkit-slider-thumb { cursor: grabbing; }
+.ep-slider:focus-visible {
+  outline: 2px solid rgba(255, 77, 141, .55);
+  outline-offset: 4px;
+}
+.ep-next { display: block; margin: -3px 0 9px; font-size: 11px; color: #9fd8ff; }
+.ep-chips {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 5px;
+  padding-bottom: 3px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.ep-chip {
+  flex: none;
+  min-width: 28px;
+  height: 27px;
+  padding: 0 7px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  background: rgba(255, 255, 255, .05);
+  color: #c7cee0;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: .15s;
+}
+.ep-chip:hover { border-color: rgba(255, 77, 141, .55); color: #fff; transform: translateY(-1px); }
+.ep-chip.is-watched {
+  border-color: transparent;
+  background: linear-gradient(135deg, #34d399, #10b981);
+  color: #04170f;
+  box-shadow: 0 4px 12px rgba(52, 211, 153, .25);
+}
+.ep-tools { display: flex; align-items: center; gap: 6px; margin-top: 7px; }
+.ep-tools-sep { color: var(--muted); font-size: 11px; }
+.ep-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #8fb3ff;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ep-link:hover { color: #fff; text-decoration: underline; }
+.ep-note { margin: 4px 0 0; font-size: 11.5px; color: var(--muted); }
+.ep-modal { margin-top: 0; padding: 0; border: 0; background: none; }
+.ep-modal .ep-chips { flex-wrap: wrap; overflow: visible; }
+.ep-modal .ep-chip { min-width: 34px; height: 32px; font-size: 12px; }
+
+.card-progress { display: flex; align-items: center; gap: 7px; margin-top: 7px; }
+.cp-bar {
+  flex: 1;
+  display: block;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .08);
+  overflow: hidden;
+}
+.cp-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #34d399, #38bdf8); }
+.cp-label { font-size: 10.5px; font-weight: 800; color: #9df0c7; white-space: nowrap; }
+
+/* ---------- тир-листы ---------- */
+.stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+.stat {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 13px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+.stat b {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  background: linear-gradient(135deg, #ff9dbc, #b79bff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.stat span { font-size: 11.5px; color: var(--muted); font-weight: 600; }
+
+.tierlist { display: flex; flex-direction: column; gap: 12px; }
+
+.tier-row {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.tier-label {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 12px 8px;
+  border-radius: 14px;
+  color: #0b0c11;
+  font-weight: 800;
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), 0 8px 22px rgba(0, 0, 0, .3);
+}
+.tier-label > span { font-size: 27px; line-height: 1; letter-spacing: -.02em; }
+.tier-label small { font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; opacity: .72; }
+.tier-label em {
+  font-style: normal;
+  margin-top: 5px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .2);
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #0b0c11;
+}
+.tier-N .tier-label, .tier-label.tier-N { color: #dde3f3; }
+.tier-label.tier-N em { background: rgba(255, 255, 255, .12); color: #dde3f3; }
+.tier-label.tier-N small { opacity: .6; }
+
+.tier-S { background: linear-gradient(135deg, #ff5c8a, #ff2d6f); }
+.tier-A { background: linear-gradient(135deg, #ffb15c, #ff8a2b); }
+.tier-B { background: linear-gradient(135deg, #ffe066, #ffcc00); }
+.tier-C { background: linear-gradient(135deg, #6ee7a8, #22c55e); }
+.tier-D { background: linear-gradient(135deg, #7dd3fc, #38bdf8); }
+.tier-F { background: linear-gradient(135deg, #cbd5e1, #94a3b8); }
+.tier-N { background: linear-gradient(135deg, #3a4258, #232838); }
+
+.tier-drop {
+  min-height: 112px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px dashed rgba(255, 255, 255, .1);
+  background: linear-gradient(180deg, rgba(255, 255, 255, .028), rgba(255, 255, 255, .012));
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-content: flex-start;
+  transition: border-color .18s, background .18s, box-shadow .18s;
+}
+.tier-drop.is-over {
+  border-color: rgba(255, 77, 141, .75);
+  background: rgba(255, 77, 141, .09);
+  box-shadow: inset 0 0 0 3px rgba(255, 77, 141, .08);
+}
+.tier-hint {
+  align-self: center;
+  padding: 8px 10px;
+  color: rgba(255, 255, 255, .22);
+  font-size: 12.5px;
+  font-weight: 600;
+  user-select: none;
+}
+
+.tier-card {
+  position: relative;
+  width: 126px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #11151f;
+  overflow: hidden;
+  cursor: grab;
+  transition: transform .18s, border-color .18s, box-shadow .18s;
+  animation: fadeUp .25s ease both;
+}
+.tier-card:hover { transform: translateY(-2px); border-color: rgba(255, 77, 141, .45); box-shadow: 0 10px 24px rgba(0, 0, 0, .45); }
+.tier-card:active { cursor: grabbing; }
+.tier-card.dragging { opacity: .35; }
+.tier-card img {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  display: block;
+  background: #0b0e16;
+  pointer-events: none;
+}
+.tc-body { padding: 7px 8px 9px; }
+.tc-title {
+  font-size: 11.5px;
+  font-weight: 800;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.5em;
+}
+.tc-meta { margin-top: 3px; font-size: 10px; color: var(--muted); font-weight: 600; }
+.tc-remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 23px;
+  height: 23px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, .16);
+  background: rgba(5, 6, 11, .8);
+  color: #fff;
+  font-size: 10px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: .18s;
+  backdrop-filter: blur(6px);
+}
+.tier-card:hover .tc-remove, .tier-card:focus-within .tc-remove { opacity: 1; }
+.tc-remove:hover { background: #ff2d6f; border-color: #ff2d6f; }
+
+/* ---------- скоро выйдут ---------- */
+.upcoming-grid .month-head {
+  grid-column: 1 / -1;
+  margin: 12px 0 0;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .16em;
+}
+.upcoming-grid .month-head:first-child { margin-top: 0; }
+
+.note-line {
+  grid-column: 1 / -1;
+  margin: 0 0 4px;
+  padding: 10px 14px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 190, 90, .25);
+  background: rgba(255, 190, 90, .06);
+  color: #ffd79a;
+  font-size: 12.5px;
+}
+
+/* ---------- скелетоны / сообщения ---------- */
+.skel {
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  overflow: hidden;
+}
+.skel-poster {
+  aspect-ratio: 2 / 3;
+  background: linear-gradient(100deg, #141925 30%, #1e2534 50%, #141925 70%);
+  background-size: 220% 100%;
+  animation: shimmer 1.5s linear infinite;
+}
+.skel-line {
+  height: 10px;
+  margin: 10px 12px;
+  border-radius: 6px;
+  background: linear-gradient(100deg, #1a2030 30%, #242c3e 50%, #1a2030 70%);
+  background-size: 220% 100%;
+  animation: shimmer 1.5s linear infinite;
+}
+.skel-line.short { width: 55%; margin-bottom: 14px; }
+@keyframes shimmer { from { background-position: 130% 0; } to { background-position: -30% 0; } }
+
+.msg {
+  grid-column: 1 / -1;
+  padding: 58px 22px;
+  text-align: center;
+  border-radius: 20px;
+  border: 1px dashed var(--line);
+  background: rgba(255, 255, 255, .02);
+}
+.msg .emoji { display: block; font-size: 40px; margin-bottom: 12px; }
+.msg h3 { margin: 0 0 6px; font-size: 18px; letter-spacing: -.01em; }
+.msg p { margin: 0 auto; max-width: 420px; color: var(--muted); font-size: 13px; }
+.msg .btn { margin-top: 18px; }
+.notif-list .msg { border: 1px dashed var(--line); }
+
+/* ---------- модалка ---------- */
+.modal { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 20px; }
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 4, 8, .78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.modal-panel {
+  position: relative;
+  z-index: 1;
+  width: min(940px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  background: linear-gradient(180deg, #12151f, #0d1017);
+  box-shadow: 0 40px 120px rgba(0, 0, 0, .7);
+  animation: pop .26s cubic-bezier(.2, .8, .3, 1) both;
+  overscroll-behavior: contain;
+}
+@keyframes pop {
+  from { opacity: 0; transform: translateY(14px) scale(.975); }
+  to   { opacity: 1; transform: none; }
+}
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, .16);
+  background: rgba(9, 11, 18, .8);
+  color: #fff;
+  font-size: 13px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: .18s;
+}
+.modal-close:hover { background: #ff2d6f; border-color: #ff2d6f; transform: rotate(90deg); }
+
+.modal-grid { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 26px; padding: 26px; }
+.modal-poster img {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: 15px;
+  border: 1px solid var(--line);
+  display: block;
+  background: #0b0e16;
+}
+.modal-side-score {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: rgba(255, 209, 102, .09);
+  border: 1px solid rgba(255, 209, 102, .22);
+  color: #ffd166;
+  font-weight: 800;
+  font-size: 14px;
+}
+.modal-side-score small { color: var(--muted); font-weight: 600; font-size: 11px; }
+
+.modal-eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #ff9dbc;
+  margin-bottom: 8px;
+}
+.modal-info h2 {
+  margin: 0 0 4px;
+  font-size: clamp(22px, 3vw, 30px);
+  line-height: 1.14;
+  letter-spacing: -.03em;
+}
+.modal-alt { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+
+.modal-facts { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.fact {
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, .035);
+  font-size: 12px;
+  font-weight: 700;
+}
+.fact span { color: var(--muted); font-weight: 600; }
+
+.modal-actions { display: flex; gap: 9px; flex-wrap: wrap; margin-bottom: 20px; }
+
+.modal-section {
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, .025);
+  margin-bottom: 18px;
+}
+.modal-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.tier-picker { display: flex; gap: 8px; flex-wrap: wrap; }
+.tier-pick {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  font-size: 15px;
+  font-weight: 800;
+  color: #0b0c11;
+  cursor: pointer;
+  transition: transform .16s, outline-color .16s;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+.tier-pick:hover { transform: translateY(-2px); }
+.tier-pick.is-active { outline-color: #fff; }
+.tier-pick.tier-N { color: #e6ebfa; }
+.hint { margin: 10px 0 0; font-size: 11.5px; color: var(--muted); }
+
+.modal-synopsis {
+  margin: 0 0 16px;
+  color: #c3cada;
+  font-size: 13.5px;
+  line-height: 1.65;
+  white-space: pre-line;
+}
+.tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
+.tag {
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(138, 92, 255, .14);
+  border: 1px solid rgba(138, 92, 255, .3);
+  color: #cbb9ff;
+  font-size: 11px;
+  font-weight: 700;
+}
+.mal-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #ff9dbc;
+  border-bottom: 1px dashed rgba(255, 157, 188, .4);
+  padding-bottom: 2px;
+}
+.mal-link:hover { color: #fff; }
+
+/* ---------- обмен тир-листами ---------- */
+.exchange-panel { width: min(1000px, 100%); }
+.exchange-content { padding: 26px; }
+
+.exchange-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding-right: 44px;
+  margin-bottom: 18px;
+}
+.exchange-eyebrow {
+  margin-bottom: 6px;
+  color: #ff9dbc;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.exchange-head h2 {
+  margin: 0 0 6px;
+  font-size: clamp(22px, 3vw, 30px);
+  line-height: 1.1;
+  letter-spacing: -.03em;
+}
+.exchange-sub { margin: 0; max-width: 620px; color: var(--muted); font-size: 13px; }
+
+.exchange-switch {
+  display: inline-flex;
+  flex: none;
+  gap: 3px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .035);
+}
+.exchange-tab {
+  padding: 7px 11px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.exchange-tab:hover { color: #fff; }
+.exchange-tab.is-active {
+  background: rgba(255, 77, 141, .16);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255, 77, 141, .25);
+}
+
+.exchange-link {
+  flex: none;
+  padding: 7px 0;
+  border: 0;
+  background: none;
+  color: #ff9dbc;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.exchange-link:hover { color: #fff; text-decoration: underline; }
+
+.exchange-field { display: block; margin-bottom: 10px; }
+.exchange-field > span {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.exchange-code {
+  display: block;
+  width: 100%;
+  min-height: 108px;
+  padding: 12px 14px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(3, 5, 10, .55);
+  color: #d8e2ff;
+  font: 12px/1.5 Consolas, 'Courier New', monospace;
+  word-break: break-all;
+  outline: none;
+}
+.exchange-code:focus { border-color: rgba(255, 77, 141, .5); box-shadow: 0 0 0 3px rgba(255, 77, 141, .08); }
+.exchange-code::placeholder { color: rgba(139, 147, 172, .7); }
+
+.exchange-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.exchange-error {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 90, 120, .35);
+  border-radius: 10px;
+  background: rgba(255, 90, 120, .08);
+  color: #ffd0d8;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.exchange-note { margin: 0; color: var(--muted); font-size: 11.5px; }
+.exchange-note code { color: #ffc4d6; font-size: 11px; }
+
+.exchange-empty {
+  padding: 18px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 12.5px;
+  text-align: center;
+}
+
+.exchange-compare { margin-top: 6px; }
+.exchange-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: linear-gradient(135deg, rgba(255, 77, 141, .08), rgba(138, 92, 255, .06));
+}
+.exchange-summary-main { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.exchange-summary-label { color: var(--muted); font-size: 11px; font-weight: 700; }
+.exchange-summary-main b { font-size: 15px; letter-spacing: -.01em; }
+.exchange-stats { display: flex; gap: 6px; flex-wrap: wrap; }
+.exchange-stats span {
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .06);
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.exchange-stats b { color: #fff; font-size: 11.5px; }
+
+.exchange-filters { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0; }
+.exchange-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .035);
+  color: var(--muted);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.exchange-chip:hover { color: #fff; border-color: var(--line-strong); }
+.exchange-chip.is-active {
+  border-color: rgba(255, 77, 141, .45);
+  background: rgba(255, 77, 141, .12);
+  color: #fff;
+}
+.exchange-chip b {
+  min-width: 17px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .1);
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+}
+
+.exchange-tier { margin-top: 14px; }
+.exchange-tier-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+.exchange-tier-head b { font-size: 12px; }
+.exchange-tier-head em {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+.exchange-tier-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  color: #0b0c11;
+  font-size: 13px;
+  font-weight: 800;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3);
+}
+.exchange-tier-badge.tier-N { color: #e6ebfa; }
+
+.exchange-rows { display: flex; flex-direction: column; gap: 7px; }
+.exchange-row {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .025);
+}
+.exchange-row:hover { border-color: rgba(255, 255, 255, .16); background: rgba(255, 255, 255, .04); }
+.exchange-poster {
+  width: 46px;
+  height: 65px;
+  border-radius: 8px;
+  object-fit: cover;
+  display: block;
+  background: #0b0e16;
+}
+.exchange-row-main { min-width: 0; }
+.exchange-row-title {
+  overflow: hidden;
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.exchange-row-meta { margin-top: 2px; color: var(--muted); font-size: 10.5px; font-weight: 600; }
+.exchange-row-badges { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+.exchange-badge {
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 9.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.exchange-badge.friend { background: rgba(255, 77, 141, .14); color: #ffb3cb; }
+.exchange-badge.you.same { background: rgba(52, 211, 153, .14); color: #9df0c7; }
+.exchange-badge.you.different { background: rgba(255, 209, 102, .13); color: #ffd166; }
+.exchange-badge.new { background: rgba(56, 189, 248, .13); color: #9fd8ff; }
+.exchange-badge.diff { background: rgba(255, 209, 102, .1); color: #ffd166; }
+.exchange-add { flex: none; }
+
+.exchange-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.exchange-footer > span { max-width: 560px; color: var(--muted); font-size: 11.5px; }
+
+@media (max-width: 720px) {
+  .exchange-content { padding: 20px 14px 22px; }
+  .exchange-head { flex-direction: column; gap: 10px; padding-right: 40px; }
+  .exchange-switch { width: 100%; }
+  .exchange-tab { flex: 1; }
+  .exchange-summary { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .exchange-row { grid-template-columns: 42px minmax(0, 1fr); }
+  .exchange-poster { width: 42px; height: 60px; }
+  .exchange-row .exchange-add { grid-column: 2; justify-self: start; }
+  .exchange-footer { flex-direction: column; align-items: stretch; }
+  .exchange-footer .btn { width: 100%; }
+  .exchange-actions .btn { flex: 1 1 auto; }
+}
+
+/* ---------- тосты ---------- */
+#toasts {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(360px, calc(100vw - 36px));
+}
+.toast {
+  padding: 12px 15px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  background: #171c29;
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 600;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .55);
+  animation: toastIn .24s ease both;
+}
+.toast.is-out { animation: toastOut .22s ease both; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes toastOut { to { opacity: 0; transform: translateX(20px); } }
+
+/* ---------- скроллбар ---------- */
+* { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .16) transparent; }
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .14); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+*::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, .24); background-clip: content-box; }
+
+/* ============================================================
+   Адаптив
+   ============================================================ */
+@media (max-width: 980px) {
+  .topbar { flex-wrap: wrap; gap: 10px 16px; padding-bottom: 10px; }
+  .tabs { order: 3; flex-basis: 100%; }
+  .topbar-actions { margin-left: auto; }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(152px, 1fr)); gap: 14px; }
+  .modal-grid { grid-template-columns: 210px minmax(0, 1fr); gap: 20px; padding: 20px; }
+}
+
+@media (max-width: 720px) {
+  .wrap { padding-top: 20px; }
+  .section-head { align-items: flex-start; }
+  .db-tools { width: 100%; }
+  .search, .search input { width: 100%; }
+  .search { flex: 1 1 100%; }
+  .filter-toggle { width: 100%; justify-content: center; }
+  .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .filter-reset { grid-column: 1 / -1; }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(136px, 1fr)); gap: 12px; }
+  .card-body { padding: 8px 10px 11px; }
+  .card-title { font-size: 12.5px; }
+  .card-meta, .card-date { font-size: 10.5px; }
+
+  .tier-row { grid-template-columns: 66px minmax(0, 1fr); gap: 8px; }
+  .tier-label { padding: 10px 4px; border-radius: 11px; }
+  .tier-label > span { font-size: 20px; }
+  .tier-label small { font-size: 7.5px; letter-spacing: .03em; }
+  .tier-label em { font-size: 9px; padding: 0 6px; }
+  .tier-drop { padding: 8px; gap: 8px; min-height: 96px; }
+  .tier-card { width: 102px; }
+  .tc-title { font-size: 10.5px; }
+  .tc-remove { opacity: 1; width: 21px; height: 21px; }
+
+  .notif {
+    grid-template-columns: 44px 48px minmax(0, 1fr);
+    gap: 11px;
+    padding: 10px;
+  }
+  .notif-poster { width: 48px; height: 68px; }
+  .notif-actions { grid-column: 2 / -1; justify-content: flex-start; }
+  .notif-actions .mini-btn { width: 34px; height: 34px; }
+  .notif-title { font-size: 13px; }
+
+  .modal { padding: 10px; }
+  .modal-panel { max-height: 94vh; border-radius: 18px; }
+  .modal-grid { grid-template-columns: 1fr; gap: 16px; padding: 18px; }
+  .modal-poster-wrap { display: flex; gap: 14px; align-items: flex-start; }
+  .modal-poster-wrap img { width: 118px; }
+  .modal-side-score { margin-top: 0; flex-direction: column; gap: 2px; }
+  .modal-info h2 { font-size: 21px; }
+  .modal-close { top: 10px; right: 10px; }
+  .tier-pick { width: 40px; height: 40px; }
+  .stats { gap: 8px; }
+  .stat { padding: 8px 12px; }
+  .stat b { font-size: 17px; }
+}
+
+@media (max-width: 420px) {
+  .tabs .tab { padding: 8px 10px; font-size: 12.5px; }
+  .brand { font-size: 16px; }
+  .brand-mark { width: 32px; height: 32px; }
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .filters { grid-template-columns: 1fr; }
+  .filter-reset { grid-column: auto; }
+  .tier-card { width: 92px; }
+}
+
+@media (hover: none) {
+  .card-actions { transform: none; opacity: 1; }
+  .tc-remove { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+}
+
+/* ============================================================
+   AniTier Mobile — мобильная оболочка
+   Подключается после styles.css и только для /mobile/
+   ============================================================ */
+
+html {
+  -webkit-text-size-adjust: 100%;
+  background: #07080e;
+}
+
+body.mobile-app {
+  padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  overscroll-behavior-y: contain;
+}
+
+body.mobile-app .bg-orbs { opacity: .75; }
+
+/* ---------- компактная шапка ---------- */
+body.mobile-app .topbar {
+  flex-wrap: nowrap;
+  gap: 10px;
+  padding: calc(8px + env(safe-area-inset-top)) 12px 8px;
+  background: rgba(7, 8, 14, .9);
+}
+
+body.mobile-app .brand {
+  gap: 8px;
+  font-size: 17px;
+}
+
+body.mobile-app .brand-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+
+body.mobile-app .topbar-actions {
+  margin-left: auto;
+  gap: 6px;
+}
+
+body.mobile-app .icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+
+body.mobile-app .install-btn {
+  background: linear-gradient(135deg, rgba(255, 77, 141, .22), rgba(138, 92, 255, .22));
+  border-color: rgba(255, 77, 141, .4);
+  color: #fff;
+  font-weight: 800;
+}
+
+/* ---------- нижняя навигация ---------- */
+body.mobile-app .tabs {
+  position: fixed;
+  top: auto;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 90;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 2px;
+  flex: none;
+  flex-basis: auto;
+  order: 0;
+  overflow: visible;
+  padding: 5px 4px calc(5px + env(safe-area-inset-bottom));
+  background: rgba(12, 13, 20, .96);
+  border-top: 1px solid var(--line);
+  border-bottom: 0;
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: 0 -12px 30px rgba(0, 0, 0, .35);
+}
+
+body.mobile-app .tab {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 7px 2px 6px;
+  border-radius: 12px;
+  font-size: 10.5px;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+body.mobile-app .tab-ico {
+  font-size: 17px;
+  line-height: 1;
+  opacity: .9;
+}
+
+body.mobile-app .tabs .badge,
+body.mobile-app .tabs .count {
+  position: absolute;
+  top: 1px;
+  right: 6px;
+  min-width: 15px;
+  padding: 0 5px;
+  font-size: 9px;
+  line-height: 15px;
+}
+
+/* ---------- контент ---------- */
+body.mobile-app .wrap {
+  max-width: none;
+  padding: 14px 12px calc(30px + env(safe-area-inset-bottom));
+}
+
+body.mobile-app .section-head {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+body.mobile-app .section-title h1 { font-size: 22px; }
+body.mobile-app .section-title .sub { font-size: 12px; }
+
+body.mobile-app .db-tools {
+  width: 100%;
+  gap: 8px;
+}
+
+body.mobile-app .search,
+body.mobile-app .search input {
+  width: 100%;
+  flex: 1 1 100%;
+}
+
+body.mobile-app .search input {
+  min-height: 46px;
+  font-size: 16px; /* без автозума в iOS */
+}
+
+body.mobile-app .filter-toggle {
+  width: 100%;
+  justify-content: center;
+  min-height: 44px;
+}
+
+body.mobile-app .filters {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+body.mobile-app .filter-field select {
+  min-height: 44px;
+  font-size: 16px;
+}
+
+body.mobile-app .filter-reset {
+  grid-column: 1 / -1;
+  min-height: 44px;
+}
+
+body.mobile-app .chips {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  margin: 0 -12px 14px;
+  padding: 0 12px 4px;
+  scrollbar-width: none;
+}
+
+body.mobile-app .chips::-webkit-scrollbar { display: none; }
+
+body.mobile-app .chip {
+  flex: none;
+  min-height: 42px;
+  padding: 9px 14px;
+  font-size: 12.5px;
+}
+
+body.mobile-app .db-status {
+  margin-bottom: 9px;
+  font-size: 11.5px;
+}
+
+body.mobile-app .grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+body.mobile-app .card-body { padding: 8px 9px 10px; }
+body.mobile-app .card-title { font-size: 12px; line-height: 1.28; }
+body.mobile-app .card-meta,
+body.mobile-app .card-date { font-size: 10px; }
+
+body.mobile-app .load-row { margin-top: 18px; }
+body.mobile-app .load-row .btn { min-height: 44px; width: 100%; }
+
+/* ---------- уведомления ---------- */
+body.mobile-app .notif {
+  grid-template-columns: 38px 46px minmax(0, 1fr);
+  gap: 9px;
+  padding: 9px;
+  border-radius: 14px;
+}
+
+body.mobile-app .notif-poster {
+  width: 46px;
+  height: 66px;
+  border-radius: 9px;
+}
+
+body.mobile-app .notif-title { font-size: 12.5px; }
+body.mobile-app .notif-meta { font-size: 10.5px; }
+body.mobile-app .notif-alt { font-size: 10.5px; }
+
+body.mobile-app .notif-actions {
+  grid-column: 2 / -1;
+  justify-content: flex-start;
+}
+
+body.mobile-app .notif-actions .mini-btn {
+  width: 36px;
+  height: 36px;
+}
+
+/* ---------- тир-листы ---------- */
+body.mobile-app .tier-row {
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 6px;
+}
+
+body.mobile-app .tier-drop {
+  padding: 7px;
+  gap: 7px;
+  min-height: 90px;
+}
+
+body.mobile-app .tier-card { width: 92px; }
+
+/* ---------- модалка как нижний лист ---------- */
+body.mobile-app .modal {
+  align-items: end;
+  padding: 0;
+}
+
+body.mobile-app .modal-panel {
+  width: 100%;
+  max-height: 92dvh;
+  border-radius: 22px 22px 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  animation: none;
+}
+
+body.mobile-app .modal-grid {
+  grid-template-columns: 1fr;
+  gap: 14px;
+  padding: 18px 14px 22px;
+}
+
+body.mobile-app .modal-poster-wrap {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+body.mobile-app .modal-poster-wrap img { width: 112px; }
+body.mobile-app .modal-side-score { margin-top: 0; flex-direction: column; }
+
+body.mobile-app .tier-pick {
+  width: 42px;
+  height: 42px;
+}
+
+/* ---------- мелочи ---------- */
+body.mobile-app .btn:not(.btn-tiny),
+body.mobile-app .filter-toggle,
+body.mobile-app .filter-reset {
+  touch-action: manipulation;
+}
+
+body.mobile-app .footer {
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  font-size: 11px;
+  text-align: center;
+}
+
+body.mobile-app .offline-banner {
+  position: sticky;
+  top: calc(56px + env(safe-area-inset-top));
+  z-index: 50;
+}
+
+.mobile-hint {
+  position: fixed;
+  left: 50%;
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  z-index: 200;
+  width: min(calc(100vw - 28px), 420px);
+  transform: translateX(-50%);
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 190, 90, .35);
+  border-radius: 14px;
+  background: rgba(26, 22, 14, .96);
+  color: #ffd79a;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .5);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.mobile-hint[hidden] { display: none !important; }
+
+@media (max-width: 360px) {
+  body.mobile-app .brand-name { display: none; }
+  body.mobile-app .tab { font-size: 9.5px; }
+  body.mobile-app .tab-ico { font-size: 16px; }
+  body.mobile-app .grid { gap: 8px; }
+}
+
+@media (display-mode: standalone) {
+  body.mobile-app .topbar {
+    padding-top: calc(10px + env(safe-area-inset-top));
+  }
+  body.mobile-app .install-btn { display: none !important; }
+}
+
+</style>
+</head>
+<body class="mobile-app">
+
+<div class="bg-orbs" aria-hidden="true"><span></span><span></span><span></span></div>
+
+<header class="topbar">
+  <a class="brand" href="#" data-action="tab" data-tab="db" aria-label="AniTier — на главную">
+    <span class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 32 32" width="22" height="22"><rect x="4" y="5" width="24" height="6" rx="3" fill="#fff" opacity=".95"/><rect x="4" y="13.5" width="17" height="6" rx="3" fill="#fff" opacity=".7"/><rect x="4" y="22" width="10" height="6" rx="3" fill="#fff" opacity=".45"/></svg>
+    </span>
+    <span class="brand-name">Ani<span>Tier</span></span>
+  </a>
+
+  <div class="topbar-actions">
+    <button class="icon-btn" data-action="refresh" title="Обновить текущую вкладку" aria-label="Обновить">⟳</button>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Разделы">
+  <button class="tab is-active" role="tab" data-action="tab" data-tab="db"><span class="tab-ico" aria-hidden="true">▦</span><span>База</span></button>
+  <button class="tab" role="tab" data-action="tab" data-tab="notifications">
+    <span class="tab-ico" aria-hidden="true">✦</span><span>События</span>
+    <b class="badge" id="bell-badge" hidden>0</b>
+  </button>
+  <button class="tab" role="tab" data-action="tab" data-tab="watched">
+    <span class="tab-ico" aria-hidden="true">✓</span><span>Смотрю</span>
+    <b class="count" id="count-watched">0</b>
+  </button>
+  <button class="tab" role="tab" data-action="tab" data-tab="planned">
+    <span class="tab-ico" aria-hidden="true">◷</span><span>Планы</span>
+    <b class="count" id="count-planned">0</b>
+  </button>
+  <button class="tab" role="tab" data-action="tab" data-tab="upcoming"><span class="tab-ico" aria-hidden="true">↗</span><span>Скоро</span></button>
+</nav>
+
+<main class="wrap">
+
+  <div class="offline-banner" id="offline-banner" hidden>
+    <span id="offline-text">⚠ Нет связи с API — показаны демо-данные.</span>
+    <button class="btn btn-tiny" data-action="retry-all">Повторить</button>
+  </div>
+
+  <!-- ================= БАЗА ================= -->
+  <section class="view" id="view-db" role="tabpanel" aria-label="База аниме">
+    <div class="section-head">
+      <div class="section-title">
+        <h1>База аниме</h1>
+        <p class="sub">Тысячи тайтлов из AniList и Kitsu. Ищи, оценивай и раскладывай по тир-листам.</p>
+      </div>
+      <div class="db-tools">
+        <div class="search">
+          <input id="search-input" type="search" placeholder="Поиск: «Фрирен», «Jujutsu Kaisen»…" autocomplete="off" aria-label="Поиск аниме">
+        </div>
+        <button class="btn btn-ghost filter-toggle" data-action="toggle-filters" aria-expanded="false" aria-controls="db-filters">
+          Фильтры <b class="filter-count" id="filter-count" hidden>0</b>
+        </button>
+      </div>
+    </div>
+
+    <div class="filters" id="db-filters" hidden>
+      <label class="filter-field">
+        <span>Тип</span>
+        <select id="filter-type" data-filter="type">
+          <option value="">Любой</option>
+          <option value="tv">ТВ-сериал</option>
+          <option value="movie">Фильм</option>
+          <option value="ova">OVA</option>
+          <option value="ona">ONA</option>
+          <option value="special">Спешл</option>
+        </select>
+      </label>
+      <label class="filter-field">
+        <span>Статус</span>
+        <select id="filter-status" data-filter="status">
+          <option value="">Любой</option>
+          <option value="airing">В эфире</option>
+          <option value="complete">Завершено</option>
+          <option value="upcoming">Анонс</option>
+        </select>
+      </label>
+      <label class="filter-field">
+        <span>Год</span>
+        <select id="filter-year" data-filter="year">
+          <option value="">Любой</option>
+        </select>
+      </label>
+      <label class="filter-field">
+        <span>Жанр</span>
+        <select id="filter-genre" data-filter="genre">
+          <option value="">Любой</option>
+        </select>
+      </label>
+      <label class="filter-field">
+        <span>Рейтинг</span>
+        <select id="filter-score" data-filter="minScore">
+          <option value="">Любой</option>
+          <option value="6">от 6</option>
+          <option value="7">от 7</option>
+          <option value="8">от 8</option>
+          <option value="9">от 9</option>
+        </select>
+      </label>
+      <button class="btn btn-ghost filter-reset" data-action="reset-filters">Сбросить</button>
+    </div>
+
+    <div class="chips" id="db-modes">
+      <button class="chip is-active" data-action="mode" data-mode="popular">Популярное</button>
+      <button class="chip" data-action="mode" data-mode="score">Топ по рейтингу</button>
+      <button class="chip" data-action="mode" data-mode="airing">Сейчас выходит</button>
+      <button class="chip" data-action="mode" data-mode="movie">Фильмы</button>
+    </div>
+
+    <div class="db-status" id="db-status" aria-live="polite"></div>
+    <div class="grid" id="db-grid" aria-live="polite"></div>
+    <div class="load-row">
+      <button class="btn btn-ghost" data-action="load-more" id="db-more" hidden>Следующая страница</button>
+    </div>
+    <div class="db-sentinel" id="db-sentinel" aria-hidden="true"></div>
+  </section>
+
+  <!-- ================= УВЕДОМЛЕНИЯ ================= -->
+  <section class="view" id="view-notifications" role="tabpanel" aria-label="Уведомления" hidden>
+    <div class="section-head">
+      <div class="section-title">
+        <h1>Уведомления</h1>
+        <p class="sub">Свежие премьеры и только что завершившиеся тайтлы. Отмечай просмотренные серии прямо в списке.</p>
+      </div>
+      <button class="btn btn-ghost" data-action="refresh-notifications">Обновить</button>
+    </div>
+    <div class="notif-list" id="notif-list" aria-live="polite"></div>
+  </section>
+
+  <!-- ================= ПРОСМОТРЕНО ================= -->
+  <section class="view" id="view-watched" role="tabpanel" aria-label="Просмотрено" hidden>
+    <div class="section-head">
+      <div class="section-title">
+        <h1>Просмотрено</h1>
+        <p class="sub">Разложи тайтлы по тирам — от S до F. Карточки перетаскиваются мышью.</p>
+      </div>
+      <div class="head-actions">
+        <button class="btn btn-ghost" data-action="exchange-export" data-list="watched">Экспорт</button>
+        <button class="btn btn-ghost" data-action="exchange-import">Импорт</button>
+        <button class="btn btn-ghost" data-action="find-more">+ Добавить тайтл</button>
+      </div>
+    </div>
+    <div class="stats" id="stats-watched"></div>
+    <div class="tierlist" id="tiers-watched"></div>
+  </section>
+
+  <!-- ================= ЗАПЛАНИРОВАНО ================= -->
+  <section class="view" id="view-planned" role="tabpanel" aria-label="Запланировано посмотреть" hidden>
+    <div class="section-head">
+      <div class="section-title">
+        <h1>Запланировано посмотреть</h1>
+        <p class="sub">Собери вишлист и расставь приоритеты по тирам: что смотреть первым.</p>
+      </div>
+      <div class="head-actions">
+        <button class="btn btn-ghost" data-action="exchange-export" data-list="planned">Экспорт</button>
+        <button class="btn btn-ghost" data-action="exchange-import">Импорт</button>
+        <button class="btn btn-ghost" data-action="find-more">+ Добавить тайтл</button>
+      </div>
+    </div>
+    <div class="stats" id="stats-planned"></div>
+    <div class="tierlist" id="tiers-planned"></div>
+  </section>
+
+  <!-- ================= СКОРО ВЫЙДУТ ================= -->
+  <section class="view" id="view-upcoming" role="tabpanel" aria-label="Скоро выйдут" hidden>
+    <div class="section-head">
+      <div class="section-title">
+        <h1>Скоро выйдут</h1>
+        <p class="sub">Премьеры с завтрашнего дня до трёх месяцев вперёд.</p>
+      </div>
+      <button class="btn btn-ghost" data-action="refresh-upcoming">Обновить</button>
+    </div>
+    <div class="grid upcoming-grid" id="upcoming-grid" aria-live="polite"></div>
+  </section>
+
+  <footer class="footer">
+    <p>Автономная версия для телефона · Данные: <a href="https://anilist.co" target="_blank" rel="noopener">AniList</a> и <a href="https://kitsu.io" target="_blank" rel="noopener">Kitsu</a></p>
+    <p>Списки и тиры хранятся на телефоне · <span id="footer-year"></span></p>
+  </footer>
+</main>
+
+<!-- ================= МОДАЛКА ================= -->
+<div class="modal" id="modal" hidden>
+  <div class="modal-backdrop" data-action="close-modal"></div>
+  <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modal-title" tabindex="-1">
+    <button class="modal-close" data-action="close-modal" aria-label="Закрыть">✕</button>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<!-- ================= ОБМЕН ТИР-ЛИСТАМИ ================= -->
+<div class="modal" id="exchange-modal" hidden>
+  <div class="modal-backdrop" data-action="close-exchange"></div>
+  <div class="modal-panel exchange-panel" id="exchange-panel" role="dialog" aria-modal="true" aria-labelledby="exchange-title" tabindex="-1">
+    <button class="modal-close" data-action="close-exchange" aria-label="Закрыть">✕</button>
+    <div class="exchange-content" id="exchange-content"></div>
+  </div>
+</div>
+
+<div id="toasts" aria-live="polite" aria-atomic="false"></div>
+
+<script>
+/* Чистые функции AniTier: фильтры, параметры AniList, страницы.
+   Модуль не зависит от DOM и используется приложением и тестами. */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.AniTierCore = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  const PAGE_LIMIT = 20;
+  const TIER_IDS = ['S', 'A', 'B', 'C', 'D', 'F', 'N'];
+  const SHARE_PREFIX = 'ANITIER-TIER-1:';
+  const SHARE_KIND = 'anitier.tierlist';
+  const SHARE_VERSION = 1;
+  const SHARE_MAX_LENGTH = 2000000;
+
+  const GENRES = [
+    { id: 1, label: 'Экшен', names: ['Боевик', 'Action'] },
+    { id: 2, label: 'Приключения', names: ['Приключения', 'Adventure'] },
+    { id: 4, label: 'Комедия', names: ['Комедия', 'Comedy'] },
+    { id: 7, label: 'Детектив', names: ['Детектив', 'Mystery'] },
+    { id: 8, label: 'Драма', names: ['Драма', 'Drama'] },
+    { id: 10, label: 'Фэнтези', names: ['Фэнтези', 'Fantasy'] },
+    { id: 13, label: 'Историческое', names: ['Историческое', 'Historical'] },
+    { id: 14, label: 'Ужасы', names: ['Ужасы', 'Horror'] },
+    { id: 16, label: 'Махо-сёдзё', names: ['Махо-сёдзё', 'Mahou Shoujo'] },
+    { id: 18, label: 'Меха', names: ['Меха', 'Mecha'] },
+    { id: 19, label: 'Музыка', names: ['Музыка', 'Music'] },
+    { id: 20, label: 'Пародия', names: ['Пародия', 'Parody'] },
+    { id: 21, label: 'Самураи', names: ['Самураи', 'Samurai'] },
+    { id: 22, label: 'Романтика', names: ['Романтика', 'Romance'] },
+    { id: 23, label: 'Школа', names: ['Школа', 'School'] },
+    { id: 24, label: 'Фантастика', names: ['Фантастика', 'Sci-Fi'] },
+    { id: 27, label: 'Сёнен', names: ['Сёнен', 'Shounen'] },
+    { id: 29, label: 'Космос', names: ['Космос', 'Space'] },
+    { id: 30, label: 'Спорт', names: ['Спорт', 'Sports'] },
+    { id: 31, label: 'Суперсила', names: ['Супергерои', 'Super Power'] },
+    { id: 32, label: 'Вампиры', names: ['Вампиры', 'Vampire'] },
+    { id: 35, label: 'Гарем', names: ['Гарем', 'Harem'] },
+    { id: 36, label: 'Повседневность', names: ['Повседневность', 'Slice of Life'] },
+    { id: 37, label: 'Сверхъестественное', names: ['Сверхъестественное', 'Supernatural'] },
+    { id: 38, label: 'Военное', names: ['Военное', 'Military'] },
+    { id: 39, label: 'Детектив', names: ['Детектив', 'Detective'] },
+    { id: 40, label: 'Психологическое', names: ['Психологическое', 'Psychological'] },
+    { id: 41, label: 'Триллер', names: ['Триллер', 'Thriller'] },
+    { id: 42, label: 'Сэйнэн', names: ['Сэйнэн', 'Seinen'] },
+    { id: 43, label: 'Дзёсэй', names: ['Дзёсэй', 'Josei'] },
+    { id: 62, label: 'Исекай', names: ['Исекай', 'Isekai'] },
+  ];
+
+  const TYPES = [
+    { value: 'tv', label: 'ТВ-сериал' },
+    { value: 'movie', label: 'Фильм' },
+    { value: 'ova', label: 'OVA' },
+    { value: 'ona', label: 'ONA' },
+    { value: 'special', label: 'Спешл' },
+  ];
+
+  const STATUSES = [
+    { value: 'airing', label: 'В эфире' },
+    { value: 'complete', label: 'Завершено' },
+    { value: 'upcoming', label: 'Анонс' },
+  ];
+
+  const SCORES = [
+    { value: '6', label: 'от 6' },
+    { value: '7', label: 'от 7' },
+    { value: '8', label: 'от 8' },
+    { value: '9', label: 'от 9' },
+  ];
+
+  const STATUS_NAMES = {
+    airing: 'В эфире',
+    complete: 'Завершено',
+    upcoming: 'Анонс',
+  };
+
+  const DEFAULT_FILTERS = Object.freeze({
+    type: '',
+    status: '',
+    year: '',
+    genre: '',
+    minScore: '',
+  });
+
+  function normalizeFilters(raw) {
+    const source = raw && typeof raw === 'object' ? raw : {};
+    const string = value => String(value == null ? '' : value).trim();
+    const year = string(source.year);
+    const minScore = string(source.minScore);
+
+    return {
+      type: TYPES.some(item => item.value === string(source.type)) ? string(source.type) : '',
+      status: STATUSES.some(item => item.value === string(source.status)) ? string(source.status) : '',
+      year: /^\d{4}$/.test(year) ? year : '',
+      genre: GENRES.some(item => String(item.id) === string(source.genre)) ? string(source.genre) : '',
+      minScore: SCORES.some(item => item.value === minScore) ? minScore : '',
+    };
+  }
+
+  function hasActiveFilters(filters) {
+    const normalized = normalizeFilters(filters);
+    return Boolean(normalized.type || normalized.status || normalized.year || normalized.genre || normalized.minScore);
+  }
+
+  function countActiveFilters(filters) {
+    const normalized = normalizeFilters(filters);
+    return ['type', 'status', 'year', 'genre', 'minScore'].filter(key => normalized[key]).length;
+  }
+
+  function genreById(id) {
+    return GENRES.find(item => String(item.id) === String(id)) || null;
+  }
+
+  function matchesFilters(anime, filters) {
+    const normalized = normalizeFilters(filters);
+
+    if (normalized.type && String(anime.type || '').toLowerCase() !== normalized.type) return false;
+    if (normalized.status && String(anime.status || '') !== STATUS_NAMES[normalized.status]) return false;
+    if (normalized.year && Number(anime.year) !== Number(normalized.year)) return false;
+    if (normalized.minScore) {
+      if (typeof anime.score !== 'number' || anime.score < Number(normalized.minScore)) return false;
+    }
+    if (normalized.genre) {
+      const genre = genreById(normalized.genre);
+      if (!genre) return false;
+      const names = Array.isArray(anime.genres) ? anime.genres : [];
+      if (!names.some(name => genre.names.includes(name))) return false;
+    }
+
+    return true;
+  }
+
+  function filterItems(items, options = {}) {
+    const query = String(options.query || '').trim().toLowerCase();
+    const filters = normalizeFilters(options.filters);
+
+    return (Array.isArray(items) ? items : []).filter(anime => {
+      if (query) {
+        const haystack = `${anime.title || ''} ${anime.altTitle || ''}`.toLowerCase();
+        if (!haystack.includes(query)) return false;
+      }
+      return matchesFilters(anime, filters);
+    });
+  }
+
+  const ANILIST_FORMATS = {
+    tv: 'TV',
+    movie: 'MOVIE',
+    ova: 'OVA',
+    ona: 'ONA',
+    special: 'SPECIAL',
+  };
+
+  const ANILIST_STATUSES = {
+    airing: 'RELEASING',
+    complete: 'FINISHED',
+    upcoming: 'NOT_YET_RELEASED',
+  };
+
+  function aniListGenre(id) {
+    const genre = genreById(id);
+    return genre ? genre.names[genre.names.length - 1] : '';
+  }
+
+  function buildAniListVariables(options = {}) {
+    const mode = options.mode || 'popular';
+    const query = String(options.query || '').trim();
+    const filters = normalizeFilters(options.filters);
+    const page = Math.max(1, Number(options.page) || 1);
+    const limit = Math.max(1, Number(options.limit) || PAGE_LIMIT);
+    const variables = { page, perPage: limit, type: 'ANIME', isAdult: false };
+    const active = hasActiveFilters(filters);
+
+    if (query) variables.search = query;
+    if (filters.type) variables.format = ANILIST_FORMATS[filters.type];
+    if (filters.status) variables.status = ANILIST_STATUSES[filters.status];
+    if (filters.year) variables.seasonYear = Number(filters.year);
+    if (filters.genre) {
+      const genre = aniListGenre(filters.genre);
+      if (genre) variables.genre = genre;
+    }
+    if (filters.minScore) variables.averageScoreGreater = Number(filters.minScore) * 10 - 1;
+
+    if (query) {
+      if (active) variables.sort = [mode === 'score' ? 'SCORE_DESC' : 'POPULARITY_DESC'];
+      return variables;
+    }
+
+    if (active) {
+      variables.sort = [mode === 'score' ? 'SCORE_DESC' : 'POPULARITY_DESC'];
+      return variables;
+    }
+
+    if (mode === 'score') {
+      variables.sort = ['SCORE_DESC'];
+    } else if (mode === 'airing') {
+      variables.status = 'RELEASING';
+      variables.sort = ['POPULARITY_DESC'];
+    } else if (mode === 'movie') {
+      variables.format = 'MOVIE';
+      variables.sort = ['POPULARITY_DESC'];
+    } else {
+      variables.sort = ['POPULARITY_DESC'];
+    }
+
+    return variables;
+  }
+
+  function dedupeById(items) {
+    const seen = new Set();
+    return (Array.isArray(items) ? items : []).filter(item => {
+      if (!item || seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+  }
+
+  function normalizeTitleKey(value) {
+    return String(value == null ? '' : value)
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/&/g, ' and ')
+      .replace(/[^a-z0-9\u0400-\u04ff]+/g, ' ')
+      .trim()
+      .replace(/\s+/g, ' ');
+  }
+
+  function animeIdentityKeys(item) {
+    if (!item || typeof item !== 'object') return [];
+    const keys = [];
+    if (item.id != null) keys.push(`id:${item.id}`);
+    if (item.malId != null) keys.push(`mal:${item.malId}`);
+    if (item.source && item.sourceId != null) keys.push(`src:${item.source}:${item.sourceId}`);
+
+    const year = Number(item.year) || 0;
+    const titles = [item.title, item.altTitle, ...(Array.isArray(item.aliases) ? item.aliases : [])];
+    const normalized = new Set(titles.map(normalizeTitleKey).filter(Boolean));
+    for (const title of normalized) keys.push(`title:${title}:${year || '?'}`);
+    return keys;
+  }
+
+  function mergeUniqueAnime(groups, seen = new Set()) {
+    const lists = (Array.isArray(groups) ? groups : []).map(group => (
+      Array.isArray(group) ? group : []
+    ));
+    const merged = [];
+    let index = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      hasMore = false;
+      for (const list of lists) {
+        if (index >= list.length) continue;
+        hasMore = true;
+        const item = list[index];
+        const keys = animeIdentityKeys(item);
+        if (!keys.length || keys.some(key => seen.has(key))) continue;
+        keys.forEach(key => seen.add(key));
+        merged.push(item);
+      }
+      index += 1;
+    }
+
+    return merged;
+  }
+
+  function slicePage(items, page, limit = PAGE_LIMIT) {
+    const list = Array.isArray(items) ? items : [];
+    const current = Math.max(1, Number(page) || 1);
+    const size = Math.max(1, Number(limit) || PAGE_LIMIT);
+    const start = (current - 1) * size;
+    return {
+      items: list.slice(start, start + size),
+      hasNext: start + size < list.length,
+    };
+  }
+
+  /* ---------------- обмен тир-листами ---------------- */
+
+  function shareNumber(value) {
+    if (value == null || value === '') return null;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+  }
+
+  function shareString(value, max) {
+    return String(value == null ? '' : value).trim().slice(0, max);
+  }
+
+  function shareUrl(value) {
+    const url = shareString(value, 1000);
+    return /^https?:\/\//i.test(url) ? url : '';
+  }
+
+  function compactShareAnime(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const id = shareNumber(raw.id);
+    if (id == null) return null;
+    const title = shareString(raw.title, 300) || shareString(raw.altTitle, 300);
+    if (!title) return null;
+    const altTitle = shareString(raw.altTitle, 300);
+    const sourceId = raw.sourceId == null
+      ? null
+      : (Number.isFinite(Number(raw.sourceId)) ? Number(raw.sourceId) : shareString(raw.sourceId, 80));
+
+    return {
+      id,
+      malId: shareNumber(raw.malId),
+      title,
+      altTitle: altTitle === title ? '' : altTitle,
+      image: shareUrl(raw.image),
+      episodes: shareNumber(raw.episodes),
+      type: shareString(raw.type, 40),
+      status: shareString(raw.status, 40),
+      score: shareNumber(raw.score),
+      year: shareNumber(raw.year),
+      airedFrom: shareString(raw.airedFrom, 40),
+      airedTo: shareString(raw.airedTo, 40),
+      synopsis: shareString(raw.synopsis, 300),
+      genres: Array.isArray(raw.genres)
+        ? raw.genres.map(genre => shareString(genre, 60)).filter(Boolean).slice(0, 12)
+        : [],
+      url: shareUrl(raw.url),
+      source: shareString(raw.source, 40),
+      sourceId,
+      demo: Boolean(raw.demo),
+    };
+  }
+
+  function normalizeSharedAnime(raw) {
+    const anime = compactShareAnime(raw);
+    if (!anime) return null;
+    return {
+      ...anime,
+      episodes: anime.episodes == null ? null : Math.max(0, Math.floor(anime.episodes)),
+      score: anime.score == null ? null : Math.max(0, Math.min(10, anime.score)),
+      year: anime.year == null ? null : Math.floor(anime.year),
+    };
+  }
+
+  function utf8ToBinary(value) {
+    const text = String(value == null ? '' : value);
+    if (typeof TextEncoder !== 'undefined') {
+      const bytes = new TextEncoder().encode(text);
+      let binary = '';
+      const chunk = 0x8000;
+      for (let index = 0; index < bytes.length; index += chunk) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(index, index + chunk));
+      }
+      return binary;
+    }
+    return unescape(encodeURIComponent(text));
+  }
+
+  function binaryToUtf8(value) {
+    const binary = String(value == null ? '' : value);
+    if (typeof TextDecoder !== 'undefined') {
+      const bytes = new Uint8Array(binary.length);
+      for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+      return new TextDecoder().decode(bytes);
+    }
+    return decodeURIComponent(escape(binary));
+  }
+
+  function encodeShareBase64(value) {
+    return btoa(utf8ToBinary(value))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/g, '');
+  }
+
+  function decodeShareBase64(value) {
+    let base64 = String(value == null ? '' : value).replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4) base64 += '=';
+    return binaryToUtf8(atob(base64));
+  }
+
+  function makeTierShare(listName, tiers, options = {}) {
+    const tierIds = Array.isArray(options.tierIds) ? options.tierIds : TIER_IDS;
+    const list = listName === 'planned' ? 'planned' : 'watched';
+    const source = tiers && typeof tiers === 'object' ? tiers : {};
+    const now = options.now == null ? new Date() : new Date(options.now);
+    const payload = {
+      app: 'AniTier',
+      kind: SHARE_KIND,
+      version: SHARE_VERSION,
+      list,
+      exportedAt: Number.isNaN(now.getTime()) ? new Date().toISOString() : now.toISOString(),
+      tiers: {},
+    };
+
+    for (const tier of tierIds) {
+      const items = Array.isArray(source[tier]) ? source[tier] : [];
+      payload.tiers[tier] = items.map(compactShareAnime).filter(Boolean);
+    }
+    return payload;
+  }
+
+  function encodeTierShare(payload) {
+    return SHARE_PREFIX + encodeShareBase64(JSON.stringify(payload));
+  }
+
+  function parseTierShare(code, options = {}) {
+    const tierIds = Array.isArray(options.tierIds) ? options.tierIds : TIER_IDS;
+    let text = String(code == null ? '' : code).trim();
+    if (!text) throw new Error('Вставьте код тир-листа.');
+    if (text.length > SHARE_MAX_LENGTH) throw new Error('Код слишком длинный. Проверьте, что скопирован весь текст.');
+
+    let jsonText = '';
+    if (text.charAt(0) === '{') {
+      jsonText = text;
+    } else {
+      if (text.startsWith(SHARE_PREFIX)) text = text.slice(SHARE_PREFIX.length);
+      const base64 = text.replace(/\s+/g, '');
+      if (!base64) throw new Error('В коде нет данных.');
+      try {
+        jsonText = decodeShareBase64(base64);
+      } catch {
+        throw new Error('Не удалось прочитать код. Скопируйте его полностью и попробуйте снова.');
+      }
+    }
+
+    let payload = null;
+    try {
+      payload = JSON.parse(jsonText);
+    } catch {
+      throw new Error('Код повреждён: внутри не JSON.');
+    }
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      throw new Error('Это не код тир-листа AniTier.');
+    }
+    if (payload.kind !== SHARE_KIND || Number(payload.version) !== SHARE_VERSION) {
+      if (payload.kind === SHARE_KIND && Number(payload.version) > SHARE_VERSION) {
+        throw new Error('Код создан в более новой версии AniTier. Обновите приложение.');
+      }
+      throw new Error('Это не код тир-листа AniTier.');
+    }
+    if (!payload.tiers || typeof payload.tiers !== 'object' || Array.isArray(payload.tiers)) {
+      throw new Error('В коде нет тир-листа.');
+    }
+
+    const list = payload.list === 'planned' ? 'planned' : payload.list === 'watched' ? 'watched' : null;
+    if (!list) throw new Error('В коде не указано, какой это список.');
+
+    const tiers = {};
+    for (const tier of tierIds) tiers[tier] = [];
+    const seen = new Set();
+    const limit = Math.max(1, Number(options.maxItems) || 2000);
+    let total = 0;
+
+    for (const tier of tierIds) {
+      const source = Array.isArray(payload.tiers[tier]) ? payload.tiers[tier] : [];
+      for (const raw of source) {
+        if (total >= limit) break;
+        const anime = normalizeSharedAnime(raw);
+        if (!anime) continue;
+        const keys = animeIdentityKeys(anime);
+        if (keys.some(key => seen.has(key))) continue;
+        keys.forEach(key => seen.add(key));
+        tiers[tier].push(anime);
+        total += 1;
+      }
+      if (total >= limit) break;
+    }
+
+    return {
+      app: 'AniTier',
+      kind: SHARE_KIND,
+      version: SHARE_VERSION,
+      list,
+      exportedAt: typeof payload.exportedAt === 'string' ? payload.exportedAt.slice(0, 60) : '',
+      tiers,
+      total,
+    };
+  }
+
+  function compareTierLists(sharedTiers, yourLists, options = {}) {
+    const tierIds = Array.isArray(options.tierIds) ? options.tierIds : TIER_IDS;
+    const shared = sharedTiers && typeof sharedTiers === 'object' ? sharedTiers : {};
+    const lists = yourLists && typeof yourLists === 'object' ? yourLists : {};
+    const index = new Map();
+    const yourItems = [];
+
+    for (const listName of ['watched', 'planned']) {
+      const tierMap = lists[listName] && typeof lists[listName] === 'object' ? lists[listName] : {};
+      for (const tier of tierIds) {
+        const items = Array.isArray(tierMap[tier]) ? tierMap[tier] : [];
+        for (const anime of items) {
+          const keys = animeIdentityKeys(anime);
+          if (!keys.length) continue;
+          const entry = { anime, list: listName, tier, keys };
+          yourItems.push(entry);
+          for (const key of keys) {
+            if (!index.has(key)) index.set(key, entry);
+          }
+        }
+      }
+    }
+
+    const rows = [];
+    const sharedKeys = new Set();
+    const seen = new Set();
+    for (const tier of tierIds) {
+      const items = Array.isArray(shared[tier]) ? shared[tier] : [];
+      for (const anime of items) {
+        const keys = animeIdentityKeys(anime);
+        if (!keys.length) continue;
+        if (keys.some(key => seen.has(key))) continue;
+        keys.forEach(key => seen.add(key));
+        keys.forEach(key => sharedKeys.add(key));
+
+        let match = null;
+        for (const key of keys) {
+          if (index.has(key)) {
+            match = index.get(key);
+            break;
+          }
+        }
+        rows.push({
+          anime,
+          tier,
+          match: match ? { anime: match.anime, list: match.list, tier: match.tier } : null,
+          sameTier: Boolean(match && match.tier === tier),
+        });
+      }
+    }
+
+    let yoursOnly = 0;
+    const counted = new Set();
+    for (const item of yourItems) {
+      const key = item.keys[0];
+      if (!key || counted.has(key)) continue;
+      counted.add(key);
+      if (!item.keys.some(candidate => sharedKeys.has(candidate))) yoursOnly += 1;
+    }
+
+    const common = rows.filter(row => row.match);
+    const sameTier = common.filter(row => row.sameTier).length;
+    return {
+      rows,
+      summary: {
+        total: rows.length,
+        common: common.length,
+        newCount: rows.length - common.length,
+        watched: common.filter(row => row.match.list === 'watched').length,
+        planned: common.filter(row => row.match.list === 'planned').length,
+        sameTier,
+        differentTier: common.length - sameTier,
+        yoursOnly,
+      },
+    };
+  }
+
+  return {
+    PAGE_LIMIT,
+    TIER_IDS,
+    SHARE_PREFIX,
+    SHARE_KIND,
+    SHARE_VERSION,
+    makeTierShare,
+    encodeTierShare,
+    parseTierShare,
+    compareTierLists,
+    compactShareAnime,
+    GENRES,
+    TYPES,
+    STATUSES,
+    SCORES,
+    DEFAULT_FILTERS,
+    normalizeFilters,
+    hasActiveFilters,
+    countActiveFilters,
+    genreById,
+    matchesFilters,
+    filterItems,
+    buildAniListVariables,
+    dedupeById,
+    normalizeTitleKey,
+    animeIdentityKeys,
+    mergeUniqueAnime,
+    slicePage,
+  };
+});
+
+</script>
+<script>
+/* ============================================================
+   AniTier — база аниме, уведомления, тир-листы, календарь премьер
+   Данные: AniList GraphQL + Kitsu API. Хранение: localStorage.
+   ============================================================ */
+(() => {
+  'use strict';
+
+  /* ---------------- константы ---------------- */
+  const C = window.AniTierCore;
+  if (!C) throw new Error('core.js не загружен');
+
+  const LS_KEY = 'anitier.v1';
+  const PAGE_LIMIT = C.PAGE_LIMIT;
+  const LONG_TITLE_EPS = 60;
+  const ANILIST_TIMEOUT = 9000;
+  const SEARCH_TIMEOUT = 6000;
+  const ANILIST_ENDPOINT = 'https://graphql.anilist.co';
+  const KITSU_ENDPOINT = 'https://kitsu.io/api/edge/anime';
+  const ANILIST_QUERY = `query AnimePage(
+    $page: Int,
+    $perPage: Int,
+    $search: String,
+    $sort: [MediaSort],
+    $type: MediaType,
+    $status: MediaStatus,
+    $format: MediaFormat,
+    $seasonYear: Int,
+    $genre: String,
+    $averageScoreGreater: Int,
+    $startDateGreater: FuzzyDateInt,
+    $startDateLesser: FuzzyDateInt,
+    $endDateGreater: FuzzyDateInt,
+    $endDateLesser: FuzzyDateInt
+  ) {
+    Page(page: $page, perPage: $perPage) {
+      pageInfo { hasNextPage }
+      media(
+        search: $search,
+        type: $type,
+        status: $status,
+        format: $format,
+        seasonYear: $seasonYear,
+        genre: $genre,
+        sort: $sort,
+        averageScore_greater: $averageScoreGreater,
+        startDate_greater: $startDateGreater,
+        startDate_lesser: $startDateLesser,
+        endDate_greater: $endDateGreater,
+        endDate_lesser: $endDateLesser,
+        isAdult: false
+      ) {
+        id
+        idMal
+        title { romaji english native }
+        synonyms
+        format
+        episodes
+        status
+        seasonYear
+        startDate { year month day }
+        endDate { year month day }
+        averageScore
+        description(asHtml: false)
+        genres
+        studios(isMain: true) { nodes { name } }
+        coverImage { extraLarge large }
+        siteUrl
+        nextAiringEpisode { episode airingAt }
+      }
+    }
+  }`;
+  const TEST_MODE = new URLSearchParams(location.search).has('test');
+
+  const TIERS = [
+    { id: 'S', label: 'S', name: 'Шедевр' },
+    { id: 'A', label: 'A', name: 'Отлично' },
+    { id: 'B', label: 'B', name: 'Хорошо' },
+    { id: 'C', label: 'C', name: 'Средне' },
+    { id: 'D', label: 'D', name: 'Слабо' },
+    { id: 'F', label: 'F', name: 'Провал' },
+    { id: 'N', label: '?', name: 'Без оценки' },
+  ];
+  const TIER_IDS = TIERS.map(t => t.id);
+  const LIST_LABELS = { watched: 'Просмотрено', planned: 'Запланировано' };
+  const EXCHANGE_FILTERS = [
+    { id: 'all', label: 'Все' },
+    { id: 'new', label: 'Новые' },
+    { id: 'diff', label: 'Расхождения' },
+  ];
+
+  const TYPE_RU = {
+    TV: 'ТВ',
+    Movie: 'Фильм',
+    OVA: 'OVA',
+    ONA: 'ONA',
+    Special: 'Спешл',
+    Music: 'Клип',
+    'TV Special': 'ТВ-спешл',
+  };
+  const typeRu = (t) => TYPE_RU[t] || t || '';
+
+  const MONTHS_SHORT = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+  const MONTHS_FULL = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+
+  const VIEW_TABS = ['db', 'notifications', 'watched', 'planned', 'upcoming'];
+
+  /* Русские названия для популярных тайтлов (MAL id) */
+  const RU_TITLES = {
+    1: 'Ковбой Бибоп',
+    19: 'Монстр',
+    20: 'Наруто',
+    21: 'Ван-Пис',
+    30: 'Евангелион',
+    1535: 'Тетрадь смерти',
+    1575: 'Код Гиас: Восставший Лелуш',
+    5114: 'Стальной алхимик: Братство',
+    6547: 'Ангельские ритмы!',
+    9253: 'Врата Штейна',
+    11061: 'Хантер × Хантер',
+    11757: 'Мастера меча онлайн',
+    16498: 'Атака титанов',
+    19815: 'Нет игры — нет жизни',
+    20583: 'Волейбол!!',
+    22319: 'Токийский гуль',
+    23273: 'Твоя апрельская ложь',
+    28851: 'Форма голоса',
+    30276: 'Ванпанчмен',
+    31240: 'Re:Zero. Жизнь с нуля в другом мире',
+    31964: 'Моя геройская академия',
+    32281: 'Твоё имя',
+    34599: 'Созданный в Бездне',
+    38000: 'Клинок, рассекающий демонов',
+    40748: 'Магическая битва',
+    41467: 'Блич: Тысячелетняя кровавая война',
+    44511: 'Человек-бензопила',
+    47917: 'Боччи на рок-концерте!',
+    52991: 'Провожающая в последний путь Фрирен',
+  };
+
+  /* Демо-данные на случай отсутствия сети */
+  const DEMO_BASE = [
+    [52991, 'Провожающая в последний путь Фрирен', 'Sousou no Frieren', 28, 2023, 9.3, 'TV', ['Приключения', 'Драма', 'Фэнтези'], 'Эльфийка-магичка Фрирен переживает своих спутников и отправляется в новое путешествие, чтобы понять людей и время.'],
+    [5114, 'Стальной алхимик: Братство', 'Fullmetal Alchemist: Brotherhood', 64, 2009, 9.1, 'TV', ['Приключения', 'Драма', 'Фэнтези'], 'Братья Элрики ищут философский камень, чтобы вернуть тела после неудачной попытки воскрешения матери.'],
+    [9253, 'Врата Штейна', 'Steins;Gate', 24, 2011, 9.0, 'TV', ['Драма', 'Фантастика', 'Триллер'], 'Учёный-самоучка открывает способ отправлять сообщения в прошлое — и запускает цепочку трагедий.'],
+    [11061, 'Хантер × Хантер', 'Hunter x Hunter (2011)', 148, 2011, 9.0, 'TV', ['Приключения', 'Фэнтези', 'Сёнен'], 'Гон идёт в опасную профессию охотника, чтобы найти отца.'],
+    [28851, 'Форма голоса', 'Koe no Katachi', 1, 2016, 8.9, 'Movie', ['Драма', 'Романтика'], 'История о буллинге, вине и попытке снова научиться слышать друг друга.'],
+    [32281, 'Твоё имя', 'Kimi no Na wa', 1, 2016, 8.8, 'Movie', ['Драма', 'Романтика', 'Фантастика'], 'Двое подростков начинают меняться телами и искать друг друга сквозь время и расстояние.'],
+    [47917, 'Боччи на рок-концерте!', 'Bocchi the Rock!', 12, 2022, 8.8, 'TV', ['Комедия', 'Музыка'], 'Застенчивая гитаристка мечтает о сцене и впервые оказывается в настоящей группе.'],
+    [41467, 'Блич: Тысячелетняя кровавая война', 'Bleach: Sennen Kessen-hen', 13, 2022, 8.8, 'TV', ['Боевик', 'Сёнен', 'Сверхъестественное'], 'Финальная война синигами и квинси начинается.'],
+    [1, 'Ковбой Бибоп', 'Cowboy Bebop', 26, 1998, 8.8, 'TV', ['Боевик', 'Фантастика', 'Драма'], 'Охотники за головами бороздят космос под джаз и собственные воспоминания.'],
+    [34599, 'Созданный в Бездне', 'Made in Abyss', 13, 2017, 8.7, 'TV', ['Приключения', 'Драма', 'Фэнтези'], 'Девочка и робот спускаются в бездну, откуда почти никто не возвращается.'],
+    [21, 'Ван-Пис', 'One Piece', null, 1999, 8.7, 'TV', ['Приключения', 'Комедия', 'Сёнен'], 'Луффи и его команда ищут легендарное сокровище и свободу.'],
+    [40748, 'Магическая битва', 'Jujutsu Kaisen', 24, 2020, 8.6, 'TV', ['Боевик', 'Сёнен', 'Сверхъестественное'], 'Школьник попадает в мир проклятий и становится учеником сильнейшего мага.'],
+    [1535, 'Тетрадь смерти', 'Death Note', 37, 2006, 8.6, 'TV', ['Детектив', 'Психологическое', 'Триллер'], 'Найдя тетрадь, убивающую любого, чьё имя в неё вписано, старшеклассник бросает вызов полиции и гениальному детективу.'],
+    [23273, 'Твоя апрельская ложь', 'Shigatsu wa Kimi no Uso', 22, 2014, 8.6, 'TV', ['Драма', 'Музыка', 'Романтика'], 'Встреча с скрипачкой возвращает пианисту вкус к музыке и жизни.'],
+    [20583, 'Волейбол!!', 'Haikyuu!!', 25, 2014, 8.6, 'TV', ['Комедия', 'Спорт'], 'Ученическая команда по волейболу мечтает попасть на национальный турнир.'],
+    [16498, 'Атака титанов', 'Shingeki no Kyojin', 25, 2013, 8.5, 'TV', ['Боевик', 'Драма', 'Фэнтези'], 'Человечество укрывается за стенами от титанов, пожирающих людей.'],
+    [38000, 'Клинок, рассекающий демонов', 'Kimetsu no Yaiba', 26, 2019, 8.5, 'TV', ['Боевик', 'Сёнен', 'Сверхъестественное'], 'Танджиро становится истребителем демонов, чтобы спасти сестру.'],
+    [44511, 'Человек-бензопила', 'Chainsaw Man', 12, 2022, 8.5, 'TV', ['Боевик', 'Сёнен', 'Сверхъестественное'], 'Дьявол-подросток с бензопилой на голове ищет деньги, мечты и немного нежности.'],
+    [30276, 'Ванпанчмен', 'One Punch Man', 12, 2015, 8.5, 'TV', ['Боевик', 'Комедия', 'Пародия'], 'Герой, побеждающий любого врага одним ударом, страдает от скуки.'],
+    [30, 'Евангелион', 'Neon Genesis Evangelion', 26, 1995, 8.5, 'TV', ['Драма', 'Меха', 'Психологическое'], 'Подростки пилотируют биомеханических евангелионов, защищая город от ангелов.'],
+    [31964, 'Моя геройская академия', 'Boku no Hero Academia', 13, 2016, 8.3, 'TV', ['Боевик', 'Сёнен', 'Супергерои'], 'Мальчик без суперсилы попадает в академию героев благодаря встрече с легендой.'],
+    [31240, 'Re:Zero. Жизнь с нуля в другом мире', 'Re:Zero kara Hajimeru Isekai Seikatsu', 25, 2016, 8.2, 'TV', ['Драма', 'Фэнтези', 'Исекай'], 'Попав в другой мир, герой обнаруживает, что после смерти возвращается в прошлое.'],
+    [19815, 'Нет игры — нет жизни', 'No Game No Life', 12, 2014, 8.1, 'TV', ['Комедия', 'Фэнтези', 'Исекай'], 'Брат и сестра — непобедимые геймеры — попадают в мир, где всё решают игры.'],
+    [20, 'Наруто', 'Naruto', 220, 2002, 8.0, 'TV', ['Боевик', 'Приключения', 'Сёнен'], 'Молодой ниндзя с лисом внутри мечтает стать главой деревни.'],
+    [22319, 'Токийский гуль', 'Tokyo Ghoul', 12, 2014, 7.8, 'TV', ['Боевик', 'Психологическое', 'Сверхъестественное'], 'После встречи с гулем студент оказывается между двумя мирами.'],
+    [6547, 'Ангельские ритмы!', 'Angel Beats!', 13, 2010, 7.8, 'TV', ['Драма', 'Сверхъестественное', 'Школа'], 'Попав в загробную школу, подростки объявляют войну ангелу-старосте.'],
+    [11757, 'Мастера меча онлайн', 'Sword Art Online', 25, 2012, 7.5, 'TV', ['Боевик', 'Приключения', 'Романтика'], 'Игроки оказываются заперты в VRMMO, где смерть в игре означает смерть в реальности.'],
+  ];
+
+  /* ---------------- утилиты ---------------- */
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const escXml = (s) => String(s ?? '').replace(/[<>&"']/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c]));
+
+  function hash(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return Math.abs(h);
+  }
+
+  function plural(n, one, few, many) {
+    const a = Math.abs(n) % 100;
+    const b = a % 10;
+    if (a > 10 && a < 20) return many;
+    if (b > 1 && b < 5) return few;
+    if (b === 1) return one;
+    return many;
+  }
+
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+  const endOfToday = () => { const d = new Date(); d.setHours(23, 59, 59, 999); return d; };
+  const startOfTomorrow = () => { const d = startOfToday(); d.setDate(d.getDate() + 1); return d; };
+  const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+  const daysBetween = (a, b) => Math.round((b - a) / 86400000);
+  const parseDate = (s) => { if (!s) return null; const d = new Date(s); return Number.isNaN(d.getTime()) ? null : d; };
+  function fuzzyDateInt(value) {
+    const d = value instanceof Date ? value : parseDate(value);
+    if (!d) return null;
+    return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+  }
+
+  function monthLabel(iso) {
+    const d = parseDate(iso);
+    return d ? `${MONTHS_FULL[d.getMonth()]} ${d.getFullYear()}` : 'Дата уточняется';
+  }
+  function dateShort(iso) {
+    const d = parseDate(iso);
+    return d ? `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}` : '—';
+  }
+  function countdownLabel(iso) {
+    const d = parseDate(iso);
+    if (!d) return 'дата уточняется';
+    const target = new Date(d); target.setHours(0, 0, 0, 0);
+    const days = daysBetween(startOfToday(), target);
+    if (days <= 0) return 'сегодня';
+    if (days === 1) return 'завтра';
+    if (days < 14) return `через ${days} ${plural(days, 'день', 'дня', 'дней')}`;
+    if (days < 45) {
+      const w = Math.round(days / 7);
+      return `через ${w} ${plural(w, 'неделю', 'недели', 'недель')}`;
+    }
+    const m = Math.round(days / 30);
+    return `через ~${m} ${plural(m, 'месяц', 'месяца', 'месяцев')}`;
+  }
+  function relativePast(iso) {
+    const d = parseDate(iso);
+    if (!d) return 'недавно';
+    const days = daysBetween(new Date(d.getFullYear(), d.getMonth(), d.getDate()), startOfToday());
+    if (days <= 0) return 'сегодня';
+    if (days === 1) return 'вчера';
+    return `${days} ${plural(days, 'день', 'дня', 'дней')} назад`;
+  }
+
+  /* ---------------- постеры-заглушки ---------------- */
+  const posterCache = new Map();
+  function makePoster(title, id) {
+    const key = String(id) + '|' + title;
+    if (posterCache.has(key)) return posterCache.get(key);
+    const h = hash(key) % 360;
+    const h2 = (h + 48) % 360;
+    const letter = (String(title || '?').trim().charAt(0) || '?').toUpperCase();
+    const label = escXml(String(title || '').slice(0, 34));
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="360" height="540" viewBox="0 0 360 540">
+<defs>
+<linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0" stop-color="hsl(${h},68%,30%)"/>
+<stop offset="1" stop-color="hsl(${h2},72%,10%)"/>
+</linearGradient>
+<linearGradient id="f" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#000" stop-opacity="0"/>
+<stop offset="1" stop-color="#000" stop-opacity=".78"/>
+</linearGradient>
+</defs>
+<rect width="360" height="540" fill="url(#g)"/>
+<circle cx="310" cy="80" r="130" fill="hsl(${h2},90%,62%)" opacity=".16"/>
+<circle cx="40" cy="470" r="170" fill="hsl(${h},90%,60%)" opacity=".13"/>
+<g opacity=".07" stroke="#fff" stroke-width="1">
+<path d="M0 90h360M0 180h360M0 270h360M0 360h360M0 450h360"/>
+<path d="M60 0v540M140 0v540M220 0v540M300 0v540"/>
+</g>
+<text x="180" y="318" font-family="Segoe UI, Arial, sans-serif" font-size="190" font-weight="700" fill="#ffffff" fill-opacity=".9" text-anchor="middle">${escXml(letter)}</text>
+<rect y="360" width="360" height="180" fill="url(#f)"/>
+<text x="180" y="492" font-family="Segoe UI, Arial, sans-serif" font-size="17" font-weight="600" fill="#ffffff" fill-opacity=".85" text-anchor="middle">${label}</text>
+<text x="180" y="516" font-family="Segoe UI, Arial, sans-serif" font-size="10" letter-spacing="3" fill="#ffffff" fill-opacity=".5" text-anchor="middle">ANITIER</text>
+</svg>`;
+    const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    posterCache.set(key, url);
+    return url;
+  }
+
+  window.posterFallback = function (img) {
+    img.onerror = null;
+    img.src = makePoster(img.dataset.title || 'Anime', img.dataset.id || '0');
+  };
+
+  /* ---------------- состояние ---------------- */
+  const state = {
+    tab: 'db',
+    offline: false,
+    forceDemo: new URLSearchParams(location.search).has('demo'),
+    modalId: null,
+    exchange: {
+      open: false,
+      mode: 'export',
+      list: 'watched',
+      code: '',
+      parsed: null,
+      comparison: null,
+      filter: 'all',
+      error: '',
+    },
+    byId: new Map(),
+    lists: { watched: emptyTiers(), planned: emptyTiers() },
+    progress: {},
+    epInfo: {},
+    seenNotifications: new Set(),
+    booting: true,
+    bootstrapDone: false,
+    db: {
+      mode: 'popular',
+      query: '',
+      filters: C.normalizeFilters(C.DEFAULT_FILTERS),
+      page: 1,
+      items: [],
+      loading: false,
+      hasNext: true,
+      error: null,
+      revision: 0,
+      queued: false,
+      touched: false,
+      sources: [],
+      alt: createAltSearchState(),
+    },
+    notifications: { airing: [], completed: [], loading: false, loaded: false, error: null, queued: false },
+    upcoming: { items: [], loading: false, loaded: false, error: null, queued: false },
+  };
+
+  function emptyTiers() {
+    const o = {};
+    for (const t of TIER_IDS) o[t] = [];
+    return o;
+  }
+
+  function createAltSearchState() {
+    return {
+      anilistPage: 1,
+      kitsuPage: 1,
+      anilistDone: false,
+      kitsuDone: false,
+      buffer: [],
+      seen: new Set(),
+      sources: [],
+      providerOk: false,
+    };
+  }
+
+  function normalizeTiers(raw) {
+    const out = emptyTiers();
+    if (!raw || typeof raw !== 'object') return out;
+    for (const t of TIER_IDS) {
+      const arr = Array.isArray(raw[t]) ? raw[t] : [];
+      const seen = new Set();
+      out[t] = arr.filter(a => {
+        if (!a || a.id == null || seen.has(a.id)) return false;
+        seen.add(a.id);
+        return true;
+      }).map(snapshotAnime);
+    }
+    return out;
+  }
+
+  function snapshotAnime(a) {
+    return {
+      id: a.id,
+      malId: a.malId ?? null,
+      title: a.title,
+      altTitle: a.altTitle || '',
+      image: a.image || '',
+      episodes: a.episodes ?? null,
+      type: a.type || '',
+      status: a.status || '',
+      score: typeof a.score === 'number' ? a.score : null,
+      year: a.year || null,
+      airedFrom: a.airedFrom || null,
+      airedTo: a.airedTo || null,
+      synopsis: a.synopsis ? String(a.synopsis).slice(0, 700) : '',
+      genres: Array.isArray(a.genres) ? a.genres.slice(0, 12) : [],
+      studios: Array.isArray(a.studios) ? a.studios.slice(0, 6) : [],
+      url: a.url || '',
+      source: a.source || '',
+      sourceId: a.sourceId ?? null,
+      demo: Boolean(a.demo),
+    };
+  }
+
+  function loadState() {
+    let raw = null;
+    try { raw = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch { raw = null; }
+    if (!raw) {
+      state.lists.watched = emptyTiers();
+      state.lists.planned = emptyTiers();
+      state.progress = {};
+      state.epInfo = {};
+      state.seenNotifications = new Set();
+      return;
+    }
+    state.lists.watched = normalizeTiers(raw.watched);
+    state.lists.planned = normalizeTiers(raw.planned);
+    state.seenNotifications = new Set(Array.isArray(raw.seenNotifications) ? raw.seenNotifications : []);
+
+    state.progress = {};
+    if (raw.progress && typeof raw.progress === 'object') {
+      for (const [key, val] of Object.entries(raw.progress)) {
+        const arr = Array.isArray(val?.watched) ? val.watched : [];
+        const watched = [...new Set(arr.map(Number).filter(n => Number.isInteger(n) && n > 0))].sort((a, b) => a - b);
+        if (watched.length) state.progress[key] = { watched, updated: Number(val.updated) || 0 };
+      }
+    }
+
+    state.epInfo = {};
+    if (raw.epInfo && typeof raw.epInfo === 'object') {
+      for (const [key, val] of Object.entries(raw.epInfo)) {
+        if (val && Number.isFinite(Number(val.count))) {
+          state.epInfo[key] = { ...val, source: val.source === 'demo' ? 'demo' : 'api' };
+        }
+      }
+    }
+  }
+
+  function saveState() {
+    try {
+      const epInfo = {};
+      const cutoff = Date.now() - 7 * 86400000;
+      for (const [key, val] of Object.entries(state.epInfo)) {
+        if (val && Number(val.fetchedAt) > cutoff) epInfo[key] = val;
+      }
+      localStorage.setItem(LS_KEY, JSON.stringify({
+        watched: state.lists.watched,
+        planned: state.lists.planned,
+        progress: state.progress,
+        epInfo,
+        seenNotifications: [...state.seenNotifications],
+      }));
+    } catch (err) {
+      console.warn('localStorage', err);
+      toast('Не удалось сохранить список: браузер не даёт место');
+    }
+  }
+
+  function allIn(name) {
+    return TIER_IDS.flatMap(t => state.lists[name][t] || []);
+  }
+  function hasIn(name, id) {
+    return TIER_IDS.some(t => (state.lists[name][t] || []).some(a => a.id === id));
+  }
+  function findTier(name, id) {
+    for (const t of TIER_IDS) {
+      if ((state.lists[name][t] || []).some(a => a.id === id)) return t;
+    }
+    return null;
+  }
+  function getAnime(id) {
+    if (state.byId.has(id)) return state.byId.get(id);
+    const pools = [state.notifications.airing, state.notifications.completed, state.db.items, state.upcoming.items];
+    for (const p of pools) {
+      const found = p.find(a => a.id === id);
+      if (found) return found;
+    }
+    for (const name of ['watched', 'planned']) {
+      for (const t of TIER_IDS) {
+        const found = (state.lists[name][t] || []).find(a => a.id === id);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  /* ---------------- AniList API ---------------- */
+  const anilistCache = new Map();
+
+  function anilistCacheKey(variables) {
+    return JSON.stringify(variables);
+  }
+
+  async function fetchAniList(variables, options = {}) {
+    const useCache = options.cache !== false;
+    const key = anilistCacheKey(variables);
+    if (useCache && anilistCache.has(key)) return anilistCache.get(key);
+    if (!navigator.onLine) throw new Error('Нет подключения к интернету');
+
+    const body = JSON.stringify({ query: ANILIST_QUERY, variables });
+    const json = await fetchWithTimeout(ANILIST_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body,
+    }, options.timeout || ANILIST_TIMEOUT);
+
+    const pageData = json?.data?.Page;
+    if (!pageData || !Array.isArray(pageData.media)) throw new Error('AniList: неверный ответ');
+    if (useCache) anilistCache.set(key, pageData);
+    state.offline = false;
+    return pageData;
+  }
+
+  /* ---------------- поиск в AniList и Kitsu ---------------- */
+  function altType(value) {
+    const key = String(value || '').toUpperCase();
+    if (key === 'TV_SHORT') return 'TV';
+    if (key === 'MOVIE') return 'Movie';
+    if (key === 'OVA') return 'OVA';
+    if (key === 'ONA') return 'ONA';
+    if (key === 'SPECIAL') return 'Special';
+    if (key === 'MUSIC') return 'Music';
+    if (key === 'TV') return 'TV';
+    return '';
+  }
+
+  function altStatus(value) {
+    const key = String(value || '').toUpperCase();
+    if (key === 'RELEASING' || key === 'CURRENT' || key === 'HIATUS') return 'В эфире';
+    if (key === 'NOT_YET_RELEASED' || key === 'TBA' || key === 'UPCOMING') return 'Анонс';
+    return 'Завершено';
+  }
+
+  function stripHtml(value) {
+    return String(value || '')
+      .replace(/<br\s*\/?>/gi, ' ')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&quot;/g, '"')
+      .replace(/&#0?39;|&apos;/g, "'")
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function altDate(value) {
+    if (!value || !value.year) return null;
+    const month = String(value.month || 1).padStart(2, '0');
+    const day = String(value.day || 1).padStart(2, '0');
+    return `${value.year}-${month}-${day}T00:00:00+00:00`;
+  }
+
+  function altYear(date) {
+    const match = String(date || '').match(/^(\d{4})/);
+    return match ? Number(match[1]) : null;
+  }
+
+  function mapAniList(raw) {
+    const malId = raw.idMal ? Number(raw.idMal) : null;
+    const ru = malId ? RU_TITLES[malId] : '';
+    const titles = raw.title || {};
+    const title = ru || titles.english || titles.romaji || titles.native || 'Без названия';
+    let altTitle = '';
+    if (ru) altTitle = titles.english || titles.romaji || titles.native || '';
+    else if (titles.english && titles.romaji && titles.english !== titles.romaji) altTitle = titles.romaji;
+    else if (titles.native && titles.native !== title) altTitle = titles.native;
+
+    const score = raw.averageScore == null ? null : Number(raw.averageScore);
+    const nextEpisode = raw.nextAiringEpisode?.airingAt
+      ? {
+        n: Number(raw.nextAiringEpisode.episode) || null,
+        date: new Date(Number(raw.nextAiringEpisode.airingAt) * 1000).toISOString(),
+      }
+      : null;
+    const airedEpisodes = raw.status === 'RELEASING' && nextEpisode
+      ? Math.max(0, (Number(nextEpisode.n) || 1) - 1)
+      : (raw.status === 'FINISHED' && raw.episodes != null ? Number(raw.episodes) : null);
+
+    const a = {
+      id: malId || -(2000000 + Number(raw.id)),
+      malId,
+      title,
+      altTitle,
+      image: raw.coverImage?.extraLarge || raw.coverImage?.large || '',
+      episodes: raw.episodes ?? null,
+      type: altType(raw.format),
+      status: altStatus(raw.status),
+      score: Number.isFinite(score) ? Math.round(score) / 10 : null,
+      year: raw.seasonYear || null,
+      airedFrom: altDate(raw.startDate),
+      airedTo: altDate(raw.endDate),
+      synopsis: stripHtml(raw.description),
+      genres: Array.isArray(raw.genres) ? raw.genres : [],
+      studios: (raw.studios?.nodes || []).map(node => node.name).filter(Boolean),
+      url: raw.siteUrl || `https://anilist.co/anime/${raw.id}`,
+      source: 'AniList',
+      sourceId: raw.id,
+      aliases: [titles.romaji, titles.english, titles.native, ...(raw.synonyms || [])],
+      airedEpisodes,
+      nextEpisode,
+    };
+    state.byId.set(a.id, a);
+    return a;
+  }
+
+  function mapKitsu(raw, categories = new Map(), mappings = new Map()) {
+    const attrs = raw.attributes || {};
+    const titles = attrs.titles || {};
+    const mappingIds = (raw.relationships?.mappings?.data || []).map(ref => ref.id);
+    const malMapping = mappingIds
+      .map(id => mappings.get(id))
+      .find(mapping => mapping && mapping.externalSite === 'myanimelist/anime' && /^\d+$/.test(String(mapping.externalId)));
+    const malId = malMapping ? Number(malMapping.externalId) : null;
+    const ru = malId ? RU_TITLES[malId] : '';
+    const title = ru || attrs.canonicalTitle || titles.en || titles.en_jp || titles.ja_jp || 'Без названия';
+    let altTitle = '';
+    if (ru) altTitle = attrs.canonicalTitle || titles.en || titles.en_jp || '';
+    else if (titles.en && titles.en !== title) altTitle = titles.en;
+    else if (titles.en_jp && titles.en_jp !== title) altTitle = titles.en_jp;
+    else if (titles.ja_jp && titles.ja_jp !== title) altTitle = titles.ja_jp;
+
+    const categoryIds = (raw.relationships?.categories?.data || []).map(ref => ref.id);
+    const genres = [...new Set(categoryIds.map(id => categories.get(id)).filter(Boolean))];
+    const rating = attrs.averageRating == null ? null : Number(attrs.averageRating);
+    const year = altYear(attrs.startDate);
+
+    const a = {
+      id: malId || -(1000000 + Number(raw.id)),
+      malId,
+      title,
+      altTitle,
+      image: attrs.posterImage?.large || attrs.posterImage?.original || attrs.posterImage?.medium || '',
+      episodes: attrs.episodeCount ?? null,
+      type: altType(attrs.subtype),
+      status: altStatus(attrs.status),
+      score: Number.isFinite(rating) ? Math.round((rating / 10) * 10) / 10 : null,
+      year,
+      airedFrom: attrs.startDate || null,
+      airedTo: attrs.endDate || null,
+      synopsis: stripHtml(attrs.synopsis),
+      genres,
+      studios: [],
+      url: `https://kitsu.io/anime/${attrs.slug || raw.id}`,
+      source: 'Kitsu',
+      sourceId: raw.id,
+      aliases: [attrs.canonicalTitle, titles.en, titles.en_jp, titles.ja_jp],
+    };
+    state.byId.set(a.id, a);
+    return a;
+  }
+
+  async function fetchWithTimeout(url, options = {}, timeoutMs = SEARCH_TIMEOUT) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...options, signal: ctrl.signal });
+      if (!res.ok) throw new Error(`Источник ответил ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      if (err && err.name === 'AbortError') throw new Error('Источник не отвечает');
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function fetchAniListPage(query, page) {
+    const pageData = await fetchAniList({
+      search: query,
+      page,
+      perPage: PAGE_LIMIT,
+      type: 'ANIME',
+      isAdult: false,
+    }, { timeout: SEARCH_TIMEOUT });
+    return {
+      source: 'AniList',
+      ok: true,
+      items: pageData.media.map(mapAniList),
+      hasNext: Boolean(pageData.pageInfo?.hasNextPage),
+    };
+  }
+
+  async function fetchKitsuPage(query, page) {
+    const offset = (page - 1) * PAGE_LIMIT;
+    const url = `${KITSU_ENDPOINT}?filter[text]=${encodeURIComponent(query)}&page[limit]=${PAGE_LIMIT}&page[offset]=${offset}&include=categories,mappings`;
+    const json = await fetchWithTimeout(url, { headers: { Accept: 'application/vnd.api+json' } });
+    if (!Array.isArray(json?.data)) throw new Error('Kitsu: неверный ответ');
+    if (json.data.length && !json.data.some(item => item?.attributes)) throw new Error('Kitsu: неверный ответ');
+    state.offline = false;
+
+    const categories = new Map();
+    const mappings = new Map();
+    for (const item of json.included || []) {
+      if (item?.type === 'categories') categories.set(item.id, item.attributes?.title);
+      if (item?.type === 'mappings') mappings.set(item.id, item.attributes);
+    }
+
+    return {
+      source: 'Kitsu',
+      ok: true,
+      items: json.data.map(item => mapKitsu(item, categories, mappings)),
+      hasNext: Boolean(json.links?.next),
+    };
+  }
+
+  function searchQueryForAlt(query) {
+    const raw = String(query || '').trim();
+    if (!raw || !/[\u0400-\u04ff]/.test(raw)) return raw;
+    const needle = C.normalizeTitleKey(raw);
+    if (!needle) return raw;
+    const hit = DEMO_BASE.find(([, ru, alt]) => {
+      const ruKey = C.normalizeTitleKey(ru);
+      const altKey = C.normalizeTitleKey(alt);
+      return (ruKey && (ruKey.includes(needle) || needle.includes(ruKey)))
+        || (altKey && altKey.includes(needle));
+    });
+    return hit ? hit[2] : raw;
+  }
+
+  async function fillAltPage(s, revision) {
+    const alt = s.alt;
+    const query = searchQueryForAlt(s.query);
+    let rounds = 0;
+
+    while (alt.buffer.length < PAGE_LIMIT && rounds < 3) {
+      const jobs = [];
+      if (!alt.anilistDone) {
+        jobs.push(
+          fetchAniListPage(query, alt.anilistPage)
+            .catch(error => ({ source: 'AniList', ok: false, error })),
+        );
+      }
+      if (!alt.kitsuDone) {
+        jobs.push(
+          fetchKitsuPage(query, alt.kitsuPage)
+            .catch(error => ({ source: 'Kitsu', ok: false, error })),
+        );
+      }
+      if (!jobs.length) break;
+      rounds += 1;
+
+      const results = await Promise.all(jobs);
+      if (revision !== s.revision) {
+        return { aborted: true, ok: false, items: [], hasNext: false, sources: [] };
+      }
+
+      const groups = [];
+      let succeeded = 0;
+      for (const result of results) {
+        if (!result.ok) {
+          if (result.source === 'AniList') alt.anilistDone = true;
+          if (result.source === 'Kitsu') alt.kitsuDone = true;
+          continue;
+        }
+
+        succeeded += 1;
+        alt.providerOk = true;
+        if (!alt.sources.includes(result.source)) alt.sources.push(result.source);
+        const items = (result.items || []).filter(item => C.matchesFilters(item, s.filters));
+        groups.push(items);
+
+        if (result.source === 'AniList') {
+          alt.anilistPage += 1;
+          alt.anilistDone = !result.hasNext || !result.items.length;
+        } else if (result.source === 'Kitsu') {
+          alt.kitsuPage += 1;
+          alt.kitsuDone = !result.hasNext || !result.items.length;
+        }
+      }
+
+      alt.buffer.push(...C.mergeUniqueAnime(groups, alt.seen));
+      if (!succeeded) break;
+    }
+
+    const items = alt.buffer.splice(0, PAGE_LIMIT);
+    const hasNext = alt.buffer.length > 0 || !alt.anilistDone || !alt.kitsuDone;
+    return {
+      aborted: false,
+      ok: alt.providerOk,
+      items,
+      hasNext,
+      sources: alt.sources.slice(),
+    };
+  }
+
+  /* ---------------- демо-данные ---------------- */
+  let demoCache = null;
+  function demoAll() {
+    if (demoCache) return demoCache;
+    demoCache = DEMO_BASE.map(([id, title, alt, eps, year, score, type, genres, syn]) => ({
+      id, title, altTitle: alt,
+      image: makePoster(title, id),
+      episodes: eps,
+      type,
+      status: 'Завершено',
+      score,
+      year,
+      airedFrom: `${year}-04-02T00:00:00+00:00`,
+      airedTo: null,
+      synopsis: syn,
+      genres,
+      studios: [],
+      url: `https://myanimelist.net/anime/${id}`,
+      demo: true,
+    }));
+    return demoCache;
+  }
+  const demoAnime = () => demoAll().map(a => ({ ...a }));
+
+  function demoNotifications() {
+    const base = demoAll();
+    const airedCounts = [7, 4, 9, 3, 6, 11, 2];
+    const airing = [0, 2, 6, 7, 9, 11, 14].map((idx, i) => {
+      const a = base[idx];
+      const total = Math.max(1, Number(a.episodes) || 12);
+      const aired = Math.max(1, Math.min(airedCounts[i] || 1, total));
+      return {
+        ...a,
+        status: 'В эфире',
+        episodes: total,
+        airedFrom: new Date(Date.now() - (aired * 7 + i * 3 + 3) * 86400000).toISOString(),
+        airedTo: null,
+        demoEp: {
+          aired,
+          total,
+          lastAired: new Date(Date.now() - (i + 1) * 86400000).toISOString(),
+          nextDate: new Date(Date.now() + (i + 2) * 86400000).toISOString(),
+        },
+      };
+    });
+
+    const completed = [1, 3, 8, 12, 17, 18].map((idx, i) => {
+      const a = base[idx];
+      return {
+        ...a,
+        status: 'Завершено',
+        episodes: Number(a.episodes) || 12,
+        airedFrom: new Date(Date.now() - (140 + i * 11) * 86400000).toISOString(),
+        airedTo: new Date(Date.now() - (i * 4 + 2) * 86400000).toISOString(),
+      };
+    });
+
+    for (const a of [...airing, ...completed]) state.byId.set(a.id, a);
+    return { airing, completed };
+  }
+
+  function seedDemoEpisodeInfo() {
+    for (const a of [...state.notifications.airing, ...state.notifications.completed]) {
+      if (!a.demoEp || state.epInfo[a.id]) continue;
+      state.epInfo[a.id] = {
+        count: Math.min(Number(a.demoEp.aired) || 0, Number(a.episodes) || 99),
+        last: Number(a.demoEp.aired) || 0,
+        lastAired: a.demoEp.lastAired || null,
+        next: a.demoEp.nextDate ? { n: (Number(a.demoEp.aired) || 0) + 1, date: a.demoEp.nextDate } : null,
+        fetchedAt: Date.now(),
+        total: Number(a.episodes) || null,
+        source: 'demo',
+      };
+    }
+  }
+
+  function demoUpcoming() {
+    const offsets = [1, 3, 6, 10, 15, 22, 30, 41, 52, 63, 75, 86];
+    return demoAll().slice(8, 20).map((a, i) => ({
+      ...a,
+      status: 'Анонс',
+      score: null,
+      airedFrom: addDays(startOfToday(), offsets[i] || 30).toISOString(),
+    }));
+  }
+
+  /* ---------------- отрисовка: карточки ---------------- */
+  function imgAttrs(a, alt) {
+    return `src="${esc(a.image || makePoster(a.title, a.id))}" alt="${esc(alt !== undefined ? alt : a.title)}" loading="lazy" data-title="${esc(a.title)}" data-id="${a.id}" onerror="posterFallback(this)"`;
+  }
+
+  function cardHTML(a, ctx) {
+    const inW = hasIn('watched', a.id);
+    const inP = hasIn('planned', a.id);
+    const wc = watchedCount(a.id);
+    const stats = episodeStats(a);
+    const pTotal = stats.total || stats.available || 0;
+    const pct = pTotal ? Math.min(100, Math.round((wc / pTotal) * 100)) : 0;
+    const metaBits = [typeRu(a.type) || '—', a.year || '—', a.episodes ? `${a.episodes} эп.` : 'серий: ?'];
+    return `<article class="card" data-action="open" data-id="${a.id}" tabindex="0" aria-label="${esc(a.title)}">
+      <div class="poster">
+        <img ${imgAttrs(a)}>
+        <div class="poster-shade"></div>
+        ${a.score ? `<span class="badge-score">★ ${a.score.toFixed(1)}</span>` : ''}
+        <span class="badge-eps">${a.episodes ? a.episodes + ' эп.' : '? эп.'}</span>
+        <div class="card-actions">
+          <button class="mini-btn ${inW ? 'is-on' : ''}" data-action="add-watched" data-id="${a.id}" title="Просмотрено" aria-label="Отметить просмотренным">✓</button>
+          <button class="mini-btn ${inP ? 'is-on' : ''}" data-action="add-planned" data-id="${a.id}" title="В планы" aria-label="Добавить в планы">◷</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <h3 class="card-title">${esc(a.title)}</h3>
+        <p class="card-meta">${esc(metaBits.join(' · '))}</p>
+        ${ctx === 'upcoming' && a.airedFrom ? `<p class="card-date"><span>${esc(dateShort(a.airedFrom))}</span><span class="dot"></span><span class="soon">${esc(countdownLabel(a.airedFrom))}</span></p>` : ''}
+        ${wc > 0 ? `<div class="card-progress"><span class="cp-bar"><i style="width:${pct}%"></i></span><span class="cp-label">✓ ${wc}${pTotal ? ' / ' + pTotal : ''}</span></div>` : ''}
+      </div>
+    </article>`;
+  }
+
+  function tierCardHTML(list, a, tier) {
+    const wc = watchedCount(a.id);
+    return `<article class="tier-card" draggable="true" data-action="open" data-id="${a.id}" data-list="${list}" data-tier="${tier}" tabindex="0">
+      <img ${imgAttrs(a)}>
+      <button class="tc-remove" data-action="remove" data-id="${a.id}" data-list="${list}" title="Убрать из списка" aria-label="Убрать из списка">✕</button>
+      <div class="tc-body">
+        <div class="tc-title" title="${esc(a.title)}">${esc(a.title)}</div>
+        <div class="tc-meta">${a.episodes ? a.episodes + ' эп.' : '? эп.'}${a.score ? ' · ★ ' + a.score.toFixed(1) : ''}${wc ? ' · ✓ ' + wc : ''}</div>
+      </div>
+    </article>`;
+  }
+
+  function skeletonCards(n) {
+    return Array.from({ length: n }, () => `<div class="skel"><div class="skel-poster"></div><div class="skel-line"></div><div class="skel-line short"></div></div>`).join('');
+  }
+  function skeletonRows(n) {
+    return Array.from({ length: n }, () => `<div class="skel" style="height:104px"></div>`).join('');
+  }
+
+  function msgBlock(emoji, title, text, action) {
+    return `<div class="msg">
+      <span class="emoji">${emoji}</span>
+      <h3>${esc(title)}</h3>
+      <p>${esc(text)}</p>
+      ${action ? `<button class="btn btn-ghost" data-action="${action}">Попробовать снова</button>` : ''}
+    </div>`;
+  }
+
+  /* ---------------- фильтры и отрисовка базы ---------------- */
+  function initFilterOptions() {
+    const yearSelect = $('#filter-year');
+    if (yearSelect && yearSelect.options.length <= 1) {
+      const maxYear = new Date().getFullYear() + 1;
+      for (let year = maxYear; year >= 1990; year -= 1) {
+        yearSelect.appendChild(new Option(String(year), String(year)));
+      }
+    }
+
+    const genreSelect = $('#filter-genre');
+    if (genreSelect && genreSelect.options.length <= 1) {
+      for (const genre of C.GENRES) {
+        genreSelect.appendChild(new Option(genre.label, String(genre.id)));
+      }
+    }
+  }
+
+  function syncFilterUI() {
+    const filters = state.db.filters;
+    const fieldIds = {
+      type: '#filter-type',
+      status: '#filter-status',
+      year: '#filter-year',
+      genre: '#filter-genre',
+      minScore: '#filter-score',
+    };
+    for (const [key, selector] of Object.entries(fieldIds)) {
+      const field = $(selector);
+      if (field) field.value = filters[key] || '';
+    }
+
+    const count = C.countActiveFilters(filters);
+    const badge = $('#filter-count');
+    if (badge) {
+      badge.textContent = String(count);
+      badge.hidden = count === 0;
+    }
+    const toggle = $('[data-action="toggle-filters"]');
+    if (toggle) toggle.classList.toggle('is-active', count > 0);
+  }
+
+  function syncModeChips() {
+    const noSearch = !state.db.query.trim() && !C.hasActiveFilters(state.db.filters);
+    $$('#db-modes .chip').forEach(chip => {
+      chip.classList.toggle('is-active', noSearch && chip.dataset.mode === state.db.mode);
+    });
+  }
+
+  function readFiltersFromUI() {
+    const raw = {};
+    $$('#db-filters [data-filter]').forEach(field => {
+      raw[field.dataset.filter] = field.value;
+    });
+    return C.normalizeFilters(raw);
+  }
+
+  function resetDBFilters() {
+    state.db.filters = C.normalizeFilters(C.DEFAULT_FILTERS);
+    syncFilterUI();
+  }
+
+  function updateDBStatus() {
+    const el = $('#db-status');
+    if (!el) return;
+    const s = state.db;
+    if (!s.items.length) {
+      el.textContent = '';
+      return;
+    }
+    const page = Math.max(1, s.page - 1);
+    const sources = s.sources.length ? ` · ${s.sources.join(' + ')}` : '';
+    if (s.loading) {
+      el.textContent = `Показано ${s.items.length} · загружаем страницу ${s.page}…${sources}`;
+    } else if (s.hasNext) {
+      el.textContent = `Показано ${s.items.length} · страница ${page}${sources}`;
+    } else {
+      el.textContent = `Показано ${s.items.length} · все результаты${sources}`;
+    }
+  }
+
+  function renderDB() {
+    const s = state.db;
+    const grid = $('#db-grid');
+    const more = $('#db-more');
+    if (!grid) return;
+
+    if ((s.loading || state.booting) && !s.items.length) {
+      grid.innerHTML = skeletonCards(12);
+      if (more) more.hidden = true;
+      updateDBStatus();
+      return;
+    }
+    if (s.error && !s.items.length) {
+      grid.innerHTML = msgBlock('⚠️', 'Не удалось загрузить базу', s.error, 'retry-db');
+      if (more) more.hidden = true;
+      updateDBStatus();
+      return;
+    }
+    if (!s.items.length) {
+      const hasFilters = C.hasActiveFilters(s.filters);
+      let text = 'Попробуйте обновить данные.';
+      if (s.query) text = `По запросу «${s.query}» нет результатов. Попробуйте другое название или ослабьте фильтры.`;
+      else if (hasFilters) text = 'По выбранным фильтрам ничего не нашлось. Попробуйте ослабить условия.';
+      grid.innerHTML = msgBlock('🔎', 'Ничего не нашлось', text);
+      if (more) more.hidden = true;
+      updateDBStatus();
+      return;
+    }
+
+    grid.innerHTML = s.items.map(a => cardHTML(a, 'db')).join('');
+    if (more) {
+      more.hidden = !s.hasNext;
+      more.disabled = s.loading;
+      more.textContent = s.loading ? 'Загружаем…' : 'Следующая страница';
+    }
+    updateDBStatus();
+  }
+
+  async function fetchDB(force = false) {
+    const s = state.db;
+
+    if (force) {
+      s.revision += 1;
+      s.page = 1;
+      s.items = [];
+      s.hasNext = true;
+      s.error = null;
+      s.sources = [];
+      s.alt = createAltSearchState();
+      anilistCache.clear();
+    }
+
+    if (s.loading) {
+      if (force) {
+        s.queued = true;
+        renderDB();
+      }
+      return;
+    }
+    if (!s.hasNext && s.items.length) return;
+
+    const revision = s.revision;
+    const page = s.page;
+    s.loading = true;
+    s.error = null;
+    renderDB();
+
+    try {
+      let usedAlt = false;
+
+      if (!state.forceDemo && s.query) {
+        const alt = await fillAltPage(s, revision);
+        if (revision !== s.revision || alt.aborted) return;
+        if (alt.ok) {
+          s.items = C.dedupeById([...s.items, ...alt.items]);
+          s.sources = alt.sources;
+          s.hasNext = alt.hasNext;
+          s.page = page + 1;
+          usedAlt = true;
+        }
+      }
+
+      if (state.forceDemo) {
+        const all = C.filterItems(demoAnime(), { query: s.query, filters: s.filters });
+        const pageData = C.slicePage(all, page, PAGE_LIMIT);
+        if (revision !== s.revision) return;
+        s.items.push(...pageData.items);
+        s.sources = [];
+        s.hasNext = pageData.hasNext;
+        s.page = page + 1;
+      } else if (!usedAlt) {
+        const variables = C.buildAniListVariables({
+          mode: s.mode,
+          query: s.query,
+          filters: s.filters,
+          page,
+          limit: PAGE_LIMIT,
+        });
+        const pageData = await fetchAniList(variables, { timeout: SEARCH_TIMEOUT });
+        if (revision !== s.revision) return;
+
+        const data = pageData.media.map(mapAniList);
+        s.items = C.dedupeById([...s.items, ...data]);
+        s.sources = ['AniList'];
+        s.hasNext = Boolean(pageData.pageInfo?.hasNextPage) && data.length > 0;
+        s.page = page + 1;
+        if (!data.length) s.hasNext = false;
+      }
+    } catch (err) {
+      if (revision !== s.revision) return;
+      console.error(err);
+      s.error = err.message || 'Ошибка сети';
+      state.offline = true;
+      if (!s.items.length) {
+        const all = C.filterItems(demoAnime(), { query: s.query, filters: s.filters });
+        const pageData = C.slicePage(all, page, PAGE_LIMIT);
+        s.items = pageData.items;
+        s.hasNext = pageData.hasNext;
+        s.page = page + 1;
+      }
+      toast('База недоступна — включён демо-режим');
+    } finally {
+      if (revision === s.revision) {
+        s.loading = false;
+        renderDB();
+        updateOfflineBanner();
+      } else if (!s.queued) {
+        s.loading = false;
+        renderDB();
+      }
+      if (s.queued) {
+        s.queued = false;
+        s.loading = false;
+        fetchDB();
+      }
+    }
+  }
+
+  /* ---------------- серии: прогресс и данные ---------------- */
+  function watchedSet(id) {
+    const p = state.progress[id];
+    return new Set(p && Array.isArray(p.watched) ? p.watched : []);
+  }
+
+  function watchedCount(id) {
+    const p = state.progress[id];
+    return p && Array.isArray(p.watched) ? p.watched.length : 0;
+  }
+
+  function toggleEpisode(id, ep) {
+    const p = state.progress[id] || { watched: [] };
+    const set = new Set(p.watched || []);
+    if (set.has(ep)) set.delete(ep); else set.add(ep);
+    const watched = [...set].filter(n => Number.isInteger(n) && n > 0).sort((a, b) => a - b);
+    if (watched.length) state.progress[id] = { watched, updated: Date.now() };
+    else delete state.progress[id];
+    saveState();
+    updateEpisodeUI(id);
+  }
+
+  function setWatchedUpTo(id, n, max) {
+    const limit = Math.max(0, Math.min(Number(n) || 0, Number(max) || 0));
+    if (limit <= 0) delete state.progress[id];
+    else state.progress[id] = { watched: Array.from({ length: limit }, (_, i) => i + 1), updated: Date.now() };
+    saveState();
+    updateEpisodeUI(id);
+  }
+
+  function clearProgress(id) {
+    delete state.progress[id];
+    saveState();
+    updateEpisodeUI(id);
+  }
+
+  function episodeStats(a) {
+    const info = state.epInfo[a.id] || null;
+    const planned = Number(a.episodes) || Number(info?.total) || null;
+    const ongoing = a.status === 'В эфире';
+    let available = 0;
+    if (ongoing) available = info ? Math.max(0, Number(info.count) || 0) : 0;
+    else available = planned || (info ? Math.max(0, Number(info.count) || 0) : 0);
+    return { info, total: planned, available, ongoing };
+  }
+
+  const epWord = (n) => plural(n, 'серия', 'серии', 'серий');
+
+  function releaseLine(a, stats) {
+    if (stats.ongoing) {
+      if (!stats.info) return 'Считаем вышедшие серии…';
+      if (!stats.info.count) return 'Серии ещё не вышли';
+      if (stats.total) return `Вышла ${stats.info.count}-я серия из ${stats.total}`;
+      return `Вышло ${stats.info.count} ${epWord(stats.info.count)}`;
+    }
+    if (stats.total) {
+      if (stats.total % 10 === 1 && stats.total % 100 !== 11) return `Вышла ${stats.total} серия`;
+      return `Вышли все ${stats.total} ${epWord(stats.total)}`;
+    }
+    if (stats.available) return `Вышло ${stats.available} ${epWord(stats.available)}`;
+    return 'Количество серий неизвестно';
+  }
+
+  function episodeProgressText(id, stats) {
+    const total = stats.total || stats.available || 0;
+    return `Просмотрено ${watchedCount(id)}${total ? ' из ' + total : ''}`;
+  }
+
+  function chipsHTML(a, stats) {
+    const id = a.id;
+    const set = watchedSet(id);
+    const max = stats.available;
+    if (!max) {
+      if (stats.ongoing && !stats.info) return '<span class="ep-note">Загружаем список серий…</span>';
+      return '<span class="ep-note">Серии пока недоступны</span>';
+    }
+    if (max > LONG_TITLE_EPS) {
+      return `<div class="ep-tools">
+        <button class="ep-link" data-action="ep-all" data-id="${id}" data-max="${max}">Отметить все</button>
+        <span class="ep-tools-sep">·</span>
+        <button class="ep-link" data-action="ep-reset" data-id="${id}">Сбросить</button>
+      </div>`;
+    }
+    let out = '';
+    for (let i = 1; i <= max; i++) {
+      out += `<button class="ep-chip ${set.has(i) ? 'is-watched' : ''}" data-action="toggle-ep" data-id="${id}" data-ep="${i}" title="Серия ${i}: ${set.has(i) ? 'просмотрена' : 'не просмотрена'}">${i}</button>`;
+    }
+    return `<div class="ep-chips">${out}</div>
+      <div class="ep-tools">
+        <button class="ep-link" data-action="ep-all" data-id="${id}" data-max="${max}">Отметить все</button>
+        <span class="ep-tools-sep">·</span>
+        <button class="ep-link" data-action="ep-reset" data-id="${id}">Сбросить</button>
+      </div>`;
+  }
+
+  function renderEpisodeBlock(a, variant = 'notif') {
+    if (a.status === 'Анонс') {
+      return `<div class="ep-block ep-${variant}" data-ep-block="${a.id}" data-variant="${variant}">
+        <p class="ep-note">Аниме ещё не вышло — отмечать серии пока нельзя.</p>
+      </div>`;
+    }
+    const stats = episodeStats(a);
+    const total = stats.total || stats.available || 0;
+    const max = stats.available || 0;
+    const wc = watchedCount(a.id);
+    const sliderValue = Math.min(wc, max);
+    const pct = total ? Math.min(100, Math.round((wc / total) * 100)) : 0;
+    const sliderPct = max ? Math.min(100, Math.round((sliderValue / max) * 100)) : 0;
+    const nextLine = stats.ongoing && stats.info && stats.info.next
+      ? `<span class="ep-next">Следующая: ${stats.info.next.n}-я · ${esc(dateShort(stats.info.next.date))}</span>`
+      : '';
+    const slider = max > LONG_TITLE_EPS
+      ? `<div class="ep-slider-row">
+          <span class="ep-slider-bound">0</span>
+          <input class="ep-slider" type="range" min="0" max="${max}" step="1" value="${sliderValue}"
+            data-action="ep-slider" data-id="${a.id}" data-max="${max}" data-total="${total || max}"
+            style="--ep-fill:${sliderPct}%"
+            aria-label="Просмотрено серий: ${sliderValue} из ${max}">
+          <span class="ep-slider-bound">${max}</span>
+        </div>`
+      : '';
+    return `<div class="ep-block ep-${variant}" data-ep-block="${a.id}" data-variant="${variant}">
+      <div class="ep-head">
+        <span class="ep-release">${esc(releaseLine(a, stats))}</span>
+        <span class="ep-watched">${esc(episodeProgressText(a.id, stats))}</span>
+      </div>
+      <div class="ep-bar"><i data-ep-bar="${a.id}" style="width:${pct}%"></i></div>
+      ${slider}
+      ${nextLine}
+      ${chipsHTML(a, stats)}
+    </div>`;
+  }
+
+  function previewEpisodeSlider(slider) {
+    const id = Number(slider.dataset.id);
+    const max = Number(slider.dataset.max) || 0;
+    const total = Number(slider.dataset.total) || max;
+    const value = Math.max(0, Math.min(Number(slider.value) || 0, max));
+    const pct = max ? Math.min(100, Math.round((value / max) * 100)) : 0;
+    const barPct = total ? Math.min(100, Math.round((value / total) * 100)) : 0;
+    const block = slider.closest('.ep-block');
+
+    slider.style.setProperty('--ep-fill', `${pct}%`);
+    slider.setAttribute('aria-label', `Просмотрено серий: ${value} из ${max}`);
+    if (!block) return;
+
+    const label = block.querySelector('.ep-watched');
+    if (label) label.textContent = `Просмотрено ${value}${total ? ' из ' + total : ''}`;
+    const bar = block.querySelector(`[data-ep-bar="${id}"]`);
+    if (bar) bar.style.width = `${barPct}%`;
+  }
+
+  function updateEpisodeUI(id) {
+    const a = getAnime(id);
+    if (!a) return;
+    $$(`[data-ep-block="${id}"]`).forEach(block => {
+      const variant = block.dataset.variant || 'notif';
+      const holder = document.createElement('div');
+      holder.innerHTML = renderEpisodeBlock(a, variant);
+      const fresh = holder.firstElementChild;
+      if (fresh) block.replaceWith(fresh);
+    });
+  }
+
+  function episodeInfoFromAnime(a) {
+    const total = Number(a.episodes) || null;
+    const next = a.nextEpisode || null;
+    let count = 0;
+
+    if (a.status === 'В эфире') {
+      if (a.airedEpisodes != null) count = Math.max(0, Number(a.airedEpisodes) || 0);
+      else if (next && next.n) count = Math.max(0, Number(next.n) - 1);
+    } else if (a.status === 'Завершено') {
+      count = total != null ? total : Math.max(0, Number(a.airedEpisodes) || 0);
+    }
+
+    return {
+      count,
+      last: count,
+      lastAired: null,
+      next,
+      fetchedAt: Date.now(),
+      total,
+      source: 'api',
+    };
+  }
+
+  function ensureEpisodeInfo(a) {
+    if (!a) return null;
+    const cached = state.epInfo[a.id];
+    const fresh = cached && Date.now() - Number(cached.fetchedAt || 0) < 2 * 3600000;
+    const demoCacheInLiveMode = cached && cached.source === 'demo' && !state.forceDemo && !a.demo;
+    if (fresh && !demoCacheInLiveMode) return cached;
+
+    if (state.forceDemo || a.demo) {
+      if (a.demoEp) {
+        state.epInfo[a.id] = {
+          count: Math.min(Number(a.demoEp.aired) || 0, Number(a.episodes) || 99),
+          last: Number(a.demoEp.aired) || 0,
+          lastAired: a.demoEp.lastAired || null,
+          next: a.demoEp.nextDate ? { n: (Number(a.demoEp.aired) || 0) + 1, date: a.demoEp.nextDate } : null,
+          fetchedAt: Date.now(),
+          total: Number(a.episodes) || Number(a.demoEp.total) || null,
+          source: 'demo',
+        };
+        updateEpisodeUI(a.id);
+      }
+      return state.epInfo[a.id] || null;
+    }
+
+    state.epInfo[a.id] = episodeInfoFromAnime(a);
+    saveState();
+    updateEpisodeUI(a.id);
+    return state.epInfo[a.id];
+  }
+
+  function ensureNotificationEpisodes() {
+    if (state.tab !== 'notifications') return;
+    const all = [...state.notifications.airing, ...state.notifications.completed];
+    for (const a of all) {
+      const info = state.epInfo[a.id];
+      const demoCacheInLiveMode = info && info.source === 'demo' && !state.forceDemo && !a.demo;
+      const fresh = info && Date.now() - Number(info.fetchedAt || 0) < 2 * 3600000;
+      if (fresh && !demoCacheInLiveMode) continue;
+      const needsInfo = a.status === 'В эфире' || !a.episodes;
+      if (needsInfo) ensureEpisodeInfo(a);
+    }
+  }
+
+  /* ---------------- отрисовка: уведомления ---------------- */
+  function notifRowHTML(a, kind) {
+    const baseDate = kind === 'airing' ? a.airedFrom : (a.airedTo || a.airedFrom);
+    const d = parseDate(baseDate);
+    const day = d ? d.getDate() : '—';
+    const mon = d ? MONTHS_SHORT[d.getMonth()] : '';
+    const daysAgo = d ? daysBetween(new Date(d.getFullYear(), d.getMonth(), d.getDate()), startOfToday()) : 99;
+    const isNew = daysAgo <= 7;
+    const inW = hasIn('watched', a.id);
+    const inP = hasIn('planned', a.id);
+    const meta = kind === 'airing'
+      ? `<span>Старт: ${esc(dateShort(a.airedFrom))}</span>`
+      : `<span>Завершено ${esc(relativePast(a.airedTo))}</span>`;
+
+    return `<article class="notif notif-${kind}" data-action="open" data-id="${a.id}" tabindex="0" aria-label="${esc(a.title)}">
+      <div class="notif-date"><b>${day}</b><span>${mon}</span></div>
+      <img class="notif-poster" ${imgAttrs(a, '')}>
+      <div class="notif-body">
+        <h3 class="notif-title">${esc(a.title)}${isNew ? '<span class="flag-new">new</span>' : ''}</h3>
+        <p class="notif-alt">${esc(a.altTitle || '')}</p>
+        <div class="notif-meta">
+          ${meta}
+          ${a.type ? `<span>· ${esc(typeRu(a.type))}</span>` : ''}
+          <span>· ${a.episodes ? a.episodes + ' эп.' : 'серий: ?'}</span>
+          ${a.score ? `<span>· <b>★ ${a.score.toFixed(1)}</b></span>` : ''}
+        </div>
+        ${renderEpisodeBlock(a, 'notif')}
+      </div>
+      <div class="notif-actions">
+        <button class="mini-btn ${inW ? 'is-on' : ''}" data-action="add-watched" data-id="${a.id}" title="Добавить в просмотрено" aria-label="Добавить в просмотрено">✓</button>
+        <button class="mini-btn ${inP ? 'is-on' : ''}" data-action="add-planned" data-id="${a.id}" title="В планы" aria-label="Добавить в планы">◷</button>
+      </div>
+    </article>`;
+  }
+
+  function renderNotifications() {
+    const el = $('#notif-list');
+    if (!el) return;
+    const n = state.notifications;
+    const totalCount = n.airing.length + n.completed.length;
+
+    if (n.loading && !totalCount) { el.innerHTML = skeletonRows(5); return; }
+    if (n.error && !totalCount) { el.innerHTML = msgBlock('⚠️', 'Не удалось загрузить уведомления', n.error, 'retry-notifications'); return; }
+    if (!totalCount) { el.innerHTML = msgBlock('🌙', 'Новых премьер пока нет', 'Загляните позже или обновите данные.'); return; }
+
+    el.innerHTML = `
+      <section class="notif-group">
+        <h2 class="group-head"><span class="group-dot live"></span>Сейчас выходит <b>${n.airing.length}</b></h2>
+        ${n.airing.length
+          ? `<div class="notif-list">${n.airing.map(a => notifRowHTML(a, 'airing')).join('')}</div>`
+          : '<p class="group-empty">Активных новинок сейчас нет.</p>'}
+      </section>
+      <section class="notif-group">
+        <h2 class="group-head"><span class="group-dot done"></span>Полностью вышли <b>${n.completed.length}</b></h2>
+        ${n.completed.length
+          ? `<div class="notif-list">${n.completed.map(a => notifRowHTML(a, 'completed')).join('')}</div>`
+          : '<p class="group-empty">Пока нет недавно завершившихся тайтлов.</p>'}
+      </section>`;
+
+    ensureNotificationEpisodes();
+  }
+
+  function invalidateNotificationEpisodes() {
+    const ids = allNotifications().map(a => a.id);
+    let changed = false;
+    for (const id of ids) {
+      if (state.epInfo[id]) {
+        delete state.epInfo[id];
+        changed = true;
+      }
+    }
+    if (changed) saveState();
+  }
+
+  async function fetchNotifications(force = false) {
+    const n = state.notifications;
+    if (n.loading) {
+      if (force) n.queued = true;
+      return;
+    }
+    if ((n.airing.length || n.completed.length) && !force) return;
+    if (force) {
+      anilistCache.clear();
+      invalidateNotificationEpisodes();
+    }
+
+    if (state.forceDemo) {
+      const demo = demoNotifications();
+      n.airing = demo.airing;
+      n.completed = demo.completed;
+      n.loaded = true;
+      n.loading = false;
+      n.error = null;
+      seedDemoEpisodeInfo();
+      renderNotifications();
+      if (state.tab === 'notifications') markNotificationsSeen();
+      updateBell();
+      return;
+    }
+
+    n.loading = true;
+    n.error = null;
+    renderNotifications();
+
+    try {
+      const today = endOfToday();
+      const todayInt = fuzzyDateInt(today);
+      const cutoff = addDays(startOfToday(), -75);
+
+      const airingPage = await fetchAniList({
+        type: 'ANIME',
+        status: 'RELEASING',
+        sort: ['START_DATE_DESC'],
+        page: 1,
+        perPage: 50,
+        startDateLesser: todayInt,
+        isAdult: false,
+      });
+      const donePage = await fetchAniList({
+        type: 'ANIME',
+        status: 'FINISHED',
+        sort: ['END_DATE_DESC'],
+        page: 1,
+        perPage: 50,
+        endDateGreater: fuzzyDateInt(cutoff),
+        endDateLesser: todayInt,
+        isAdult: false,
+      });
+
+      const airing = airingPage.media
+        .map(mapAniList)
+        .filter(a => {
+          const d = parseDate(a.airedFrom);
+          return d && d <= today;
+        })
+        .sort((a, b) => new Date(b.airedFrom) - new Date(a.airedFrom))
+        .slice(0, 12);
+
+      const completed = donePage.media
+        .map(mapAniList)
+        .filter(a => {
+          const end = parseDate(a.airedTo);
+          return end && end <= today && end >= cutoff;
+        })
+        .sort((a, b) => new Date(b.airedTo) - new Date(a.airedTo))
+        .slice(0, 12);
+
+      n.airing = airing;
+      n.completed = completed;
+      n.loaded = true;
+    } catch (err) {
+      console.error(err);
+      n.error = err.message || 'Ошибка сети';
+      state.offline = true;
+      if (!n.airing.length && !n.completed.length) {
+        const demo = demoNotifications();
+        n.airing = demo.airing;
+        n.completed = demo.completed;
+        seedDemoEpisodeInfo();
+      }
+      toast('Уведомления недоступны — включён демо-режим');
+    } finally {
+      n.loading = false;
+      renderNotifications();
+      if (state.tab === 'notifications') markNotificationsSeen();
+      updateBell();
+      updateOfflineBanner();
+      if (n.queued) {
+        n.queued = false;
+        fetchNotifications(true);
+      }
+    }
+  }
+
+  function allNotifications() {
+    return [...state.notifications.airing, ...state.notifications.completed];
+  }
+
+  function markNotificationsSeen() {
+    let changed = false;
+    for (const a of allNotifications()) {
+      if (!state.seenNotifications.has(a.id)) {
+        state.seenNotifications.add(a.id);
+        changed = true;
+      }
+    }
+    if (changed) saveState();
+    updateBell();
+  }
+
+  function updateBell() {
+    const badge = $('#bell-badge');
+    if (!badge) return;
+    const unread = allNotifications().filter(a => !state.seenNotifications.has(a.id)).length;
+    badge.hidden = unread === 0;
+    badge.textContent = unread > 9 ? '9+' : String(unread);
+  }
+
+  /* ---------------- отрисовка: скоро выйдут ---------------- */
+  function renderUpcoming() {
+    const grid = $('#upcoming-grid');
+    if (!grid) return;
+    const u = state.upcoming;
+
+    if (u.loading && !u.items.length) { grid.innerHTML = skeletonCards(10); return; }
+    if (u.error && !u.items.length) { grid.innerHTML = msgBlock('⚠️', 'Не удалось загрузить премьеры', u.error, 'retry-upcoming'); return; }
+    if (!u.items.length) { grid.innerHTML = msgBlock('🌌', 'Ближайших премьер не нашлось', 'Попробуйте обновить данные позже.'); return; }
+
+    let html = '';
+    let currentMonth = '';
+    for (const a of u.items) {
+      const month = monthLabel(a.airedFrom);
+      if (month !== currentMonth) {
+        currentMonth = month;
+        html += `<h2 class="month-head">${esc(month)}</h2>`;
+      }
+      html += cardHTML(a, 'upcoming');
+    }
+    grid.innerHTML = html;
+  }
+
+  async function fetchUpcoming(force = false) {
+    const u = state.upcoming;
+    if (u.loading) {
+      if (force) u.queued = true;
+      return;
+    }
+    if (u.items.length && !force) return;
+    if (force) anilistCache.clear();
+
+    if (state.forceDemo) {
+      u.items = demoUpcoming();
+      u.loaded = true;
+      u.loading = false;
+      u.error = null;
+      u.fallback = false;
+      renderUpcoming();
+      return;
+    }
+
+    u.loading = true;
+    u.error = null;
+    u.fallback = false;
+    renderUpcoming();
+
+    try {
+      const from = startOfTomorrow();
+      const to = addDays(startOfToday(), 91);
+      const startGreater = fuzzyDateInt(startOfToday());
+      const startLesser = fuzzyDateInt(to);
+      const all = [];
+
+      for (let page = 1; page <= 2; page++) {
+        const pageData = await fetchAniList({
+          type: 'ANIME',
+          status: 'NOT_YET_RELEASED',
+          sort: ['START_DATE'],
+          page,
+          perPage: 50,
+          startDateGreater: startGreater,
+          startDateLesser: startLesser,
+          isAdult: false,
+        });
+        all.push(...pageData.media.map(mapAniList));
+        if (!pageData.pageInfo?.hasNextPage) break;
+      }
+
+      u.items = C.dedupeById(all).filter(a => {
+        const d = parseDate(a.airedFrom);
+        return d && d >= from && d <= to;
+      }).sort((a, b) => new Date(a.airedFrom) - new Date(b.airedFrom));
+      u.loaded = true;
+    } catch (err) {
+      console.error(err);
+      u.error = err.message || 'Ошибка сети';
+      state.offline = true;
+      if (!u.items.length) u.items = demoUpcoming();
+      toast('Календарь премьер недоступен — включён демо-режим');
+    } finally {
+      u.loading = false;
+      renderUpcoming();
+      updateOfflineBanner();
+      if (u.queued) {
+        u.queued = false;
+        fetchUpcoming(true);
+      }
+    }
+  }
+
+  /* ---------------- тир-листы ---------------- */
+  function renderTierList(name) {
+    const root = document.getElementById(name === 'watched' ? 'tiers-watched' : 'tiers-planned');
+    if (!root) return;
+    const list = state.lists[name];
+
+    root.innerHTML = TIERS.map(t => {
+      const items = list[t.id] || [];
+      return `<div class="tier-row">
+        <div class="tier-label tier-${t.id}" title="${esc(t.name)}">
+          <span>${t.label}</span>
+          <small>${esc(t.id === 'N' ? 'Без оц.' : t.name)}</small>
+          <em>${items.length}</em>
+        </div>
+        <div class="tier-drop" data-list="${name}" data-tier="${t.id}">
+          ${items.length
+            ? items.map(a => tierCardHTML(name, a, t.id)).join('')
+            : '<span class="tier-hint">Перетащите аниме сюда</span>'}
+        </div>
+      </div>`;
+    }).join('');
+
+    renderStats(name);
+  }
+
+  function renderStats(name) {
+    const el = document.getElementById('stats-' + name);
+    if (!el) return;
+    const all = allIn(name);
+    const eps = all.reduce((s, a) => s + (Number(a.episodes) || 0), 0);
+    const scored = all.filter(a => typeof a.score === 'number');
+    const avg = scored.length ? (scored.reduce((s, a) => s + a.score, 0) / scored.length).toFixed(2) : '—';
+    el.innerHTML = `
+      <div class="stat"><b>${all.length}</b><span>тайтлов</span></div>
+      <div class="stat"><b>${eps}</b><span>серий (известных)</span></div>
+      <div class="stat"><b>${avg}</b><span>средний балл</span></div>
+      <div class="stat"><b>${(state.lists[name].S || []).length}</b><span>в тире S</span></div>`;
+  }
+
+  function updateCounters() {
+    const w = $('#count-watched');
+    const p = $('#count-planned');
+    if (w) w.textContent = allIn('watched').length;
+    if (p) p.textContent = allIn('planned').length;
+  }
+
+  /* ---------------- операции со списками ---------------- */
+  function addToList(name, anime, tier = 'N', silent = false) {
+    if (!anime) return;
+    const t = TIER_IDS.includes(tier) ? tier : 'N';
+    const other = name === 'watched' ? 'planned' : 'watched';
+    removeFromList(other, anime.id, true);
+    for (const k of TIER_IDS) state.lists[name][k] = state.lists[name][k].filter(x => x.id !== anime.id);
+    state.lists[name][t].unshift(snapshotAnime(anime));
+    state.byId.set(anime.id, anime);
+    saveState();
+    refreshViews();
+    if (!silent) {
+      const names = { watched: 'Просмотрено', planned: 'Запланировано' };
+      toast(`«${anime.title}» → ${names[name]}${t !== 'N' ? ' · тир ' + (t === 'N' ? '?' : t) : ''}`);
+    }
+  }
+
+  function removeFromList(name, id, silent = false) {
+    let removed = false;
+    for (const k of TIER_IDS) {
+      const before = state.lists[name][k].length;
+      state.lists[name][k] = state.lists[name][k].filter(x => x.id !== id);
+      if (state.lists[name][k].length !== before) removed = true;
+    }
+    if (removed && !silent) {
+      saveState();
+      refreshViews();
+    }
+    return removed;
+  }
+
+  function moveToTier(name, id, tier) {
+    if (!TIER_IDS.includes(tier)) return;
+    let entry = null;
+    for (const k of TIER_IDS) {
+      const idx = state.lists[name][k].findIndex(x => x.id === id);
+      if (idx >= 0) {
+        entry = state.lists[name][k].splice(idx, 1)[0];
+        break;
+      }
+    }
+    if (!entry) return;
+    state.lists[name][tier].unshift(entry);
+    saveState();
+    refreshViews();
+  }
+
+  function toggleList(name, anime) {
+    if (!anime) return;
+    if (hasIn(name, anime.id)) {
+      removeFromList(name, anime.id);
+      toast(`«${anime.title}» убрано из списка «${name === 'watched' ? 'Просмотрено' : 'Запланировано'}»`);
+    } else {
+      addToList(name, anime);
+    }
+  }
+
+  function refreshViews() {
+    updateCounters();
+    renderTierList('watched');
+    renderTierList('planned');
+    if (state.tab === 'db') renderDB();
+    else if (state.tab === 'notifications') renderNotifications();
+    else if (state.tab === 'upcoming') renderUpcoming();
+    if (state.modalId != null) renderModal();
+  }
+
+  /* ---------------- обмен тир-листами ---------------- */
+  function syncBodyScroll() {
+    const locked = state.modalId != null || Boolean(state.exchange && state.exchange.open);
+    document.body.classList.toggle('no-scroll', locked);
+  }
+
+  function tierShort(tier) {
+    return tier === 'N' ? 'Без оц.' : tier;
+  }
+
+  function openExchange(mode, list) {
+    if (state.modalId != null) closeModal();
+    const exportList = list === 'planned' ? 'planned' : 'watched';
+    state.exchange = {
+      open: true,
+      mode: mode === 'import' ? 'import' : 'export',
+      list: exportList,
+      code: '',
+      parsed: null,
+      comparison: null,
+      filter: 'all',
+      error: '',
+    };
+    if (state.exchange.mode === 'export') {
+      state.exchange.code = C.encodeTierShare(C.makeTierShare(exportList, state.lists[exportList], { tierIds: TIER_IDS }));
+    }
+    const modal = $('#exchange-modal');
+    if (modal) modal.hidden = false;
+    renderExchange();
+    syncBodyScroll();
+    const panel = $('#exchange-panel');
+    if (panel) {
+      panel.scrollTop = 0;
+      panel.focus({ preventScroll: true });
+    }
+  }
+
+  function closeExchange() {
+    state.exchange.open = false;
+    const modal = $('#exchange-modal');
+    if (modal) modal.hidden = true;
+    syncBodyScroll();
+  }
+
+  function setExchangeMode(mode) {
+    const ex = state.exchange;
+    if (!ex.open) return;
+    ex.mode = mode === 'import' ? 'import' : 'export';
+    ex.parsed = null;
+    ex.comparison = null;
+    ex.error = '';
+    ex.filter = 'all';
+    if (ex.mode === 'export') {
+      ex.code = C.encodeTierShare(C.makeTierShare(ex.list, state.lists[ex.list], { tierIds: TIER_IDS }));
+    }
+    renderExchange();
+    const panel = $('#exchange-panel');
+    if (panel) panel.scrollTop = 0;
+  }
+
+  function switchExchangeList(list) {
+    const ex = state.exchange;
+    if (!ex.open || ex.mode !== 'export') return;
+    ex.list = list === 'planned' ? 'planned' : 'watched';
+    ex.code = C.encodeTierShare(C.makeTierShare(ex.list, state.lists[ex.list], { tierIds: TIER_IDS }));
+    renderExchange();
+  }
+
+  function parseImportCode() {
+    const ex = state.exchange;
+    if (!ex.open || ex.mode !== 'import') return;
+    const field = $('#import-code');
+    const code = field ? field.value : ex.code;
+    ex.code = code;
+    ex.parsed = null;
+    ex.comparison = null;
+    ex.error = '';
+    ex.filter = 'all';
+
+    if (!code.trim()) {
+      ex.error = 'Вставьте код тир-листа.';
+      renderExchange();
+      return;
+    }
+
+    try {
+      const parsed = C.parseTierShare(code, { tierIds: TIER_IDS });
+      ex.parsed = parsed;
+      ex.comparison = C.compareTierLists(parsed.tiers, state.lists, { tierIds: TIER_IDS });
+    } catch (err) {
+      ex.error = err && err.message ? err.message : 'Не удалось прочитать код тир-листа.';
+    }
+    renderExchange();
+  }
+
+  function clearExchangeCode() {
+    const ex = state.exchange;
+    ex.code = '';
+    ex.parsed = null;
+    ex.comparison = null;
+    ex.error = '';
+    ex.filter = 'all';
+    renderExchange();
+    const field = $('#import-code');
+    if (field) field.focus();
+  }
+
+  async function copyShareCode() {
+    const field = $('#share-code');
+    const text = field ? field.value : state.exchange.code;
+    let copied = false;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        copied = true;
+      }
+    } catch {
+      copied = false;
+    }
+    if (!copied && field) {
+      field.focus();
+      field.select();
+      field.setSelectionRange(0, field.value.length);
+      try { copied = document.execCommand('copy'); } catch { copied = false; }
+    }
+    toast(copied ? 'Код тир-листа скопирован' : 'Выделите код и скопируйте вручную');
+  }
+
+  function addExchangeItem(id) {
+    const ex = state.exchange;
+    if (!ex.open || !ex.parsed || !ex.comparison) return;
+    const row = ex.comparison.rows.find(item => item.anime.id === id);
+    if (!row) return;
+    if (row.match || hasIn('watched', id) || hasIn('planned', id)) {
+      toast('Этот тайтл уже есть в ваших списках');
+      renderExchange();
+      return;
+    }
+
+    addToList('planned', row.anime, 'N', true);
+    ex.comparison = C.compareTierLists(ex.parsed.tiers, state.lists, { tierIds: TIER_IDS });
+    renderExchange();
+    toast(`«${row.anime.title}» → Запланировано · Без оценки`);
+  }
+
+  function exchangeRowHTML(row) {
+    const anime = row.anime;
+    const match = row.match;
+    const meta = [
+      anime.year || '',
+      anime.episodes ? `${anime.episodes} эп.` : '',
+      anime.score ? `★ ${anime.score.toFixed(1)}` : '',
+    ].filter(Boolean).join(' · ');
+    const status = match
+      ? `<span class="exchange-badge you ${row.sameTier ? 'same' : 'different'}">${match.list === 'watched' ? 'Просмотрено' : 'В планах'}: ${esc(tierShort(match.tier))}</span>`
+      : '<span class="exchange-badge new">Нет у вас</span>';
+    const diff = match && !row.sameTier ? '<span class="exchange-badge diff">Другой тир</span>' : '';
+    const add = match
+      ? ''
+      : `<button class="btn btn-tiny btn-primary exchange-add" data-action="exchange-add" data-id="${anime.id}">+ В планы</button>`;
+
+    return `<article class="exchange-row">
+      <img class="exchange-poster" ${imgAttrs(anime, '')}>
+      <div class="exchange-row-main">
+        <div class="exchange-row-title">${esc(anime.title)}</div>
+        <div class="exchange-row-meta">${esc(meta || 'данные неполные')}</div>
+        <div class="exchange-row-badges">
+          <span class="exchange-badge friend">Друг: ${esc(tierShort(row.tier))}</span>
+          ${status}${diff}
+        </div>
+      </div>
+      ${add}
+    </article>`;
+  }
+
+  function renderExchangeComparison(parsed, comparison, filter) {
+    const summary = comparison.summary;
+    const listLabel = LIST_LABELS[parsed.list] || parsed.list;
+    const filters = EXCHANGE_FILTERS.map(item => {
+      const count = item.id === 'all'
+        ? summary.total
+        : item.id === 'new'
+          ? summary.newCount
+          : summary.differentTier;
+      return `<button class="exchange-chip ${filter === item.id ? 'is-active' : ''}" data-action="exchange-filter" data-filter="${item.id}">${item.label}<b>${count}</b></button>`;
+    }).join('');
+
+    const rows = comparison.rows.filter(row => {
+      if (filter === 'new') return !row.match;
+      if (filter === 'diff') return Boolean(row.match) && !row.sameTier;
+      return true;
+    });
+    const byTier = {};
+    for (const row of rows) {
+      if (!byTier[row.tier]) byTier[row.tier] = [];
+      byTier[row.tier].push(row);
+    }
+    const groups = TIERS.filter(tier => (byTier[tier.id] || []).length).map(tier => {
+      const items = byTier[tier.id];
+      return `<section class="exchange-tier">
+        <div class="exchange-tier-head">
+          <span class="exchange-tier-badge tier-${tier.id}">${esc(tier.label)}</span>
+          <b>${esc(tier.name)}</b>
+          <em>${items.length}</em>
+        </div>
+        <div class="exchange-rows">${items.map(exchangeRowHTML).join('')}</div>
+      </section>`;
+    }).join('');
+
+    const emptyText = filter === 'new'
+      ? 'Новых тайтлов нет — всё из этого списка уже есть у вас.'
+      : filter === 'diff'
+        ? 'Расхождений по тирам нет.'
+        : 'В этом тир-листе нет тайтлов.';
+
+    return `<div class="exchange-compare">
+      <div class="exchange-summary">
+        <div class="exchange-summary-main">
+          <span class="exchange-summary-label">Тир-лист друга</span>
+          <b>${esc(listLabel)}</b>
+        </div>
+        <div class="exchange-stats">
+          <span><b>${summary.total}</b> всего</span>
+          <span><b>${summary.common}</b> общих</span>
+          <span><b>${summary.newCount}</b> новых</span>
+          <span><b>${summary.yoursOnly}</b> только у вас</span>
+        </div>
+      </div>
+      <div class="exchange-filters" role="group" aria-label="Фильтр сравнения">${filters}</div>
+      ${groups || `<div class="exchange-empty">${esc(emptyText)}</div>`}
+    </div>`;
+  }
+
+  function renderExchange() {
+    const content = $('#exchange-content');
+    const ex = state.exchange;
+    if (!content || !ex.open) return;
+    const isExport = ex.mode === 'export';
+    const listLabel = LIST_LABELS[ex.list] || LIST_LABELS.watched;
+    let body = '';
+
+    if (isExport) {
+      const count = allIn(ex.list).length;
+      const switchHTML = ['watched', 'planned'].map(name => (
+        `<button class="exchange-tab ${ex.list === name ? 'is-active' : ''}" data-action="exchange-list" data-list="${name}">${LIST_LABELS[name]}</button>`
+      )).join('');
+      body = `<div class="exchange-head">
+          <div>
+            <div class="exchange-eyebrow">Обмен тир-листом</div>
+            <h2 id="exchange-title">Экспорт</h2>
+            <p class="exchange-sub">Скопируйте код и отправьте другу. Внутри — список «${esc(listLabel)}»: ${count} ${plural(count, 'тайтл', 'тайтла', 'тайтлов')}.</p>
+          </div>
+          <div class="exchange-switch" role="group" aria-label="Какой список экспортировать">${switchHTML}</div>
+        </div>
+        ${count ? `<label class="exchange-field">
+          <span>Код тир-листа</span>
+          <textarea class="exchange-code" id="share-code" readonly rows="7">${esc(ex.code)}</textarea>
+        </label>
+        <div class="exchange-actions">
+          <button class="btn btn-primary" data-action="exchange-copy">Скопировать код</button>
+          <button class="btn btn-ghost" data-action="exchange-mode" data-mode="import">Перейти к импорту</button>
+        </div>
+        <p class="exchange-note">Код начинается с <code>${esc(C.SHARE_PREFIX)}</code>. Его можно отправить в мессенджере — файл не нужен.</p>`
+          : `<div class="exchange-empty">В списке «${esc(listLabel)}» пока нет тайтлов. Добавьте хотя бы один — и код появится здесь.</div>
+        <div class="exchange-actions">
+          <button class="btn btn-ghost" data-action="exchange-mode" data-mode="import">Перейти к импорту</button>
+        </div>`}
+        <div class="exchange-footer">
+          <span>Ничего не меняется, пока вы не добавите тайтлы в планы.</span>
+          <button class="btn btn-ghost" data-action="close-exchange">Закрыть</button>
+        </div>`;
+    } else {
+      const parsed = ex.parsed;
+      const comparison = ex.comparison;
+      body = `<div class="exchange-head">
+          <div>
+            <div class="exchange-eyebrow">Обмен тир-листом</div>
+            <h2 id="exchange-title">Импорт и сравнение</h2>
+            <p class="exchange-sub">Вставьте код друга. Сначала покажем сравнение — менять ваш тир-лист можно только по одному тайтлу.</p>
+          </div>
+          <button class="exchange-link" data-action="exchange-mode" data-mode="export">Экспорт →</button>
+        </div>
+        <label class="exchange-field">
+          <span>Код тир-листа</span>
+          <textarea class="exchange-code" id="import-code" rows="6" placeholder="Вставьте сюда ANITIER-TIER-1:…">${esc(ex.code)}</textarea>
+        </label>
+        ${ex.error ? `<div class="exchange-error" role="alert">${esc(ex.error)}</div>` : ''}
+        <div class="exchange-actions">
+          <button class="btn btn-primary" data-action="exchange-parse">Сравнить</button>
+          ${parsed ? '<button class="btn btn-ghost" data-action="exchange-clear">Очистить</button>' : ''}
+        </div>
+        ${parsed && comparison ? renderExchangeComparison(parsed, comparison, ex.filter) : ''}
+        <div class="exchange-footer">
+          <span>Импорт не перезаписывает существующие тиры и не добавляет всё сразу.</span>
+          <button class="btn btn-ghost" data-action="close-exchange">Ничего не добавлять</button>
+        </div>`;
+    }
+
+    content.innerHTML = body;
+  }
+
+  /* ---------------- модалка ---------------- */
+  function openModal(id) {
+    const a = getAnime(id);
+    if (!a) { toast('Не удалось открыть карточку'); return; }
+    state.modalId = id;
+    renderModal();
+    const modal = $('#modal');
+    modal.hidden = false;
+    syncBodyScroll();
+    const panel = $('.modal-panel');
+    if (panel) { panel.scrollTop = 0; panel.focus({ preventScroll: true }); }
+  }
+
+  function closeModal() {
+    state.modalId = null;
+    const modal = $('#modal');
+    if (modal) modal.hidden = true;
+    syncBodyScroll();
+    if (state.tab === 'db') renderDB();
+    else if (state.tab === 'watched' || state.tab === 'planned') renderTierList(state.tab);
+  }
+
+  function renderModal() {
+    if (state.modalId == null) return;
+    const a = getAnime(state.modalId);
+    const content = $('#modal-content');
+    const panel = $('.modal-panel');
+    if (!a || !content) { closeModal(); return; }
+
+    const scrollTop = panel ? panel.scrollTop : 0;
+    const inW = hasIn('watched', a.id);
+    const inP = hasIn('planned', a.id);
+    const curTier = findTier('watched', a.id) || findTier('planned', a.id);
+    const status = a.status || '';
+    const sourceName = a.source === 'Kitsu' ? 'Kitsu' : a.source === 'AniList' ? 'AniList' : 'MyAnimeList';
+    const sourceUrl = a.url || (a.malId ? `https://myanimelist.net/anime/${a.malId}` : '');
+    const facts = [
+      a.type ? `<span class="fact"><span>Тип:</span> ${esc(typeRu(a.type))}</span>` : '',
+      a.episodes ? `<span class="fact"><span>Серии:</span> ${a.episodes}</span>` : '<span class="fact"><span>Серии:</span> ?</span>',
+      a.year ? `<span class="fact"><span>Год:</span> ${a.year}</span>` : '',
+      status ? `<span class="fact"><span>Статус:</span> ${esc(status)}</span>` : '',
+      a.airedFrom ? `<span class="fact"><span>Старт:</span> ${esc(dateShort(a.airedFrom))}</span>` : '',
+    ].filter(Boolean).join('');
+
+    const tiers = TIERS.map(t => `<button class="tier-pick tier-${t.id} ${curTier === t.id ? 'is-active' : ''}" data-action="set-tier" data-id="${a.id}" data-tier="${t.id}" title="${esc(t.name)}" aria-label="Тир ${esc(t.name)}">${t.label}</button>`).join('');
+    const genres = (a.genres || []).map(g => `<span class="tag">${esc(g)}</span>`).join('');
+    const poster = a.image || makePoster(a.title, a.id);
+
+    content.innerHTML = `
+      <div class="modal-grid">
+        <div class="modal-poster">
+          <div class="modal-poster-wrap">
+            <img src="${esc(poster)}" alt="${esc(a.title)}" data-title="${esc(a.title)}" data-id="${a.id}" onerror="posterFallback(this)">
+            <div class="modal-side-score">${a.score ? `★ ${a.score.toFixed(2)}` : '★ —'}<small>рейтинг</small></div>
+          </div>
+        </div>
+        <div class="modal-info">
+          <div class="modal-eyebrow">${esc(typeRu(a.type) || 'Аниме')}${a.year ? ' · ' + a.year : ''}</div>
+          <h2 id="modal-title">${esc(a.title)}</h2>
+          ${a.altTitle ? `<p class="modal-alt">${esc(a.altTitle)}</p>` : ''}
+          <div class="modal-facts">${facts}</div>
+          <div class="modal-actions">
+            <button class="btn ${inW ? 'is-on' : 'btn-primary'}" data-action="add-watched" data-id="${a.id}">${inW ? '✓ В просмотрено' : 'Отметить просмотренным'}</button>
+            <button class="btn btn-ghost ${inP ? 'is-on' : ''}" data-action="add-planned" data-id="${a.id}">${inP ? '◷ В планах' : 'Запланировать'}</button>
+          </div>
+          <div class="modal-section">
+            <div class="modal-label">Тир-лист</div>
+            <div class="tier-picker">${tiers}</div>
+            <p class="hint">${inW || inP
+              ? 'Выберите уровень — карточка переедет в выбранный тир.'
+              : 'Выберите тир, чтобы сразу добавить тайтл в «Просмотрено».'}</p>
+          </div>
+          <div class="modal-section modal-episodes">
+            <div class="modal-label">Серии и прогресс</div>
+            ${renderEpisodeBlock(a, 'modal')}
+          </div>
+          <p class="modal-synopsis">${esc(a.synopsis || 'Описание пока недоступно.')}</p>
+          ${genres ? `<div class="tags">${genres}</div>` : ''}
+          ${sourceUrl ? `<a class="mal-link" href="${esc(sourceUrl)}" target="_blank" rel="noopener">Открыть на ${esc(sourceName)} ↗</a>` : ''}
+        </div>
+      </div>`;
+
+    const fresh = $('.modal-panel');
+    if (fresh) fresh.scrollTop = scrollTop;
+
+    if (!state.epInfo[a.id] || Date.now() - Number(state.epInfo[a.id].fetchedAt || 0) > 2 * 3600000) {
+      if (a.status === 'В эфире' || !a.episodes) ensureEpisodeInfo(a);
+    }
+  }
+
+  /* ---------------- вкладки ---------------- */
+  function switchTab(tab, opts = {}) {
+    if (!VIEW_TABS.includes(tab)) return;
+    state.tab = tab;
+    $$('.tab').forEach(t => {
+      const on = t.dataset.tab === tab;
+      t.classList.toggle('is-active', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    $$('.view').forEach(v => { v.hidden = v.id !== 'view-' + tab; });
+
+    if (tab === 'db') renderDB();
+    if (tab === 'watched' || tab === 'planned') renderTierList(tab);
+    if (tab === 'notifications') { markNotificationsSeen(); fetchNotifications(); ensureNotificationEpisodes(); }
+    if (tab === 'upcoming') fetchUpcoming();
+    updateOfflineBanner();
+
+    if (!opts.silent) window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /* ---------------- обновление / офлайн ---------------- */
+  function updateOfflineBanner() {
+    const el = $('#offline-banner');
+    if (!el) return;
+    const show = state.offline || state.forceDemo;
+    el.hidden = !show;
+    const text = $('#offline-text');
+    if (text && show) {
+      const altSearch = state.tab === 'db' && Boolean(state.db.query) && state.db.sources.length > 0;
+      if (state.forceDemo) {
+        text.textContent = 'Демо-режим: показана локальная подборка, запросы к API отключены.';
+      } else if (altSearch) {
+        text.textContent = `Основной API недоступен — поиск идёт через ${state.db.sources.join(' и ')}. Остальные данные — демо.`;
+      } else {
+        text.textContent = 'Нет связи с API — показаны демо-данные.';
+      }
+    }
+  }
+
+  async function refreshCurrent() {
+    anilistCache.clear();
+    if (state.tab === 'db') {
+      await fetchDB(true);
+    } else if (state.tab === 'notifications') {
+      await fetchNotifications(true);
+    } else if (state.tab === 'upcoming') {
+      await fetchUpcoming(true);
+    } else {
+      toast('Тир-листы хранятся локально — обновлять нечего');
+    }
+  }
+
+  async function retryAll() {
+    state.forceDemo = false;
+    anilistCache.clear();
+    state.epInfo = {};
+    saveState();
+
+    state.db.revision += 1;
+    state.db.items = [];
+    state.db.page = 1;
+    state.db.hasNext = true;
+    state.db.error = null;
+    state.db.queued = false;
+    state.db.touched = false;
+
+    state.notifications.airing = [];
+    state.notifications.completed = [];
+    state.notifications.loaded = false;
+    state.notifications.queued = false;
+    state.upcoming.items = [];
+    state.upcoming.loaded = false;
+    state.upcoming.queued = false;
+    state.offline = false;
+    updateOfflineBanner();
+
+    await Promise.allSettled([fetchNotifications(), fetchUpcoming()]);
+    await fetchDB(true);
+  }
+
+  /* ---------------- тосты ---------------- */
+  function toast(message) {
+    const box = $('#toasts');
+    if (!box) return;
+    while (box.children.length >= 4) box.firstElementChild.remove();
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = message;
+    box.appendChild(el);
+    setTimeout(() => {
+      el.classList.add('is-out');
+      setTimeout(() => el.remove(), 240);
+    }, 3200);
+  }
+
+  /* ---------------- drag & drop ---------------- */
+  let dragState = null;
+
+  function cleanupDrag() {
+    dragState = null;
+    $$('.tier-card.dragging').forEach(c => c.classList.remove('dragging'));
+    $$('.tier-drop.is-over').forEach(d => d.classList.remove('is-over'));
+  }
+
+  function bindDragEvents() {
+    document.addEventListener('dragstart', e => {
+      const card = e.target.closest && e.target.closest('.tier-card');
+      if (!card) return;
+      dragState = { list: card.dataset.list, id: Number(card.dataset.id) };
+      card.classList.add('dragging');
+      try {
+        e.dataTransfer.setData('text/plain', String(card.dataset.id));
+        e.dataTransfer.effectAllowed = 'move';
+      } catch { /* noop */ }
+    });
+
+    document.addEventListener('dragend', cleanupDrag);
+
+    document.addEventListener('dragover', e => {
+      if (!dragState) return;
+      const drop = e.target.closest && e.target.closest('.tier-drop');
+      if (!drop) return;
+      e.preventDefault();
+      try { e.dataTransfer.dropEffect = 'move'; } catch { /* noop */ }
+      if (!drop.classList.contains('is-over')) {
+        $$('.tier-drop.is-over').forEach(d => d.classList.remove('is-over'));
+        drop.classList.add('is-over');
+      }
+    });
+
+    document.addEventListener('dragleave', e => {
+      const drop = e.target.closest && e.target.closest('.tier-drop');
+      if (drop && !drop.contains(e.relatedTarget)) drop.classList.remove('is-over');
+    });
+
+    document.addEventListener('drop', e => {
+      if (!dragState) return;
+      const drop = e.target.closest && e.target.closest('.tier-drop');
+      if (!drop) return;
+      e.preventDefault();
+      const name = drop.dataset.list;
+      const tier = drop.dataset.tier;
+      const { list, id } = dragState;
+      cleanupDrag();
+      if (name !== list) return;
+      moveToTier(name, id, tier);
+    });
+  }
+
+  /* ---------------- события ---------------- */
+  let searchTimer = null;
+
+  function bindEvents() {
+    document.addEventListener('click', e => {
+      const el = e.target.closest && e.target.closest('[data-action]');
+      if (!el) return;
+      const action = el.dataset.action;
+      const id = el.dataset.id != null ? Number(el.dataset.id) : null;
+
+      switch (action) {
+        case 'tab':
+          e.preventDefault();
+          switchTab(el.dataset.tab);
+          break;
+
+        case 'open':
+          if (e.target.closest('button')) return;
+          if (id != null) openModal(id);
+          break;
+
+        case 'add-watched':
+          toggleList('watched', getAnime(id));
+          break;
+
+        case 'add-planned':
+          toggleList('planned', getAnime(id));
+          break;
+
+        case 'remove': {
+          const list = el.dataset.list || (hasIn('planned', id) ? 'planned' : 'watched');
+          if (removeFromList(list, id)) toast('Тайтл убран из тир-листа');
+          break;
+        }
+
+        case 'set-tier': {
+          const a = getAnime(id);
+          if (!a) break;
+          const tier = el.dataset.tier;
+          if (!hasIn('watched', id) && !hasIn('planned', id)) {
+            addToList('watched', a, tier);
+          } else {
+            const list = hasIn('watched', id) ? 'watched' : 'planned';
+            moveToTier(list, id, tier);
+          }
+          break;
+        }
+
+        case 'toggle-ep': {
+          const ep = Number(el.dataset.ep);
+          if (id != null && Number.isInteger(ep) && ep > 0) toggleEpisode(id, ep);
+          break;
+        }
+
+        case 'ep-all': {
+          const max = Number(el.dataset.max) || 0;
+          if (id != null && max > 0) {
+            setWatchedUpTo(id, max, max);
+            toast(`Отмечены все ${max} ${epWord(max)}`);
+          }
+          break;
+        }
+
+        case 'ep-reset':
+          if (id != null) {
+            clearProgress(id);
+            toast('Прогресс серий сброшен');
+          }
+          break;
+
+        case 'mode': {
+          const mode = el.dataset.mode;
+          if (!mode) break;
+          state.db.mode = mode;
+          state.db.query = '';
+          state.db.touched = true;
+          resetDBFilters();
+          const input = $('#search-input');
+          if (input) input.value = '';
+          syncModeChips();
+          fetchDB(true);
+          break;
+        }
+
+        case 'toggle-filters': {
+          const panel = $('#db-filters');
+          if (!panel) break;
+          panel.hidden = !panel.hidden;
+          el.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
+          break;
+        }
+
+        case 'reset-filters':
+          resetDBFilters();
+          state.db.mode = 'popular';
+          state.db.touched = true;
+          syncModeChips();
+          fetchDB(true);
+          break;
+
+        case 'load-more':
+          fetchDB();
+          break;
+
+        case 'refresh':
+          refreshCurrent();
+          break;
+
+        case 'refresh-notifications':
+          fetchNotifications(true);
+          break;
+
+        case 'refresh-upcoming':
+          fetchUpcoming(true);
+          break;
+
+        case 'retry-db':
+          fetchDB(true);
+          break;
+
+        case 'retry-notifications':
+          fetchNotifications(true);
+          break;
+
+        case 'retry-upcoming':
+          fetchUpcoming(true);
+          break;
+
+        case 'retry-all':
+          retryAll();
+          break;
+
+        case 'close-modal':
+          closeModal();
+          break;
+
+        case 'exchange-export':
+          openExchange('export', el.dataset.list || state.tab);
+          break;
+
+        case 'exchange-import':
+          openExchange('import', state.tab);
+          break;
+
+        case 'exchange-mode':
+          setExchangeMode(el.dataset.mode);
+          break;
+
+        case 'exchange-list':
+          switchExchangeList(el.dataset.list);
+          break;
+
+        case 'exchange-copy':
+          copyShareCode();
+          break;
+
+        case 'exchange-parse':
+          parseImportCode();
+          break;
+
+        case 'exchange-clear':
+          clearExchangeCode();
+          break;
+
+        case 'exchange-filter':
+          state.exchange.filter = el.dataset.filter || 'all';
+          renderExchange();
+          break;
+
+        case 'exchange-add':
+          addExchangeItem(id);
+          break;
+
+        case 'close-exchange':
+          closeExchange();
+          break;
+
+        case 'find-more':
+          switchTab('db');
+          setTimeout(() => {
+            const input = $('#search-input');
+            if (input) { input.focus(); input.select(); }
+          }, 80);
+          break;
+
+        default:
+          break;
+      }
+    });
+
+    const search = $('#search-input');
+    if (search) {
+      search.addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        const val = search.value.trim();
+        searchTimer = setTimeout(() => {
+          state.db.query = val;
+          state.db.touched = true;
+          syncModeChips();
+          fetchDB(true);
+        }, 500);
+      });
+    }
+
+    const filters = $('#db-filters');
+    if (filters) {
+      filters.addEventListener('change', () => {
+        state.db.filters = readFiltersFromUI();
+        state.db.mode = 'popular';
+        state.db.touched = true;
+        syncModeChips();
+        syncFilterUI();
+        fetchDB(true);
+      });
+    }
+
+    document.addEventListener('input', e => {
+      const slider = e.target.closest && e.target.closest('input[data-action="ep-slider"]');
+      if (slider) previewEpisodeSlider(slider);
+      if (e.target && e.target.id === 'import-code' && state.exchange.open) {
+        state.exchange.code = e.target.value;
+      }
+    });
+
+    document.addEventListener('change', e => {
+      const slider = e.target.closest && e.target.closest('input[data-action="ep-slider"]');
+      if (!slider) return;
+      const id = Number(slider.dataset.id);
+      const max = Number(slider.dataset.max) || 0;
+      if (id != null && max > 0) setWatchedUpTo(id, Number(slider.value), max);
+    });
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        if (state.exchange.open) {
+          closeExchange();
+          return;
+        }
+        if (state.modalId != null) closeModal();
+      }
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && e.target && e.target.id === 'import-code') {
+        e.preventDefault();
+        parseImportCode();
+        return;
+      }
+      if (e.key === 'Enter' && e.target && e.target.matches && e.target.matches('.card, .notif, .tier-card')) {
+        e.preventDefault();
+        openModal(Number(e.target.dataset.id));
+      }
+    });
+
+    window.addEventListener('storage', e => {
+      if (e.key !== LS_KEY) return;
+      loadState();
+      updateCounters();
+      updateBell();
+      renderTierList('watched');
+      renderTierList('planned');
+      if (state.tab === 'db') renderDB();
+      else if (state.tab === 'notifications') renderNotifications();
+      else if (state.tab === 'upcoming') renderUpcoming();
+      if (state.modalId != null) renderModal();
+      if (state.exchange.open) {
+        if (state.exchange.mode === 'export') {
+          state.exchange.code = C.encodeTierShare(C.makeTierShare(state.exchange.list, state.lists[state.exchange.list], { tierIds: TIER_IDS }));
+        }
+        if (state.exchange.parsed) {
+          state.exchange.comparison = C.compareTierLists(state.exchange.parsed.tiers, state.lists, { tierIds: TIER_IDS });
+        }
+        renderExchange();
+      }
+    });
+
+    bindDragEvents();
+  }
+
+  /* ---------------- бесконечная лента и старт ---------------- */
+  let dbObserver = null;
+  let dbUserScrolled = false;
+  let dbScrollStart = 0;
+
+  function setupInfiniteScroll() {
+    const sentinel = $('#db-sentinel');
+    if (!sentinel || !('IntersectionObserver' in window)) return;
+
+    dbScrollStart = window.scrollY;
+    window.addEventListener('scroll', () => {
+      if (Math.abs(window.scrollY - dbScrollStart) > 30) dbUserScrolled = true;
+    }, { passive: true });
+
+    dbObserver = new IntersectionObserver(entries => {
+      if (!entries.some(entry => entry.isIntersecting)) return;
+      if (!dbUserScrolled) return;
+      const s = state.db;
+      if (state.tab !== 'db' || state.booting || s.loading || !s.hasNext) return;
+      fetchDB();
+    }, { rootMargin: '600px 0px' });
+
+    dbObserver.observe(sentinel);
+  }
+
+  async function bootstrap() {
+    try {
+      await Promise.allSettled([fetchNotifications(), fetchUpcoming()]);
+      if (!state.db.touched) await fetchDB(true);
+    } finally {
+      state.booting = false;
+      state.bootstrapDone = true;
+      renderDB();
+    }
+  }
+
+  async function init() {
+    state.booting = true;
+    loadState();
+    initFilterOptions();
+    syncFilterUI();
+    syncModeChips();
+    bindEvents();
+    setupInfiniteScroll();
+
+    renderTierList('watched');
+    renderTierList('planned');
+    updateCounters();
+    updateBell();
+    updateOfflineBanner();
+    renderDB();
+
+    const yearEl = $('#footer-year');
+    if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+    const modal = $('#modal');
+    if (modal) modal.hidden = true;
+    const exchangeModal = $('#exchange-modal');
+    if (exchangeModal) exchangeModal.hidden = true;
+
+    return bootstrap();
+  }
+
+  if (TEST_MODE) {
+    window.__anitierTest = {
+      state,
+      init,
+      fetchDB,
+      fetchNotifications,
+      fetchUpcoming,
+      resetDBFilters,
+      syncFilterUI,
+      invalidateNotificationEpisodes,
+      openExchange,
+      closeExchange,
+      setExchangeMode,
+      switchExchangeList,
+      parseImportCode,
+      addExchangeItem,
+      renderExchange,
+    };
+  } else if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => { init(); });
+  } else {
+    init();
+  }
+})();
+
+</script>
+</body>
+</html>

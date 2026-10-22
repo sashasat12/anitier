@@ -1,0 +1,331 @@
+/* ============================================================
+   AniTier Mobile — мобильная оболочка
+   Подключается после styles.css и только для /mobile/
+   ============================================================ */
+
+html {
+  -webkit-text-size-adjust: 100%;
+  background: #07080e;
+}
+
+body.mobile-app {
+  padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  overscroll-behavior-y: contain;
+}
+
+body.mobile-app .bg-orbs { opacity: .75; }
+
+/* ---------- компактная шапка ---------- */
+body.mobile-app .topbar {
+  flex-wrap: nowrap;
+  gap: 10px;
+  padding: calc(8px + env(safe-area-inset-top)) 12px 8px;
+  background: rgba(7, 8, 14, .9);
+}
+
+body.mobile-app .brand {
+  gap: 8px;
+  font-size: 17px;
+}
+
+body.mobile-app .brand-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+
+body.mobile-app .topbar-actions {
+  margin-left: auto;
+  gap: 6px;
+}
+
+body.mobile-app .icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+
+body.mobile-app .install-btn {
+  background: linear-gradient(135deg, rgba(255, 77, 141, .22), rgba(138, 92, 255, .22));
+  border-color: rgba(255, 77, 141, .4);
+  color: #fff;
+  font-weight: 800;
+}
+
+/* ---------- нижняя навигация ---------- */
+body.mobile-app .tabs {
+  position: fixed;
+  top: auto;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 90;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 2px;
+  flex: none;
+  flex-basis: auto;
+  order: 0;
+  overflow: visible;
+  padding: 5px 4px calc(5px + env(safe-area-inset-bottom));
+  background: rgba(12, 13, 20, .96);
+  border-top: 1px solid var(--line);
+  border-bottom: 0;
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: 0 -12px 30px rgba(0, 0, 0, .35);
+}
+
+body.mobile-app .tab {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 7px 2px 6px;
+  border-radius: 12px;
+  font-size: 10.5px;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+body.mobile-app .tab-ico {
+  font-size: 17px;
+  line-height: 1;
+  opacity: .9;
+}
+
+body.mobile-app .tabs .badge,
+body.mobile-app .tabs .count {
+  position: absolute;
+  top: 1px;
+  right: 6px;
+  min-width: 15px;
+  padding: 0 5px;
+  font-size: 9px;
+  line-height: 15px;
+}
+
+/* ---------- контент ---------- */
+body.mobile-app .wrap {
+  max-width: none;
+  padding: 14px 12px calc(30px + env(safe-area-inset-bottom));
+}
+
+body.mobile-app .section-head {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+body.mobile-app .section-title h1 { font-size: 22px; }
+body.mobile-app .section-title .sub { font-size: 12px; }
+
+body.mobile-app .db-tools {
+  width: 100%;
+  gap: 8px;
+}
+
+body.mobile-app .search,
+body.mobile-app .search input {
+  width: 100%;
+  flex: 1 1 100%;
+}
+
+body.mobile-app .search input {
+  min-height: 46px;
+  font-size: 16px; /* без автозума в iOS */
+}
+
+body.mobile-app .filter-toggle {
+  width: 100%;
+  justify-content: center;
+  min-height: 44px;
+}
+
+body.mobile-app .filters {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+body.mobile-app .filter-field select {
+  min-height: 44px;
+  font-size: 16px;
+}
+
+body.mobile-app .filter-reset {
+  grid-column: 1 / -1;
+  min-height: 44px;
+}
+
+body.mobile-app .chips {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  margin: 0 -12px 14px;
+  padding: 0 12px 4px;
+  scrollbar-width: none;
+}
+
+body.mobile-app .chips::-webkit-scrollbar { display: none; }
+
+body.mobile-app .chip {
+  flex: none;
+  min-height: 42px;
+  padding: 9px 14px;
+  font-size: 12.5px;
+}
+
+body.mobile-app .db-status {
+  margin-bottom: 9px;
+  font-size: 11.5px;
+}
+
+body.mobile-app .grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+body.mobile-app .card-body { padding: 8px 9px 10px; }
+body.mobile-app .card-title { font-size: 12px; line-height: 1.28; }
+body.mobile-app .card-meta,
+body.mobile-app .card-date { font-size: 10px; }
+
+body.mobile-app .load-row { margin-top: 18px; }
+body.mobile-app .load-row .btn { min-height: 44px; width: 100%; }
+
+/* ---------- уведомления ---------- */
+body.mobile-app .notif {
+  grid-template-columns: 38px 46px minmax(0, 1fr);
+  gap: 9px;
+  padding: 9px;
+  border-radius: 14px;
+}
+
+body.mobile-app .notif-poster {
+  width: 46px;
+  height: 66px;
+  border-radius: 9px;
+}
+
+body.mobile-app .notif-title { font-size: 12.5px; }
+body.mobile-app .notif-meta { font-size: 10.5px; }
+body.mobile-app .notif-alt { font-size: 10.5px; }
+
+body.mobile-app .notif-actions {
+  grid-column: 2 / -1;
+  justify-content: flex-start;
+}
+
+body.mobile-app .notif-actions .mini-btn {
+  width: 36px;
+  height: 36px;
+}
+
+/* ---------- тир-листы ---------- */
+body.mobile-app .tier-row {
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 6px;
+}
+
+body.mobile-app .tier-drop {
+  padding: 7px;
+  gap: 7px;
+  min-height: 90px;
+}
+
+body.mobile-app .tier-card { width: 92px; }
+
+/* ---------- модалка как нижний лист ---------- */
+body.mobile-app .modal {
+  align-items: end;
+  padding: 0;
+}
+
+body.mobile-app .modal-panel {
+  width: 100%;
+  max-height: 92dvh;
+  border-radius: 22px 22px 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  animation: none;
+}
+
+body.mobile-app .modal-grid {
+  grid-template-columns: 1fr;
+  gap: 14px;
+  padding: 18px 14px 22px;
+}
+
+body.mobile-app .modal-poster-wrap {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+body.mobile-app .modal-poster-wrap img { width: 112px; }
+body.mobile-app .modal-side-score { margin-top: 0; flex-direction: column; }
+
+body.mobile-app .tier-pick {
+  width: 42px;
+  height: 42px;
+}
+
+/* ---------- мелочи ---------- */
+body.mobile-app .btn:not(.btn-tiny),
+body.mobile-app .filter-toggle,
+body.mobile-app .filter-reset {
+  touch-action: manipulation;
+}
+
+body.mobile-app .footer {
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  font-size: 11px;
+  text-align: center;
+}
+
+body.mobile-app .offline-banner {
+  position: sticky;
+  top: calc(56px + env(safe-area-inset-top));
+  z-index: 50;
+}
+
+.mobile-hint {
+  position: fixed;
+  left: 50%;
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  z-index: 200;
+  width: min(calc(100vw - 28px), 420px);
+  transform: translateX(-50%);
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 190, 90, .35);
+  border-radius: 14px;
+  background: rgba(26, 22, 14, .96);
+  color: #ffd79a;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .5);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.mobile-hint[hidden] { display: none !important; }
+
+@media (max-width: 360px) {
+  body.mobile-app .brand-name { display: none; }
+  body.mobile-app .tab { font-size: 9.5px; }
+  body.mobile-app .tab-ico { font-size: 16px; }
+  body.mobile-app .grid { gap: 8px; }
+}
+
+@media (display-mode: standalone) {
+  body.mobile-app .topbar {
+    padding-top: calc(10px + env(safe-area-inset-top));
+  }
+  body.mobile-app .install-btn { display: none !important; }
+}

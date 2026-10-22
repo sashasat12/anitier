@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AniTier — тесты</title>
+<style>
+  body { margin: 0; padding: 32px; background: #0d101a; color: #e9ecf5; font: 15px/1.5 Segoe UI, Arial, sans-serif; }
+  h1 { margin: 0 0 8px; font-size: 24px; }
+  #test-summary { color: #9df0c7; font-weight: 700; }
+  #test-failures { margin-top: 20px; padding: 16px; border: 1px solid rgba(255,90,120,.4); border-radius: 12px; background: rgba(255,90,120,.08); color: #ffd0d8; white-space: pre-wrap; font: 13px/1.5 Consolas, monospace; }
+  .hint { color: #8b93ac; font-size: 13px; }
+</style>
+</head>
+<body>
+<h1>AniTier — тесты</h1>
+<p id="test-summary">running…</p>
+<p class="hint">Страница запускает unit- и integration-тесты в браузере.</p>
+<pre id="test-failures"></pre>
+
+<script src="runner.js"></script>
+<script src="../core.js"></script>
+<script src="core.test.js"></script>
+<script src="app.test.js"></script>
+<script src="exchange.test.js"></script>
+<script src="mobile.test.js"></script>
+</body>
+</html>
