@@ -646,7 +646,7 @@ button { font-family: inherit; }
 
 .notif {
   display: grid;
-  grid-template-columns: 58px 56px minmax(0, 1fr) auto;
+  grid-template-columns: 92px minmax(0, 1fr) auto;
   align-items: start;
   gap: 16px;
   padding: 14px 16px 14px 12px;
@@ -664,12 +664,13 @@ button { font-family: inherit; }
 }
 .notif-date {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 1px;
-  padding: 7px 4px;
-  border-radius: 11px;
+  gap: 5px;
+  width: 100%;
+  padding: 3px 5px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, .045);
   border: 1px solid var(--line);
   color: var(--muted);
@@ -678,10 +679,11 @@ button { font-family: inherit; }
   text-transform: uppercase;
   letter-spacing: .04em;
 }
-.notif-date b { font-size: 17px; color: var(--text); letter-spacing: -.02em; }
+.notif-date b { font-size: 13px; color: var(--text); letter-spacing: -.02em; }
+.notif-visual { display: flex; min-width: 0; flex-direction: column; gap: 6px; }
 .notif-poster {
-  width: 56px;
-  height: 80px;
+  width: 92px;
+  height: 132px;
   object-fit: cover;
   border-radius: 9px;
   display: block;
@@ -1217,8 +1219,23 @@ button { font-family: inherit; }
 .hint { margin: 10px 0 0; font-size: 11.5px; color: var(--muted); }
 
 .modal-synopsis-section { margin-top: 18px; }
-.synopsis-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: -2px 0 12px; }
+.synopsis-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin: -2px 0 12px; }
 .synopsis-translation-status { color: var(--muted); font-size: 10.5px; }
+.synopsis-provider { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 10.5px; }
+.synopsis-provider select { max-width: 205px; min-height: 32px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; background: #171b26; color: var(--text); font: inherit; font-weight: 700; }
+.tiktok-import-panel { width: min(620px, 100%); }
+.tiktok-import-preview { display: flex; align-items: center; gap: 12px; margin: 16px 0; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.025); }
+.tiktok-import-preview > img,
+.tiktok-import-preview > .moment-fallback { width: 62px; height: 78px; flex: 0 0 auto; border-radius: 8px; object-fit: cover; }
+.tiktok-import-preview > div { display: grid; gap: 7px; min-width: 0; }
+.tiktok-import-preview > div > b { overflow-wrap: anywhere; }
+.tiktok-import-results { display: grid; gap: 7px; max-height: 40vh; overflow: auto; margin: 10px 0 16px; }
+.tiktok-import-result { display: grid; grid-template-columns: 42px minmax(0,1fr) auto; align-items: center; gap: 10px; width: 100%; padding: 7px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.025); color: var(--text); text-align: left; cursor: pointer; }
+.tiktok-import-result:hover { border-color: rgba(255,77,141,.55); background: rgba(255,77,141,.08); }
+.tiktok-import-result img { width: 42px; height: 58px; border-radius: 6px; object-fit: cover; }
+.tiktok-import-result span { display: grid; gap: 3px; min-width: 0; }
+.tiktok-import-result small { overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
+.tiktok-import-result strong { color: #ff9dbc; font-size: 11px; }
 .synopsis-switch {
   display: inline-flex;
   flex: 0 0 auto;
@@ -2225,15 +2242,18 @@ body.mobile-app .load-row .btn { min-height: 44px; width: 100%; }
 
 /* ---------- уведомления ---------- */
 body.mobile-app .notif {
-  grid-template-columns: 38px 46px minmax(0, 1fr);
-  gap: 9px;
-  padding: 9px;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px;
   border-radius: 14px;
 }
 
+body.mobile-app .notif-visual { gap: 5px; }
+body.mobile-app .notif-date { padding: 2px 4px; font-size: 9px; }
+body.mobile-app .notif-date b { font-size: 12px; }
 body.mobile-app .notif-poster {
-  width: 46px;
-  height: 66px;
+  width: 76px;
+  height: 108px;
   border-radius: 9px;
 }
 
@@ -2242,7 +2262,7 @@ body.mobile-app .notif-meta { font-size: 10.5px; }
 body.mobile-app .notif-alt { font-size: 10.5px; }
 
 body.mobile-app .notif-actions {
-  grid-column: 2 / -1;
+  grid-column: 1 / -1;
   justify-content: flex-start;
 }
 
@@ -2281,6 +2301,12 @@ body.mobile-app .modal-panel {
   animation: none;
 }
 
+body.mobile-app .synopsis-toolbar { justify-content: flex-start; gap: 8px; }
+body.mobile-app .synopsis-provider { flex-wrap: wrap; }
+body.mobile-app .synopsis-provider select { max-width: min(195px, 52vw); }
+body.mobile-app .tiktok-import-panel { width: 100%; }
+body.mobile-app .tiktok-import-results { max-height: 32vh; }
+
 body.mobile-app .modal-grid {
   min-width: 0;
   grid-template-columns: 1fr;
@@ -2314,19 +2340,20 @@ body.mobile-app .moments-grid { grid-template-columns: repeat(2, minmax(0, 1fr))
 body.mobile-app .moment-preview { max-height: none; }
 body.mobile-app .moment-actions { gap: 10px; }
 body.mobile-app .custom-new { width: 100%; }
-body.mobile-app .franchise-section { padding: 12px; }
+body.mobile-app .franchise-section { min-width: 0; padding: 12px; }
 body.mobile-app .franchise-list {
   width: 100%;
   min-width: 0;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(145px, 43vw);
+  grid-auto-columns: minmax(0, calc((100% - 11px) / 2));
   grid-template-columns: none;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
   scroll-snap-type: x mandatory;
-  scrollbar-width: thin;
+  scrollbar-width: none;
   padding: 2px 2px 9px;
 }
+body.mobile-app .franchise-list::-webkit-scrollbar { display: none; }
 body.mobile-app .franchise-link { scroll-snap-align: start; }
 body.mobile-app .franchise-link-main { gap: 5px; padding: 9px; }
 body.mobile-app .franchise-link-main b { font-size: 11px; }
@@ -3311,6 +3338,11 @@ body.mobile-app .offline-banner {
     }
   }
 
+  function tiktokSearchUrl(title) {
+    const query = String(title == null ? '' : title).trim();
+    return query ? `https://www.tiktok.com/search?q=${encodeURIComponent(query)}` : '';
+  }
+
   function extractTikTokId(value) {
     const text = String(value == null ? '' : value).trim();
     const patterns = [
@@ -3518,6 +3550,7 @@ body.mobile-app .offline-banner {
     compactShareAnime,
     parseBackupJson,
     isTikTokUrl,
+    tiktokSearchUrl,
     extractTikTokId,
     tiktokPlayerUrl,
     formatBytes,
@@ -3777,6 +3810,11 @@ body.mobile-app .offline-banner {
 
   const VIEW_TABS = ['db', 'notifications', 'watched', 'planned', 'upcoming'];
   const DB_MODES = ['popular', 'score', 'airing', 'movie', 'custom'];
+  const TRANSLATION_PROVIDERS = ['auto', 'mymemory', 'google'];
+
+  function normalizeTranslationProvider(value) {
+    return TRANSLATION_PROVIDERS.includes(value) ? value : 'auto';
+  }
 
   function normalizeCatalogPreferences(raw) {
     const value = raw && typeof raw === 'object' ? raw : {};
@@ -3968,6 +4006,7 @@ body.mobile-app .offline-banner {
     forceDemo: new URLSearchParams(location.search).has('demo'),
     settings: {
       searchLang: 'auto',
+      translationProvider: 'auto',
       catalog: normalizeCatalogPreferences(),
     },
     modalId: null,
@@ -3991,6 +4030,7 @@ body.mobile-app .offline-banner {
     moments: {},
     customForm: { open: false, editingId: null, error: '', busy: false },
     momentForm: { open: false, animeId: null, mode: 'tiktok', error: '', busy: false, url: '', title: '' },
+    tiktokImport: { open: false, url: '', title: '', thumb: '', query: '', loading: false },
     backup: { open: false, busy: false, message: '', error: false },
     lists: { watched: emptyTiers(), planned: emptyTiers() },
     progress: {},
@@ -4224,6 +4264,7 @@ body.mobile-app .offline-banner {
       kind,
       title: String(raw.title == null ? '' : raw.title).trim().slice(0, 200),
       url,
+      videoId: kind === 'tiktok' ? String(raw.videoId || '').replace(/[^0-9]/g, '').slice(0, 32) : '',
       mediaKey,
       thumb,
       mime: String(raw.mime || '').slice(0, 100),
@@ -4327,9 +4368,10 @@ body.mobile-app .offline-banner {
       settings: rawState.settings && typeof rawState.settings === 'object'
         ? {
           searchLang: C.normalizeSearchLang(rawState.settings.searchLang),
+          translationProvider: normalizeTranslationProvider(rawState.settings.translationProvider),
           catalog: normalizeCatalogPreferences(rawState.settings.catalog),
         }
-        : { searchLang: 'auto', catalog: normalizeCatalogPreferences() },
+        : { searchLang: 'auto', translationProvider: 'auto', catalog: normalizeCatalogPreferences() },
     };
 
     const moments = {};
@@ -4520,6 +4562,7 @@ body.mobile-app .offline-banner {
       .slice(0, CUSTOM_LIMIT);
     state.seenNotifications = new Set(Array.isArray(raw.seenNotifications) ? raw.seenNotifications : []);
     state.settings.searchLang = C.normalizeSearchLang(raw.settings && raw.settings.searchLang);
+    state.settings.translationProvider = normalizeTranslationProvider(raw.settings && raw.settings.translationProvider);
     state.settings.catalog = normalizeCatalogPreferences(raw.settings && raw.settings.catalog);
 
     state.progress = {};
@@ -4557,6 +4600,7 @@ body.mobile-app .offline-banner {
         seenNotifications: [...state.seenNotifications],
         settings: {
           searchLang: C.normalizeSearchLang(state.settings.searchLang),
+          translationProvider: normalizeTranslationProvider(state.settings.translationProvider),
           catalog: normalizeCatalogPreferences(state.settings.catalog),
         },
       }));
@@ -5539,9 +5583,10 @@ body.mobile-app .offline-banner {
     return result;
   }
 
-  function translationKey(text) {
+  function translationKey(text, provider = 'mymemory') {
     const value = String(text || '');
-    return `t${App.hash(value)}-${value.length}`;
+    const key = `t${App.hash(value)}-${value.length}`;
+    return provider === 'mymemory' ? key : `${provider}:${key}`;
   }
 
   function loadTranslationCache() {
@@ -5571,10 +5616,21 @@ body.mobile-app .offline-banner {
     }
   }
 
-  function cachedTranslation(text) {
+  function cachedTranslation(text, provider = 'auto') {
     const value = String(text || '').trim();
     if (!value) return '';
-    return loadTranslationCache().get(translationKey(value)) || '';
+    const cache = loadTranslationCache();
+    if (provider === 'auto') return cache.get(translationKey(value, 'mymemory')) || cache.get(translationKey(value, 'google')) || '';
+    return cache.get(translationKey(value, provider)) || '';
+  }
+
+  function cachedTranslationProvider(text, provider = 'auto') {
+    const value = String(text || '').trim();
+    if (!value) return '';
+    if (provider !== 'auto') return cachedTranslation(value, provider) ? provider : '';
+    if (cachedTranslation(value, 'mymemory')) return 'mymemory';
+    if (cachedTranslation(value, 'google')) return 'google';
+    return '';
   }
 
   function splitTranslationChunks(text, maxLength = 450) {
@@ -5592,43 +5648,66 @@ body.mobile-app .offline-banner {
     return chunks;
   }
 
-  async function translateText(text) {
+  async function translateText(text, provider = 'auto') {
     const source = String(text || '').trim();
     if (!source) return '';
     if (C.hasCyrillic(source)) return source;
 
     const cache = loadTranslationCache();
-    const key = translationKey(source);
-    if (cache.has(key)) return cache.get(key);
-    if (translationInFlight.has(key)) return translationInFlight.get(key);
+    const requestedProvider = ['mymemory', 'google'].includes(provider) ? provider : 'auto';
+    const cached = cachedTranslation(source, requestedProvider);
+    if (cached) return cached;
+    const inFlightKey = `${requestedProvider}:${translationKey(source, 'mymemory')}`;
+    if (translationInFlight.has(inFlightKey)) return translationInFlight.get(inFlightKey);
 
     const pair = C.hasJapanese(source) ? 'ja|ru' : 'en|ru';
     const promise = (async () => {
       try {
         const chunks = splitTranslationChunks(source);
-        const translatedChunks = [];
-        for (const chunk of chunks) {
-          const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=${pair}`;
-          const json = await fetchWithTimeout(url, {}, 8000);
-          const status = Number(json?.responseStatus);
-          if (status && status !== 200) return '';
-          const translatedChunk = decodeEntities(json?.responseData?.translatedText || '').trim();
-          if (!translatedChunk || translatedChunk === chunk || /MYMEMORY WARNING/i.test(translatedChunk) || !C.hasCyrillic(translatedChunk)) return '';
-          translatedChunks.push(translatedChunk);
+        const providers = requestedProvider === 'auto' ? ['mymemory', 'google'] : [requestedProvider];
+        for (const currentProvider of providers) {
+          const translatedChunks = [];
+          let complete = true;
+          for (const chunk of chunks) {
+            try {
+              let translatedChunk = '';
+              if (currentProvider === 'mymemory') {
+                const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=${pair}`;
+                const json = await fetchWithTimeout(url, {}, 8000);
+                if (Number(json?.responseStatus) !== 200) { complete = false; break; }
+                translatedChunk = decodeEntities(json?.responseData?.translatedText || '').trim();
+                if (/MYMEMORY WARNING/i.test(translatedChunk)) translatedChunk = '';
+              } else {
+                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ru&dt=t&q=${encodeURIComponent(chunk)}`;
+                const json = await fetchWithTimeout(url, {}, 8000);
+                translatedChunk = Array.isArray(json?.[0])
+                  ? json[0].map(segment => Array.isArray(segment) ? String(segment[0] || '') : '').join('').trim()
+                  : '';
+              }
+              if (!translatedChunk || translatedChunk === chunk || !C.hasCyrillic(translatedChunk)) { complete = false; break; }
+              translatedChunks.push(translatedChunk);
+            } catch {
+              complete = false;
+              break;
+            }
+          }
+          if (complete && translatedChunks.length === chunks.length) {
+            const translated = translatedChunks.join(' ');
+            const key = translationKey(source, currentProvider);
+            cache.set(key, translated);
+            saveTranslationCache();
+            return translated;
+          }
         }
-        const translated = translatedChunks.join(' ');
-        if (!translated) return '';
-        cache.set(key, translated);
-        saveTranslationCache();
-        return translated;
+        return '';
       } catch {
         return '';
       } finally {
-        translationInFlight.delete(key);
+        translationInFlight.delete(inFlightKey);
       }
     })();
 
-    translationInFlight.set(key, promise);
+    translationInFlight.set(inFlightKey, promise);
     return promise;
   }
 
@@ -6071,6 +6150,7 @@ body.mobile-app .offline-banner {
     resolveSearchQuery,
     translateText,
     cachedTranslation,
+    cachedTranslationProvider,
     clearTranslationCache,
     reloadTranslationCache,
     driveFindBackup,
@@ -6581,8 +6661,7 @@ body.mobile-app .offline-banner {
       : `<span>Завершено ${esc(relativePast(a.airedTo))}</span>`;
 
     return `<article class="notif notif-${kind}" data-action="open" data-id="${a.id}" tabindex="0" aria-label="${esc(a.title)}">
-      <div class="notif-date"><b>${day}</b><span>${mon}</span></div>
-      <img class="notif-poster" ${imgAttrs(a, '')}>
+      <div class="notif-visual"><div class="notif-date"><b>${day}</b><span>${mon}</span></div><img class="notif-poster" ${imgAttrs(a, '')}></div>
       <div class="notif-body">
         <h3 class="notif-title">${esc(a.title)}${isNew ? '<span class="flag-new">new</span>' : ''}</h3>
         <p class="notif-alt">${esc(a.altTitle || '')}</p>
@@ -6833,6 +6912,7 @@ body.mobile-app .offline-banner {
         <div class="moment-title" title="${esc(momentLabel(m))}">${esc(momentLabel(m))}</div>
         <div class="moment-meta">${esc(meta)}${m.size ? ` · ${esc(C.formatBytes(m.size))}` : ''}</div>
         <div class="moment-actions">
+          ${m.kind === 'tiktok' ? `<button class="ep-link" type="button" data-action="moment-open-tiktok" data-id="${animeId}" data-moment="${esc(m.id)}">Открыть в TikTok ↗</button>` : ''}
           <button class="ep-link" type="button" data-action="moment-share" data-id="${animeId}" data-moment="${esc(m.id)}">Поделиться</button>
           <button class="ep-link" type="button" data-action="moment-delete" data-id="${animeId}" data-moment="${esc(m.id)}">Удалить</button>
         </div>
@@ -6899,6 +6979,63 @@ body.mobile-app .offline-banner {
         <button class="btn btn-ghost" type="button" data-action="close-moment">Отмена</button>
       </div>
     </form>`;
+  }
+
+  function tiktokImportOptions() {
+    const unique = new Map();
+    const add = anime => { if (anime && Number.isFinite(Number(anime.id)) && anime.title) unique.set(Number(anime.id), anime); };
+    state.byId.forEach(add);
+    for (const list of ['watched', 'planned']) allIn(list).forEach(add);
+    (state.db.items || []).forEach(add);
+    (state.upcoming.items || []).forEach(add);
+    const query = C.normalizeTitleKey(state.tiktokImport.query);
+    let items = [...unique.values()];
+    if (query) {
+      items = items.filter(anime => [anime.title, anime.altTitle, ...(anime.aliases || [])]
+        .some(title => C.normalizeTitleKey(title).includes(query)));
+    } else {
+      const tracked = new Set([...allIn('watched'), ...allIn('planned')].map(anime => anime.id));
+      items = items.filter(anime => tracked.has(anime.id));
+    }
+    return items.slice(0, 16);
+  }
+
+  function renderTikTokImport() {
+    const model = state.tiktokImport;
+    if (!model || !model.open) return;
+    let modal = $('#tiktok-import-modal');
+    if (!modal) {
+      document.body.insertAdjacentHTML('beforeend', `<div class="modal" id="tiktok-import-modal" hidden>
+        <div class="modal-backdrop" data-action="close-tiktok-import"></div>
+        <section class="modal-panel tiktok-import-panel" role="dialog" aria-modal="true" aria-labelledby="tiktok-import-title" tabindex="-1">
+          <button class="modal-close" data-action="close-tiktok-import" aria-label="Закрыть">✕</button>
+          <div class="custom-content" id="tiktok-import-content"></div>
+        </section>
+      </div>`);
+      modal = $('#tiktok-import-modal');
+    }
+    const inputFocused = document.activeElement && document.activeElement.id === 'tiktok-import-search';
+    const selection = inputFocused ? document.activeElement.selectionStart : null;
+    const items = tiktokImportOptions();
+    const rows = items.map(anime => `<button type="button" class="tiktok-import-result" data-action="tiktok-import-save" data-id="${anime.id}">
+      <img ${imgAttrs(anime, '')}><span><b>${esc(anime.title)}</b><small>${esc([anime.altTitle, anime.year, typeRu(anime.type)].filter(Boolean).join(' · '))}</small></span><strong>Добавить</strong>
+    </button>`).join('');
+    const hint = items.length ? '' : model.query
+      ? '<p class="ep-note">В загруженном каталоге такого аниме нет. Сначала найдите его во вкладке «База».</p>'
+      : '<p class="ep-note">Введите название аниме или выберите его из своих списков ниже.</p>';
+    $('#tiktok-import-content').innerHTML = `<h2 id="tiktok-import-title">Добавить видео TikTok к аниме</h2>
+      <p class="form-note">Откройте понравившееся видео в TikTok, нажмите «Поделиться» и выберите AniTier. Затем укажите карточку аниме.</p>
+      <div class="tiktok-import-preview">${model.thumb ? `<img src="${esc(model.thumb)}" alt="">` : '<span class="moment-fallback">TikTok</span>'}
+        <div><b>${esc(model.title || 'Видео TikTok')}</b><button class="ep-link" type="button" data-action="tiktok-import-open-video">Открыть видео в TikTok ↗</button></div></div>
+      <label class="form-field"><span>Аниме</span><input id="tiktok-import-search" type="search" value="${esc(model.query)}" placeholder="Например, Фрирен или Bleach" autocomplete="off"></label>
+      <div class="tiktok-import-results">${rows || hint}</div>
+      <p class="form-note">Видео появится в разделе «Моменты» выбранной карточки. Добавляйте понравившиеся видео по одному через системное меню «Поделиться».</p>`;
+    modal.hidden = false;
+    const input = $('#tiktok-import-search');
+    if (inputFocused && input) {
+      input.focus({ preventScroll: true });
+      if (selection != null) input.setSelectionRange(selection, selection);
+    }
   }
 
   function renderBackup() {
@@ -6985,6 +7122,7 @@ body.mobile-app .offline-banner {
       || Boolean(state.exchange && state.exchange.open)
       || Boolean(state.customForm && state.customForm.open)
       || Boolean(state.momentForm && state.momentForm.open)
+      || Boolean(state.tiktokImport && state.tiktokImport.open)
       || Boolean(state.backup && state.backup.open);
     document.body.classList.toggle('no-scroll', locked);
   }
@@ -7405,14 +7543,24 @@ body.mobile-app .offline-banner {
     const tiers = TIERS.map(t => `<button class="tier-pick tier-${t.id} ${curTier === t.id ? 'is-active' : ''}" data-action="set-tier" data-id="${a.id}" data-tier="${t.id}" title="${esc(t.name)}" aria-label="Тир ${esc(t.name)}">${t.label}</button>`).join('');
     const genres = (a.genres || []).map(g => `<span class="tag">${esc(C.genreRu(g))}</span>`).join('');
     const poster = a.image || makePoster(a.title, a.id);
-    const translatedSynopsis = App.cachedTranslation ? App.cachedTranslation(a.synopsis) : '';
+    const translationProvider = state.settings.translationProvider || 'auto';
+    const translatedSynopsis = App.cachedTranslation ? App.cachedTranslation(a.synopsis, translationProvider) : '';
+    const translatedVia = App.cachedTranslationProvider ? App.cachedTranslationProvider(a.synopsis, translationProvider) : '';
+    const translationRequestKey = `${a.id}:${translationProvider}`;
     const canTranslateSynopsis = Boolean(a.synopsis && !C.hasCyrillic(a.synopsis));
     const synopsisMode = state.synopsisModes.get(a.id) || 'translated';
     const showTranslatedSynopsis = Boolean(canTranslateSynopsis && translatedSynopsis && synopsisMode !== 'original');
     const synopsis = (showTranslatedSynopsis ? translatedSynopsis : a.synopsis) || 'Описание пока недоступно.';
     const synopsisControls = canTranslateSynopsis
       ? `<div class="synopsis-toolbar">
-          <span class="synopsis-translation-status" role="status">${translatedSynopsis ? (showTranslatedSynopsis ? 'Перевод MyMemory' : 'Оригинал') : (state.synopsisTranslating.has(a.id) ? 'Переводим…' : 'Перевод пока недоступен')}</span>
+          <label class="synopsis-provider">Переводчик
+            <select data-action="synopsis-provider" aria-label="Переводчик описания">
+              <option value="auto"${translationProvider === 'auto' ? ' selected' : ''}>Авто: MyMemory → Google</option>
+              <option value="mymemory"${translationProvider === 'mymemory' ? ' selected' : ''}>MyMemory</option>
+              <option value="google"${translationProvider === 'google' ? ' selected' : ''}>Google Переводчик</option>
+            </select>
+          </label>
+          <span class="synopsis-translation-status" role="status">${translatedSynopsis ? (showTranslatedSynopsis ? `Перевод: ${translatedVia === 'google' ? 'Google' : 'MyMemory'}` : 'Оригинал') : (state.synopsisTranslating.has(translationRequestKey) ? 'Переводим…' : 'Перевод пока недоступен')}</span>
           <div class="synopsis-switch" role="group" aria-label="Язык описания">
             <button type="button" data-action="synopsis-mode" data-id="${a.id}" data-mode="translated" aria-pressed="${showTranslatedSynopsis ? 'true' : 'false'}"${translatedSynopsis ? '' : ' disabled'}>Перевод</button>
             <button type="button" data-action="synopsis-mode" data-id="${a.id}" data-mode="original" aria-pressed="${!showTranslatedSynopsis ? 'true' : 'false'}">Оригинал</button>
@@ -7436,6 +7584,7 @@ body.mobile-app .offline-banner {
           <div class="modal-actions">
             <button class="btn ${inW ? 'is-on' : 'btn-primary'}" data-action="add-watched" data-id="${a.id}">${inW ? '✓ В просмотрено' : 'Отметить просмотренным'}</button>
             <button class="btn btn-ghost ${inP ? 'is-on' : ''}" data-action="add-planned" data-id="${a.id}">${inP ? '◷ В планах' : 'Запланировать'}</button>
+            ${!a.custom ? `<button class="btn btn-ghost" data-action="tiktok-search" data-id="${a.id}">Искать в TikTok</button>` : ''}
           </div>
           ${customActions}
           <div class="modal-section">
@@ -7571,6 +7720,7 @@ body.mobile-app .offline-banner {
     openMomentForm,
     closeMomentForm,
     renderMomentForm,
+    renderTikTokImport,
     renderBackup,
     openBackup,
     closeBackup,
@@ -8113,9 +8263,42 @@ body.mobile-app .offline-banner {
 
   /* ---------------- drag & drop ---------------- */
   let dragState = null;
+  let dragPointerY = null;
+  let dragAutoScrollFrame = 0;
+  let touchDrag = null;
+  let suppressTierClickUntil = 0;
+
+  function runDragAutoScroll() {
+    if (dragAutoScrollFrame || !dragState) return;
+    const step = () => {
+      dragAutoScrollFrame = 0;
+      if (!dragState || dragPointerY == null) return;
+      const height = window.innerHeight || document.documentElement.clientHeight;
+      const edge = Math.max(52, Math.min(110, height * .14));
+      let delta = 0;
+      if (dragPointerY > height - edge) delta = Math.ceil(((dragPointerY - (height - edge)) / edge) * 24);
+      else if (dragPointerY < edge) delta = -Math.ceil(((edge - dragPointerY) / edge) * 24);
+      if (!delta) return;
+      window.scrollBy(0, delta);
+      if (touchDrag && touchDrag.active && touchDrag.clientX != null) {
+        const hit = document.elementFromPoint(touchDrag.clientX, touchDrag.clientY);
+        const drop = hit && hit.closest ? hit.closest('.tier-drop') : null;
+        $$('.tier-drop.is-over').forEach(item => { if (item !== drop) item.classList.remove('is-over'); });
+        if (drop && drop.dataset.list === touchDrag.list) drop.classList.add('is-over');
+        touchDrag.drop = drop;
+      }
+      dragAutoScrollFrame = window.requestAnimationFrame(step);
+    };
+    dragAutoScrollFrame = window.requestAnimationFrame(step);
+  }
 
   function cleanupDrag() {
     dragState = null;
+    dragPointerY = null;
+    if (touchDrag && touchDrag.timer) clearTimeout(touchDrag.timer);
+    touchDrag = null;
+    if (dragAutoScrollFrame) window.cancelAnimationFrame(dragAutoScrollFrame);
+    dragAutoScrollFrame = 0;
     $$('.tier-card.dragging').forEach(c => c.classList.remove('dragging'));
     $$('.tier-drop.is-over').forEach(d => d.classList.remove('is-over'));
   }
@@ -8136,6 +8319,8 @@ body.mobile-app .offline-banner {
 
     document.addEventListener('dragover', e => {
       if (!dragState) return;
+      dragPointerY = e.clientY;
+      runDragAutoScroll();
       const drop = e.target.closest && e.target.closest('.tier-drop');
       if (!drop) return;
       e.preventDefault();
@@ -8163,6 +8348,67 @@ body.mobile-app .offline-banner {
       if (name !== list) return;
       moveToTier(name, id, tier);
     });
+
+    document.addEventListener('pointerdown', e => {
+      if (e.pointerType !== 'touch' || !e.isPrimary) return;
+      const card = e.target.closest && e.target.closest('.tier-card');
+      if (!card || e.target.closest('button')) return;
+      const gesture = {
+        card,
+        list: card.dataset.list,
+        id: Number(card.dataset.id),
+        startX: e.clientX,
+        startY: e.clientY,
+        pointerId: e.pointerId,
+        active: false,
+        timer: 0,
+      };
+      gesture.timer = setTimeout(() => {
+        if (touchDrag !== gesture) return;
+        gesture.active = true;
+        dragState = { list: gesture.list, id: gesture.id };
+        card.classList.add('dragging');
+        try { card.setPointerCapture(gesture.pointerId); } catch { /* старые WebView */ }
+        if (navigator.vibrate) navigator.vibrate(18);
+      }, 360);
+      touchDrag = gesture;
+    }, { passive: true });
+
+    document.addEventListener('pointermove', e => {
+      if (!touchDrag) return;
+      if (!touchDrag.active) {
+        if (Math.hypot(e.clientX - touchDrag.startX, e.clientY - touchDrag.startY) > 12) {
+          clearTimeout(touchDrag.timer);
+          touchDrag = null;
+        }
+        return;
+      }
+      e.preventDefault();
+      touchDrag.clientX = e.clientX;
+      touchDrag.clientY = e.clientY;
+      dragPointerY = e.clientY;
+      runDragAutoScroll();
+      const hit = document.elementFromPoint(e.clientX, e.clientY);
+      const drop = hit && hit.closest ? hit.closest('.tier-drop') : null;
+      $$('.tier-drop.is-over').forEach(item => { if (item !== drop) item.classList.remove('is-over'); });
+      if (drop && drop.dataset.list === touchDrag.list) drop.classList.add('is-over');
+      touchDrag.drop = drop;
+    }, { passive: false });
+
+    document.addEventListener('pointerup', e => {
+      if (!touchDrag) return;
+      const gesture = touchDrag;
+      clearTimeout(gesture.timer);
+      touchDrag = null;
+      if (!gesture.active) return;
+      const hit = document.elementFromPoint(e.clientX, e.clientY);
+      const drop = hit && hit.closest ? hit.closest('.tier-drop') : gesture.drop;
+      suppressTierClickUntil = Date.now() + 500;
+      cleanupDrag();
+      if (drop && drop.dataset.list === gesture.list) moveToTier(gesture.list, gesture.id, drop.dataset.tier);
+    }, { passive: true });
+
+    document.addEventListener('pointercancel', cleanupDrag, { passive: true });
   }
 
   /* ---------------- события ---------------- */
@@ -8194,18 +8440,22 @@ body.mobile-app .offline-banner {
   async function translateModalSynopsis(id) {
     const a = getAnime(id);
     if (!a || !a.synopsis || C.hasCyrillic(a.synopsis)) return '';
-    const cached = cachedTranslation(a.synopsis);
+    const provider = state.settings.translationProvider || 'auto';
+    const cached = cachedTranslation(a.synopsis, provider);
     if (cached) return cached;
-    if (state.synopsisTranslating.has(id)) return '';
-    state.synopsisTranslating.add(id);
+    const requestKey = `${id}:${provider}`;
+    if (state.synopsisTranslating.has(requestKey)) return '';
+    state.synopsisTranslating.add(requestKey);
     const status = $('#modal-content .synopsis-translation-status');
     if (status) status.textContent = 'Переводим…';
     let translated = '';
-    try { translated = await translateText(a.synopsis); }
+    try { translated = await translateText(a.synopsis, provider); }
     catch { translated = ''; }
-    finally { state.synopsisTranslating.delete(id); }
+    finally { state.synopsisTranslating.delete(requestKey); }
     if (state.modalId !== id) return translated;
     if (App.renderModal) App.renderModal();
+    const currentProvider = state.settings.translationProvider || 'auto';
+    if (currentProvider !== provider && !cachedTranslation(a.synopsis, currentProvider)) translateModalSynopsis(id);
     return translated;
   }
 
@@ -8404,6 +8654,80 @@ body.mobile-app .offline-banner {
   }
 
   /* ---------------- моменты ---------------- */
+  function openTikTokUrl(url) {
+    const target = String(url || '');
+    if (!C.isTikTokUrl(target)) { toast('Ссылка TikTok недействительна'); return false; }
+    try {
+      if (window.AniTierAndroid && typeof window.AniTierAndroid.openTikTok === 'function') {
+        return window.AniTierAndroid.openTikTok(target);
+      }
+      const opened = window.open(target, '_blank', 'noopener');
+      if (!opened) window.location.href = target;
+      return true;
+    } catch {
+      window.location.href = target;
+      return true;
+    }
+  }
+
+  function closeTikTokImport() {
+    state.tiktokImport = { open: false, url: '', title: '', thumb: '', query: '', loading: false };
+    const modal = $('#tiktok-import-modal');
+    if (modal) modal.hidden = true;
+    App.syncBodyScroll();
+  }
+
+  function openTikTokImport(url) {
+    const target = String(url || '').trim();
+    if (!C.isTikTokUrl(target)) { toast('Не удалось прочитать ссылку TikTok'); return false; }
+    if (state.modalId != null) closeModal();
+    state.tiktokImport = { open: true, url: target, title: '', thumb: '', videoId: '', query: '', loading: true };
+    App.renderTikTokImport();
+    App.syncBodyScroll();
+    const panel = $('#tiktok-import-modal .modal-panel');
+    if (panel) { panel.scrollTop = 0; panel.focus({ preventScroll: true }); }
+    fetchTikTokMeta(target).then(meta => {
+      if (!state.tiktokImport.open || state.tiktokImport.url !== target) return;
+      state.tiktokImport.title = meta.title || '';
+      state.tiktokImport.thumb = meta.thumb || '';
+      state.tiktokImport.videoId = meta.videoId || C.extractTikTokId(target) || '';
+      state.tiktokImport.loading = false;
+      App.renderTikTokImport();
+    });
+    return true;
+  }
+
+  function receiveSharedTikTok(text) {
+    const links = String(text || '').match(/https?:\/\/[^\s<>"']+/gi) || [String(text || '').trim()];
+    const url = links.map(link => link.replace(/[),.;!?\]}]+$/g, '')).find(C.isTikTokUrl);
+    if (!url) { toast('В полученном сообщении нет ссылки TikTok'); return false; }
+    return openTikTokImport(url);
+  }
+
+  function saveSharedTikTok(animeId) {
+    const anime = getAnime(animeId);
+    const imported = state.tiktokImport;
+    if (!anime || !imported || !imported.url) return;
+    const existing = momentsFor(animeId).find(moment => moment.kind === 'tiktok' && moment.url === imported.url);
+    if (existing) {
+      closeTikTokImport();
+      toast(`Это видео уже есть в карточке «${anime.title}»`);
+      return;
+    }
+    addMoment(animeId, {
+      id: C.extractTikTokId(imported.url) || newUid(),
+      kind: 'tiktok',
+      url: imported.url,
+      title: imported.title || anime.title,
+      thumb: imported.thumb,
+      videoId: imported.videoId || C.extractTikTokId(imported.url) || '',
+      createdAt: Date.now(),
+    });
+    closeTikTokImport();
+    openModal(animeId);
+    toast(`Видео TikTok добавлено к «${anime.title}»`);
+  }
+
   function captureMomentDraft() {
     const form = $('#moment-form');
     if (!form) return;
@@ -8443,6 +8767,7 @@ body.mobile-app .offline-banner {
           kind: 'tiktok',
           title: title || meta.title || '',
           url,
+          videoId,
           thumb: meta.thumb || '',
           createdAt: Date.now(),
         });
@@ -8518,7 +8843,7 @@ body.mobile-app .offline-banner {
     if (!moment) return;
 
     if (moment.kind === 'tiktok') {
-      const videoId = C.extractTikTokId(moment.url);
+      const videoId = moment.videoId || C.extractTikTokId(moment.url);
       if (!videoId) { toast('Не удалось открыть TikTok'); return; }
       button.innerHTML = `<iframe class="moment-frame" src="${C.tiktokPlayerUrl(videoId)}" title="TikTok" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
       button.dataset.loaded = '1';
@@ -8950,6 +9275,10 @@ body.mobile-app .offline-banner {
 
   function bindEvents() {
     document.addEventListener('click', e => {
+      if (Date.now() < suppressTierClickUntil && e.target.closest && e.target.closest('.tier-card')) {
+        e.preventDefault();
+        return;
+      }
       const el = e.target.closest && e.target.closest('[data-action]');
       if (!el) return;
       const action = el.dataset.action;
@@ -8973,11 +9302,37 @@ body.mobile-app .offline-banner {
           if (id == null || !['translated', 'original'].includes(el.dataset.mode)) break;
           const anime = getAnime(id);
           if (!anime) break;
-          if (el.dataset.mode === 'translated' && !cachedTranslation(anime.synopsis)) break;
+          if (el.dataset.mode === 'translated' && !cachedTranslation(anime.synopsis, state.settings.translationProvider || 'auto')) break;
           state.synopsisModes.set(id, el.dataset.mode);
           renderModal();
           break;
         }
+
+        case 'tiktok-search': {
+          const anime = getAnime(id);
+          const query = anime ? [anime.title, anime.altTitle].filter(Boolean).join(' ') : '';
+          const url = C.tiktokSearchUrl(query);
+          if (url) openTikTokUrl(url);
+          break;
+        }
+
+        case 'moment-open-tiktok': {
+          const moment = findMoment(id, el.dataset.moment);
+          if (moment) openTikTokUrl(moment.url);
+          break;
+        }
+
+        case 'tiktok-import-open-video':
+          openTikTokUrl(state.tiktokImport.url);
+          break;
+
+        case 'tiktok-import-save':
+          saveSharedTikTok(id);
+          break;
+
+        case 'close-tiktok-import':
+          closeTikTokImport();
+          break;
 
         case 'add-watched':
           toggleList('watched', getAnime(id));
@@ -9307,6 +9662,12 @@ body.mobile-app .offline-banner {
     }
 
     document.addEventListener('input', e => {
+      const tiktokQuery = e.target.closest && e.target.closest('#tiktok-import-search');
+      if (tiktokQuery && state.tiktokImport.open) {
+        state.tiktokImport.query = tiktokQuery.value;
+        App.renderTikTokImport();
+        return;
+      }
       const slider = e.target.closest && e.target.closest('input[data-action="ep-slider"]');
       if (slider) previewEpisodeSlider(slider);
       if (e.target && e.target.id === 'import-code' && state.exchange.open) {
@@ -9315,6 +9676,16 @@ body.mobile-app .offline-banner {
     });
 
     document.addEventListener('change', e => {
+      const provider = e.target.closest && e.target.closest('select[data-action="synopsis-provider"]');
+      if (provider) {
+        state.settings.translationProvider = ['mymemory', 'google'].includes(provider.value) ? provider.value : 'auto';
+        saveState();
+        if (state.modalId != null) {
+          const animeId = state.modalId;
+          renderModal();
+          if (state.synopsisModes.get(animeId) !== 'original') translateModalSynopsis(animeId);
+        }
+      }
       const slider = e.target.closest && e.target.closest('input[data-action="ep-slider"]');
       if (!slider) return;
       const id = Number(slider.dataset.id);
@@ -9324,6 +9695,10 @@ body.mobile-app .offline-banner {
 
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
+        if (state.tiktokImport.open) {
+          closeTikTokImport();
+          return;
+        }
         if (state.backup.open) {
           closeBackup();
           return;
@@ -9521,6 +9896,7 @@ body.mobile-app .offline-banner {
     removeCustomCard,
     hydrateCustomImage,
     saveMomentForm,
+    receiveSharedTikTok,
     playMoment,
     shareMoment,
     removeMomentAction,
@@ -9574,6 +9950,7 @@ body.mobile-app .offline-banner {
       searchQueryForAlt,
       translateText,
       translateModalSynopsis,
+      receiveSharedTikTok,
       invalidateNotificationEpisodes,
       openExchange,
       closeExchange,

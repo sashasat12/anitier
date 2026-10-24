@@ -214,15 +214,18 @@ body.mobile-app .load-row .btn { min-height: 44px; width: 100%; }
 
 /* ---------- уведомления ---------- */
 body.mobile-app .notif {
-  grid-template-columns: 38px 46px minmax(0, 1fr);
-  gap: 9px;
-  padding: 9px;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px;
   border-radius: 14px;
 }
 
+body.mobile-app .notif-visual { gap: 5px; }
+body.mobile-app .notif-date { padding: 2px 4px; font-size: 9px; }
+body.mobile-app .notif-date b { font-size: 12px; }
 body.mobile-app .notif-poster {
-  width: 46px;
-  height: 66px;
+  width: 76px;
+  height: 108px;
   border-radius: 9px;
 }
 
@@ -231,7 +234,7 @@ body.mobile-app .notif-meta { font-size: 10.5px; }
 body.mobile-app .notif-alt { font-size: 10.5px; }
 
 body.mobile-app .notif-actions {
-  grid-column: 2 / -1;
+  grid-column: 1 / -1;
   justify-content: flex-start;
 }
 
@@ -270,6 +273,12 @@ body.mobile-app .modal-panel {
   animation: none;
 }
 
+body.mobile-app .synopsis-toolbar { justify-content: flex-start; gap: 8px; }
+body.mobile-app .synopsis-provider { flex-wrap: wrap; }
+body.mobile-app .synopsis-provider select { max-width: min(195px, 52vw); }
+body.mobile-app .tiktok-import-panel { width: 100%; }
+body.mobile-app .tiktok-import-results { max-height: 32vh; }
+
 body.mobile-app .modal-grid {
   min-width: 0;
   grid-template-columns: 1fr;
@@ -303,19 +312,20 @@ body.mobile-app .moments-grid { grid-template-columns: repeat(2, minmax(0, 1fr))
 body.mobile-app .moment-preview { max-height: none; }
 body.mobile-app .moment-actions { gap: 10px; }
 body.mobile-app .custom-new { width: 100%; }
-body.mobile-app .franchise-section { padding: 12px; }
+body.mobile-app .franchise-section { min-width: 0; padding: 12px; }
 body.mobile-app .franchise-list {
   width: 100%;
   min-width: 0;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(145px, 43vw);
+  grid-auto-columns: minmax(0, calc((100% - 11px) / 2));
   grid-template-columns: none;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
   scroll-snap-type: x mandatory;
-  scrollbar-width: thin;
+  scrollbar-width: none;
   padding: 2px 2px 9px;
 }
+body.mobile-app .franchise-list::-webkit-scrollbar { display: none; }
 body.mobile-app .franchise-link { scroll-snap-align: start; }
 body.mobile-app .franchise-link-main { gap: 5px; padding: 9px; }
 body.mobile-app .franchise-link-main b { font-size: 11px; }

@@ -489,8 +489,7 @@
       : `<span>Завершено ${esc(relativePast(a.airedTo))}</span>`;
 
     return `<article class="notif notif-${kind}" data-action="open" data-id="${a.id}" tabindex="0" aria-label="${esc(a.title)}">
-      <div class="notif-date"><b>${day}</b><span>${mon}</span></div>
-      <img class="notif-poster" ${imgAttrs(a, '')}>
+      <div class="notif-visual"><div class="notif-date"><b>${day}</b><span>${mon}</span></div><img class="notif-poster" ${imgAttrs(a, '')}></div>
       <div class="notif-body">
         <h3 class="notif-title">${esc(a.title)}${isNew ? '<span class="flag-new">new</span>' : ''}</h3>
         <p class="notif-alt">${esc(a.altTitle || '')}</p>
@@ -741,6 +740,7 @@
         <div class="moment-title" title="${esc(momentLabel(m))}">${esc(momentLabel(m))}</div>
         <div class="moment-meta">${esc(meta)}${m.size ? ` · ${esc(C.formatBytes(m.size))}` : ''}</div>
         <div class="moment-actions">
+          ${m.kind === 'tiktok' ? `<button class="ep-link" type="button" data-action="moment-open-tiktok" data-id="${animeId}" data-moment="${esc(m.id)}">Открыть в TikTok ↗</button>` : ''}
           <button class="ep-link" type="button" data-action="moment-share" data-id="${animeId}" data-moment="${esc(m.id)}">Поделиться</button>
           <button class="ep-link" type="button" data-action="moment-delete" data-id="${animeId}" data-moment="${esc(m.id)}">Удалить</button>
         </div>
@@ -807,6 +807,63 @@
         <button class="btn btn-ghost" type="button" data-action="close-moment">Отмена</button>
       </div>
     </form>`;
+  }
+
+  function tiktokImportOptions() {
+    const unique = new Map();
+    const add = anime => { if (anime && Number.isFinite(Number(anime.id)) && anime.title) unique.set(Number(anime.id), anime); };
+    state.byId.forEach(add);
+    for (const list of ['watched', 'planned']) allIn(list).forEach(add);
+    (state.db.items || []).forEach(add);
+    (state.upcoming.items || []).forEach(add);
+    const query = C.normalizeTitleKey(state.tiktokImport.query);
+    let items = [...unique.values()];
+    if (query) {
+      items = items.filter(anime => [anime.title, anime.altTitle, ...(anime.aliases || [])]
+        .some(title => C.normalizeTitleKey(title).includes(query)));
+    } else {
+      const tracked = new Set([...allIn('watched'), ...allIn('planned')].map(anime => anime.id));
+      items = items.filter(anime => tracked.has(anime.id));
+    }
+    return items.slice(0, 16);
+  }
+
+  function renderTikTokImport() {
+    const model = state.tiktokImport;
+    if (!model || !model.open) return;
+    let modal = $('#tiktok-import-modal');
+    if (!modal) {
+      document.body.insertAdjacentHTML('beforeend', `<div class="modal" id="tiktok-import-modal" hidden>
+        <div class="modal-backdrop" data-action="close-tiktok-import"></div>
+        <section class="modal-panel tiktok-import-panel" role="dialog" aria-modal="true" aria-labelledby="tiktok-import-title" tabindex="-1">
+          <button class="modal-close" data-action="close-tiktok-import" aria-label="Закрыть">✕</button>
+          <div class="custom-content" id="tiktok-import-content"></div>
+        </section>
+      </div>`);
+      modal = $('#tiktok-import-modal');
+    }
+    const inputFocused = document.activeElement && document.activeElement.id === 'tiktok-import-search';
+    const selection = inputFocused ? document.activeElement.selectionStart : null;
+    const items = tiktokImportOptions();
+    const rows = items.map(anime => `<button type="button" class="tiktok-import-result" data-action="tiktok-import-save" data-id="${anime.id}">
+      <img ${imgAttrs(anime, '')}><span><b>${esc(anime.title)}</b><small>${esc([anime.altTitle, anime.year, typeRu(anime.type)].filter(Boolean).join(' · '))}</small></span><strong>Добавить</strong>
+    </button>`).join('');
+    const hint = items.length ? '' : model.query
+      ? '<p class="ep-note">В загруженном каталоге такого аниме нет. Сначала найдите его во вкладке «База».</p>'
+      : '<p class="ep-note">Введите название аниме или выберите его из своих списков ниже.</p>';
+    $('#tiktok-import-content').innerHTML = `<h2 id="tiktok-import-title">Добавить видео TikTok к аниме</h2>
+      <p class="form-note">Откройте понравившееся видео в TikTok, нажмите «Поделиться» и выберите AniTier. Затем укажите карточку аниме.</p>
+      <div class="tiktok-import-preview">${model.thumb ? `<img src="${esc(model.thumb)}" alt="">` : '<span class="moment-fallback">TikTok</span>'}
+        <div><b>${esc(model.title || 'Видео TikTok')}</b><button class="ep-link" type="button" data-action="tiktok-import-open-video">Открыть видео в TikTok ↗</button></div></div>
+      <label class="form-field"><span>Аниме</span><input id="tiktok-import-search" type="search" value="${esc(model.query)}" placeholder="Например, Фрирен или Bleach" autocomplete="off"></label>
+      <div class="tiktok-import-results">${rows || hint}</div>
+      <p class="form-note">Видео появится в разделе «Моменты» выбранной карточки. Добавляйте понравившиеся видео по одному через системное меню «Поделиться».</p>`;
+    modal.hidden = false;
+    const input = $('#tiktok-import-search');
+    if (inputFocused && input) {
+      input.focus({ preventScroll: true });
+      if (selection != null) input.setSelectionRange(selection, selection);
+    }
   }
 
   function renderBackup() {
@@ -893,6 +950,7 @@
       || Boolean(state.exchange && state.exchange.open)
       || Boolean(state.customForm && state.customForm.open)
       || Boolean(state.momentForm && state.momentForm.open)
+      || Boolean(state.tiktokImport && state.tiktokImport.open)
       || Boolean(state.backup && state.backup.open);
     document.body.classList.toggle('no-scroll', locked);
   }
@@ -1313,14 +1371,24 @@
     const tiers = TIERS.map(t => `<button class="tier-pick tier-${t.id} ${curTier === t.id ? 'is-active' : ''}" data-action="set-tier" data-id="${a.id}" data-tier="${t.id}" title="${esc(t.name)}" aria-label="Тир ${esc(t.name)}">${t.label}</button>`).join('');
     const genres = (a.genres || []).map(g => `<span class="tag">${esc(C.genreRu(g))}</span>`).join('');
     const poster = a.image || makePoster(a.title, a.id);
-    const translatedSynopsis = App.cachedTranslation ? App.cachedTranslation(a.synopsis) : '';
+    const translationProvider = state.settings.translationProvider || 'auto';
+    const translatedSynopsis = App.cachedTranslation ? App.cachedTranslation(a.synopsis, translationProvider) : '';
+    const translatedVia = App.cachedTranslationProvider ? App.cachedTranslationProvider(a.synopsis, translationProvider) : '';
+    const translationRequestKey = `${a.id}:${translationProvider}`;
     const canTranslateSynopsis = Boolean(a.synopsis && !C.hasCyrillic(a.synopsis));
     const synopsisMode = state.synopsisModes.get(a.id) || 'translated';
     const showTranslatedSynopsis = Boolean(canTranslateSynopsis && translatedSynopsis && synopsisMode !== 'original');
     const synopsis = (showTranslatedSynopsis ? translatedSynopsis : a.synopsis) || 'Описание пока недоступно.';
     const synopsisControls = canTranslateSynopsis
       ? `<div class="synopsis-toolbar">
-          <span class="synopsis-translation-status" role="status">${translatedSynopsis ? (showTranslatedSynopsis ? 'Перевод MyMemory' : 'Оригинал') : (state.synopsisTranslating.has(a.id) ? 'Переводим…' : 'Перевод пока недоступен')}</span>
+          <label class="synopsis-provider">Переводчик
+            <select data-action="synopsis-provider" aria-label="Переводчик описания">
+              <option value="auto"${translationProvider === 'auto' ? ' selected' : ''}>Авто: MyMemory → Google</option>
+              <option value="mymemory"${translationProvider === 'mymemory' ? ' selected' : ''}>MyMemory</option>
+              <option value="google"${translationProvider === 'google' ? ' selected' : ''}>Google Переводчик</option>
+            </select>
+          </label>
+          <span class="synopsis-translation-status" role="status">${translatedSynopsis ? (showTranslatedSynopsis ? `Перевод: ${translatedVia === 'google' ? 'Google' : 'MyMemory'}` : 'Оригинал') : (state.synopsisTranslating.has(translationRequestKey) ? 'Переводим…' : 'Перевод пока недоступен')}</span>
           <div class="synopsis-switch" role="group" aria-label="Язык описания">
             <button type="button" data-action="synopsis-mode" data-id="${a.id}" data-mode="translated" aria-pressed="${showTranslatedSynopsis ? 'true' : 'false'}"${translatedSynopsis ? '' : ' disabled'}>Перевод</button>
             <button type="button" data-action="synopsis-mode" data-id="${a.id}" data-mode="original" aria-pressed="${!showTranslatedSynopsis ? 'true' : 'false'}">Оригинал</button>
@@ -1344,6 +1412,7 @@
           <div class="modal-actions">
             <button class="btn ${inW ? 'is-on' : 'btn-primary'}" data-action="add-watched" data-id="${a.id}">${inW ? '✓ В просмотрено' : 'Отметить просмотренным'}</button>
             <button class="btn btn-ghost ${inP ? 'is-on' : ''}" data-action="add-planned" data-id="${a.id}">${inP ? '◷ В планах' : 'Запланировать'}</button>
+            ${!a.custom ? `<button class="btn btn-ghost" data-action="tiktok-search" data-id="${a.id}">Искать в TikTok</button>` : ''}
           </div>
           ${customActions}
           <div class="modal-section">
@@ -1479,6 +1548,7 @@
     openMomentForm,
     closeMomentForm,
     renderMomentForm,
+    renderTikTokImport,
     renderBackup,
     openBackup,
     closeBackup,

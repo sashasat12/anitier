@@ -291,6 +291,8 @@
     T.eq(C.extractTikTokId('https://www.tiktok.com/@user/video/'), '');
     T.eq(C.tiktokPlayerUrl('7412345678901234567'), 'https://www.tiktok.com/player/v1/7412345678901234567?autoplay=1&music_info=0&description=0&rel=0');
     T.eq(C.tiktokPlayerUrl(''), '');
+    T.eq(C.tiktokSearchUrl('Frieren: Beyond Journey’s End'), 'https://www.tiktok.com/search?q=Frieren%3A%20Beyond%20Journey%E2%80%99s%20End');
+    T.eq(C.tiktokSearchUrl(''), '');
   });
 
   T.test('core: размеры файлов показываются по-русски', () => {

@@ -511,9 +511,42 @@
 
   /* ---------------- drag & drop ---------------- */
   let dragState = null;
+  let dragPointerY = null;
+  let dragAutoScrollFrame = 0;
+  let touchDrag = null;
+  let suppressTierClickUntil = 0;
+
+  function runDragAutoScroll() {
+    if (dragAutoScrollFrame || !dragState) return;
+    const step = () => {
+      dragAutoScrollFrame = 0;
+      if (!dragState || dragPointerY == null) return;
+      const height = window.innerHeight || document.documentElement.clientHeight;
+      const edge = Math.max(52, Math.min(110, height * .14));
+      let delta = 0;
+      if (dragPointerY > height - edge) delta = Math.ceil(((dragPointerY - (height - edge)) / edge) * 24);
+      else if (dragPointerY < edge) delta = -Math.ceil(((edge - dragPointerY) / edge) * 24);
+      if (!delta) return;
+      window.scrollBy(0, delta);
+      if (touchDrag && touchDrag.active && touchDrag.clientX != null) {
+        const hit = document.elementFromPoint(touchDrag.clientX, touchDrag.clientY);
+        const drop = hit && hit.closest ? hit.closest('.tier-drop') : null;
+        $$('.tier-drop.is-over').forEach(item => { if (item !== drop) item.classList.remove('is-over'); });
+        if (drop && drop.dataset.list === touchDrag.list) drop.classList.add('is-over');
+        touchDrag.drop = drop;
+      }
+      dragAutoScrollFrame = window.requestAnimationFrame(step);
+    };
+    dragAutoScrollFrame = window.requestAnimationFrame(step);
+  }
 
   function cleanupDrag() {
     dragState = null;
+    dragPointerY = null;
+    if (touchDrag && touchDrag.timer) clearTimeout(touchDrag.timer);
+    touchDrag = null;
+    if (dragAutoScrollFrame) window.cancelAnimationFrame(dragAutoScrollFrame);
+    dragAutoScrollFrame = 0;
     $$('.tier-card.dragging').forEach(c => c.classList.remove('dragging'));
     $$('.tier-drop.is-over').forEach(d => d.classList.remove('is-over'));
   }
@@ -534,6 +567,8 @@
 
     document.addEventListener('dragover', e => {
       if (!dragState) return;
+      dragPointerY = e.clientY;
+      runDragAutoScroll();
       const drop = e.target.closest && e.target.closest('.tier-drop');
       if (!drop) return;
       e.preventDefault();
@@ -561,6 +596,67 @@
       if (name !== list) return;
       moveToTier(name, id, tier);
     });
+
+    document.addEventListener('pointerdown', e => {
+      if (e.pointerType !== 'touch' || !e.isPrimary) return;
+      const card = e.target.closest && e.target.closest('.tier-card');
+      if (!card || e.target.closest('button')) return;
+      const gesture = {
+        card,
+        list: card.dataset.list,
+        id: Number(card.dataset.id),
+        startX: e.clientX,
+        startY: e.clientY,
+        pointerId: e.pointerId,
+        active: false,
+        timer: 0,
+      };
+      gesture.timer = setTimeout(() => {
+        if (touchDrag !== gesture) return;
+        gesture.active = true;
+        dragState = { list: gesture.list, id: gesture.id };
+        card.classList.add('dragging');
+        try { card.setPointerCapture(gesture.pointerId); } catch { /* старые WebView */ }
+        if (navigator.vibrate) navigator.vibrate(18);
+      }, 360);
+      touchDrag = gesture;
+    }, { passive: true });
+
+    document.addEventListener('pointermove', e => {
+      if (!touchDrag) return;
+      if (!touchDrag.active) {
+        if (Math.hypot(e.clientX - touchDrag.startX, e.clientY - touchDrag.startY) > 12) {
+          clearTimeout(touchDrag.timer);
+          touchDrag = null;
+        }
+        return;
+      }
+      e.preventDefault();
+      touchDrag.clientX = e.clientX;
+      touchDrag.clientY = e.clientY;
+      dragPointerY = e.clientY;
+      runDragAutoScroll();
+      const hit = document.elementFromPoint(e.clientX, e.clientY);
+      const drop = hit && hit.closest ? hit.closest('.tier-drop') : null;
+      $$('.tier-drop.is-over').forEach(item => { if (item !== drop) item.classList.remove('is-over'); });
+      if (drop && drop.dataset.list === touchDrag.list) drop.classList.add('is-over');
+      touchDrag.drop = drop;
+    }, { passive: false });
+
+    document.addEventListener('pointerup', e => {
+      if (!touchDrag) return;
+      const gesture = touchDrag;
+      clearTimeout(gesture.timer);
+      touchDrag = null;
+      if (!gesture.active) return;
+      const hit = document.elementFromPoint(e.clientX, e.clientY);
+      const drop = hit && hit.closest ? hit.closest('.tier-drop') : gesture.drop;
+      suppressTierClickUntil = Date.now() + 500;
+      cleanupDrag();
+      if (drop && drop.dataset.list === gesture.list) moveToTier(gesture.list, gesture.id, drop.dataset.tier);
+    }, { passive: true });
+
+    document.addEventListener('pointercancel', cleanupDrag, { passive: true });
   }
 
   /* ---------------- события ---------------- */
@@ -592,18 +688,22 @@
   async function translateModalSynopsis(id) {
     const a = getAnime(id);
     if (!a || !a.synopsis || C.hasCyrillic(a.synopsis)) return '';
-    const cached = cachedTranslation(a.synopsis);
+    const provider = state.settings.translationProvider || 'auto';
+    const cached = cachedTranslation(a.synopsis, provider);
     if (cached) return cached;
-    if (state.synopsisTranslating.has(id)) return '';
-    state.synopsisTranslating.add(id);
+    const requestKey = `${id}:${provider}`;
+    if (state.synopsisTranslating.has(requestKey)) return '';
+    state.synopsisTranslating.add(requestKey);
     const status = $('#modal-content .synopsis-translation-status');
     if (status) status.textContent = 'Переводим…';
     let translated = '';
-    try { translated = await translateText(a.synopsis); }
+    try { translated = await translateText(a.synopsis, provider); }
     catch { translated = ''; }
-    finally { state.synopsisTranslating.delete(id); }
+    finally { state.synopsisTranslating.delete(requestKey); }
     if (state.modalId !== id) return translated;
     if (App.renderModal) App.renderModal();
+    const currentProvider = state.settings.translationProvider || 'auto';
+    if (currentProvider !== provider && !cachedTranslation(a.synopsis, currentProvider)) translateModalSynopsis(id);
     return translated;
   }
 
@@ -802,6 +902,80 @@
   }
 
   /* ---------------- моменты ---------------- */
+  function openTikTokUrl(url) {
+    const target = String(url || '');
+    if (!C.isTikTokUrl(target)) { toast('Ссылка TikTok недействительна'); return false; }
+    try {
+      if (window.AniTierAndroid && typeof window.AniTierAndroid.openTikTok === 'function') {
+        return window.AniTierAndroid.openTikTok(target);
+      }
+      const opened = window.open(target, '_blank', 'noopener');
+      if (!opened) window.location.href = target;
+      return true;
+    } catch {
+      window.location.href = target;
+      return true;
+    }
+  }
+
+  function closeTikTokImport() {
+    state.tiktokImport = { open: false, url: '', title: '', thumb: '', query: '', loading: false };
+    const modal = $('#tiktok-import-modal');
+    if (modal) modal.hidden = true;
+    App.syncBodyScroll();
+  }
+
+  function openTikTokImport(url) {
+    const target = String(url || '').trim();
+    if (!C.isTikTokUrl(target)) { toast('Не удалось прочитать ссылку TikTok'); return false; }
+    if (state.modalId != null) closeModal();
+    state.tiktokImport = { open: true, url: target, title: '', thumb: '', videoId: '', query: '', loading: true };
+    App.renderTikTokImport();
+    App.syncBodyScroll();
+    const panel = $('#tiktok-import-modal .modal-panel');
+    if (panel) { panel.scrollTop = 0; panel.focus({ preventScroll: true }); }
+    fetchTikTokMeta(target).then(meta => {
+      if (!state.tiktokImport.open || state.tiktokImport.url !== target) return;
+      state.tiktokImport.title = meta.title || '';
+      state.tiktokImport.thumb = meta.thumb || '';
+      state.tiktokImport.videoId = meta.videoId || C.extractTikTokId(target) || '';
+      state.tiktokImport.loading = false;
+      App.renderTikTokImport();
+    });
+    return true;
+  }
+
+  function receiveSharedTikTok(text) {
+    const links = String(text || '').match(/https?:\/\/[^\s<>"']+/gi) || [String(text || '').trim()];
+    const url = links.map(link => link.replace(/[),.;!?\]}]+$/g, '')).find(C.isTikTokUrl);
+    if (!url) { toast('В полученном сообщении нет ссылки TikTok'); return false; }
+    return openTikTokImport(url);
+  }
+
+  function saveSharedTikTok(animeId) {
+    const anime = getAnime(animeId);
+    const imported = state.tiktokImport;
+    if (!anime || !imported || !imported.url) return;
+    const existing = momentsFor(animeId).find(moment => moment.kind === 'tiktok' && moment.url === imported.url);
+    if (existing) {
+      closeTikTokImport();
+      toast(`Это видео уже есть в карточке «${anime.title}»`);
+      return;
+    }
+    addMoment(animeId, {
+      id: C.extractTikTokId(imported.url) || newUid(),
+      kind: 'tiktok',
+      url: imported.url,
+      title: imported.title || anime.title,
+      thumb: imported.thumb,
+      videoId: imported.videoId || C.extractTikTokId(imported.url) || '',
+      createdAt: Date.now(),
+    });
+    closeTikTokImport();
+    openModal(animeId);
+    toast(`Видео TikTok добавлено к «${anime.title}»`);
+  }
+
   function captureMomentDraft() {
     const form = $('#moment-form');
     if (!form) return;
@@ -841,6 +1015,7 @@
           kind: 'tiktok',
           title: title || meta.title || '',
           url,
+          videoId,
           thumb: meta.thumb || '',
           createdAt: Date.now(),
         });
@@ -916,7 +1091,7 @@
     if (!moment) return;
 
     if (moment.kind === 'tiktok') {
-      const videoId = C.extractTikTokId(moment.url);
+      const videoId = moment.videoId || C.extractTikTokId(moment.url);
       if (!videoId) { toast('Не удалось открыть TikTok'); return; }
       button.innerHTML = `<iframe class="moment-frame" src="${C.tiktokPlayerUrl(videoId)}" title="TikTok" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
       button.dataset.loaded = '1';
@@ -1348,6 +1523,10 @@
 
   function bindEvents() {
     document.addEventListener('click', e => {
+      if (Date.now() < suppressTierClickUntil && e.target.closest && e.target.closest('.tier-card')) {
+        e.preventDefault();
+        return;
+      }
       const el = e.target.closest && e.target.closest('[data-action]');
       if (!el) return;
       const action = el.dataset.action;
@@ -1371,11 +1550,37 @@
           if (id == null || !['translated', 'original'].includes(el.dataset.mode)) break;
           const anime = getAnime(id);
           if (!anime) break;
-          if (el.dataset.mode === 'translated' && !cachedTranslation(anime.synopsis)) break;
+          if (el.dataset.mode === 'translated' && !cachedTranslation(anime.synopsis, state.settings.translationProvider || 'auto')) break;
           state.synopsisModes.set(id, el.dataset.mode);
           renderModal();
           break;
         }
+
+        case 'tiktok-search': {
+          const anime = getAnime(id);
+          const query = anime ? [anime.title, anime.altTitle].filter(Boolean).join(' ') : '';
+          const url = C.tiktokSearchUrl(query);
+          if (url) openTikTokUrl(url);
+          break;
+        }
+
+        case 'moment-open-tiktok': {
+          const moment = findMoment(id, el.dataset.moment);
+          if (moment) openTikTokUrl(moment.url);
+          break;
+        }
+
+        case 'tiktok-import-open-video':
+          openTikTokUrl(state.tiktokImport.url);
+          break;
+
+        case 'tiktok-import-save':
+          saveSharedTikTok(id);
+          break;
+
+        case 'close-tiktok-import':
+          closeTikTokImport();
+          break;
 
         case 'add-watched':
           toggleList('watched', getAnime(id));
@@ -1705,6 +1910,12 @@
     }
 
     document.addEventListener('input', e => {
+      const tiktokQuery = e.target.closest && e.target.closest('#tiktok-import-search');
+      if (tiktokQuery && state.tiktokImport.open) {
+        state.tiktokImport.query = tiktokQuery.value;
+        App.renderTikTokImport();
+        return;
+      }
       const slider = e.target.closest && e.target.closest('input[data-action="ep-slider"]');
       if (slider) previewEpisodeSlider(slider);
       if (e.target && e.target.id === 'import-code' && state.exchange.open) {
@@ -1713,6 +1924,16 @@
     });
 
     document.addEventListener('change', e => {
+      const provider = e.target.closest && e.target.closest('select[data-action="synopsis-provider"]');
+      if (provider) {
+        state.settings.translationProvider = ['mymemory', 'google'].includes(provider.value) ? provider.value : 'auto';
+        saveState();
+        if (state.modalId != null) {
+          const animeId = state.modalId;
+          renderModal();
+          if (state.synopsisModes.get(animeId) !== 'original') translateModalSynopsis(animeId);
+        }
+      }
       const slider = e.target.closest && e.target.closest('input[data-action="ep-slider"]');
       if (!slider) return;
       const id = Number(slider.dataset.id);
@@ -1722,6 +1943,10 @@
 
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
+        if (state.tiktokImport.open) {
+          closeTikTokImport();
+          return;
+        }
         if (state.backup.open) {
           closeBackup();
           return;
@@ -1919,6 +2144,7 @@
     removeCustomCard,
     hydrateCustomImage,
     saveMomentForm,
+    receiveSharedTikTok,
     playMoment,
     shareMoment,
     removeMomentAction,
@@ -1972,6 +2198,7 @@
       searchQueryForAlt,
       translateText,
       translateModalSynopsis,
+      receiveSharedTikTok,
       invalidateNotificationEpisodes,
       openExchange,
       closeExchange,

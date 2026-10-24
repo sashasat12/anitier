@@ -729,9 +729,10 @@
     return result;
   }
 
-  function translationKey(text) {
+  function translationKey(text, provider = 'mymemory') {
     const value = String(text || '');
-    return `t${App.hash(value)}-${value.length}`;
+    const key = `t${App.hash(value)}-${value.length}`;
+    return provider === 'mymemory' ? key : `${provider}:${key}`;
   }
 
   function loadTranslationCache() {
@@ -761,10 +762,21 @@
     }
   }
 
-  function cachedTranslation(text) {
+  function cachedTranslation(text, provider = 'auto') {
     const value = String(text || '').trim();
     if (!value) return '';
-    return loadTranslationCache().get(translationKey(value)) || '';
+    const cache = loadTranslationCache();
+    if (provider === 'auto') return cache.get(translationKey(value, 'mymemory')) || cache.get(translationKey(value, 'google')) || '';
+    return cache.get(translationKey(value, provider)) || '';
+  }
+
+  function cachedTranslationProvider(text, provider = 'auto') {
+    const value = String(text || '').trim();
+    if (!value) return '';
+    if (provider !== 'auto') return cachedTranslation(value, provider) ? provider : '';
+    if (cachedTranslation(value, 'mymemory')) return 'mymemory';
+    if (cachedTranslation(value, 'google')) return 'google';
+    return '';
   }
 
   function splitTranslationChunks(text, maxLength = 450) {
@@ -782,43 +794,66 @@
     return chunks;
   }
 
-  async function translateText(text) {
+  async function translateText(text, provider = 'auto') {
     const source = String(text || '').trim();
     if (!source) return '';
     if (C.hasCyrillic(source)) return source;
 
     const cache = loadTranslationCache();
-    const key = translationKey(source);
-    if (cache.has(key)) return cache.get(key);
-    if (translationInFlight.has(key)) return translationInFlight.get(key);
+    const requestedProvider = ['mymemory', 'google'].includes(provider) ? provider : 'auto';
+    const cached = cachedTranslation(source, requestedProvider);
+    if (cached) return cached;
+    const inFlightKey = `${requestedProvider}:${translationKey(source, 'mymemory')}`;
+    if (translationInFlight.has(inFlightKey)) return translationInFlight.get(inFlightKey);
 
     const pair = C.hasJapanese(source) ? 'ja|ru' : 'en|ru';
     const promise = (async () => {
       try {
         const chunks = splitTranslationChunks(source);
-        const translatedChunks = [];
-        for (const chunk of chunks) {
-          const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=${pair}`;
-          const json = await fetchWithTimeout(url, {}, 8000);
-          const status = Number(json?.responseStatus);
-          if (status && status !== 200) return '';
-          const translatedChunk = decodeEntities(json?.responseData?.translatedText || '').trim();
-          if (!translatedChunk || translatedChunk === chunk || /MYMEMORY WARNING/i.test(translatedChunk) || !C.hasCyrillic(translatedChunk)) return '';
-          translatedChunks.push(translatedChunk);
+        const providers = requestedProvider === 'auto' ? ['mymemory', 'google'] : [requestedProvider];
+        for (const currentProvider of providers) {
+          const translatedChunks = [];
+          let complete = true;
+          for (const chunk of chunks) {
+            try {
+              let translatedChunk = '';
+              if (currentProvider === 'mymemory') {
+                const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=${pair}`;
+                const json = await fetchWithTimeout(url, {}, 8000);
+                if (Number(json?.responseStatus) !== 200) { complete = false; break; }
+                translatedChunk = decodeEntities(json?.responseData?.translatedText || '').trim();
+                if (/MYMEMORY WARNING/i.test(translatedChunk)) translatedChunk = '';
+              } else {
+                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ru&dt=t&q=${encodeURIComponent(chunk)}`;
+                const json = await fetchWithTimeout(url, {}, 8000);
+                translatedChunk = Array.isArray(json?.[0])
+                  ? json[0].map(segment => Array.isArray(segment) ? String(segment[0] || '') : '').join('').trim()
+                  : '';
+              }
+              if (!translatedChunk || translatedChunk === chunk || !C.hasCyrillic(translatedChunk)) { complete = false; break; }
+              translatedChunks.push(translatedChunk);
+            } catch {
+              complete = false;
+              break;
+            }
+          }
+          if (complete && translatedChunks.length === chunks.length) {
+            const translated = translatedChunks.join(' ');
+            const key = translationKey(source, currentProvider);
+            cache.set(key, translated);
+            saveTranslationCache();
+            return translated;
+          }
         }
-        const translated = translatedChunks.join(' ');
-        if (!translated) return '';
-        cache.set(key, translated);
-        saveTranslationCache();
-        return translated;
+        return '';
       } catch {
         return '';
       } finally {
-        translationInFlight.delete(key);
+        translationInFlight.delete(inFlightKey);
       }
     })();
 
-    translationInFlight.set(key, promise);
+    translationInFlight.set(inFlightKey, promise);
     return promise;
   }
 
@@ -1261,6 +1296,7 @@
     resolveSearchQuery,
     translateText,
     cachedTranslation,
+    cachedTranslationProvider,
     clearTranslationCache,
     reloadTranslationCache,
     driveFindBackup,

@@ -209,6 +209,11 @@
 
   const VIEW_TABS = ['db', 'notifications', 'watched', 'planned', 'upcoming'];
   const DB_MODES = ['popular', 'score', 'airing', 'movie', 'custom'];
+  const TRANSLATION_PROVIDERS = ['auto', 'mymemory', 'google'];
+
+  function normalizeTranslationProvider(value) {
+    return TRANSLATION_PROVIDERS.includes(value) ? value : 'auto';
+  }
 
   function normalizeCatalogPreferences(raw) {
     const value = raw && typeof raw === 'object' ? raw : {};
@@ -400,6 +405,7 @@
     forceDemo: new URLSearchParams(location.search).has('demo'),
     settings: {
       searchLang: 'auto',
+      translationProvider: 'auto',
       catalog: normalizeCatalogPreferences(),
     },
     modalId: null,
@@ -423,6 +429,7 @@
     moments: {},
     customForm: { open: false, editingId: null, error: '', busy: false },
     momentForm: { open: false, animeId: null, mode: 'tiktok', error: '', busy: false, url: '', title: '' },
+    tiktokImport: { open: false, url: '', title: '', thumb: '', query: '', loading: false },
     backup: { open: false, busy: false, message: '', error: false },
     lists: { watched: emptyTiers(), planned: emptyTiers() },
     progress: {},
@@ -656,6 +663,7 @@
       kind,
       title: String(raw.title == null ? '' : raw.title).trim().slice(0, 200),
       url,
+      videoId: kind === 'tiktok' ? String(raw.videoId || '').replace(/[^0-9]/g, '').slice(0, 32) : '',
       mediaKey,
       thumb,
       mime: String(raw.mime || '').slice(0, 100),
@@ -759,9 +767,10 @@
       settings: rawState.settings && typeof rawState.settings === 'object'
         ? {
           searchLang: C.normalizeSearchLang(rawState.settings.searchLang),
+          translationProvider: normalizeTranslationProvider(rawState.settings.translationProvider),
           catalog: normalizeCatalogPreferences(rawState.settings.catalog),
         }
-        : { searchLang: 'auto', catalog: normalizeCatalogPreferences() },
+        : { searchLang: 'auto', translationProvider: 'auto', catalog: normalizeCatalogPreferences() },
     };
 
     const moments = {};
@@ -952,6 +961,7 @@
       .slice(0, CUSTOM_LIMIT);
     state.seenNotifications = new Set(Array.isArray(raw.seenNotifications) ? raw.seenNotifications : []);
     state.settings.searchLang = C.normalizeSearchLang(raw.settings && raw.settings.searchLang);
+    state.settings.translationProvider = normalizeTranslationProvider(raw.settings && raw.settings.translationProvider);
     state.settings.catalog = normalizeCatalogPreferences(raw.settings && raw.settings.catalog);
 
     state.progress = {};
@@ -989,6 +999,7 @@
         seenNotifications: [...state.seenNotifications],
         settings: {
           searchLang: C.normalizeSearchLang(state.settings.searchLang),
+          translationProvider: normalizeTranslationProvider(state.settings.translationProvider),
           catalog: normalizeCatalogPreferences(state.settings.catalog),
         },
       }));

@@ -15,6 +15,9 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
+import org.json.JSONObject;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import java.io.OutputStream;
 import android.util.Base64;
@@ -28,11 +31,14 @@ public class MainActivity extends Activity {
     private ValueCallback<Uri[]> filePathCallback;
     private String pendingBackupJson;
     private OutputStream pendingMediaOutput;
+    private String pendingTikTokShare;
+    private boolean pageReady;
 
     @SuppressWarnings("deprecation")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        pendingTikTokShare = extractTikTokLink(getIntent());
 
         getWindow().setStatusBarColor(Color.parseColor("#07080e"));
         getWindow().setNavigationBarColor(Color.parseColor("#07080e"));
@@ -85,6 +91,12 @@ public class MainActivity extends Activity {
         webView.addJavascriptInterface(new BackupBridge(), "AniTierAndroid");
         webView.setWebViewClient(new WebViewClient() {
             @Override
+            public void onPageFinished(WebView view, String url) {
+                pageReady = true;
+                dispatchPendingTikTokShare();
+            }
+
+            @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 if (request.isForMainFrame()) {
                     return openExternal(request.getUrl());
@@ -103,6 +115,40 @@ public class MainActivity extends Activity {
         webView.loadUrl("file:///android_asset/index.html");
     }
 
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        pendingTikTokShare = extractTikTokLink(intent);
+        dispatchPendingTikTokShare();
+    }
+
+    private String extractTikTokLink(Intent intent) {
+        if (intent == null) return null;
+        String text = intent.getStringExtra(Intent.EXTRA_TEXT);
+        if (text == null) text = intent.getDataString();
+        if (text == null) return null;
+        Matcher matcher = Pattern.compile("https?://[^\\s<>\\\"']+", Pattern.CASE_INSENSITIVE).matcher(text);
+        while (matcher.find()) {
+            String value = matcher.group().replaceAll("[),.;!?\\]}]+$", "");
+            Uri uri = Uri.parse(value);
+            String host = uri.getHost();
+            if ("https".equalsIgnoreCase(uri.getScheme()) && host != null
+                    && (host.equalsIgnoreCase("tiktok.com") || host.toLowerCase().endsWith(".tiktok.com"))) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private void dispatchPendingTikTokShare() {
+        if (!pageReady || webView == null || pendingTikTokShare == null) return;
+        final String url = pendingTikTokShare;
+        pendingTikTokShare = null;
+        webView.evaluateJavascript("window.AniTier && window.AniTier.receiveSharedTikTok && window.AniTier.receiveSharedTikTok("
+                + JSONObject.quote(url) + ")", null);
+    }
+
     private boolean openExternal(Uri uri) {
         String scheme = uri.getScheme();
         if ("file".equals(scheme) || "about".equals(scheme) || "data".equals(scheme)) {
@@ -118,6 +164,23 @@ public class MainActivity extends Activity {
             return true;
         }
 
+        return true;
+    }
+
+    private boolean openTikTok(String value) {
+        Uri uri = Uri.parse(value == null ? "" : value);
+        String host = uri.getHost();
+        if (!"https".equalsIgnoreCase(uri.getScheme()) || host == null
+                || !(host.equalsIgnoreCase("tiktok.com") || host.toLowerCase().endsWith(".tiktok.com"))) {
+            return false;
+        }
+        runOnUiThread(() -> {
+            try {
+                startActivity(new Intent(Intent.ACTION_VIEW, uri));
+            } catch (Exception error) {
+                Toast.makeText(MainActivity.this, "Не удалось открыть TikTok", Toast.LENGTH_SHORT).show();
+            }
+        });
         return true;
     }
 
@@ -179,6 +242,11 @@ public class MainActivity extends Activity {
     }
 
     private class BackupBridge {
+        @JavascriptInterface
+        public boolean openTikTok(String url) {
+            return MainActivity.this.openTikTok(url);
+        }
+
         @JavascriptInterface
         public void saveBackup(final String json, final String fileName) {
             if (json == null || json.isEmpty()) return;

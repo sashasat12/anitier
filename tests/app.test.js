@@ -438,6 +438,10 @@
         () => doc.querySelector('[data-action="notif-tab"][data-notif-tab="tracked"]'),
         'Не появились группы уведомлений',
       );
+      const notification = doc.querySelector('.notif');
+      const visual = notification.querySelector('.notif-visual');
+      T.assert(visual, 'Дата и постер должны быть в одном визуальном столбце');
+      T.assert(visual.querySelector('.notif-date').compareDocumentPosition(visual.querySelector('.notif-poster')) & app.win.Node.DOCUMENT_POSITION_FOLLOWING, 'Дата должна располагаться над постером');
       const shortBlock = doc.querySelector('[data-ep-block="52991"]');
       T.eq(shortBlock.querySelectorAll('input[data-action="ep-slider"]').length, 0, 'У тайтла с семью вышедшими сериями нет ползунка');
       T.eq(shortBlock.querySelectorAll('.ep-chip').length, 7, 'У короткого тайтла должны быть кнопки серий');
@@ -470,6 +474,59 @@
       const updated = doc.querySelector(`input[data-action="ep-slider"][data-id="${id}"]`);
       T.eq(updated.value, '5');
       T.includes(doc.querySelector(`[data-ep-block="${id}"] .ep-watched`).textContent, '5');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: перетаскивание к нижнему тиру прокручивает страницу', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    const win = app.win;
+    const calls = [];
+    try {
+      await win.__anitierTest.init();
+      win.scrollBy = (x, y) => calls.push({ x, y });
+      win.requestAnimationFrame = callback => win.setTimeout(() => callback(Date.now()), 0);
+      win.cancelAnimationFrame = id => win.clearTimeout(id);
+      const source = win.document.createElement('div');
+      source.className = 'tier-card';
+      source.dataset.list = 'watched';
+      source.dataset.id = '1';
+      source.draggable = true;
+      const target = win.document.createElement('div');
+      target.className = 'tier-drop';
+      target.dataset.list = 'watched';
+      target.dataset.tier = 'F';
+      win.document.body.append(source, target);
+
+      source.dispatchEvent(new win.Event('dragstart', { bubbles: true, cancelable: true }));
+      const over = new win.Event('dragover', { bubbles: true, cancelable: true });
+      Object.defineProperty(over, 'clientY', { value: win.innerHeight - 1 });
+      target.dispatchEvent(over);
+      await T.waitFor(() => calls.some(call => call.y > 0), 'Страница не прокрутилась у нижнего края');
+      target.dispatchEvent(new win.Event('dragend', { bubbles: true }));
+      T.assert(calls.some(call => call.y > 0), 'Ожидалась прокрутка вниз');
+
+      calls.length = 0;
+      source.dataset.id = '999999';
+      win.document.elementFromPoint = () => target;
+      const pointerEvent = (name, values) => {
+        const event = new win.Event(name, { bubbles: true, cancelable: true });
+        for (const [key, value] of Object.entries(values)) Object.defineProperty(event, key, { value });
+        return event;
+      };
+      source.dispatchEvent(pointerEvent('pointerdown', {
+        pointerType: 'touch', isPrimary: true, pointerId: 7, clientX: 20, clientY: 30,
+      }));
+      await new Promise(resolve => win.setTimeout(resolve, 390));
+      win.document.dispatchEvent(pointerEvent('pointermove', {
+        pointerType: 'touch', isPrimary: true, pointerId: 7, clientX: 20, clientY: win.innerHeight - 1,
+      }));
+      await T.waitFor(() => calls.some(call => call.y > 0), 'Перетаскивание пальцем не прокрутило страницу');
+      win.document.dispatchEvent(pointerEvent('pointerup', {
+        pointerType: 'touch', isPrimary: true, pointerId: 7, clientX: 20, clientY: win.innerHeight - 1,
+      }));
+      T.assert(!target.classList.contains('is-over'), 'Зона сброса должна очиститься после отпускания');
     } finally {
       app.close();
     }
@@ -710,6 +767,33 @@
     }
   });
 
+  T.test('app: автоматический перевод переключается с MyMemory на Google', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    const calls = [];
+
+    try {
+      app.win.AniTier.clearTranslationCache();
+      app.win.fetch = async url => {
+        const parsed = new URL(url);
+        calls.push(parsed);
+        if (parsed.hostname === 'api.mymemory.translated.net') {
+          return { ok: true, status: 200, json: async () => ({ responseStatus: 403 }) };
+        }
+        T.eq(parsed.hostname, 'translate.googleapis.com');
+        return { ok: true, status: 200, json: async () => [[[`Привет по-русски`, 'Hello']], null, 'en'] };
+      };
+
+      const translated = await app.win.__anitierTest.translateText('Hello', 'auto');
+
+      T.eq(translated, 'Привет по-русски');
+      T.eq(calls.map(url => url.hostname), ['api.mymemory.translated.net', 'translate.googleapis.com']);
+      T.eq(app.win.AniTier.cachedTranslationProvider('Hello', 'auto'), 'google');
+    } finally {
+      app.win.AniTier.clearTranslationCache();
+      app.close();
+    }
+  });
+
   T.test('app: в описании карточки можно переключить перевод и оригинал', async () => {
     const app = await T.mountApp({ query: '?demo=1&test=1' });
     try {
@@ -720,7 +804,11 @@
       let requests = 0;
       win.fetch = async url => {
         requests += 1;
-        T.includes(String(url), 'api.mymemory.translated.net');
+        const host = new URL(url).hostname;
+        if (host === 'translate.googleapis.com') {
+          return { ok: true, status: 200, json: async () => [[['Перевод от Google', 'A traveling mage']], null, 'en'] };
+        }
+        T.eq(host, 'api.mymemory.translated.net');
         return {
           ok: true,
           status: 200,
@@ -751,8 +839,51 @@
       win.document.querySelector('[data-action="synopsis-mode"][data-mode="translated"]').click();
       T.eq(win.document.querySelector('.modal-synopsis').textContent, 'Маг-путешественник ищет дорогу домой.');
       T.eq(requests, 1, 'Переключение не должно повторно запрашивать перевод');
+
+      const provider = win.document.querySelector('[data-action="synopsis-provider"]');
+      provider.value = 'google';
+      provider.dispatchEvent(new win.Event('change', { bubbles: true }));
+      await T.waitFor(
+        () => win.document.querySelector('.synopsis-translation-status').textContent.includes('Google'),
+        'Переводчик не переключился на Google',
+      );
+      T.eq(win.document.querySelector('.modal-synopsis').textContent, 'Перевод от Google');
+      T.eq(state.settings.translationProvider, 'google');
     } finally {
       app.win.AniTier.clearTranslationCache();
+      app.close();
+    }
+  });
+
+  T.test('app: общий TikTok можно привязать к выбранной карточке аниме', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      await win.__anitierTest.init();
+      win.fetch = async url => {
+        T.includes(String(url), 'www.tiktok.com/oembed');
+        return { ok: true, status: 200, json: async () => ({ title: 'Frieren edit', thumbnail_url: 'https://example.com/cover.jpg' }) };
+      };
+      const anime = App.mapAniList(rawAniList(9010, 'Sousou no Frieren', {
+        idMal: 9010,
+        title: { romaji: 'Sousou no Frieren', english: 'Frieren: Beyond Journey’s End', native: '葬送のフリーレン' },
+      }));
+      App.addToList('watched', anime, 'S', true);
+
+      T.assert(App.receiveSharedTikTok('Найдено видео: https://www.tiktok.com/@anime/video/7412345678901234567'));
+      await T.waitFor(() => win.document.querySelector('#tiktok-import-search'), 'Не открылся выбор аниме для ссылки TikTok');
+      const search = win.document.querySelector('#tiktok-import-search');
+      search.value = 'frieren';
+      search.dispatchEvent(new win.Event('input', { bubbles: true }));
+      win.document.querySelector('[data-action="tiktok-import-save"][data-id="9010"]').click();
+
+      const moments = App.momentsFor(anime.id);
+      T.eq(moments.length, 1);
+      T.eq(moments[0].kind, 'tiktok');
+      T.includes(moments[0].url, '7412345678901234567');
+      T.eq(win.document.querySelector('#tiktok-import-modal').hidden, true);
+    } finally {
       app.close();
     }
   });

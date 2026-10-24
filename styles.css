@@ -632,7 +632,7 @@ button { font-family: inherit; }
 
 .notif {
   display: grid;
-  grid-template-columns: 58px 56px minmax(0, 1fr) auto;
+  grid-template-columns: 92px minmax(0, 1fr) auto;
   align-items: start;
   gap: 16px;
   padding: 14px 16px 14px 12px;
@@ -650,12 +650,13 @@ button { font-family: inherit; }
 }
 .notif-date {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 1px;
-  padding: 7px 4px;
-  border-radius: 11px;
+  gap: 5px;
+  width: 100%;
+  padding: 3px 5px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, .045);
   border: 1px solid var(--line);
   color: var(--muted);
@@ -664,10 +665,11 @@ button { font-family: inherit; }
   text-transform: uppercase;
   letter-spacing: .04em;
 }
-.notif-date b { font-size: 17px; color: var(--text); letter-spacing: -.02em; }
+.notif-date b { font-size: 13px; color: var(--text); letter-spacing: -.02em; }
+.notif-visual { display: flex; min-width: 0; flex-direction: column; gap: 6px; }
 .notif-poster {
-  width: 56px;
-  height: 80px;
+  width: 92px;
+  height: 132px;
   object-fit: cover;
   border-radius: 9px;
   display: block;
@@ -1203,8 +1205,23 @@ button { font-family: inherit; }
 .hint { margin: 10px 0 0; font-size: 11.5px; color: var(--muted); }
 
 .modal-synopsis-section { margin-top: 18px; }
-.synopsis-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: -2px 0 12px; }
+.synopsis-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin: -2px 0 12px; }
 .synopsis-translation-status { color: var(--muted); font-size: 10.5px; }
+.synopsis-provider { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 10.5px; }
+.synopsis-provider select { max-width: 205px; min-height: 32px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; background: #171b26; color: var(--text); font: inherit; font-weight: 700; }
+.tiktok-import-panel { width: min(620px, 100%); }
+.tiktok-import-preview { display: flex; align-items: center; gap: 12px; margin: 16px 0; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.025); }
+.tiktok-import-preview > img,
+.tiktok-import-preview > .moment-fallback { width: 62px; height: 78px; flex: 0 0 auto; border-radius: 8px; object-fit: cover; }
+.tiktok-import-preview > div { display: grid; gap: 7px; min-width: 0; }
+.tiktok-import-preview > div > b { overflow-wrap: anywhere; }
+.tiktok-import-results { display: grid; gap: 7px; max-height: 40vh; overflow: auto; margin: 10px 0 16px; }
+.tiktok-import-result { display: grid; grid-template-columns: 42px minmax(0,1fr) auto; align-items: center; gap: 10px; width: 100%; padding: 7px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.025); color: var(--text); text-align: left; cursor: pointer; }
+.tiktok-import-result:hover { border-color: rgba(255,77,141,.55); background: rgba(255,77,141,.08); }
+.tiktok-import-result img { width: 42px; height: 58px; border-radius: 6px; object-fit: cover; }
+.tiktok-import-result span { display: grid; gap: 3px; min-width: 0; }
+.tiktok-import-result small { overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
+.tiktok-import-result strong { color: #ff9dbc; font-size: 11px; }
 .synopsis-switch {
   display: inline-flex;
   flex: 0 0 auto;

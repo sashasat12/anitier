@@ -35,6 +35,12 @@
       T.eq(tabs.length, 5, 'В нижней навигации должно быть 5 разделов');
       T.includes(nav.textContent, 'Скоро', 'Потерялся раздел «Скоро»');
       T.assert(!tabs.some(tab => tab.scrollWidth > tab.clientWidth + 1), 'Подпись вкладки не помещается');
+      const franchiseScroller = doc.createElement('div');
+      franchiseScroller.className = 'franchise-list';
+      doc.body.appendChild(franchiseScroller);
+      T.eq(getComputedStyle(franchiseScroller).gridAutoFlow, 'column', 'Сезоны должны прокручиваться по горизонтали');
+      T.eq(getComputedStyle(franchiseScroller).overflowX, 'auto', 'Список сезонов должен реагировать на свайп');
+      franchiseScroller.remove();
 
       const gridColumns = getComputedStyle(doc.querySelector('#db-grid'))
         .gridTemplateColumns

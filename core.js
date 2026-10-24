@@ -676,6 +676,11 @@
     }
   }
 
+  function tiktokSearchUrl(title) {
+    const query = String(title == null ? '' : title).trim();
+    return query ? `https://www.tiktok.com/search?q=${encodeURIComponent(query)}` : '';
+  }
+
   function extractTikTokId(value) {
     const text = String(value == null ? '' : value).trim();
     const patterns = [
@@ -883,6 +888,7 @@
     compactShareAnime,
     parseBackupJson,
     isTikTokUrl,
+    tiktokSearchUrl,
     extractTikTokId,
     tiktokPlayerUrl,
     formatBytes,
