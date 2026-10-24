@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AniTier Phone — без сервера</title>
 <meta name="description" content="Автономная версия AniTier для телефона: база аниме, уведомления о премьерах, тир-листы и календарь. Работает как приложение.">
+<meta name="anitier-google-client-id" content="">
 <meta name="theme-color" content="#0c0d14">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -248,6 +249,32 @@ button { font-family: inherit; }
 .sub { margin: 0; color: var(--muted); font-size: 13.5px; max-width: 620px; }
 .head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .db-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.lang-field { display: inline-flex; align-items: center; gap: 7px; }
+.lang-field > span {
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.lang-field select {
+  min-height: 43px;
+  padding: 8px 30px 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.lang-field select:focus {
+  outline: none;
+  border-color: rgba(255, 77, 141, .55);
+  box-shadow: 0 0 0 3px rgba(255, 77, 141, .10);
+}
 
 .footer {
   margin-top: 56px;
@@ -577,6 +604,10 @@ button { font-family: inherit; }
 .btn-tiny { padding: 6px 12px; font-size: 12px; border-radius: 9px; background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .2); }
 
 /* ---------- уведомления ---------- */
+.notif-tabs { display: flex; gap: 8px; overflow-x: auto; margin: 0 0 18px; padding-bottom: 3px; }
+.notif-tab { display: inline-flex; align-items: center; gap: 8px; flex: 0 0 auto; padding: 9px 12px; color: var(--muted); background: rgba(255,255,255,.035); border: 1px solid var(--line); border-radius: 999px; cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; }
+.notif-tab b { min-width: 20px; padding: 2px 5px; border-radius: 999px; background: rgba(255,255,255,.08); text-align: center; font-size: 10px; }
+.notif-tab.is-active { color: var(--text); background: rgba(255,77,141,.12); border-color: rgba(255,77,141,.4); }
 .notif-group { margin-bottom: 28px; }
 .notif-group:last-child { margin-bottom: 0; }
 .group-head {
@@ -1214,6 +1245,234 @@ button { font-family: inherit; }
 }
 .mal-link:hover { color: #fff; }
 
+/* ---------- свои карточки и моменты ---------- */
+.badge-custom {
+  position: absolute;
+  left: 8px;
+  top: 34px;
+  z-index: 2;
+  padding: 3px 7px;
+  border-radius: 7px;
+  background: linear-gradient(135deg, rgba(255, 77, 141, .92), rgba(138, 92, 255, .92));
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.custom-new {
+  border-color: rgba(255, 77, 141, .35);
+  background: rgba(255, 77, 141, .08);
+  color: #ffb3cd;
+}
+.custom-new:hover:not(:disabled) { background: rgba(255, 77, 141, .16); border-color: rgba(255, 77, 141, .55); }
+
+.custom-panel { width: min(720px, 100%); }
+.custom-content { padding: 26px; }
+.custom-form h2 {
+  margin: 0 0 6px;
+  font-size: clamp(22px, 3vw, 28px);
+  line-height: 1.12;
+  letter-spacing: -.03em;
+}
+.custom-sub { margin: 0 0 20px; color: var(--muted); font-size: 13px; }
+
+.form-field { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; }
+.form-field > span {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.form-field input,
+.form-field select,
+.form-field textarea {
+  width: 100%;
+  padding: 11px 13px;
+  border-radius: 11px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, .04);
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+}
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+  outline: none;
+  border-color: rgba(255, 77, 141, .55);
+  background: rgba(255, 255, 255, .06);
+}
+.form-field textarea { resize: vertical; min-height: 96px; }
+.form-field small { color: var(--muted); font-size: 11.5px; }
+.form-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.form-file input[type="file"] { padding: 9px; font-size: 12px; }
+.form-file input[type="file"]::file-selector-button {
+  margin-right: 10px;
+  padding: 7px 11px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .07);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.custom-poster-preview {
+  margin: 4px 0 16px;
+  width: 150px;
+  aspect-ratio: 2 / 3;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px dashed var(--line);
+  background: rgba(255, 255, 255, .03);
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.custom-poster-preview img { width: 100%; height: 100%; object-fit: cover; }
+.form-error {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 77, 141, .4);
+  background: rgba(255, 77, 141, .12);
+  color: #ffc2d5;
+  font-size: 12.5px;
+}
+.form-note { margin: -2px 0 14px; color: var(--muted); font-size: 11.5px; }
+.form-actions { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 18px; }
+.btn-danger { color: #ffb3c8; border-color: rgba(255, 77, 141, .35); }
+.btn-danger:hover:not(:disabled) { background: rgba(255, 77, 141, .14); border-color: rgba(255, 77, 141, .55); }
+.modal-custom-actions { display: flex; gap: 9px; flex-wrap: wrap; margin: -6px 0 20px; }
+
+.moment-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.modal-label-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.moments-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+.moment-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(8, 10, 16, .6);
+}
+.moment-preview {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  max-height: 300px;
+  padding: 0;
+  border: 0;
+  background: #070910;
+  cursor: pointer;
+  overflow: hidden;
+}
+.moment-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.moment-preview.is-playing { cursor: default; }
+.moment-frame, .moment-video, .moment-gif {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  object-fit: contain;
+  background: #000;
+}
+.moment-play-icon {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(6, 8, 14, .72);
+  border: 1px solid rgba(255, 255, 255, .25);
+  color: #fff;
+  font-size: 14px;
+  pointer-events: none;
+}
+.moment-preview.is-playing .moment-play-icon { display: none; }
+.moment-fallback {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.moment-body { display: flex; flex-direction: column; gap: 5px; padding: 9px 10px 10px; }
+.moment-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.moment-meta { color: var(--muted); font-size: 10.5px; }
+.moment-actions { display: flex; gap: 12px; margin-top: 2px; }
+.moment-actions .ep-link { font-size: 11px; }
+
+.backup-panel { width: min(640px, 100%); }
+.backup-content { padding: 26px; }
+.backup-content h2 {
+  margin: 0 0 6px;
+  font-size: clamp(22px, 3vw, 28px);
+  line-height: 1.12;
+  letter-spacing: -.03em;
+}
+.backup-block {
+  padding: 16px;
+  margin-bottom: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .025);
+}
+.backup-block h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  letter-spacing: -.01em;
+}
+.backup-block p { margin: 0 0 12px; color: var(--muted); font-size: 12.5px; line-height: 1.55; }
+.backup-block code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, .08);
+  color: #e9ecf6;
+  font-size: 11.5px;
+}
+.backup-block .form-actions { margin-top: 0; }
+.backup-status {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(52, 211, 153, .35);
+  background: rgba(52, 211, 153, .1);
+  color: #b6f5d8;
+  font-size: 12.5px;
+}
+.backup-status.is-error {
+  border-color: rgba(255, 77, 141, .4);
+  background: rgba(255, 77, 141, .12);
+  color: #ffc2d5;
+}
+.backup-note { margin: 0; }
+.file-btn { position: relative; overflow: hidden; }
+.file-btn.is-disabled { opacity: .6; pointer-events: none; }
+
 /* ---------- обмен тир-листами ---------- */
 .exchange-panel { width: min(1000px, 100%); }
 .exchange-content { padding: 26px; }
@@ -1734,6 +1993,19 @@ body.mobile-app .db-tools {
   gap: 8px;
 }
 
+body.mobile-app .lang-field {
+  flex: 1 1 calc(50% - 4px);
+  min-width: 0;
+}
+body.mobile-app .lang-field > span {
+  display: none;
+}
+body.mobile-app .lang-field select {
+  width: 100%;
+  min-height: 44px;
+  font-size: 16px;
+}
+
 body.mobile-app .search,
 body.mobile-app .search input {
   width: 100%;
@@ -1746,7 +2018,8 @@ body.mobile-app .search input {
 }
 
 body.mobile-app .filter-toggle {
-  width: 100%;
+  flex: 1 1 calc(50% - 4px);
+  width: auto;
   justify-content: center;
   min-height: 44px;
 }
@@ -1877,6 +2150,17 @@ body.mobile-app .tier-pick {
   height: 42px;
 }
 
+/* ---------- свои карточки и моменты ---------- */
+body.mobile-app .custom-content { padding: 20px 14px 24px; }
+body.mobile-app .backup-content { padding: 20px 14px 24px; }
+body.mobile-app .form-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+body.mobile-app .form-row .form-field:last-child { grid-column: 1 / -1; }
+body.mobile-app .custom-poster-preview { width: 120px; }
+body.mobile-app .moments-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+body.mobile-app .moment-preview { max-height: none; }
+body.mobile-app .moment-actions { gap: 10px; }
+body.mobile-app .custom-new { width: 100%; }
+
 /* ---------- мелочи ---------- */
 body.mobile-app .btn:not(.btn-tiny),
 body.mobile-app .filter-toggle,
@@ -1948,6 +2232,7 @@ body.mobile-app .offline-banner {
   </a>
 
   <div class="topbar-actions">
+    <button class="icon-btn" data-action="open-backup" title="Резервная копия" aria-label="Резервная копия">⇩</button>
     <button class="icon-btn" data-action="refresh" title="Обновить текущую вкладку" aria-label="Обновить">⟳</button>
   </div>
 </header>
@@ -1987,9 +2272,19 @@ body.mobile-app .offline-banner {
         <div class="search">
           <input id="search-input" type="search" placeholder="Поиск: «Фрирен», «Jujutsu Kaisen»…" autocomplete="off" aria-label="Поиск аниме">
         </div>
+        <label class="lang-field" title="Язык поискового запроса">
+          <span>Язык</span>
+          <select id="search-lang" aria-label="Язык поиска">
+            <option value="auto">Авто</option>
+            <option value="ru">Русский</option>
+            <option value="en">English</option>
+            <option value="ja">日本語</option>
+          </select>
+        </label>
         <button class="btn btn-ghost filter-toggle" data-action="toggle-filters" aria-expanded="false" aria-controls="db-filters">
           Фильтры <b class="filter-count" id="filter-count" hidden>0</b>
         </button>
+        <button class="btn btn-ghost custom-new" data-action="new-custom">+ Своя карточка</button>
       </div>
     </div>
 
@@ -2044,6 +2339,7 @@ body.mobile-app .offline-banner {
       <button class="chip" data-action="mode" data-mode="score">Топ по рейтингу</button>
       <button class="chip" data-action="mode" data-mode="airing">Сейчас выходит</button>
       <button class="chip" data-action="mode" data-mode="movie">Фильмы</button>
+      <button class="chip" data-action="mode" data-mode="custom">Мои карточки</button>
     </div>
 
     <div class="db-status" id="db-status" aria-live="polite"></div>
@@ -2136,6 +2432,33 @@ body.mobile-app .offline-banner {
   </div>
 </div>
 
+<!-- ================= РЕЗЕРВНАЯ КОПИЯ ================= -->
+<div class="modal" id="backup-modal" hidden>
+  <div class="modal-backdrop" data-action="close-backup"></div>
+  <div class="modal-panel backup-panel" id="backup-panel" role="dialog" aria-modal="true" aria-labelledby="backup-title" tabindex="-1">
+    <button class="modal-close" data-action="close-backup" aria-label="Закрыть">✕</button>
+    <div class="backup-content" id="backup-content"></div>
+  </div>
+</div>
+
+<!-- ================= СВОЯ КАРТОЧКА ================= -->
+<div class="modal" id="custom-modal" hidden>
+  <div class="modal-backdrop" data-action="close-custom"></div>
+  <div class="modal-panel custom-panel" id="custom-panel" role="dialog" aria-modal="true" aria-labelledby="custom-title" tabindex="-1">
+    <button class="modal-close" data-action="close-custom" aria-label="Закрыть">✕</button>
+    <div class="custom-content" id="custom-content"></div>
+  </div>
+</div>
+
+<!-- ================= МОМЕНТ ================= -->
+<div class="modal" id="moment-modal" hidden>
+  <div class="modal-backdrop" data-action="close-moment"></div>
+  <div class="modal-panel custom-panel" id="moment-panel" role="dialog" aria-modal="true" aria-labelledby="moment-title" tabindex="-1">
+    <button class="modal-close" data-action="close-moment" aria-label="Закрыть">✕</button>
+    <div class="custom-content" id="moment-content"></div>
+  </div>
+</div>
+
 <div id="toasts" aria-live="polite" aria-atomic="false"></div>
 
 <script>
@@ -2188,6 +2511,96 @@ body.mobile-app .offline-banner {
     { id: 43, label: 'Дзёсэй', names: ['Дзёсэй', 'Josei'] },
     { id: 62, label: 'Исекай', names: ['Исекай', 'Isekai'] },
   ];
+
+  const SEARCH_LANGS = [
+    { value: 'auto', label: 'Авто' },
+    { value: 'ru', label: 'Русский' },
+    { value: 'en', label: 'English' },
+    { value: 'ja', label: '日本語' },
+  ];
+
+  const EXTRA_GENRE_RU = {
+    ecchi: 'Этти',
+    'boys love': 'BL',
+    'girls love': 'GL',
+    hentai: 'Хентай',
+    'adult cast': 'Взрослые герои',
+    elf: 'Эльфы',
+    elves: 'Эльфы',
+    magic: 'Магия',
+    demons: 'Демоны',
+    monster: 'Монстры',
+    monsters: 'Монстры',
+    ghost: 'Призраки',
+    ghosts: 'Призраки',
+    'martial arts': 'Боевые искусства',
+    friendship: 'Дружба',
+    'coming of age': 'Взросление',
+    tragedy: 'Трагедия',
+    'time travel': 'Путешествия во времени',
+    'post-apocalyptic': 'Постапокалипсис',
+    cyberpunk: 'Киберпанк',
+    game: 'Игры',
+    games: 'Игры',
+    harem: 'Гарем',
+    isekai: 'Исекай',
+    villainess: 'Злодейка',
+    reincarnation: 'Перерождение',
+    ninja: 'Ниндзя',
+    pirate: 'Пираты',
+    pirates: 'Пираты',
+    robot: 'Роботы',
+    robots: 'Роботы',
+    idol: 'Идолы',
+    police: 'Полиция',
+    crime: 'Криминал',
+    'school life': 'Школа',
+    'high school': 'Школа',
+  };
+
+  const GENRE_RU = (() => {
+    const map = {};
+    for (const genre of GENRES) {
+      for (const name of genre.names) {
+        if (/[a-z]/i.test(name)) map[name.toLowerCase()] = genre.label;
+      }
+    }
+    return map;
+  })();
+
+  function hasCyrillic(value) {
+    return /[\u0400-\u04ff]/.test(String(value == null ? '' : value));
+  }
+
+  function hasJapanese(value) {
+    return /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(String(value == null ? '' : value));
+  }
+
+  function firstCyrillic(values) {
+    for (const value of Array.isArray(values) ? values : []) {
+      const text = String(value == null ? '' : value).trim();
+      if (text && hasCyrillic(text)) return text;
+    }
+    return '';
+  }
+
+  function normalizeSearchLang(value) {
+    const key = String(value == null ? '' : value).trim().toLowerCase();
+    return SEARCH_LANGS.some(lang => lang.value === key) ? key : 'auto';
+  }
+
+  function detectQueryLang(query) {
+    const text = String(query == null ? '' : query).trim();
+    if (hasJapanese(text)) return 'ja';
+    if (hasCyrillic(text)) return 'ru';
+    return 'en';
+  }
+
+  function genreRu(name) {
+    const raw = String(name == null ? '' : name).trim();
+    if (!raw || hasCyrillic(raw)) return raw;
+    return GENRE_RU[raw.toLowerCase()] || EXTRA_GENRE_RU[raw.toLowerCase()] || raw;
+  }
 
   const TYPES = [
     { value: 'tv', label: 'ТВ-сериал' },
@@ -2313,6 +2726,8 @@ body.mobile-app .offline-banner {
     const variables = { page, perPage: limit, type: 'ANIME', isAdult: false };
     const active = hasActiveFilters(filters);
 
+    if (mode === 'airing') variables.status = 'RELEASING';
+    if (mode === 'movie') variables.format = 'MOVIE';
     if (query) variables.search = query;
     if (filters.type) variables.format = ANILIST_FORMATS[filters.type];
     if (filters.status) variables.status = ANILIST_STATUSES[filters.status];
@@ -2323,27 +2738,8 @@ body.mobile-app .offline-banner {
     }
     if (filters.minScore) variables.averageScoreGreater = Number(filters.minScore) * 10 - 1;
 
-    if (query) {
-      if (active) variables.sort = [mode === 'score' ? 'SCORE_DESC' : 'POPULARITY_DESC'];
-      return variables;
-    }
-
-    if (active) {
-      variables.sort = [mode === 'score' ? 'SCORE_DESC' : 'POPULARITY_DESC'];
-      return variables;
-    }
-
-    if (mode === 'score') {
-      variables.sort = ['SCORE_DESC'];
-    } else if (mode === 'airing') {
-      variables.status = 'RELEASING';
-      variables.sort = ['POPULARITY_DESC'];
-    } else if (mode === 'movie') {
-      variables.format = 'MOVIE';
-      variables.sort = ['POPULARITY_DESC'];
-    } else {
-      variables.sort = ['POPULARITY_DESC'];
-    }
+    if (mode === 'score') variables.sort = ['SCORE_DESC'];
+    else if (!query || active) variables.sort = ['POPULARITY_DESC'];
 
     return variables;
   }
@@ -2694,18 +3090,276 @@ body.mobile-app .offline-banner {
     };
   }
 
+  /* ---------------- резервные копии и моменты ---------------- */
+  const BACKUP_KIND = 'anitier.backup';
+  const BACKUP_VERSION = 2;
+  const BACKUP_FILE = 'anitier-backup.json';
+
+  function parseBackupJson(text) {
+    let payload = null;
+    try {
+      payload = JSON.parse(String(text == null ? '' : text));
+    } catch {
+      throw new Error('Файл повреждён: внутри не JSON.');
+    }
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      throw new Error('Это не резервная копия AniTier.');
+    }
+    if (payload.kind !== BACKUP_KIND) throw new Error('Это не резервная копия AniTier.');
+    const version = Number(payload.version);
+    if (!Number.isFinite(version) || version < 1) {
+      throw new Error('В файле не указана версия резервной копии.');
+    }
+    if (version > BACKUP_VERSION) {
+      throw new Error('Копия создана в более новой версии AniTier. Обновите приложение.');
+    }
+    if (!payload.data || typeof payload.data !== 'object' || Array.isArray(payload.data)) {
+      throw new Error('В копии нет данных приложения.');
+    }
+    return {
+      kind: BACKUP_KIND,
+      version,
+      createdAt: typeof payload.createdAt === 'string' ? payload.createdAt.slice(0, 60) : '',
+      data: payload.data,
+    };
+  }
+
+  function isTikTokUrl(value) {
+    try {
+      const url = new URL(String(value == null ? '' : value).trim());
+      const host = url.hostname.toLowerCase();
+      return url.protocol === 'https:' && (host === 'tiktok.com' || host.endsWith('.tiktok.com'));
+    } catch {
+      return false;
+    }
+  }
+
+  function extractTikTokId(value) {
+    const text = String(value == null ? '' : value).trim();
+    const patterns = [
+      /\/video\/(\d{6,})/i,
+      /\/embed\/v2\/(\d{6,})/i,
+      /\/player\/v1\/(\d{6,})/i,
+      /\/v\/(\d{6,})\.html/i,
+    ];
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match) return match[1];
+    }
+    return '';
+  }
+
+  function tiktokPlayerUrl(videoId) {
+    const id = String(videoId == null ? '' : videoId).replace(/\D/g, '');
+    if (!id) return '';
+    return `https://www.tiktok.com/player/v1/${id}?autoplay=1&music_info=0&description=0&rel=0`;
+  }
+
+  /* ---------------- уведомления: события и группировка ---------------- */
+  const NOTIF_TABS = ['tracked', 'recent', 'completed'];
+  const NOTIF_TAB_LABELS = {
+    tracked: 'Отслеживаемое',
+    recent: 'Недавно вышло',
+    completed: 'Завершилось',
+  };
+  const TRACKED_EPISODE_DAYS = 7;
+  const RECENT_EPISODE_DAYS = 7;
+  const RECENT_FILM_DAYS = 180;
+  const COMPLETED_DAYS = 30;
+  const SEASON_RELEASE_DAYS = 180;
+
+  function episodeEventKey(animeId, episode) {
+    return `ep:${Number(animeId)}:${Number(episode)}`;
+  }
+
+  function seasonEventKey(animeId, sequelId) {
+    return `season:${Number(animeId)}:${Number(sequelId)}`;
+  }
+
+  function filmEventKey(id) {
+    return `film:${Number(id)}`;
+  }
+
+  function completedEventKey(id) {
+    return `completed:${Number(id)}`;
+  }
+
+  function groupEpisodesByAnime(items) {
+    const groups = new Map();
+    for (const item of Array.isArray(items) ? items : []) {
+      const anime = item && item.anime;
+      const episode = Number(item && (item.episode != null ? item.episode : item.n));
+      if (!anime || anime.id == null || !Number.isInteger(episode) || episode <= 0) continue;
+      const date = item.date || item.airingAt || null;
+      const key = String(anime.id);
+      if (!groups.has(key)) {
+        groups.set(key, { anime, episodes: [], latestAt: null, count: 0 });
+      }
+      const group = groups.get(key);
+      if (group.episodes.some(ep => ep.n === episode)) continue;
+      group.episodes.push({ n: episode, date });
+      group.count += 1;
+      if (date && (!group.latestAt || new Date(date) > new Date(group.latestAt))) group.latestAt = date;
+    }
+
+    return [...groups.values()]
+      .map(group => ({
+        ...group,
+        episodes: group.episodes.sort((a, b) => a.n - b.n),
+      }))
+      .sort((a, b) => {
+        const at = a.latestAt ? new Date(a.latestAt).getTime() : 0;
+        const bt = b.latestAt ? new Date(b.latestAt).getTime() : 0;
+        if (bt !== at) return bt - at;
+        return String(a.anime.title || '').localeCompare(String(b.anime.title || ''), 'ru');
+      });
+  }
+
+  function episodeRangeLabel(numbers) {
+    const list = [...new Set((Array.isArray(numbers) ? numbers : [])
+      .map(Number)
+      .filter(n => Number.isInteger(n) && n > 0))].sort((a, b) => a - b);
+    if (!list.length) return '';
+
+    const parts = [];
+    let start = list[0];
+    let prev = list[0];
+    const flush = () => {
+      parts.push(start === prev ? String(start) : `${start}–${prev}`);
+    };
+    for (let i = 1; i < list.length; i += 1) {
+      const value = list[i];
+      if (value === prev + 1) {
+        prev = value;
+        continue;
+      }
+      flush();
+      start = value;
+      prev = value;
+    }
+    flush();
+    return parts.join(', ');
+  }
+
+  function collectSeasons(mediaList, options = {}) {
+    const now = options.now == null ? Date.now() : Number(options.now);
+    const releaseDays = Number(options.releaseDays) || SEASON_RELEASE_DAYS;
+    const cutoff = now - releaseDays * 86400000;
+    const found = new Map();
+
+    for (const media of Array.isArray(mediaList) ? mediaList : []) {
+      if (!media) continue;
+      const relations = Array.isArray(media.relations) ? media.relations : [];
+      for (const relation of relations) {
+        const sequel = relation && relation.anime;
+        const type = relation && relation.relationType;
+        if (!sequel || sequel.id == null || sequel.id === media.id) continue;
+        const isSequel = type === 'SEQUEL';
+        const isFilmSideStory = type === 'SIDE_STORY' && sequel.type === 'Movie';
+        if (!isSequel && !isFilmSideStory) continue;
+        if (!['В эфире', 'Анонс', 'Завершено'].includes(sequel.status)) continue;
+
+        const date = sequel.airedTo || sequel.airedFrom || null;
+        const timestamp = date ? new Date(date).getTime() : 0;
+        if (sequel.status === 'Завершено' && (!timestamp || timestamp < cutoff || timestamp > now)) continue;
+
+        const key = String(sequel.id);
+        if (found.has(key)) continue;
+        found.set(key, {
+          anime: media,
+          sequel,
+          relationType: type,
+          status: sequel.status,
+          date,
+        });
+      }
+    }
+
+    const priority = { 'В эфире': 0, 'Анонс': 1, 'Завершено': 2 };
+    return [...found.values()].sort((a, b) => {
+      const pa = priority[a.status] == null ? 9 : priority[a.status];
+      const pb = priority[b.status] == null ? 9 : priority[b.status];
+      if (pa !== pb) return pa - pb;
+      const at = a.date ? new Date(a.date).getTime() : 0;
+      const bt = b.date ? new Date(b.date).getTime() : 0;
+      return bt - at;
+    });
+  }
+
+  function collectNotificationKeys(data) {
+    const keys = new Set();
+    const addGroup = (group) => {
+      if (!group || !group.anime) return;
+      for (const episode of group.episodes || []) {
+        if (episode && episode.n) keys.add(episodeEventKey(group.anime.id, episode.n));
+      }
+    };
+    const tracked = data && data.tracked ? data.tracked : {};
+    const recent = data && data.recent ? data.recent : {};
+    for (const group of tracked.episodes || []) addGroup(group);
+    for (const item of tracked.seasons || []) {
+      if (item && item.anime && item.sequel) keys.add(seasonEventKey(item.anime.id, item.sequel.id));
+    }
+    for (const group of recent.episodes || []) addGroup(group);
+    for (const film of recent.films || []) {
+      if (film && film.id != null) keys.add(filmEventKey(film.id));
+    }
+    for (const anime of (data && data.completed) || []) {
+      if (anime && anime.id != null) keys.add(completedEventKey(anime.id));
+    }
+    return [...keys];
+  }
+
+  function defaultNotificationTab(data) {
+    const tracked = data && data.tracked ? data.tracked : {};
+    const hasTracked = Boolean((tracked.episodes || []).length || (tracked.seasons || []).length);
+    return hasTracked ? 'tracked' : 'recent';
+  }
+
+  function formatBytes(value) {
+    const bytes = Number(value) || 0;
+    if (bytes < 1024) return `${bytes} Б`;
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} КБ`;
+    return `${(bytes / (1024 * 1024)).toFixed(bytes < 10 * 1024 * 1024 ? 1 : 0)} МБ`;
+  }
+
   return {
     PAGE_LIMIT,
     TIER_IDS,
     SHARE_PREFIX,
     SHARE_KIND,
     SHARE_VERSION,
+    BACKUP_KIND,
+    BACKUP_VERSION,
+    BACKUP_FILE,
     makeTierShare,
     encodeTierShare,
     parseTierShare,
     compareTierLists,
     compactShareAnime,
+    parseBackupJson,
+    isTikTokUrl,
+    extractTikTokId,
+    tiktokPlayerUrl,
+    formatBytes,
+    NOTIF_TABS,
+    NOTIF_TAB_LABELS,
+    TRACKED_EPISODE_DAYS,
+    RECENT_EPISODE_DAYS,
+    RECENT_FILM_DAYS,
+    COMPLETED_DAYS,
+    SEASON_RELEASE_DAYS,
+    episodeEventKey,
+    seasonEventKey,
+    filmEventKey,
+    completedEventKey,
+    groupEpisodesByAnime,
+    episodeRangeLabel,
+    collectSeasons,
+    collectNotificationKeys,
+    defaultNotificationTab,
     GENRES,
+    SEARCH_LANGS,
     TYPES,
     STATUSES,
     SCORES,
@@ -2714,6 +3368,12 @@ body.mobile-app .offline-banner {
     hasActiveFilters,
     countActiveFilters,
     genreById,
+    genreRu,
+    hasCyrillic,
+    hasJapanese,
+    firstCyrillic,
+    normalizeSearchLang,
+    detectQueryLang,
     matchesFilters,
     filterItems,
     buildAniListVariables,
@@ -2728,17 +3388,31 @@ body.mobile-app .offline-banner {
 </script>
 <script>
 /* ============================================================
-   AniTier — база аниме, уведомления, тир-листы, календарь премьер
-   Данные: AniList GraphQL + Kitsu API. Хранение: localStorage.
+   AniTier — состояние, localStorage и операции со списками
+   Загружается после core.js и до app-api.js, app-render.js, app.js.
    ============================================================ */
-(() => {
+(function (App) {
   'use strict';
+
+  /* Рендер загружается позже: вызовы происходят во время работы приложения. */
+  const toast = (...args) => App.toast(...args);
+  const refreshViews = (...args) => App.refreshViews(...args);
+  const updateEpisodeUI = (...args) => App.updateEpisodeUI(...args);
 
   /* ---------------- константы ---------------- */
   const C = window.AniTierCore;
   if (!C) throw new Error('core.js не загружен');
 
   const LS_KEY = 'anitier.v1';
+  const MOMENTS_KEY = 'anitier.moments.v1';
+  const TRANSLATIONS_KEY = 'anitier.translations.v1';
+  const CUSTOM_LIMIT = 100;
+  const MOMENTS_PER_ANIME = 24;
+  const CUSTOM_IMAGE_MAX = 12 * 1024 * 1024;
+  const MOMENT_VIDEO_MAX = 40 * 1024 * 1024;
+  const MOMENT_GIF_MAX = 12 * 1024 * 1024;
+  const MEDIA_DB = 'anitier-media';
+  const MEDIA_DB_VERSION = 1;
   const PAGE_LIMIT = C.PAGE_LIMIT;
   const LONG_TITLE_EPS = 60;
   const ANILIST_TIMEOUT = 9000;
@@ -2798,6 +3472,97 @@ body.mobile-app .offline-banner {
       }
     }
   }`;
+  const ANILIST_TRACKED_QUERY = `query TrackedAnime(
+    $idMal_in: [Int],
+    $page: Int,
+    $perPage: Int
+  ) {
+    Page(page: $page, perPage: $perPage) {
+      pageInfo { hasNextPage }
+      media(idMal_in: $idMal_in, type: ANIME, isAdult: false) {
+        id
+        idMal
+        title { romaji english native }
+        synonyms
+        format
+        episodes
+        status
+        seasonYear
+        startDate { year month day }
+        endDate { year month day }
+        averageScore
+        description(asHtml: false)
+        genres
+        studios(isMain: true) { nodes { name } }
+        coverImage { extraLarge large }
+        siteUrl
+        nextAiringEpisode { episode airingAt }
+        relations {
+          edges {
+            relationType
+            node {
+              id
+              idMal
+              title { romaji english native }
+              synonyms
+              format
+              episodes
+              status
+              seasonYear
+              startDate { year month day }
+              endDate { year month day }
+              averageScore
+              description(asHtml: false)
+              genres
+              studios(isMain: true) { nodes { name } }
+              coverImage { extraLarge large }
+              siteUrl
+              nextAiringEpisode { episode airingAt }
+            }
+          }
+        }
+      }
+    }
+  }`;
+
+  const ANILIST_SCHEDULE_QUERY = `query RecentEpisodes(
+    $page: Int,
+    $perPage: Int,
+    $airingAtGreater: Int,
+    $airingAtLesser: Int
+  ) {
+    Page(page: $page, perPage: $perPage) {
+      pageInfo { hasNextPage }
+      airingSchedules(
+        airingAt_greater: $airingAtGreater,
+        airingAt_lesser: $airingAtLesser,
+        sort: TIME_DESC
+      ) {
+        airingAt
+        episode
+        media {
+          id
+          idMal
+          title { romaji english native }
+          synonyms
+          format
+          episodes
+          status
+          seasonYear
+          startDate { year month day }
+          endDate { year month day }
+          averageScore
+          description(asHtml: false)
+          genres
+          studios(isMain: true) { nodes { name } }
+          coverImage { extraLarge large }
+          siteUrl
+          nextAiringEpisode { episode airingAt }
+        }
+      }
+    }
+  }`;
+
   const TEST_MODE = new URLSearchParams(location.search).has('test');
 
   const TIERS = [
@@ -3011,6 +3776,9 @@ body.mobile-app .offline-banner {
     tab: 'db',
     offline: false,
     forceDemo: new URLSearchParams(location.search).has('demo'),
+    settings: {
+      searchLang: 'auto',
+    },
     modalId: null,
     exchange: {
       open: false,
@@ -3023,6 +3791,14 @@ body.mobile-app .offline-banner {
       error: '',
     },
     byId: new Map(),
+    franchiseById: new Map(),
+    franchiseLoading: new Set(),
+    franchiseErrors: new Map(),
+    customCards: [],
+    moments: {},
+    customForm: { open: false, editingId: null, error: '', busy: false },
+    momentForm: { open: false, animeId: null, mode: 'tiktok', error: '', busy: false, url: '', title: '' },
+    backup: { open: false, busy: false, message: '', error: false },
     lists: { watched: emptyTiers(), planned: emptyTiers() },
     progress: {},
     epInfo: {},
@@ -3042,9 +3818,21 @@ body.mobile-app .offline-banner {
       queued: false,
       touched: false,
       sources: [],
+      resolvedQuery: '',
+      resolveVia: '',
       alt: createAltSearchState(),
     },
-    notifications: { airing: [], completed: [], loading: false, loaded: false, error: null, queued: false },
+    notifications: {
+      tab: null,
+      tabTouched: false,
+      tracked: { episodes: [], seasons: [] },
+      recent: { episodes: [], films: [] },
+      completed: [],
+      loading: false,
+      loaded: false,
+      error: null,
+      queued: false,
+    },
     upcoming: { items: [], loading: false, loaded: false, error: null, queued: false },
   };
 
@@ -3088,7 +3876,10 @@ body.mobile-app .offline-banner {
       malId: a.malId ?? null,
       title: a.title,
       altTitle: a.altTitle || '',
+      originalTitle: a.originalTitle || '',
       image: a.image || '',
+      custom: Boolean(a.custom),
+      customId: a.customId || '',
       episodes: a.episodes ?? null,
       type: a.type || '',
       status: a.status || '',
@@ -3106,6 +3897,346 @@ body.mobile-app .offline-banner {
     };
   }
 
+  /* ---------------- свои карточки ---------------- */
+  function newUid() {
+    try {
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+    } catch { /* старый WebView */ }
+    return `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  function nextCustomId() {
+    let min = 0;
+    const consider = (value) => {
+      const id = Number(value);
+      if (Number.isInteger(id) && id < min) min = id;
+    };
+    for (const card of state.customCards) consider(card.id);
+    for (const name of ['watched', 'planned']) {
+      for (const tier of TIER_IDS) {
+        for (const item of state.lists[name][tier] || []) consider(item.id);
+      }
+    }
+    return min - 1;
+  }
+
+  function normalizeCustomCard(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const id = Number(raw.id);
+    const title = String(raw.title == null ? '' : raw.title).trim().slice(0, 300);
+    if (!Number.isInteger(id) || id >= 0 || !title) return null;
+    const customId = String(raw.customId || '').trim().slice(0, 100) || `legacy-${Math.abs(id)}`;
+    const image = typeof raw.image === 'string' && /^data:image\//i.test(raw.image) && raw.image.length < 700000
+      ? raw.image
+      : '';
+    const episodes = Number(raw.episodes);
+    const score = Number(raw.score);
+    const year = Number(raw.year);
+    const genres = Array.isArray(raw.genres)
+      ? raw.genres.map(value => String(value == null ? '' : value).trim().slice(0, 60)).filter(Boolean).slice(0, 12)
+      : [];
+    return {
+      id,
+      customId,
+      custom: true,
+      title,
+      altTitle: String(raw.altTitle == null ? '' : raw.altTitle).trim().slice(0, 300),
+      originalTitle: String(raw.originalTitle == null ? '' : raw.originalTitle).trim().slice(0, 300),
+      image,
+      episodes: Number.isFinite(episodes) && episodes > 0 ? Math.floor(episodes) : null,
+      type: String(raw.type == null ? '' : raw.type).trim().slice(0, 40),
+      status: String(raw.status == null ? '' : raw.status).trim().slice(0, 40),
+      score: Number.isFinite(score) && score >= 0 && score <= 10 ? score : null,
+      year: Number.isFinite(year) && year > 0 ? Math.floor(year) : null,
+      airedFrom: null,
+      airedTo: null,
+      synopsis: String(raw.synopsis == null ? '' : raw.synopsis).trim().slice(0, 2000),
+      genres,
+      studios: [],
+      url: '',
+      source: 'custom',
+      sourceId: null,
+      demo: false,
+      createdAt: Number(raw.createdAt) || Date.now(),
+      updatedAt: Number(raw.updatedAt) || Date.now(),
+    };
+  }
+
+  function getCustomCard(id) {
+    return state.customCards.find(card => card.id === Number(id)) || null;
+  }
+
+  function upsertCustomCard(raw) {
+    const card = normalizeCustomCard(raw);
+    if (!card) return null;
+    const index = state.customCards.findIndex(item => item.id === card.id);
+    if (index >= 0) state.customCards[index] = card;
+    else state.customCards.unshift(card);
+    if (state.customCards.length > CUSTOM_LIMIT) state.customCards.length = CUSTOM_LIMIT;
+    state.byId.set(card.id, card);
+
+    for (const name of ['watched', 'planned']) {
+      for (const tier of TIER_IDS) {
+        const items = state.lists[name][tier];
+        const at = items.findIndex(item => item.id === card.id);
+        if (at >= 0) items[at] = snapshotAnime(card);
+      }
+    }
+
+    saveState();
+    refreshViews();
+    return card;
+  }
+
+  function deleteCustomCard(id) {
+    const card = getCustomCard(id);
+    if (!card) return null;
+    state.customCards = state.customCards.filter(item => item.id !== card.id);
+    for (const name of ['watched', 'planned']) {
+      for (const tier of TIER_IDS) {
+        state.lists[name][tier] = state.lists[name][tier].filter(item => item.id !== card.id);
+      }
+    }
+    delete state.progress[card.id];
+    delete state.epInfo[card.id];
+    if (state.moments[String(card.id)]) {
+      delete state.moments[String(card.id)];
+      saveMoments();
+    }
+    state.byId.delete(card.id);
+    saveState();
+    refreshViews();
+    return card;
+  }
+
+  /* ---------------- моменты ---------------- */
+  function normalizeMoment(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const id = String(raw.id || '').trim().slice(0, 100);
+    const kind = ['tiktok', 'video', 'gif'].includes(raw.kind) ? raw.kind : '';
+    if (!id || !kind) return null;
+    const url = String(raw.url || '').trim().slice(0, 1000);
+    const mediaKey = String(raw.mediaKey || '').trim().slice(0, 120);
+    if (kind === 'tiktok' && !C.isTikTokUrl(url)) return null;
+    if (kind !== 'tiktok' && !mediaKey) return null;
+    const thumb = typeof raw.thumb === 'string'
+      && (/^data:image\//i.test(raw.thumb) || /^https:\/\//i.test(raw.thumb))
+      && raw.thumb.length < 500000
+      ? raw.thumb
+      : '';
+    const size = Number(raw.size);
+    return {
+      id,
+      kind,
+      title: String(raw.title == null ? '' : raw.title).trim().slice(0, 200),
+      url,
+      mediaKey,
+      thumb,
+      mime: String(raw.mime || '').slice(0, 100),
+      size: Number.isFinite(size) && size > 0 ? Math.floor(size) : 0,
+      createdAt: Number(raw.createdAt) || Date.now(),
+    };
+  }
+
+  function loadMoments() {
+    let raw = null;
+    try { raw = JSON.parse(localStorage.getItem(MOMENTS_KEY) || 'null'); } catch { raw = null; }
+    state.moments = {};
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return;
+    for (const [key, list] of Object.entries(raw)) {
+      if (!Array.isArray(list)) continue;
+      const items = list.map(normalizeMoment).filter(Boolean).slice(0, MOMENTS_PER_ANIME);
+      if (items.length) state.moments[key] = items;
+    }
+  }
+
+  function saveMoments() {
+    try {
+      localStorage.setItem(MOMENTS_KEY, JSON.stringify(state.moments));
+    } catch (err) {
+      console.warn('moments', err);
+      toast('Не удалось сохранить моменты: браузер не даёт место');
+    }
+  }
+
+  function momentsFor(id) {
+    return state.moments[String(id)] || [];
+  }
+
+  function findMoment(animeId, momentId) {
+    return momentsFor(animeId).find(item => item.id === momentId) || null;
+  }
+
+  function addMoment(animeId, raw) {
+    const moment = normalizeMoment(raw);
+    if (!moment) return null;
+    const key = String(animeId);
+    const list = state.moments[key] ? [...state.moments[key]] : [];
+    const index = list.findIndex(item => item.id === moment.id);
+    if (index >= 0) list[index] = moment;
+    else list.unshift(moment);
+    state.moments[key] = list.slice(0, MOMENTS_PER_ANIME);
+    saveMoments();
+    return moment;
+  }
+
+  function removeMoment(animeId, momentId) {
+    const key = String(animeId);
+    const list = momentsFor(animeId);
+    const moment = list.find(item => item.id === momentId) || null;
+    if (!moment) return null;
+    const next = list.filter(item => item.id !== momentId);
+    if (next.length) state.moments[key] = next;
+    else delete state.moments[key];
+    saveMoments();
+    return moment;
+  }
+
+  /* ---------------- резервные копии ---------------- */
+  function buildBackupPayload() {
+    saveState();
+    saveMoments();
+    const read = (key) => {
+      try {
+        const raw = JSON.parse(localStorage.getItem(key) || 'null');
+        return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+      } catch {
+        return {};
+      }
+    };
+    return {
+      app: 'AniTier',
+      kind: C.BACKUP_KIND,
+      version: C.BACKUP_VERSION,
+      createdAt: new Date().toISOString(),
+      data: {
+        state: read(LS_KEY),
+        moments: read(MOMENTS_KEY),
+        translations: read(TRANSLATIONS_KEY),
+      },
+    };
+  }
+
+  function applyBackupData(data) {
+    const rawState = data && data.state;
+    if (!rawState || typeof rawState !== 'object' || Array.isArray(rawState)) {
+      throw new Error('В копии нет данных приложения.');
+    }
+
+    const cleanState = {
+      watched: rawState.watched && typeof rawState.watched === 'object' ? rawState.watched : {},
+      planned: rawState.planned && typeof rawState.planned === 'object' ? rawState.planned : {},
+      customCards: Array.isArray(rawState.customCards) ? rawState.customCards : [],
+      progress: rawState.progress && typeof rawState.progress === 'object' ? rawState.progress : {},
+      epInfo: rawState.epInfo && typeof rawState.epInfo === 'object' ? rawState.epInfo : {},
+      seenNotifications: Array.isArray(rawState.seenNotifications) ? rawState.seenNotifications : [],
+      settings: rawState.settings && typeof rawState.settings === 'object'
+        ? { searchLang: C.normalizeSearchLang(rawState.settings.searchLang) }
+        : { searchLang: 'auto' },
+    };
+
+    const moments = {};
+    if (data.moments && typeof data.moments === 'object' && !Array.isArray(data.moments)) {
+      for (const [key, list] of Object.entries(data.moments)) {
+        if (!Array.isArray(list)) continue;
+        const items = list.map(normalizeMoment).filter(Boolean).slice(0, MOMENTS_PER_ANIME);
+        if (items.length) moments[key] = items;
+      }
+    }
+
+    const translations = {};
+    if (data.translations && typeof data.translations === 'object' && !Array.isArray(data.translations)) {
+      for (const [key, value] of Object.entries(data.translations)) {
+        if (typeof value === 'string' && value && value.length < 4000) translations[key] = value;
+      }
+    }
+
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(cleanState));
+      localStorage.setItem(MOMENTS_KEY, JSON.stringify(moments));
+      if (Object.keys(translations).length) localStorage.setItem(TRANSLATIONS_KEY, JSON.stringify(translations));
+      else localStorage.removeItem(TRANSLATIONS_KEY);
+    } catch (err) {
+      throw new Error('Браузер не смог записать копию: не хватает места.');
+    }
+
+    loadState();
+    loadMoments();
+    if (App.reloadTranslationCache) App.reloadTranslationCache();
+    refreshViews();
+    return {
+      cards: state.customCards.length,
+      moments: Object.keys(state.moments).length,
+    };
+  }
+
+  /* ---------------- IndexedDB для картинок и медиа ---------------- */
+  let mediaDbPromise = null;
+
+  function openMediaDB() {
+    if (mediaDbPromise) return mediaDbPromise;
+    mediaDbPromise = new Promise(resolve => {
+      if (typeof indexedDB === 'undefined') { resolve(null); return; }
+      let request = null;
+      try { request = indexedDB.open(MEDIA_DB, MEDIA_DB_VERSION); } catch { resolve(null); return; }
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains('images')) db.createObjectStore('images');
+        if (!db.objectStoreNames.contains('media')) db.createObjectStore('media');
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => resolve(null);
+      request.onblocked = () => resolve(null);
+    });
+    return mediaDbPromise;
+  }
+
+  async function mediaPut(storeName, key, value) {
+    const db = await openMediaDB();
+    if (!db) return false;
+    return new Promise(resolve => {
+      try {
+        const tx = db.transaction(storeName, 'readwrite');
+        tx.objectStore(storeName).put(value, key);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => resolve(false);
+        tx.onabort = () => resolve(false);
+      } catch {
+        resolve(false);
+      }
+    });
+  }
+
+  async function mediaGet(storeName, key) {
+    const db = await openMediaDB();
+    if (!db) return null;
+    return new Promise(resolve => {
+      try {
+        const tx = db.transaction(storeName, 'readonly');
+        const request = tx.objectStore(storeName).get(key);
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => resolve(null);
+      } catch {
+        resolve(null);
+      }
+    });
+  }
+
+  async function mediaDelete(storeName, key) {
+    const db = await openMediaDB();
+    if (!db) return false;
+    return new Promise(resolve => {
+      try {
+        const tx = db.transaction(storeName, 'readwrite');
+        tx.objectStore(storeName).delete(key);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => resolve(false);
+      } catch {
+        resolve(false);
+      }
+    });
+  }
+
   function loadState() {
     let raw = null;
     try { raw = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch { raw = null; }
@@ -3115,11 +4246,23 @@ body.mobile-app .offline-banner {
       state.progress = {};
       state.epInfo = {};
       state.seenNotifications = new Set();
+      state.customCards = [];
+      state.settings.searchLang = 'auto';
       return;
     }
     state.lists.watched = normalizeTiers(raw.watched);
     state.lists.planned = normalizeTiers(raw.planned);
+    const customSeen = new Set();
+    state.customCards = (Array.isArray(raw.customCards) ? raw.customCards : [])
+      .map(normalizeCustomCard)
+      .filter(card => {
+        if (!card || customSeen.has(card.id)) return false;
+        customSeen.add(card.id);
+        return true;
+      })
+      .slice(0, CUSTOM_LIMIT);
     state.seenNotifications = new Set(Array.isArray(raw.seenNotifications) ? raw.seenNotifications : []);
+    state.settings.searchLang = C.normalizeSearchLang(raw.settings && raw.settings.searchLang);
 
     state.progress = {};
     if (raw.progress && typeof raw.progress === 'object') {
@@ -3150,9 +4293,11 @@ body.mobile-app .offline-banner {
       localStorage.setItem(LS_KEY, JSON.stringify({
         watched: state.lists.watched,
         planned: state.lists.planned,
+        customCards: state.customCards,
         progress: state.progress,
         epInfo,
         seenNotifications: [...state.seenNotifications],
+        settings: { searchLang: C.normalizeSearchLang(state.settings.searchLang) },
       }));
     } catch (err) {
       console.warn('localStorage', err);
@@ -3173,10 +4318,21 @@ body.mobile-app .offline-banner {
     return null;
   }
   function getAnime(id) {
+    const custom = state.customCards.find(card => card.id === id);
+    if (custom) return custom;
     if (state.byId.has(id)) return state.byId.get(id);
-    const pools = [state.notifications.airing, state.notifications.completed, state.db.items, state.upcoming.items];
+    const n = state.notifications;
+    const pools = [
+      ...(n.tracked.episodes || []).map(group => group.anime),
+      ...(n.tracked.seasons || []).flatMap(item => [item.anime, item.sequel]),
+      ...(n.recent.episodes || []).map(group => group.anime),
+      ...(n.recent.films || []),
+      ...(n.completed || []),
+      state.db.items,
+      state.upcoming.items,
+    ];
     for (const p of pools) {
-      const found = p.find(a => a.id === id);
+      const found = p.find(a => a && a.id === id);
       if (found) return found;
     }
     for (const name of ['watched', 'planned']) {
@@ -3188,29 +4344,351 @@ body.mobile-app .offline-banner {
     return null;
   }
 
+  function watchedSet(id) {
+    const p = state.progress[id];
+    return new Set(p && Array.isArray(p.watched) ? p.watched : []);
+  }
+
+  function watchedCount(id) {
+    const p = state.progress[id];
+    return p && Array.isArray(p.watched) ? p.watched.length : 0;
+  }
+
+  function toggleEpisode(id, ep) {
+    const p = state.progress[id] || { watched: [] };
+    const set = new Set(p.watched || []);
+    if (set.has(ep)) set.delete(ep); else set.add(ep);
+    const watched = [...set].filter(n => Number.isInteger(n) && n > 0).sort((a, b) => a - b);
+    if (watched.length) state.progress[id] = { watched, updated: Date.now() };
+    else delete state.progress[id];
+    saveState();
+    updateEpisodeUI(id);
+  }
+
+  function setWatchedUpTo(id, n, max) {
+    const limit = Math.max(0, Math.min(Number(n) || 0, Number(max) || 0));
+    if (limit <= 0) delete state.progress[id];
+    else state.progress[id] = { watched: Array.from({ length: limit }, (_, i) => i + 1), updated: Date.now() };
+    saveState();
+    updateEpisodeUI(id);
+  }
+
+  function clearProgress(id) {
+    delete state.progress[id];
+    saveState();
+    updateEpisodeUI(id);
+  }
+
+  function episodeStats(a) {
+    const info = state.epInfo[a.id] || null;
+    const planned = Number(a.episodes) || Number(info?.total) || null;
+    const ongoing = a.status === 'В эфире';
+    let available = 0;
+    if (ongoing) available = info ? Math.max(0, Number(info.count) || 0) : 0;
+    else available = planned || (info ? Math.max(0, Number(info.count) || 0) : 0);
+    return { info, total: planned, available, ongoing };
+  }
+
+  const epWord = (n) => plural(n, 'серия', 'серии', 'серий');
+
+  function addToList(name, anime, tier = 'N', silent = false) {
+    if (!anime) return;
+    const t = TIER_IDS.includes(tier) ? tier : 'N';
+    const other = name === 'watched' ? 'planned' : 'watched';
+    removeFromList(other, anime.id, true);
+    for (const k of TIER_IDS) state.lists[name][k] = state.lists[name][k].filter(x => x.id !== anime.id);
+    state.lists[name][t].unshift(snapshotAnime(anime));
+    state.byId.set(anime.id, anime);
+    saveState();
+    refreshViews();
+    if (!silent) {
+      const names = { watched: 'Просмотрено', planned: 'Запланировано' };
+      toast(`«${anime.title}» → ${names[name]}${t !== 'N' ? ' · тир ' + (t === 'N' ? '?' : t) : ''}`);
+    }
+  }
+
+  function removeFromList(name, id, silent = false) {
+    let removed = false;
+    for (const k of TIER_IDS) {
+      const before = state.lists[name][k].length;
+      state.lists[name][k] = state.lists[name][k].filter(x => x.id !== id);
+      if (state.lists[name][k].length !== before) removed = true;
+    }
+    if (removed && !silent) {
+      saveState();
+      refreshViews();
+    }
+    return removed;
+  }
+
+  function moveToTier(name, id, tier) {
+    if (!TIER_IDS.includes(tier)) return;
+    let entry = null;
+    for (const k of TIER_IDS) {
+      const idx = state.lists[name][k].findIndex(x => x.id === id);
+      if (idx >= 0) {
+        entry = state.lists[name][k].splice(idx, 1)[0];
+        break;
+      }
+    }
+    if (!entry) return;
+    state.lists[name][tier].unshift(entry);
+    saveState();
+    refreshViews();
+  }
+
+  function toggleList(name, anime) {
+    if (!anime) return;
+    if (hasIn(name, anime.id)) {
+      removeFromList(name, anime.id);
+      toast(`«${anime.title}» убрано из списка «${name === 'watched' ? 'Просмотрено' : 'Запланировано'}»`);
+    } else {
+      addToList(name, anime);
+    }
+  }
+
+  Object.assign(App, {
+    LS_KEY,
+    MOMENTS_KEY,
+    TRANSLATIONS_KEY,
+    CUSTOM_LIMIT,
+    MOMENTS_PER_ANIME,
+    CUSTOM_IMAGE_MAX,
+    MOMENT_VIDEO_MAX,
+    MOMENT_GIF_MAX,
+    MEDIA_DB,
+    MEDIA_DB_VERSION,
+    PAGE_LIMIT,
+    LONG_TITLE_EPS,
+    ANILIST_TIMEOUT,
+    SEARCH_TIMEOUT,
+    ANILIST_ENDPOINT,
+    KITSU_ENDPOINT,
+    ANILIST_QUERY,
+    ANILIST_TRACKED_QUERY,
+    ANILIST_SCHEDULE_QUERY,
+    TEST_MODE,
+    TIERS,
+    TIER_IDS,
+    LIST_LABELS,
+    EXCHANGE_FILTERS,
+    TYPE_RU,
+    typeRu,
+    MONTHS_SHORT,
+    MONTHS_FULL,
+    VIEW_TABS,
+    RU_TITLES,
+    DEMO_BASE,
+    $,
+    $$,
+    esc,
+    escXml,
+    hash,
+    plural,
+    epWord,
+    sleep,
+    startOfToday,
+    endOfToday,
+    startOfTomorrow,
+    addDays,
+    daysBetween,
+    parseDate,
+    fuzzyDateInt,
+    monthLabel,
+    dateShort,
+    countdownLabel,
+    relativePast,
+    makePoster,
+    posterCache,
+    state,
+    emptyTiers,
+    createAltSearchState,
+    normalizeTiers,
+    snapshotAnime,
+    newUid,
+    nextCustomId,
+    normalizeCustomCard,
+    getCustomCard,
+    upsertCustomCard,
+    deleteCustomCard,
+    normalizeMoment,
+    loadMoments,
+    saveMoments,
+    momentsFor,
+    findMoment,
+    addMoment,
+    removeMoment,
+    buildBackupPayload,
+    applyBackupData,
+    openMediaDB,
+    mediaPut,
+    mediaGet,
+    mediaDelete,
+    loadState,
+    saveState,
+    allIn,
+    hasIn,
+    findTier,
+    getAnime,
+    addToList,
+    removeFromList,
+    moveToTier,
+    toggleList,
+    watchedSet,
+    watchedCount,
+    toggleEpisode,
+    setWatchedUpTo,
+    clearProgress,
+    episodeStats,
+  });
+})(window.AniTier = window.AniTier || {});
+
+</script>
+<script>
+/* ============================================================
+   AniTier — AniList, Kitsu, поиск и демо-данные
+   Загружается после app-store.js и до app-render.js.
+   ============================================================ */
+(function (App) {
+  'use strict';
+
+  const C = window.AniTierCore;
+  const {
+    state,
+    PAGE_LIMIT,
+    ANILIST_TIMEOUT,
+    SEARCH_TIMEOUT,
+    ANILIST_ENDPOINT,
+    KITSU_ENDPOINT,
+    ANILIST_QUERY,
+    ANILIST_TRACKED_QUERY,
+    ANILIST_SCHEDULE_QUERY,
+    RU_TITLES,
+    DEMO_BASE,
+    makePoster,
+    addDays,
+    startOfToday,
+    endOfToday,
+    fuzzyDateInt,
+  } = App;
+
   /* ---------------- AniList API ---------------- */
   const anilistCache = new Map();
+  const API_CACHE_DB = 'anitier-api-cache-v1';
+  const API_CACHE_STORE = 'responses';
+  const API_CACHE_TTL = 24 * 60 * 60 * 1000;
+  let apiCacheDbPromise = null;
+  let dailySyncMode = false;
 
-  function anilistCacheKey(variables) {
-    return JSON.stringify(variables);
+  function openApiCacheDb() {
+    if (!('indexedDB' in window)) return Promise.resolve(null);
+    if (!apiCacheDbPromise) {
+      apiCacheDbPromise = new Promise(resolve => {
+        const request = indexedDB.open(API_CACHE_DB, 1);
+        request.onupgradeneeded = () => {
+          if (!request.result.objectStoreNames.contains(API_CACHE_STORE)) request.result.createObjectStore(API_CACHE_STORE, { keyPath: 'key' });
+        };
+        request.onsuccess = () => {
+          request.result.onversionchange = () => {
+            request.result.close();
+            apiCacheDbPromise = null;
+          };
+          resolve(request.result);
+        };
+        request.onerror = request.onblocked = () => resolve(null);
+      });
+    }
+    return apiCacheDbPromise;
+  }
+
+  async function readApiCache(key) {
+    try {
+      const db = await openApiCacheDb();
+      if (!db) return null;
+      return await new Promise(resolve => {
+        const request = db.transaction(API_CACHE_STORE, 'readonly').objectStore(API_CACHE_STORE).get(key);
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => resolve(null);
+      });
+    } catch { return null; }
+  }
+
+  async function writeApiCache(key, value) {
+    try {
+      const db = await openApiCacheDb();
+      if (!db) return;
+      await new Promise(resolve => {
+        const tx = db.transaction(API_CACHE_STORE, 'readwrite');
+        const store = tx.objectStore(API_CACHE_STORE);
+        store.put({ key, value, savedAt: Date.now() });
+        const all = store.getAll();
+        all.onsuccess = () => {
+          const cutoff = Date.now() - 180 * 86400000;
+          const entries = (all.result || []).sort((a, b) => b.savedAt - a.savedAt);
+          entries.forEach((entry, index) => {
+            if (index >= 500 || entry.savedAt < cutoff) store.delete(entry.key);
+          });
+        };
+        tx.oncomplete = tx.onerror = tx.onabort = () => resolve();
+      });
+    } catch { /* API results remain usable if browser storage is unavailable. */ }
+  }
+
+  async function clearPersistentApiCache() {
+    if (!('indexedDB' in window)) return;
+    if (apiCacheDbPromise) {
+      const db = await apiCacheDbPromise;
+      if (db) db.close();
+      apiCacheDbPromise = null;
+    }
+    await new Promise(resolve => {
+      const request = indexedDB.deleteDatabase(API_CACHE_DB);
+      request.onsuccess = request.onerror = request.onblocked = () => resolve();
+    });
+  }
+
+  function setDailySyncMode(enabled) { dailySyncMode = Boolean(enabled); }
+
+  function anilistCacheKey(variables, query = ANILIST_QUERY) {
+    return JSON.stringify([query, variables]);
   }
 
   async function fetchAniList(variables, options = {}) {
     const useCache = options.cache !== false;
-    const key = anilistCacheKey(variables);
-    if (useCache && anilistCache.has(key)) return anilistCache.get(key);
-    if (!navigator.onLine) throw new Error('Нет подключения к интернету');
+    const query = options.query || ANILIST_QUERY;
+    const key = anilistCacheKey(variables, query);
+    let stale = null;
+    if (useCache && !dailySyncMode && anilistCache.has(key)) return anilistCache.get(key);
+    if (useCache && !dailySyncMode) {
+      const cached = await readApiCache(`anilist:${key}`);
+      if (cached) {
+        stale = cached.value;
+        if (Date.now() - cached.savedAt < API_CACHE_TTL) {
+          anilistCache.set(key, stale);
+          return stale;
+        }
+      }
+    }
+    if (!navigator.onLine) {
+      if (stale) return stale;
+      throw new Error('Нет подключения к интернету');
+    }
 
-    const body = JSON.stringify({ query: ANILIST_QUERY, variables });
-    const json = await fetchWithTimeout(ANILIST_ENDPOINT, {
+    const body = JSON.stringify({ query, variables });
+    let json;
+    try { json = await fetchWithTimeout(ANILIST_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body,
-    }, options.timeout || ANILIST_TIMEOUT);
+    }, options.timeout || ANILIST_TIMEOUT); }
+    catch (err) { if (stale) return stale; throw err; }
 
     const pageData = json?.data?.Page;
     if (!pageData || !Array.isArray(pageData.media)) throw new Error('AniList: неверный ответ');
-    if (useCache) anilistCache.set(key, pageData);
+    if (useCache) {
+      anilistCache.set(key, pageData);
+      await writeApiCache(`anilist:${key}`, pageData);
+    }
     state.offline = false;
     return pageData;
   }
@@ -3263,12 +4741,15 @@ body.mobile-app .offline-banner {
 
   function mapAniList(raw) {
     const malId = raw.idMal ? Number(raw.idMal) : null;
-    const ru = malId ? RU_TITLES[malId] : '';
     const titles = raw.title || {};
+    const ruSynonym = C.firstCyrillic(raw.synonyms || []);
+    const ru = (malId && RU_TITLES[malId]) || ruSynonym || '';
     const title = ru || titles.english || titles.romaji || titles.native || 'Без названия';
+    const originalTitle = titles.romaji || titles.english || titles.native || '';
     let altTitle = '';
-    if (ru) altTitle = titles.english || titles.romaji || titles.native || '';
-    else if (titles.english && titles.romaji && titles.english !== titles.romaji) altTitle = titles.romaji;
+    if (ru) {
+      altTitle = originalTitle && originalTitle !== title ? originalTitle : '';
+    } else if (titles.english && titles.romaji && titles.english !== titles.romaji) altTitle = titles.romaji;
     else if (titles.native && titles.native !== title) altTitle = titles.native;
 
     const score = raw.averageScore == null ? null : Number(raw.averageScore);
@@ -3287,6 +4768,7 @@ body.mobile-app .offline-banner {
       malId,
       title,
       altTitle,
+      originalTitle,
       image: raw.coverImage?.extraLarge || raw.coverImage?.large || '',
       episodes: raw.episodes ?? null,
       type: altType(raw.format),
@@ -3309,6 +4791,173 @@ body.mobile-app .offline-banner {
     return a;
   }
 
+  function mapTrackedAniList(raw) {
+    const anime = mapAniList(raw);
+    const relations = [];
+    for (const edge of raw?.relations?.edges || []) {
+      if (!edge || !edge.node) continue;
+      relations.push({
+        relationType: edge.relationType,
+        anime: mapAniList(edge.node),
+      });
+    }
+    anime.relations = relations;
+    return anime;
+  }
+
+  const ANILIST_FRANCHISE_QUERY = `query AnimeFranchise($id: Int, $idMal: Int) {
+    Page(page: 1, perPage: 1) {
+      media(id: $id, idMal: $idMal, type: ANIME) {
+        id idMal title { romaji english native } synonyms format episodes status seasonYear
+        startDate { year month day } endDate { year month day } averageScore
+        description(asHtml: false) genres studios(isMain: true) { nodes { name } }
+        coverImage { extraLarge large } siteUrl nextAiringEpisode { episode airingAt }
+        relations { edges { relationType node {
+          id idMal title { romaji english native } synonyms format episodes status seasonYear
+          startDate { year month day } endDate { year month day } averageScore
+          description(asHtml: false) genres studios(isMain: true) { nodes { name } }
+          coverImage { extraLarge large } siteUrl nextAiringEpisode { episode airingAt }
+        } } }
+      }
+    }
+  }`;
+
+  async function fetchAnimeRelations(anime) {
+    if (!anime || anime.custom) return [];
+    if (Array.isArray(anime.relations)) return anime.relations;
+    if (!anime.sourceId && !anime.malId) return [];
+    const page = await fetchAniList({
+      id: anime.source === 'AniList' && anime.sourceId ? Number(anime.sourceId) : null,
+      idMal: anime.malId || null,
+      page: 1,
+      perPage: 1,
+    }, { query: ANILIST_FRANCHISE_QUERY, timeout: SEARCH_TIMEOUT });
+    const raw = (page.media || [])[0];
+    if (!raw) return [];
+    const mapped = mapTrackedAniList(raw);
+    anime.relations = mapped.relations;
+    return anime.relations;
+  }
+
+  function scheduleDate(airingAt) {
+    const seconds = Number(airingAt);
+    if (!Number.isFinite(seconds) || seconds <= 0) return null;
+    return new Date(seconds * 1000).toISOString();
+  }
+
+  async function fetchTrackedAnime(malIds) {
+    const ids = [...new Set((Array.isArray(malIds) ? malIds : [])
+      .map(Number)
+      .filter(id => Number.isInteger(id) && id > 0))];
+    if (!ids.length) return [];
+
+    const chunks = [];
+    for (let i = 0; i < ids.length; i += 50) chunks.push(ids.slice(i, i + 50));
+
+    const all = [];
+    for (const chunk of chunks) {
+      const pageData = await fetchAniList({
+        idMal_in: chunk,
+        page: 1,
+        perPage: 50,
+      }, { query: ANILIST_TRACKED_QUERY, timeout: SEARCH_TIMEOUT });
+      all.push(...(pageData.media || []).map(mapTrackedAniList));
+    }
+    return C.dedupeById(all);
+  }
+
+  async function fetchRecentScheduleEvents(days = 7, maxPages = 4) {
+    const now = Math.floor(Date.now() / 1000);
+    const from = now - Math.max(1, Number(days) || 7) * 86400;
+    const events = [];
+    const seen = new Set();
+    const animeCache = new Map();
+
+    for (let page = 1; page <= maxPages; page += 1) {
+      const pageData = await fetchAniList({
+        page,
+        perPage: 50,
+        airingAtGreater: from,
+        airingAtLesser: now,
+      }, { query: ANILIST_SCHEDULE_QUERY, timeout: SEARCH_TIMEOUT });
+
+      const schedules = pageData.airingSchedules || [];
+      for (const node of schedules) {
+        const raw = node && node.media;
+        const episode = Number(node && node.episode);
+        const date = scheduleDate(node && node.airingAt);
+        if (!raw || !Number.isInteger(episode) || episode <= 0 || !date) continue;
+        let anime = animeCache.get(raw.id);
+        if (!anime) {
+          anime = mapAniList(raw);
+          animeCache.set(raw.id, anime);
+        }
+        const key = `${anime.id}:${episode}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        events.push({ anime, episode, date });
+      }
+
+      if (!pageData.pageInfo?.hasNextPage || !schedules.length) break;
+    }
+    return events;
+  }
+
+  async function fetchRecentFilms() {
+    const today = endOfToday();
+    const cutoff = addDays(startOfToday(), -C.RECENT_FILM_DAYS);
+    const pageData = await fetchAniList({
+      type: 'ANIME',
+      format: 'MOVIE',
+      status: 'FINISHED',
+      sort: ['END_DATE_DESC'],
+      page: 1,
+      perPage: 50,
+      endDateGreater: fuzzyDateInt(cutoff),
+      endDateLesser: fuzzyDateInt(today),
+      isAdult: false,
+    }, { timeout: SEARCH_TIMEOUT });
+
+    const from = cutoff.getTime();
+    const to = today.getTime();
+    return C.dedupeById((pageData.media || [])
+      .map(mapAniList)
+      .filter(a => {
+        if (a.type !== 'Movie') return false;
+        const end = a.airedTo ? new Date(a.airedTo).getTime() : 0;
+        return end >= from && end <= to;
+      })
+      .sort((a, b) => new Date(b.airedTo) - new Date(a.airedTo)))
+      .slice(0, 24);
+  }
+
+  async function fetchFinishedAnime() {
+    const today = endOfToday();
+    const cutoff = addDays(startOfToday(), -C.COMPLETED_DAYS);
+    const pageData = await fetchAniList({
+      type: 'ANIME',
+      status: 'FINISHED',
+      sort: ['END_DATE_DESC'],
+      page: 1,
+      perPage: 50,
+      endDateGreater: fuzzyDateInt(cutoff),
+      endDateLesser: fuzzyDateInt(today),
+      isAdult: false,
+    }, { timeout: SEARCH_TIMEOUT });
+
+    const from = cutoff.getTime();
+    const to = today.getTime();
+    return C.dedupeById((pageData.media || [])
+      .map(mapAniList)
+      .filter(a => {
+        if (a.type === 'Movie') return false;
+        const end = a.airedTo ? new Date(a.airedTo).getTime() : 0;
+        return end >= from && end <= to;
+      })
+      .sort((a, b) => new Date(b.airedTo) - new Date(a.airedTo)))
+      .slice(0, 24);
+  }
+
   function mapKitsu(raw, categories = new Map(), mappings = new Map()) {
     const attrs = raw.attributes || {};
     const titles = attrs.titles || {};
@@ -3317,11 +4966,14 @@ body.mobile-app .offline-banner {
       .map(id => mappings.get(id))
       .find(mapping => mapping && mapping.externalSite === 'myanimelist/anime' && /^\d+$/.test(String(mapping.externalId)));
     const malId = malMapping ? Number(malMapping.externalId) : null;
-    const ru = malId ? RU_TITLES[malId] : '';
+    const ruTitle = C.firstCyrillic([attrs.canonicalTitle, ...Object.values(titles)]);
+    const ru = (malId && RU_TITLES[malId]) || ruTitle || '';
+    const originalTitle = titles.en_jp || titles.ja_jp || attrs.canonicalTitle || titles.en || '';
     const title = ru || attrs.canonicalTitle || titles.en || titles.en_jp || titles.ja_jp || 'Без названия';
     let altTitle = '';
-    if (ru) altTitle = attrs.canonicalTitle || titles.en || titles.en_jp || '';
-    else if (titles.en && titles.en !== title) altTitle = titles.en;
+    if (ru) {
+      altTitle = originalTitle && originalTitle !== title ? originalTitle : '';
+    } else if (titles.en && titles.en !== title) altTitle = titles.en;
     else if (titles.en_jp && titles.en_jp !== title) altTitle = titles.en_jp;
     else if (titles.ja_jp && titles.ja_jp !== title) altTitle = titles.ja_jp;
 
@@ -3335,6 +4987,7 @@ body.mobile-app .offline-banner {
       malId,
       title,
       altTitle,
+      originalTitle,
       image: attrs.posterImage?.large || attrs.posterImage?.original || attrs.posterImage?.medium || '',
       episodes: attrs.episodeCount ?? null,
       type: altType(attrs.subtype),
@@ -3389,7 +5042,31 @@ body.mobile-app .offline-banner {
   async function fetchKitsuPage(query, page) {
     const offset = (page - 1) * PAGE_LIMIT;
     const url = `${KITSU_ENDPOINT}?filter[text]=${encodeURIComponent(query)}&page[limit]=${PAGE_LIMIT}&page[offset]=${offset}&include=categories,mappings`;
-    const json = await fetchWithTimeout(url, { headers: { Accept: 'application/vnd.api+json' } });
+    const cacheKey = `kitsu:${url}`;
+    let stale = null;
+    if (!dailySyncMode) {
+      const cached = await readApiCache(cacheKey);
+      if (cached) {
+        stale = cached.value;
+        if (Date.now() - cached.savedAt < API_CACHE_TTL) {
+          for (const anime of stale.items || []) state.byId.set(anime.id, anime);
+          return stale;
+        }
+      }
+    }
+    if (!navigator.onLine && stale) {
+      for (const anime of stale.items || []) state.byId.set(anime.id, anime);
+      return stale;
+    }
+    let json;
+    try { json = await fetchWithTimeout(url, { headers: { Accept: 'application/vnd.api+json' } }); }
+    catch (err) {
+      if (stale) {
+        for (const anime of stale.items || []) state.byId.set(anime.id, anime);
+        return stale;
+      }
+      throw err;
+    }
     if (!Array.isArray(json?.data)) throw new Error('Kitsu: неверный ответ');
     if (json.data.length && !json.data.some(item => item?.attributes)) throw new Error('Kitsu: неверный ответ');
     state.offline = false;
@@ -3401,31 +5078,298 @@ body.mobile-app .offline-banner {
       if (item?.type === 'mappings') mappings.set(item.id, item.attributes);
     }
 
-    return {
+    const result = {
       source: 'Kitsu',
       ok: true,
       items: json.data.map(item => mapKitsu(item, categories, mappings)),
       hasNext: Boolean(json.links?.next),
     };
+    await writeApiCache(cacheKey, result);
+    return result;
+  }
+
+  /* ---------------- русский поиск ---------------- */
+  const RU_QUERY_EXTRA = {
+    'монстр': 'Monster',
+    'код гиас восставший лелуш': 'Code Geass: Hangyaku no Lelouch',
+    'ангельские ритмы': 'Angel Beats!',
+    'мастера меча онлайн': 'Sword Art Online',
+    'нет игры нет жизни': 'No Game No Life',
+  };
+
+  let ruAliasIndex = null;
+
+  function buildRuAliasIndex() {
+    if (ruAliasIndex) return ruAliasIndex;
+    ruAliasIndex = new Map();
+    for (const [, ru, alt] of DEMO_BASE) {
+      const key = C.normalizeTitleKey(ru);
+      if (key && alt) ruAliasIndex.set(key, alt);
+    }
+    for (const [ru, alt] of Object.entries(RU_QUERY_EXTRA)) {
+      const key = C.normalizeTitleKey(ru);
+      if (key && alt && !ruAliasIndex.has(key)) ruAliasIndex.set(key, alt);
+    }
+    return ruAliasIndex;
   }
 
   function searchQueryForAlt(query) {
     const raw = String(query || '').trim();
-    if (!raw || !/[\u0400-\u04ff]/.test(raw)) return raw;
+    if (!raw || !C.hasCyrillic(raw)) return raw;
     const needle = C.normalizeTitleKey(raw);
     if (!needle) return raw;
-    const hit = DEMO_BASE.find(([, ru, alt]) => {
-      const ruKey = C.normalizeTitleKey(ru);
-      const altKey = C.normalizeTitleKey(alt);
-      return (ruKey && (ruKey.includes(needle) || needle.includes(ruKey)))
-        || (altKey && altKey.includes(needle));
+
+    const index = buildRuAliasIndex();
+    if (index.has(needle)) return index.get(needle);
+
+    let best = null;
+    for (const [ruKey, alt] of index) {
+      if (!ruKey || !alt) continue;
+      if (ruKey.includes(needle) || needle.includes(ruKey)) {
+        if (!best || ruKey.length < best.length) best = { length: ruKey.length, alt };
+      }
+    }
+    return best ? best.alt : raw;
+  }
+
+  const resolveCache = new Map();
+  const translationCache = new Map();
+  const translationInFlight = new Map();
+  let translationLoaded = false;
+  const TRANSLATION_LS_KEY = 'anitier.translations.v1';
+  const TRANSLATION_LIMIT = 200;
+
+  function decodeEntities(value) {
+    return String(value == null ? '' : value)
+      .replace(/&quot;/g, '"')
+      .replace(/&#0?39;|&apos;/g, "'")
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)));
+  }
+
+  async function resolveViaAniList(query) {
+    const page = await fetchAniList({
+      search: query,
+      page: 1,
+      perPage: 5,
+      type: 'ANIME',
+      isAdult: false,
+    }, { timeout: SEARCH_TIMEOUT, cache: false });
+    for (const raw of page.media || []) {
+      const titles = raw && raw.title ? raw.title : {};
+      const title = String(titles.romaji || titles.english || '').trim();
+      if (title) return title;
+    }
+    return '';
+  }
+
+  async function resolveViaMyMemory(query) {
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(query)}&langpair=ru|en`;
+    const json = await fetchWithTimeout(url, {}, 6000);
+    const status = Number(json?.responseStatus);
+    if (status && status !== 200) return '';
+    const text = decodeEntities(json?.responseData?.translatedText || '').trim();
+    if (!text || text === query || /MYMEMORY WARNING/i.test(text)) return '';
+    if (!/[a-z]/i.test(text)) return '';
+    return text;
+  }
+
+  async function resolveSearchQuery(query, lang) {
+    const raw = String(query || '').trim();
+    const requested = C.normalizeSearchLang(lang);
+    const effective = requested === 'auto' ? C.detectQueryLang(raw) : requested;
+    if (!raw) return { query: '', lang: effective, via: 'empty' };
+    if (effective !== 'ru') return { query: raw, lang: effective, via: 'raw' };
+
+    const local = searchQueryForAlt(raw);
+    if (local !== raw) return { query: local, lang: 'ru', via: 'dictionary' };
+
+    const cacheKey = 'ru|' + C.normalizeTitleKey(raw);
+    if (resolveCache.has(cacheKey)) return resolveCache.get(cacheKey);
+
+    let result = null;
+    try {
+      const title = await resolveViaAniList(raw);
+      if (title) result = { query: title, lang: 'ru', via: 'anilist' };
+    } catch {
+      /* пробуем следующий источник */
+    }
+    if (!result) {
+      try {
+        const title = await resolveViaMyMemory(raw);
+        if (title) result = { query: title, lang: 'ru', via: 'mymemory' };
+      } catch {
+        /* остаётся исходный запрос */
+      }
+    }
+    if (!result) result = { query: raw, lang: 'ru', via: 'raw' };
+    resolveCache.set(cacheKey, result);
+    return result;
+  }
+
+  function translationKey(text) {
+    const value = String(text || '');
+    return `t${App.hash(value)}-${value.length}`;
+  }
+
+  function loadTranslationCache() {
+    if (translationLoaded) return translationCache;
+    translationLoaded = true;
+    try {
+      const raw = JSON.parse(localStorage.getItem(TRANSLATION_LS_KEY) || 'null');
+      if (raw && typeof raw === 'object') {
+        for (const [key, value] of Object.entries(raw)) {
+          if (typeof value === 'string' && value) translationCache.set(key, value);
+        }
+      }
+    } catch {
+      /* кэш необязателен */
+    }
+    return translationCache;
+  }
+
+  function saveTranslationCache() {
+    try {
+      const entries = [...translationCache.entries()].slice(-TRANSLATION_LIMIT);
+      translationCache.clear();
+      for (const [key, value] of entries) translationCache.set(key, value);
+      localStorage.setItem(TRANSLATION_LS_KEY, JSON.stringify(Object.fromEntries(entries)));
+    } catch {
+      /* при переполнении localStorage перевод остаётся в памяти */
+    }
+  }
+
+  function cachedTranslation(text) {
+    const value = String(text || '').trim();
+    if (!value) return '';
+    return loadTranslationCache().get(translationKey(value)) || '';
+  }
+
+  async function translateText(text) {
+    const source = String(text || '').trim();
+    if (!source) return '';
+    if (C.hasCyrillic(source)) return source;
+
+    const cache = loadTranslationCache();
+    const key = translationKey(source);
+    if (cache.has(key)) return cache.get(key);
+    if (translationInFlight.has(key)) return translationInFlight.get(key);
+
+    const pair = C.hasJapanese(source) ? 'ja|ru' : 'en|ru';
+    const promise = (async () => {
+      try {
+        const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(source)}&langpair=${pair}`;
+        const json = await fetchWithTimeout(url, {}, 8000);
+        const status = Number(json?.responseStatus);
+        if (status && status !== 200) return '';
+        const translated = decodeEntities(json?.responseData?.translatedText || '').trim();
+        if (!translated || translated === source) return '';
+        if (/MYMEMORY WARNING/i.test(translated)) return '';
+        if (!C.hasCyrillic(translated)) return '';
+        cache.set(key, translated);
+        saveTranslationCache();
+        return translated;
+      } catch {
+        return '';
+      } finally {
+        translationInFlight.delete(key);
+      }
+    })();
+
+    translationInFlight.set(key, promise);
+    return promise;
+  }
+
+  function clearTranslationCache() {
+    translationCache.clear();
+    translationInFlight.clear();
+    translationLoaded = false;
+    try { localStorage.removeItem(TRANSLATION_LS_KEY); } catch { /* ignore */ }
+  }
+
+  function reloadTranslationCache() {
+    translationCache.clear();
+    translationLoaded = false;
+    loadTranslationCache();
+  }
+
+  /* ---------------- Google Drive ---------------- */
+  const DRIVE_FILE_NAME = 'anitier-backup.json';
+
+  async function driveRequest(url, token, options = {}) {
+    const headers = { ...(options.headers || {}), Authorization: `Bearer ${token}` };
+    const res = await fetch(url, { ...options, headers });
+    if (res.status === 401) {
+      const err = new Error('Доступ к Google Drive истёк. Подключитесь заново.');
+      err.code = 'AUTH';
+      throw err;
+    }
+    if (!res.ok) {
+      let detail = '';
+      try {
+        const json = await res.json();
+        detail = json && json.error && json.error.message ? json.error.message : '';
+      } catch {
+        /* тело ошибки необязательно */
+      }
+      throw new Error(detail || `Google Drive ответил ${res.status}`);
+    }
+    return res;
+  }
+
+  async function driveFindBackup(token) {
+    const query = encodeURIComponent(`name = '${DRIVE_FILE_NAME}' and trashed = false`);
+    const fields = encodeURIComponent('files(id,name,modifiedTime,size)');
+    const url = `https://www.googleapis.com/drive/v3/files?spaces=drive&q=${query}&fields=${fields}&orderBy=modifiedTime desc&pageSize=1`;
+    const res = await driveRequest(url, token);
+    const json = await res.json();
+    return json && Array.isArray(json.files) && json.files.length ? json.files[0] : null;
+  }
+
+  async function driveSaveBackup(token, text) {
+    const existing = await driveFindBackup(token);
+    const metadata = { name: DRIVE_FILE_NAME, mimeType: 'application/json' };
+    const boundary = `anitier-${Date.now().toString(36)}`;
+    const body = new Blob([
+      `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`,
+      JSON.stringify(metadata),
+      `\r\n--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`,
+      text,
+      `\r\n--${boundary}--`,
+    ], { type: `multipart/related; boundary=${boundary}` });
+    const base = existing
+      ? `https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(existing.id)}?uploadType=multipart&fields=id,name,modifiedTime`
+      : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,modifiedTime';
+    const res = await driveRequest(base, token, {
+      method: existing ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
+      body,
     });
-    return hit ? hit[2] : raw;
+    return res.json();
+  }
+
+  async function driveLoadBackup(token) {
+    const file = await driveFindBackup(token);
+    if (!file) throw new Error('В Google Drive нет резервной копии AniTier.');
+    const res = await driveRequest(
+      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.id)}?alt=media`,
+      token,
+    );
+    return { text: await res.text(), file };
   }
 
   async function fillAltPage(s, revision) {
     const alt = s.alt;
-    const query = searchQueryForAlt(s.query);
+    const resolved = await resolveSearchQuery(s.query, state.settings && state.settings.searchLang);
+    if (revision !== s.revision) {
+      return { aborted: true, ok: false, items: [], hasNext: false, sources: [] };
+    }
+    const query = resolved.query || s.query;
+    s.resolvedQuery = query;
+    s.resolveVia = resolved.via;
     let rounds = 0;
 
     while (alt.buffer.length < PAGE_LIMIT && rounds < 3) {
@@ -3513,56 +5457,208 @@ body.mobile-app .offline-banner {
   }
   const demoAnime = () => demoAll().map(a => ({ ...a }));
 
+  function demoEpisodeGroup(anime, numbers, latestDaysAgo) {
+    const episodes = numbers.map((n, i) => ({
+      n,
+      date: new Date(Date.now() - (latestDaysAgo + (numbers.length - 1 - i)) * 86400000).toISOString(),
+    }));
+    return {
+      anime,
+      episodes,
+      latestAt: episodes.length ? episodes[episodes.length - 1].date : null,
+      count: episodes.length,
+    };
+  }
+
   function demoNotifications() {
     const base = demoAll();
-    const airedCounts = [7, 4, 9, 3, 6, 11, 2];
-    const airing = [0, 2, 6, 7, 9, 11, 14].map((idx, i) => {
-      const a = base[idx];
-      const total = Math.max(1, Number(a.episodes) || 12);
-      const aired = Math.max(1, Math.min(airedCounts[i] || 1, total));
-      return {
-        ...a,
-        status: 'В эфире',
-        episodes: total,
-        airedFrom: new Date(Date.now() - (aired * 7 + i * 3 + 3) * 86400000).toISOString(),
-        airedTo: null,
-        demoEp: {
-          aired,
-          total,
-          lastAired: new Date(Date.now() - (i + 1) * 86400000).toISOString(),
-          nextDate: new Date(Date.now() + (i + 2) * 86400000).toISOString(),
+    const trackedAiring = [
+      {
+        anime: {
+          ...base[0],
+          status: 'В эфире',
+          episodes: 28,
+          airedFrom: new Date(Date.now() - 90 * 86400000).toISOString(),
+          airedTo: null,
+          demoEp: {
+            aired: 7,
+            total: 28,
+            lastAired: new Date(Date.now() - 86400000).toISOString(),
+            nextDate: new Date(Date.now() + 3 * 86400000).toISOString(),
+          },
         },
-      };
-    });
+        episodes: [5, 6, 7],
+        latestDaysAgo: 1,
+      },
+      {
+        anime: {
+          ...base[1],
+          status: 'В эфире',
+          episodes: 64,
+          airedFrom: new Date(Date.now() - 120 * 86400000).toISOString(),
+          airedTo: null,
+          demoEp: {
+            aired: 5,
+            total: 64,
+            lastAired: new Date(Date.now() - 2 * 86400000).toISOString(),
+            nextDate: new Date(Date.now() + 5 * 86400000).toISOString(),
+          },
+        },
+        episodes: [3, 4, 5],
+        latestDaysAgo: 2,
+      },
+      {
+        anime: {
+          ...base[6],
+          status: 'В эфире',
+          episodes: 12,
+          airedFrom: new Date(Date.now() - 70 * 86400000).toISOString(),
+          airedTo: null,
+          demoEp: {
+            aired: 9,
+            total: 12,
+            lastAired: new Date(Date.now() - 3 * 86400000).toISOString(),
+            nextDate: new Date(Date.now() + 4 * 86400000).toISOString(),
+          },
+        },
+        episodes: [8, 9],
+        latestDaysAgo: 3,
+      },
+    ];
+    const trackedEpisodes = trackedAiring.map(item => demoEpisodeGroup(item.anime, item.episodes, item.latestDaysAgo));
 
-    const completed = [1, 3, 8, 12, 17, 18].map((idx, i) => {
-      const a = base[idx];
-      return {
-        ...a,
+    const sequelFrieren = {
+      ...base[0],
+      id: 9001,
+      malId: null,
+      title: 'Фрирен: сезон 2',
+      altTitle: 'Sousou no Frieren 2nd Season',
+      status: 'Анонс',
+      episodes: 12,
+      year: 2027,
+      airedFrom: new Date(Date.now() + 120 * 86400000).toISOString(),
+      airedTo: null,
+      image: makePoster('Фрирен: сезон 2', 9001),
+      nextEpisode: null,
+    };
+    const sequelBocchi = {
+      ...base[6],
+      id: 9002,
+      malId: null,
+      title: 'Боччи на рок-концерте! Сезон 2',
+      altTitle: 'Bocchi the Rock! 2nd Season',
+      status: 'В эфире',
+      episodes: 12,
+      year: 2026,
+      airedFrom: new Date(Date.now() - 20 * 86400000).toISOString(),
+      airedTo: null,
+      image: makePoster('Боччи: сезон 2', 9002),
+      nextEpisode: { n: 4, date: new Date(Date.now() + 2 * 86400000).toISOString() },
+    };
+    const filmJujutsu = {
+      ...base[11],
+      id: 9003,
+      malId: null,
+      title: 'Магическая битва: фильм',
+      altTitle: 'Jujutsu Kaisen: Movie',
+      status: 'Завершено',
+      type: 'Movie',
+      episodes: 1,
+      year: 2026,
+      airedFrom: new Date(Date.now() - 40 * 86400000).toISOString(),
+      airedTo: new Date(Date.now() - 20 * 86400000).toISOString(),
+      image: makePoster('Магическая битва: фильм', 9003),
+      nextEpisode: null,
+    };
+
+    const trackedSeasons = [
+      { anime: base[0], sequel: sequelFrieren, relationType: 'SEQUEL', status: 'Анонс', date: sequelFrieren.airedFrom },
+      { anime: base[6], sequel: sequelBocchi, relationType: 'SEQUEL', status: 'В эфире', date: sequelBocchi.airedFrom },
+      { anime: base[11], sequel: filmJujutsu, relationType: 'SIDE_STORY', status: 'Завершено', date: filmJujutsu.airedTo },
+    ];
+
+    const recentEpisodes = [
+      demoEpisodeGroup(base[2], [23, 24], 1),
+      demoEpisodeGroup(base[9], [12, 13], 2),
+      demoEpisodeGroup(base[11], [23, 24], 4),
+      demoEpisodeGroup({ ...base[10], episodes: 1200 }, [1100, 1101], 6),
+      demoEpisodeGroup(base[17], [11, 12], 5),
+    ];
+
+    const recentFilms = [
+      { ...base[4], status: 'Завершено', airedTo: new Date(Date.now() - 20 * 86400000).toISOString() },
+      { ...base[5], status: 'Завершено', airedTo: new Date(Date.now() - 60 * 86400000).toISOString() },
+      {
+        ...base[0],
+        id: 9004,
+        malId: null,
+        title: 'Фрирен: фильм',
+        altTitle: 'Sousou no Frieren Movie',
         status: 'Завершено',
-        episodes: Number(a.episodes) || 12,
-        airedFrom: new Date(Date.now() - (140 + i * 11) * 86400000).toISOString(),
-        airedTo: new Date(Date.now() - (i * 4 + 2) * 86400000).toISOString(),
-      };
-    });
+        type: 'Movie',
+        episodes: 1,
+        year: 2026,
+        airedFrom: new Date(Date.now() - 150 * 86400000).toISOString(),
+        airedTo: new Date(Date.now() - 120 * 86400000).toISOString(),
+        image: makePoster('Фрирен: фильм', 9004),
+      },
+    ];
 
-    for (const a of [...airing, ...completed]) state.byId.set(a.id, a);
-    return { airing, completed };
+    const completed = [
+      { ...base[3], status: 'Завершено', airedTo: new Date(Date.now() - 2 * 86400000).toISOString() },
+      { ...base[8], status: 'Завершено', airedTo: new Date(Date.now() - 9 * 86400000).toISOString() },
+      { ...base[12], status: 'Завершено', airedTo: new Date(Date.now() - 20 * 86400000).toISOString() },
+      { ...base[14], status: 'Завершено', airedTo: new Date(Date.now() - 27 * 86400000).toISOString() },
+    ];
+
+    const all = [
+      ...trackedEpisodes.map(group => group.anime),
+      ...trackedSeasons.flatMap(item => [item.anime, item.sequel]),
+      ...recentEpisodes.map(group => group.anime),
+      ...recentFilms,
+      ...completed,
+    ];
+    for (const a of all) state.byId.set(a.id, a);
+
+    return {
+      tracked: { episodes: trackedEpisodes, seasons: trackedSeasons },
+      recent: { episodes: recentEpisodes, films: recentFilms },
+      completed,
+    };
   }
 
   function seedDemoEpisodeInfo() {
-    for (const a of [...state.notifications.airing, ...state.notifications.completed]) {
-      if (!a.demoEp || state.epInfo[a.id]) continue;
-      state.epInfo[a.id] = {
-        count: Math.min(Number(a.demoEp.aired) || 0, Number(a.episodes) || 99),
-        last: Number(a.demoEp.aired) || 0,
-        lastAired: a.demoEp.lastAired || null,
-        next: a.demoEp.nextDate ? { n: (Number(a.demoEp.aired) || 0) + 1, date: a.demoEp.nextDate } : null,
+    const n = state.notifications;
+    const setInfo = (anime, count, latestDate, nextDate) => {
+      if (!anime || state.epInfo[anime.id]) return;
+      const total = Number(anime.episodes) || null;
+      const aired = Math.max(0, Math.min(Number(count) || 0, total || 9999));
+      state.epInfo[anime.id] = {
+        count: aired,
+        last: aired,
+        lastAired: latestDate || null,
+        next: nextDate ? { n: aired + 1, date: nextDate } : null,
         fetchedAt: Date.now(),
-        total: Number(a.episodes) || null,
+        total,
         source: 'demo',
       };
+    };
+
+    for (const group of n.tracked.episodes || []) {
+      const latest = group.episodes[group.episodes.length - 1];
+      setInfo(group.anime, latest ? latest.n : 0, latest ? latest.date : null, group.anime.demoEp?.nextDate || null);
     }
+    for (const group of n.recent.episodes || []) {
+      const latest = group.episodes[group.episodes.length - 1];
+      setInfo(group.anime, latest ? latest.n : 0, latest ? latest.date : null, null);
+    }
+    for (const item of n.tracked.seasons || []) {
+      if (item.sequel && item.sequel.status === 'В эфире') {
+        setInfo(item.sequel, Number(item.sequel.nextEpisode?.n || 1) - 1, null, item.sequel.nextEpisode?.date || null);
+      }
+    }
+    for (const film of n.recent.films || []) setInfo(film, 1, film.airedTo || null, null);
+    for (const anime of n.completed || []) setInfo(anime, anime.episodes || 1, anime.airedTo || null, null);
   }
 
   function demoUpcoming() {
@@ -3575,7 +5671,135 @@ body.mobile-app .offline-banner {
     }));
   }
 
-  /* ---------------- отрисовка: карточки ---------------- */
+  async function fetchTikTokMeta(url) {
+    const target = String(url == null ? '' : url).trim();
+    if (!C.isTikTokUrl(target)) throw new Error('Нужна ссылка на TikTok.');
+    try {
+      const json = await fetchWithTimeout(
+        `https://www.tiktok.com/oembed?url=${encodeURIComponent(target)}`,
+        {},
+        8000,
+      );
+      let videoId = C.extractTikTokId(target);
+      if (!videoId) videoId = C.extractTikTokId(String(json?.html || ''));
+      return {
+        title: String(json?.title || '').trim().slice(0, 200),
+        thumb: String(json?.thumbnail_url || '').trim().slice(0, 500000),
+        videoId,
+      };
+    } catch {
+      return { title: '', thumb: '', videoId: C.extractTikTokId(target) };
+    }
+  }
+
+  function clearAniListCache() {
+    anilistCache.clear();
+    resolveCache.clear();
+  }
+
+  Object.assign(App, {
+    anilistCacheKey,
+    fetchAniList,
+    altType,
+    altStatus,
+    stripHtml,
+    altDate,
+    altYear,
+    mapAniList,
+    mapTrackedAniList,
+    fetchAnimeRelations,
+    mapKitsu,
+    fetchWithTimeout,
+    fetchTikTokMeta,
+    fetchTrackedAnime,
+    fetchRecentScheduleEvents,
+    fetchRecentFilms,
+    fetchFinishedAnime,
+    fetchAniListPage,
+    fetchKitsuPage,
+    searchQueryForAlt,
+    resolveSearchQuery,
+    translateText,
+    cachedTranslation,
+    clearTranslationCache,
+    reloadTranslationCache,
+    driveFindBackup,
+    driveSaveBackup,
+    driveLoadBackup,
+    fillAltPage,
+    demoAll,
+    demoAnime,
+    demoNotifications,
+    seedDemoEpisodeInfo,
+    demoUpcoming,
+    clearAniListCache,
+    setDailySyncMode,
+    clearPersistentApiCache,
+  });
+})(window.AniTier);
+
+</script>
+<script>
+/* ============================================================
+   AniTier — отрисовка интерфейса
+   Загружается после app-store.js и app-api.js, до app.js.
+   ============================================================ */
+(function (App) {
+  'use strict';
+
+  const C = window.AniTierCore;
+  const {
+    state,
+    TIERS,
+    TIER_IDS,
+    LIST_LABELS,
+    EXCHANGE_FILTERS,
+    TYPE_RU,
+    typeRu,
+    MONTHS_SHORT,
+    MONTHS_FULL,
+    VIEW_TABS,
+    LONG_TITLE_EPS,
+    $,
+    $$,
+    esc,
+    escXml,
+    plural,
+    epWord,
+    startOfToday,
+    endOfToday,
+    startOfTomorrow,
+    addDays,
+    daysBetween,
+    parseDate,
+    fuzzyDateInt,
+    monthLabel,
+    dateShort,
+    countdownLabel,
+    relativePast,
+    makePoster,
+    hasIn,
+    findTier,
+    getAnime,
+    allIn,
+    addToList,
+    removeFromList,
+    moveToTier,
+    saveState,
+    momentsFor,
+    watchedSet,
+    watchedCount,
+    episodeStats,
+    toggleEpisode,
+    setWatchedUpTo,
+    clearProgress,
+  } = App;
+
+  /* Контроллер загружается после отрисовки: вызовы идут во время работы. */
+  const fetchDB = (...args) => App.fetchDB(...args);
+  const fetchNotifications = (...args) => App.fetchNotifications(...args);
+  const fetchUpcoming = (...args) => App.fetchUpcoming(...args);
+
   function imgAttrs(a, alt) {
     return `src="${esc(a.image || makePoster(a.title, a.id))}" alt="${esc(alt !== undefined ? alt : a.title)}" loading="lazy" data-title="${esc(a.title)}" data-id="${a.id}" onerror="posterFallback(this)"`;
   }
@@ -3593,6 +5817,7 @@ body.mobile-app .offline-banner {
         <img ${imgAttrs(a)}>
         <div class="poster-shade"></div>
         ${a.score ? `<span class="badge-score">★ ${a.score.toFixed(1)}</span>` : ''}
+        ${a.custom ? '<span class="badge-custom">своя</span>' : ''}
         <span class="badge-eps">${a.episodes ? a.episodes + ' эп.' : '? эп.'}</span>
         <div class="card-actions">
           <button class="mini-btn ${inW ? 'is-on' : ''}" data-action="add-watched" data-id="${a.id}" title="Просмотрено" aria-label="Отметить просмотренным">✓</button>
@@ -3679,10 +5904,22 @@ body.mobile-app .offline-banner {
   }
 
   function syncModeChips() {
-    const noSearch = !state.db.query.trim() && !C.hasActiveFilters(state.db.filters);
-    $$('#db-modes .chip').forEach(chip => {
-      chip.classList.toggle('is-active', noSearch && chip.dataset.mode === state.db.mode);
-    });
+    $$('#db-modes .chip').forEach(chip => chip.classList.toggle('is-active', chip.dataset.mode === state.db.mode));
+  }
+
+  const SEARCH_PLACEHOLDERS = {
+    auto: 'Поиск: «Фрирен», «Jujutsu Kaisen»…',
+    ru: 'Поиск: «Фрирен», «Атака титанов»…',
+    en: 'Search: “Frieren”, “Jujutsu Kaisen”…',
+    ja: '検索: 「葬送のフリーレン」…',
+  };
+
+  function syncLangUI() {
+    const lang = C.normalizeSearchLang(state.settings && state.settings.searchLang);
+    const select = $('#search-lang');
+    if (select) select.value = lang;
+    const input = $('#search-input');
+    if (input) input.placeholder = SEARCH_PLACEHOLDERS[lang] || SEARCH_PLACEHOLDERS.auto;
   }
 
   function readFiltersFromUI() {
@@ -3736,6 +5973,17 @@ body.mobile-app .offline-banner {
       return;
     }
     if (!s.items.length) {
+      if (s.mode === 'custom' && !s.query && !C.hasActiveFilters(s.filters)) {
+        grid.innerHTML = `<div class="msg">
+          <span class="emoji">✎</span>
+          <h3>Своих карточек пока нет</h3>
+          <p>Добавьте тайтл, которого нет в AniList или Kitsu: название, постер, год и серии.</p>
+          <button class="btn btn-primary" data-action="new-custom">Создать карточку</button>
+        </div>`;
+        if (more) more.hidden = true;
+        updateDBStatus();
+        return;
+      }
       const hasFilters = C.hasActiveFilters(s.filters);
       let text = 'Попробуйте обновить данные.';
       if (s.query) text = `По запросу «${s.query}» нет результатов. Попробуйте другое название или ослабьте фильтры.`;
@@ -3754,154 +6002,6 @@ body.mobile-app .offline-banner {
     }
     updateDBStatus();
   }
-
-  async function fetchDB(force = false) {
-    const s = state.db;
-
-    if (force) {
-      s.revision += 1;
-      s.page = 1;
-      s.items = [];
-      s.hasNext = true;
-      s.error = null;
-      s.sources = [];
-      s.alt = createAltSearchState();
-      anilistCache.clear();
-    }
-
-    if (s.loading) {
-      if (force) {
-        s.queued = true;
-        renderDB();
-      }
-      return;
-    }
-    if (!s.hasNext && s.items.length) return;
-
-    const revision = s.revision;
-    const page = s.page;
-    s.loading = true;
-    s.error = null;
-    renderDB();
-
-    try {
-      let usedAlt = false;
-
-      if (!state.forceDemo && s.query) {
-        const alt = await fillAltPage(s, revision);
-        if (revision !== s.revision || alt.aborted) return;
-        if (alt.ok) {
-          s.items = C.dedupeById([...s.items, ...alt.items]);
-          s.sources = alt.sources;
-          s.hasNext = alt.hasNext;
-          s.page = page + 1;
-          usedAlt = true;
-        }
-      }
-
-      if (state.forceDemo) {
-        const all = C.filterItems(demoAnime(), { query: s.query, filters: s.filters });
-        const pageData = C.slicePage(all, page, PAGE_LIMIT);
-        if (revision !== s.revision) return;
-        s.items.push(...pageData.items);
-        s.sources = [];
-        s.hasNext = pageData.hasNext;
-        s.page = page + 1;
-      } else if (!usedAlt) {
-        const variables = C.buildAniListVariables({
-          mode: s.mode,
-          query: s.query,
-          filters: s.filters,
-          page,
-          limit: PAGE_LIMIT,
-        });
-        const pageData = await fetchAniList(variables, { timeout: SEARCH_TIMEOUT });
-        if (revision !== s.revision) return;
-
-        const data = pageData.media.map(mapAniList);
-        s.items = C.dedupeById([...s.items, ...data]);
-        s.sources = ['AniList'];
-        s.hasNext = Boolean(pageData.pageInfo?.hasNextPage) && data.length > 0;
-        s.page = page + 1;
-        if (!data.length) s.hasNext = false;
-      }
-    } catch (err) {
-      if (revision !== s.revision) return;
-      console.error(err);
-      s.error = err.message || 'Ошибка сети';
-      state.offline = true;
-      if (!s.items.length) {
-        const all = C.filterItems(demoAnime(), { query: s.query, filters: s.filters });
-        const pageData = C.slicePage(all, page, PAGE_LIMIT);
-        s.items = pageData.items;
-        s.hasNext = pageData.hasNext;
-        s.page = page + 1;
-      }
-      toast('База недоступна — включён демо-режим');
-    } finally {
-      if (revision === s.revision) {
-        s.loading = false;
-        renderDB();
-        updateOfflineBanner();
-      } else if (!s.queued) {
-        s.loading = false;
-        renderDB();
-      }
-      if (s.queued) {
-        s.queued = false;
-        s.loading = false;
-        fetchDB();
-      }
-    }
-  }
-
-  /* ---------------- серии: прогресс и данные ---------------- */
-  function watchedSet(id) {
-    const p = state.progress[id];
-    return new Set(p && Array.isArray(p.watched) ? p.watched : []);
-  }
-
-  function watchedCount(id) {
-    const p = state.progress[id];
-    return p && Array.isArray(p.watched) ? p.watched.length : 0;
-  }
-
-  function toggleEpisode(id, ep) {
-    const p = state.progress[id] || { watched: [] };
-    const set = new Set(p.watched || []);
-    if (set.has(ep)) set.delete(ep); else set.add(ep);
-    const watched = [...set].filter(n => Number.isInteger(n) && n > 0).sort((a, b) => a - b);
-    if (watched.length) state.progress[id] = { watched, updated: Date.now() };
-    else delete state.progress[id];
-    saveState();
-    updateEpisodeUI(id);
-  }
-
-  function setWatchedUpTo(id, n, max) {
-    const limit = Math.max(0, Math.min(Number(n) || 0, Number(max) || 0));
-    if (limit <= 0) delete state.progress[id];
-    else state.progress[id] = { watched: Array.from({ length: limit }, (_, i) => i + 1), updated: Date.now() };
-    saveState();
-    updateEpisodeUI(id);
-  }
-
-  function clearProgress(id) {
-    delete state.progress[id];
-    saveState();
-    updateEpisodeUI(id);
-  }
-
-  function episodeStats(a) {
-    const info = state.epInfo[a.id] || null;
-    const planned = Number(a.episodes) || Number(info?.total) || null;
-    const ongoing = a.status === 'В эфире';
-    let available = 0;
-    if (ongoing) available = info ? Math.max(0, Number(info.count) || 0) : 0;
-    else available = planned || (info ? Math.max(0, Number(info.count) || 0) : 0);
-    return { info, total: planned, available, ongoing };
-  }
-
-  const epWord = (n) => plural(n, 'серия', 'серии', 'серий');
 
   function releaseLine(a, stats) {
     if (stats.ongoing) {
@@ -4073,7 +6173,7 @@ body.mobile-app .offline-banner {
 
   function ensureNotificationEpisodes() {
     if (state.tab !== 'notifications') return;
-    const all = [...state.notifications.airing, ...state.notifications.completed];
+    const all = allNotifications();
     for (const a of all) {
       const info = state.epInfo[a.id];
       const demoCacheInLiveMode = info && info.source === 'demo' && !state.forceDemo && !a.demo;
@@ -4123,25 +6223,32 @@ body.mobile-app .offline-banner {
     const el = $('#notif-list');
     if (!el) return;
     const n = state.notifications;
-    const totalCount = n.airing.length + n.completed.length;
+    const tracked = n.tracked.episodes.length + n.tracked.seasons.length;
+    const recent = n.recent.episodes.length + n.recent.films.length;
+    const completed = n.completed.length;
+    const totalCount = tracked + recent + completed;
 
     if (n.loading && !totalCount) { el.innerHTML = skeletonRows(5); return; }
     if (n.error && !totalCount) { el.innerHTML = msgBlock('⚠️', 'Не удалось загрузить уведомления', n.error, 'retry-notifications'); return; }
-    if (!totalCount) { el.innerHTML = msgBlock('🌙', 'Новых премьер пока нет', 'Загляните позже или обновите данные.'); return; }
-
-    el.innerHTML = `
-      <section class="notif-group">
-        <h2 class="group-head"><span class="group-dot live"></span>Сейчас выходит <b>${n.airing.length}</b></h2>
-        ${n.airing.length
-          ? `<div class="notif-list">${n.airing.map(a => notifRowHTML(a, 'airing')).join('')}</div>`
-          : '<p class="group-empty">Активных новинок сейчас нет.</p>'}
-      </section>
-      <section class="notif-group">
-        <h2 class="group-head"><span class="group-dot done"></span>Полностью вышли <b>${n.completed.length}</b></h2>
-        ${n.completed.length
-          ? `<div class="notif-list">${n.completed.map(a => notifRowHTML(a, 'completed')).join('')}</div>`
-          : '<p class="group-empty">Пока нет недавно завершившихся тайтлов.</p>'}
-      </section>`;
+    const counts = { tracked, recent, completed };
+    const tabs = C.NOTIF_TABS.map(tab => `<button class="notif-tab ${n.tab === tab ? 'is-active' : ''}" data-action="notif-tab" data-notif-tab="${tab}">${esc(C.NOTIF_TAB_LABELS[tab])}<b>${counts[tab]}</b></button>`).join('');
+    let body = '';
+    if (!totalCount) {
+      body = msgBlock('🌙', 'Новых обновлений пока нет', 'Загляните позже или обновите данные.');
+    } else if (n.tab === 'tracked') {
+      const episodes = n.tracked.episodes.map(group => notifRowHTML(group.anime, 'airing')).join('');
+      const seasons = n.tracked.seasons.map(item => notifRowHTML(item.sequel, 'airing')).join('');
+      body = `${episodes ? `<section class="notif-group"><h2 class="group-head"><span class="group-dot live"></span>Новые серии <b>${n.tracked.episodes.length}</b></h2><div class="notif-list">${episodes}</div></section>` : ''}${seasons ? `<section class="notif-group"><h2 class="group-head"><span class="group-dot live"></span>Продолжения и сезоны <b>${n.tracked.seasons.length}</b></h2><div class="notif-list">${seasons}</div></section>` : ''}${!episodes && !seasons ? '<p class="group-empty">В ваших списках пока нет новых серий или сезонов.</p>' : ''}`;
+    } else if (n.tab === 'recent') {
+      const episodes = n.recent.episodes.map(group => notifRowHTML(group.anime, 'airing')).join('');
+      const films = n.recent.films.map(anime => notifRowHTML(anime, 'completed')).join('');
+      body = `${episodes ? `<section class="notif-group"><h2 class="group-head"><span class="group-dot live"></span>Новые серии <b>${n.recent.episodes.length}</b></h2><div class="notif-list">${episodes}</div></section>` : ''}${films ? `<section class="notif-group"><h2 class="group-head"><span class="group-dot done"></span>Недавно вышедшие фильмы <b>${n.recent.films.length}</b></h2><div class="notif-list">${films}</div></section>` : ''}${!episodes && !films ? '<p class="group-empty">Недавних премьер не найдено.</p>' : ''}`;
+    } else {
+      body = completed
+        ? `<section class="notif-group"><h2 class="group-head"><span class="group-dot done"></span>Недавно завершились <b>${completed}</b></h2><div class="notif-list">${n.completed.map(anime => notifRowHTML(anime, 'completed')).join('')}</div></section>`
+        : '<p class="group-empty">Недавно завершившихся тайтлов не найдено.</p>';
+    }
+    el.innerHTML = `<div class="notif-tabs" role="tablist" aria-label="Группы уведомлений">${tabs}</div>${body}`;
 
     ensureNotificationEpisodes();
   }
@@ -4158,115 +6265,23 @@ body.mobile-app .offline-banner {
     if (changed) saveState();
   }
 
-  async function fetchNotifications(force = false) {
-    const n = state.notifications;
-    if (n.loading) {
-      if (force) n.queued = true;
-      return;
-    }
-    if ((n.airing.length || n.completed.length) && !force) return;
-    if (force) {
-      anilistCache.clear();
-      invalidateNotificationEpisodes();
-    }
-
-    if (state.forceDemo) {
-      const demo = demoNotifications();
-      n.airing = demo.airing;
-      n.completed = demo.completed;
-      n.loaded = true;
-      n.loading = false;
-      n.error = null;
-      seedDemoEpisodeInfo();
-      renderNotifications();
-      if (state.tab === 'notifications') markNotificationsSeen();
-      updateBell();
-      return;
-    }
-
-    n.loading = true;
-    n.error = null;
-    renderNotifications();
-
-    try {
-      const today = endOfToday();
-      const todayInt = fuzzyDateInt(today);
-      const cutoff = addDays(startOfToday(), -75);
-
-      const airingPage = await fetchAniList({
-        type: 'ANIME',
-        status: 'RELEASING',
-        sort: ['START_DATE_DESC'],
-        page: 1,
-        perPage: 50,
-        startDateLesser: todayInt,
-        isAdult: false,
-      });
-      const donePage = await fetchAniList({
-        type: 'ANIME',
-        status: 'FINISHED',
-        sort: ['END_DATE_DESC'],
-        page: 1,
-        perPage: 50,
-        endDateGreater: fuzzyDateInt(cutoff),
-        endDateLesser: todayInt,
-        isAdult: false,
-      });
-
-      const airing = airingPage.media
-        .map(mapAniList)
-        .filter(a => {
-          const d = parseDate(a.airedFrom);
-          return d && d <= today;
-        })
-        .sort((a, b) => new Date(b.airedFrom) - new Date(a.airedFrom))
-        .slice(0, 12);
-
-      const completed = donePage.media
-        .map(mapAniList)
-        .filter(a => {
-          const end = parseDate(a.airedTo);
-          return end && end <= today && end >= cutoff;
-        })
-        .sort((a, b) => new Date(b.airedTo) - new Date(a.airedTo))
-        .slice(0, 12);
-
-      n.airing = airing;
-      n.completed = completed;
-      n.loaded = true;
-    } catch (err) {
-      console.error(err);
-      n.error = err.message || 'Ошибка сети';
-      state.offline = true;
-      if (!n.airing.length && !n.completed.length) {
-        const demo = demoNotifications();
-        n.airing = demo.airing;
-        n.completed = demo.completed;
-        seedDemoEpisodeInfo();
-      }
-      toast('Уведомления недоступны — включён демо-режим');
-    } finally {
-      n.loading = false;
-      renderNotifications();
-      if (state.tab === 'notifications') markNotificationsSeen();
-      updateBell();
-      updateOfflineBanner();
-      if (n.queued) {
-        n.queued = false;
-        fetchNotifications(true);
-      }
-    }
-  }
-
   function allNotifications() {
-    return [...state.notifications.airing, ...state.notifications.completed];
+    const n = state.notifications;
+    const media = [
+      ...(n.tracked.episodes || []).map(group => group.anime),
+      ...(n.tracked.seasons || []).flatMap(item => [item.anime, item.sequel]),
+      ...(n.recent.episodes || []).map(group => group.anime),
+      ...(n.recent.films || []),
+      ...(n.completed || []),
+    ];
+    return C.dedupeById(media.filter(Boolean));
   }
 
   function markNotificationsSeen() {
     let changed = false;
-    for (const a of allNotifications()) {
-      if (!state.seenNotifications.has(a.id)) {
-        state.seenNotifications.add(a.id);
+    for (const key of C.collectNotificationKeys(state.notifications)) {
+      if (!state.seenNotifications.has(key)) {
+        state.seenNotifications.add(key);
         changed = true;
       }
     }
@@ -4277,7 +6292,7 @@ body.mobile-app .offline-banner {
   function updateBell() {
     const badge = $('#bell-badge');
     if (!badge) return;
-    const unread = allNotifications().filter(a => !state.seenNotifications.has(a.id)).length;
+    const unread = C.collectNotificationKeys(state.notifications).filter(key => !state.seenNotifications.has(key)).length;
     badge.hidden = unread === 0;
     badge.textContent = unread > 9 ? '9+' : String(unread);
   }
@@ -4303,74 +6318,6 @@ body.mobile-app .offline-banner {
       html += cardHTML(a, 'upcoming');
     }
     grid.innerHTML = html;
-  }
-
-  async function fetchUpcoming(force = false) {
-    const u = state.upcoming;
-    if (u.loading) {
-      if (force) u.queued = true;
-      return;
-    }
-    if (u.items.length && !force) return;
-    if (force) anilistCache.clear();
-
-    if (state.forceDemo) {
-      u.items = demoUpcoming();
-      u.loaded = true;
-      u.loading = false;
-      u.error = null;
-      u.fallback = false;
-      renderUpcoming();
-      return;
-    }
-
-    u.loading = true;
-    u.error = null;
-    u.fallback = false;
-    renderUpcoming();
-
-    try {
-      const from = startOfTomorrow();
-      const to = addDays(startOfToday(), 91);
-      const startGreater = fuzzyDateInt(startOfToday());
-      const startLesser = fuzzyDateInt(to);
-      const all = [];
-
-      for (let page = 1; page <= 2; page++) {
-        const pageData = await fetchAniList({
-          type: 'ANIME',
-          status: 'NOT_YET_RELEASED',
-          sort: ['START_DATE'],
-          page,
-          perPage: 50,
-          startDateGreater: startGreater,
-          startDateLesser: startLesser,
-          isAdult: false,
-        });
-        all.push(...pageData.media.map(mapAniList));
-        if (!pageData.pageInfo?.hasNextPage) break;
-      }
-
-      u.items = C.dedupeById(all).filter(a => {
-        const d = parseDate(a.airedFrom);
-        return d && d >= from && d <= to;
-      }).sort((a, b) => new Date(a.airedFrom) - new Date(b.airedFrom));
-      u.loaded = true;
-    } catch (err) {
-      console.error(err);
-      u.error = err.message || 'Ошибка сети';
-      state.offline = true;
-      if (!u.items.length) u.items = demoUpcoming();
-      toast('Календарь премьер недоступен — включён демо-режим');
-    } finally {
-      u.loading = false;
-      renderUpcoming();
-      updateOfflineBanner();
-      if (u.queued) {
-        u.queued = false;
-        fetchUpcoming(true);
-      }
-    }
   }
 
   /* ---------------- тир-листы ---------------- */
@@ -4419,61 +6366,216 @@ body.mobile-app .offline-banner {
     if (p) p.textContent = allIn('planned').length;
   }
 
-  /* ---------------- операции со списками ---------------- */
-  function addToList(name, anime, tier = 'N', silent = false) {
-    if (!anime) return;
-    const t = TIER_IDS.includes(tier) ? tier : 'N';
-    const other = name === 'watched' ? 'planned' : 'watched';
-    removeFromList(other, anime.id, true);
-    for (const k of TIER_IDS) state.lists[name][k] = state.lists[name][k].filter(x => x.id !== anime.id);
-    state.lists[name][t].unshift(snapshotAnime(anime));
-    state.byId.set(anime.id, anime);
-    saveState();
-    refreshViews();
-    if (!silent) {
-      const names = { watched: 'Просмотрено', planned: 'Запланировано' };
-      toast(`«${anime.title}» → ${names[name]}${t !== 'N' ? ' · тир ' + (t === 'N' ? '?' : t) : ''}`);
-    }
+  /* ---------------- свои карточки и моменты: формы ---------------- */
+  const CUSTOM_TYPES = [
+    { value: '', label: 'Не указан' },
+    { value: 'TV', label: 'ТВ-сериал' },
+    { value: 'Movie', label: 'Фильм' },
+    { value: 'OVA', label: 'OVA' },
+    { value: 'ONA', label: 'ONA' },
+    { value: 'Special', label: 'Спешл' },
+  ];
+
+  function openCustomForm(id = null) {
+    const editingId = id == null ? null : Number(id);
+    if (editingId != null && !getAnime(editingId)) return;
+    if (state.modalId != null) closeModal();
+    state.customForm = { open: true, editingId, error: '', busy: false };
+    renderCustomForm();
+    const modal = $('#custom-modal');
+    if (modal) modal.hidden = false;
+    syncBodyScroll();
+    const panel = $('#custom-panel');
+    if (panel) { panel.scrollTop = 0; panel.focus({ preventScroll: true }); }
+    const field = $('#custom-form input[name="title"]');
+    if (field) field.focus({ preventScroll: true });
   }
 
-  function removeFromList(name, id, silent = false) {
-    let removed = false;
-    for (const k of TIER_IDS) {
-      const before = state.lists[name][k].length;
-      state.lists[name][k] = state.lists[name][k].filter(x => x.id !== id);
-      if (state.lists[name][k].length !== before) removed = true;
-    }
-    if (removed && !silent) {
-      saveState();
-      refreshViews();
-    }
-    return removed;
+  function closeCustomForm(reopen = true) {
+    const editingId = state.customForm.editingId;
+    state.customForm = { open: false, editingId: null, error: '', busy: false };
+    const modal = $('#custom-modal');
+    if (modal) modal.hidden = true;
+    syncBodyScroll();
+    if (reopen && editingId != null && getAnime(editingId)) openModal(editingId);
   }
 
-  function moveToTier(name, id, tier) {
-    if (!TIER_IDS.includes(tier)) return;
-    let entry = null;
-    for (const k of TIER_IDS) {
-      const idx = state.lists[name][k].findIndex(x => x.id === id);
-      if (idx >= 0) {
-        entry = state.lists[name][k].splice(idx, 1)[0];
-        break;
-      }
-    }
-    if (!entry) return;
-    state.lists[name][tier].unshift(entry);
-    saveState();
-    refreshViews();
+  function renderCustomForm() {
+    const box = $('#custom-content');
+    if (!box) return;
+    const editingId = state.customForm.editingId;
+    const card = editingId != null ? getAnime(editingId) : null;
+    const val = (key) => esc(card && card[key] != null ? card[key] : '');
+    const typeOptions = CUSTOM_TYPES.map(item => (
+      `<option value="${esc(item.value)}"${card && (card.type || '') === item.value ? ' selected' : ''}>${esc(item.label)}</option>`
+    )).join('');
+    const preview = card && card.image
+      ? `<img src="${esc(card.image)}" alt="Постер">`
+      : '<span>Без постера — будет заглушка</span>';
+    box.innerHTML = `<form class="custom-form" id="custom-form" novalidate>
+      <h2 id="custom-title">${card ? 'Редактировать карточку' : 'Своя карточка'}</h2>
+      <p class="custom-sub">Тайтл, которого нет в AniList или Kitsu. Он попадёт в «Мои карточки» и сможет жить в тир-листах.</p>
+      <label class="form-field"><span>Название *</span><input name="title" required maxlength="300" value="${val('title')}" autocomplete="off"></label>
+      <label class="form-field"><span>Оригинальное название</span><input name="altTitle" maxlength="300" value="${val('altTitle')}" autocomplete="off"></label>
+      <div class="form-row">
+        <label class="form-field"><span>Год</span><input name="year" type="number" min="1900" max="2100" value="${card && card.year ? card.year : ''}"></label>
+        <label class="form-field"><span>Серии</span><input name="episodes" type="number" min="1" max="9999" value="${card && card.episodes ? card.episodes : ''}"></label>
+        <label class="form-field"><span>Тип</span><select name="type">${typeOptions}</select></label>
+      </div>
+      <label class="form-field"><span>Жанры</span><input name="genres" maxlength="300" value="${esc(card && card.genres ? card.genres.join(', ') : '')}" placeholder="Драма, Фэнтези"></label>
+      <label class="form-field"><span>Описание</span><textarea name="synopsis" rows="4" maxlength="2000">${val('synopsis')}</textarea></label>
+      <label class="form-field form-file"><span>Постер</span><input name="poster" type="file" accept="image/*"><small>JPG, PNG или WebP до ${C.formatBytes(App.CUSTOM_IMAGE_MAX)}. Полная картинка хранится в браузере.</small></label>
+      <div class="custom-poster-preview" id="custom-poster-preview">${preview}</div>
+      ${state.customForm.error ? `<p class="form-error">${esc(state.customForm.error)}</p>` : ''}
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit"${state.customForm.busy ? ' disabled' : ''}>${state.customForm.busy ? 'Сохраняем…' : 'Сохранить'}</button>
+        <button class="btn btn-ghost" type="button" data-action="close-custom">Отмена</button>
+      </div>
+    </form>`;
   }
 
-  function toggleList(name, anime) {
-    if (!anime) return;
-    if (hasIn(name, anime.id)) {
-      removeFromList(name, anime.id);
-      toast(`«${anime.title}» убрано из списка «${name === 'watched' ? 'Просмотрено' : 'Запланировано'}»`);
-    } else {
-      addToList(name, anime);
-    }
+  function momentLabel(m) {
+    return m.title || (m.kind === 'tiktok' ? 'TikTok' : m.kind === 'gif' ? 'GIF' : 'Видео');
+  }
+
+  function momentCardHTML(animeId, m) {
+    const thumb = m.thumb
+      ? `<img src="${esc(m.thumb)}" alt="" loading="lazy">`
+      : `<span class="moment-fallback">${m.kind === 'tiktok' ? 'TikTok' : m.kind === 'gif' ? 'GIF' : '▶'}</span>`;
+    const meta = m.kind === 'tiktok' ? 'TikTok' : m.kind === 'gif' ? 'GIF' : 'Видео';
+    return `<article class="moment-card" data-moment-card="${esc(m.id)}">
+      <button class="moment-preview" type="button" data-action="moment-play" data-id="${animeId}" data-moment="${esc(m.id)}" aria-label="Открыть момент: ${esc(momentLabel(m))}">
+        ${thumb}<span class="moment-play-icon">▶</span>
+      </button>
+      <div class="moment-body">
+        <div class="moment-title" title="${esc(momentLabel(m))}">${esc(momentLabel(m))}</div>
+        <div class="moment-meta">${esc(meta)}${m.size ? ` · ${esc(C.formatBytes(m.size))}` : ''}</div>
+        <div class="moment-actions">
+          <button class="ep-link" type="button" data-action="moment-share" data-id="${animeId}" data-moment="${esc(m.id)}">Поделиться</button>
+          <button class="ep-link" type="button" data-action="moment-delete" data-id="${animeId}" data-moment="${esc(m.id)}">Удалить</button>
+        </div>
+      </div>
+    </article>`;
+  }
+
+  function momentsHTML(a) {
+    const items = momentsFor(a.id);
+    return `<div class="modal-section modal-moments">
+      <div class="modal-label modal-label-row"><span>Моменты</span><button class="ep-link" type="button" data-action="moment-add" data-id="${a.id}">+ Добавить</button></div>
+      ${items.length
+        ? `<div class="moments-grid">${items.map(m => momentCardHTML(a.id, m)).join('')}</div>`
+        : '<p class="ep-note">Сохранённых моментов пока нет. Добавьте ссылку TikTok или видео/GIF.</p>'}
+    </div>`;
+  }
+
+  function openMomentForm(animeId) {
+    const a = getAnime(animeId);
+    if (!a) return;
+    if (state.modalId != null) closeModal();
+    state.momentForm = { open: true, animeId, mode: 'tiktok', error: '', busy: false, url: '', title: '' };
+    renderMomentForm();
+    const modal = $('#moment-modal');
+    if (modal) modal.hidden = false;
+    syncBodyScroll();
+    const panel = $('#moment-panel');
+    if (panel) { panel.scrollTop = 0; panel.focus({ preventScroll: true }); }
+  }
+
+  function closeMomentForm(reopen = true) {
+    const animeId = state.momentForm.animeId;
+    state.momentForm = { open: false, animeId: null, mode: 'tiktok', error: '', busy: false, url: '', title: '' };
+    const modal = $('#moment-modal');
+    if (modal) modal.hidden = true;
+    syncBodyScroll();
+    if (reopen && animeId != null && getAnime(animeId)) openModal(animeId);
+  }
+
+  function renderMomentForm() {
+    const box = $('#moment-content');
+    if (!box) return;
+    const f = state.momentForm;
+    const a = getAnime(f.animeId);
+    if (!a) return;
+    const mode = f.mode;    box.innerHTML = `<form class="custom-form moment-form" id="moment-form" novalidate>
+      <h2 id="moment-title">Момент из «${esc(a.title)}»</h2>
+      <div class="moment-tabs">
+        <button type="button" class="chip ${mode === 'tiktok' ? 'is-active' : ''}" data-action="moment-mode" data-mode="tiktok">TikTok</button>
+        <button type="button" class="chip ${mode === 'file' ? 'is-active' : ''}" data-action="moment-mode" data-mode="file">Видео или GIF</button>
+      </div>
+      ${mode === 'tiktok' ? `
+        <label class="form-field"><span>Ссылка на TikTok *</span><input name="url" type="url" required placeholder="https://www.tiktok.com/@.../video/..." value="${esc(f.url || '')}" autocomplete="off"></label>
+        <label class="form-field"><span>Подпись</span><input name="title" maxlength="200" value="${esc(f.title || '')}" placeholder="Например: любимая сцена"></label>
+        <p class="form-note">Плеер TikTok загрузится только после нажатия на момент.</p>
+      ` : `
+        <label class="form-field form-file"><span>Видео или GIF *</span><input name="file" type="file" accept="video/mp4,video/webm,image/gif"><small>MP4/WebM до ${C.formatBytes(App.MOMENT_VIDEO_MAX)} или GIF до ${C.formatBytes(App.MOMENT_GIF_MAX)}.</small></label>
+        <label class="form-field"><span>Подпись</span><input name="title" maxlength="200" value="${esc(f.title || '')}" placeholder="Например: любимая сцена"></label>
+        <p class="form-note">Файл хранится в этом браузере. В резервную копию попадут только подпись и миниатюра.</p>
+      `}
+      ${f.error ? `<p class="form-error">${esc(f.error)}</p>` : ''}
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit"${f.busy ? ' disabled' : ''}>${f.busy ? 'Сохраняем…' : 'Добавить момент'}</button>
+        <button class="btn btn-ghost" type="button" data-action="close-moment">Отмена</button>
+      </div>
+    </form>`;
+  }
+
+  function renderBackup() {
+    const box = $('#backup-content');
+    if (!box) return;
+    const f = state.backup || {};
+    const drive = App.driveAvailable ? App.driveAvailable() : false;
+    const disabled = f.busy ? ' disabled' : '';
+    const status = f.message
+      ? `<p class="backup-status${f.error ? ' is-error' : ''}" role="status">${esc(f.message)}</p>`
+      : '';
+    const driveBlock = drive
+      ? `<div class="backup-block">
+          <h3>Google Drive</h3>
+          <p>Копия сохраняется в файл <code>anitier-backup.json</code> в вашем Google Drive. Приложение видит только файлы, созданные им самим.</p>
+          <div class="form-actions">
+            <button class="btn btn-primary" type="button" data-action="backup-drive-save"${disabled}>${f.busy ? 'Подождите…' : 'Сохранить в Google Drive'}</button>
+            <button class="btn btn-ghost" type="button" data-action="backup-drive-load"${disabled}>Восстановить из Google Drive</button>
+          </div>
+        </div>`
+      : `<div class="backup-block">
+          <h3>Google Drive</h3>
+          <p class="form-note">Google Drive доступен на сайте и в PWA. В APK используйте файл — он сохраняется через системный диалог.</p>
+        </div>`;
+    box.innerHTML = `<h2 id="backup-title">Резервная копия</h2>
+      <p class="custom-sub">Списки, прогресс, свои карточки, моменты, настройки и кэш переводов. В копию входят миниатюры, но не полные постеры, видео и GIF — они остаются в этом браузере.</p>
+      <div class="backup-block">
+        <h3>Файл</h3>
+        <p>Скачайте JSON-файл и храните его где удобно. Восстановление заменит текущие списки, прогресс и настройки.</p>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="button" data-action="backup-download"${disabled}>Скачать файл</button>
+          <label class="btn btn-ghost file-btn${f.busy ? ' is-disabled' : ''}">Восстановить из файла
+            <input type="file" accept=".json,application/json" data-action="backup-file"${disabled} hidden>
+          </label>
+        </div>
+      </div>
+      ${driveBlock}
+      ${status}
+      <p class="form-note backup-note">Видео и GIF из моментов не входят в копию: они слишком большие для JSON. После восстановления на новом устройстве останутся подписи, ссылки TikTok и миниатюры.</p>`;
+  }
+
+  function openBackup() {
+    if (state.modalId != null) closeModal();
+    if (state.customForm && state.customForm.open) closeCustomForm(false);
+    if (state.momentForm && state.momentForm.open) closeMomentForm(false);
+    state.backup = { open: true, busy: false, message: '', error: false };
+    renderBackup();
+    const modal = $('#backup-modal');
+    if (modal) modal.hidden = false;
+    syncBodyScroll();
+    const panel = $('#backup-panel');
+    if (panel) { panel.scrollTop = 0; panel.focus({ preventScroll: true }); }
+  }
+
+  function closeBackup() {
+    state.backup = { open: false, busy: false, message: '', error: false };
+    const modal = $('#backup-modal');
+    if (modal) modal.hidden = true;
+    syncBodyScroll();
   }
 
   function refreshViews() {
@@ -4486,9 +6588,12 @@ body.mobile-app .offline-banner {
     if (state.modalId != null) renderModal();
   }
 
-  /* ---------------- обмен тир-листами ---------------- */
   function syncBodyScroll() {
-    const locked = state.modalId != null || Boolean(state.exchange && state.exchange.open);
+    const locked = state.modalId != null
+      || Boolean(state.exchange && state.exchange.open)
+      || Boolean(state.customForm && state.customForm.open)
+      || Boolean(state.momentForm && state.momentForm.open)
+      || Boolean(state.backup && state.backup.open);
     document.body.classList.toggle('no-scroll', locked);
   }
 
@@ -4798,12 +6903,72 @@ body.mobile-app .offline-banner {
     syncBodyScroll();
     const panel = $('.modal-panel');
     if (panel) { panel.scrollTop = 0; panel.focus({ preventScroll: true }); }
+    if (a.custom && App.hydrateCustomImage) App.hydrateCustomImage(id);
+  }
+
+  function franchiseRelationLabel(type) {
+    if (type === 'PREQUEL' || type === 'PARENT') return 'Смотреть раньше';
+    if (type === 'SEQUEL') return 'Следующий сезон';
+    if (type === 'SPIN_OFF') return 'Спин-офф';
+    return 'Связанная история';
+  }
+
+  function renderFranchiseSection(anime) {
+    if (anime.custom) return '';
+    const related = state.franchiseById.get(anime.id);
+    if (state.franchiseLoading.has(anime.id)) {
+      return '<div class="modal-section franchise-section"><div class="modal-label">Сезоны и порядок просмотра</div><p class="hint">Загружаем связанные сезоны…</p></div>';
+    }
+    if (state.franchiseErrors.has(anime.id)) {
+      return `<div class="modal-section franchise-section"><div class="modal-label">Сезоны и порядок просмотра</div><p class="hint">${esc(state.franchiseErrors.get(anime.id))}</p><button class="btn btn-ghost" data-action="retry-franchise" data-id="${anime.id}">Повторить</button></div>`;
+    }
+    if (!related) return '<div class="modal-section franchise-section"><div class="modal-label">Сезоны и порядок просмотра</div><p class="hint">Проверяем, есть ли связанные сезоны…</p></div>';
+    if (!related.length) return '<div class="modal-section franchise-section"><div class="modal-label">Сезоны и порядок просмотра</div><p class="hint">Связанные сезоны и продолжения не найдены.</p></div>';
+
+    const rows = related.map(link => {
+      const item = link.anime;
+      const tier = findTier('watched', item.id) || findTier('planned', item.id);
+      const progress = watchedCount(item.id);
+      const meta = [item.year || '', item.episodes ? `${item.episodes} серий` : '', tier ? `тир ${tier}` : 'не в тир-листе', progress ? `просмотрено ${progress}` : ''].filter(Boolean).join(' · ');
+      return `<article class="franchise-link" data-action="open" data-id="${item.id}" tabindex="0" role="button" aria-label="Открыть ${esc(item.title)}">
+        <span class="franchise-link-main"><span class="franchise-link-kind">${esc(franchiseRelationLabel(link.relationType))}</span><b>${esc(item.title)}</b><small>${esc(meta)}</small></span>
+        <span class="franchise-link-arrow" aria-hidden="true">›</span>
+      </article>`;
+    }).join('');
+    return `<div class="modal-section franchise-section"><div class="modal-label">Сезоны и порядок просмотра</div><div class="franchise-list">${rows}</div><p class="hint">Добавляйте сезоны в тир-лист отдельно: у каждого свой тир и прогресс серий.</p></div>`;
+  }
+
+  function loadFranchise(anime) {
+    if (!anime || state.franchiseById.has(anime.id) || state.franchiseLoading.has(anime.id)) return;
+    if (anime.custom) { state.franchiseById.set(anime.id, []); return; }
+    state.franchiseLoading.add(anime.id);
+    state.franchiseErrors.delete(anime.id);
+    Promise.resolve(App.fetchAnimeRelations(anime)).then(relations => {
+      const allowed = new Set(['PREQUEL', 'SEQUEL', 'PARENT', 'SIDE_STORY', 'SPIN_OFF']);
+      const seen = new Set();
+      const links = [];
+      for (const relation of Array.isArray(relations) ? relations : []) {
+        if (!relation || !allowed.has(relation.relationType) || !relation.anime || relation.anime.id === anime.id || seen.has(relation.anime.id)) continue;
+        seen.add(relation.anime.id);
+        links.push(relation);
+      }
+      const order = { PREQUEL: 0, PARENT: 1, SEQUEL: 2, SIDE_STORY: 3, SPIN_OFF: 4 };
+      links.sort((a, b) => (order[a.relationType] - order[b.relationType])
+        || ((Date.parse(a.anime.airedFrom || '') || 0) - (Date.parse(b.anime.airedFrom || '') || 0)));
+      state.franchiseById.set(anime.id, links);
+    }).catch(error => {
+      state.franchiseErrors.set(anime.id, error && error.message ? error.message : 'Не удалось загрузить порядок просмотра');
+    }).finally(() => {
+      state.franchiseLoading.delete(anime.id);
+      if (state.modalId === anime.id) renderModal();
+    });
   }
 
   function closeModal() {
     state.modalId = null;
     const modal = $('#modal');
     if (modal) modal.hidden = true;
+    if (App.revokeMomentUrls) App.revokeMomentUrls();
     syncBodyScroll();
     if (state.tab === 'db') renderDB();
     else if (state.tab === 'watched' || state.tab === 'planned') renderTierList(state.tab);
@@ -4823,6 +6988,13 @@ body.mobile-app .offline-banner {
     const status = a.status || '';
     const sourceName = a.source === 'Kitsu' ? 'Kitsu' : a.source === 'AniList' ? 'AniList' : 'MyAnimeList';
     const sourceUrl = a.url || (a.malId ? `https://myanimelist.net/anime/${a.malId}` : '');
+    const sourceLine = a.custom
+      ? '<span class="modal-source">Своя карточка</span>'
+      : sourceUrl ? `<a class="mal-link" href="${esc(sourceUrl)}" target="_blank" rel="noopener">Открыть на ${esc(sourceName)} ↗</a>` : '';
+    const customActions = a.custom ? `<div class="modal-custom-actions">
+      <button class="btn btn-ghost" data-action="edit-custom" data-id="${a.id}">Редактировать</button>
+      <button class="btn btn-ghost btn-danger" data-action="delete-custom" data-id="${a.id}">Удалить карточку</button>
+    </div>` : '';
     const facts = [
       a.type ? `<span class="fact"><span>Тип:</span> ${esc(typeRu(a.type))}</span>` : '',
       a.episodes ? `<span class="fact"><span>Серии:</span> ${a.episodes}</span>` : '<span class="fact"><span>Серии:</span> ?</span>',
@@ -4832,8 +7004,10 @@ body.mobile-app .offline-banner {
     ].filter(Boolean).join('');
 
     const tiers = TIERS.map(t => `<button class="tier-pick tier-${t.id} ${curTier === t.id ? 'is-active' : ''}" data-action="set-tier" data-id="${a.id}" data-tier="${t.id}" title="${esc(t.name)}" aria-label="Тир ${esc(t.name)}">${t.label}</button>`).join('');
-    const genres = (a.genres || []).map(g => `<span class="tag">${esc(g)}</span>`).join('');
+    const genres = (a.genres || []).map(g => `<span class="tag">${esc(C.genreRu(g))}</span>`).join('');
     const poster = a.image || makePoster(a.title, a.id);
+    const translatedSynopsis = App.cachedTranslation ? App.cachedTranslation(a.synopsis) : '';
+    const synopsis = translatedSynopsis || a.synopsis || 'Описание пока недоступно.';
 
     content.innerHTML = `
       <div class="modal-grid">
@@ -4852,6 +7026,7 @@ body.mobile-app .offline-banner {
             <button class="btn ${inW ? 'is-on' : 'btn-primary'}" data-action="add-watched" data-id="${a.id}">${inW ? '✓ В просмотрено' : 'Отметить просмотренным'}</button>
             <button class="btn btn-ghost ${inP ? 'is-on' : ''}" data-action="add-planned" data-id="${a.id}">${inP ? '◷ В планах' : 'Запланировать'}</button>
           </div>
+          ${customActions}
           <div class="modal-section">
             <div class="modal-label">Тир-лист</div>
             <div class="tier-picker">${tiers}</div>
@@ -4859,20 +7034,24 @@ body.mobile-app .offline-banner {
               ? 'Выберите уровень — карточка переедет в выбранный тир.'
               : 'Выберите тир, чтобы сразу добавить тайтл в «Просмотрено».'}</p>
           </div>
+          ${renderFranchiseSection(a)}
           <div class="modal-section modal-episodes">
             <div class="modal-label">Серии и прогресс</div>
             ${renderEpisodeBlock(a, 'modal')}
           </div>
-          <p class="modal-synopsis">${esc(a.synopsis || 'Описание пока недоступно.')}</p>
+          ${momentsHTML(a)}
+          <p class="modal-synopsis"${translatedSynopsis ? ' data-translated="1" title="Автоматический перевод"' : ''}>${esc(synopsis)}</p>
           ${genres ? `<div class="tags">${genres}</div>` : ''}
-          ${sourceUrl ? `<a class="mal-link" href="${esc(sourceUrl)}" target="_blank" rel="noopener">Открыть на ${esc(sourceName)} ↗</a>` : ''}
+          ${sourceLine}
         </div>
       </div>`;
 
     const fresh = $('.modal-panel');
     if (fresh) fresh.scrollTop = scrollTop;
 
-    if (!state.epInfo[a.id] || Date.now() - Number(state.epInfo[a.id].fetchedAt || 0) > 2 * 3600000) {
+    if (!state.franchiseById.has(a.id) && !state.franchiseLoading.has(a.id) && !state.franchiseErrors.has(a.id)) loadFranchise(a);
+
+    if (!a.custom && (!state.epInfo[a.id] || Date.now() - Number(state.epInfo[a.id].fetchedAt || 0) > 2 * 3600000)) {
       if (a.status === 'В эфире' || !a.episodes) ensureEpisodeInfo(a);
     }
   }
@@ -4890,7 +7069,7 @@ body.mobile-app .offline-banner {
 
     if (tab === 'db') renderDB();
     if (tab === 'watched' || tab === 'planned') renderTierList(tab);
-    if (tab === 'notifications') { markNotificationsSeen(); fetchNotifications(); ensureNotificationEpisodes(); }
+    if (tab === 'notifications') { renderNotifications(); markNotificationsSeen(); fetchNotifications(); ensureNotificationEpisodes(); }
     if (tab === 'upcoming') fetchUpcoming();
     updateOfflineBanner();
 
@@ -4916,47 +7095,6 @@ body.mobile-app .offline-banner {
     }
   }
 
-  async function refreshCurrent() {
-    anilistCache.clear();
-    if (state.tab === 'db') {
-      await fetchDB(true);
-    } else if (state.tab === 'notifications') {
-      await fetchNotifications(true);
-    } else if (state.tab === 'upcoming') {
-      await fetchUpcoming(true);
-    } else {
-      toast('Тир-листы хранятся локально — обновлять нечего');
-    }
-  }
-
-  async function retryAll() {
-    state.forceDemo = false;
-    anilistCache.clear();
-    state.epInfo = {};
-    saveState();
-
-    state.db.revision += 1;
-    state.db.items = [];
-    state.db.page = 1;
-    state.db.hasNext = true;
-    state.db.error = null;
-    state.db.queued = false;
-    state.db.touched = false;
-
-    state.notifications.airing = [];
-    state.notifications.completed = [];
-    state.notifications.loaded = false;
-    state.notifications.queued = false;
-    state.upcoming.items = [];
-    state.upcoming.loaded = false;
-    state.upcoming.queued = false;
-    state.offline = false;
-    updateOfflineBanner();
-
-    await Promise.allSettled([fetchNotifications(), fetchUpcoming()]);
-    await fetchDB(true);
-  }
-
   /* ---------------- тосты ---------------- */
   function toast(message) {
     const box = $('#toasts');
@@ -4970,6 +7108,584 @@ body.mobile-app .offline-banner {
       el.classList.add('is-out');
       setTimeout(() => el.remove(), 240);
     }, 3200);
+  }
+
+  Object.assign(App, {
+    imgAttrs,
+    cardHTML,
+    tierCardHTML,
+    skeletonCards,
+    skeletonRows,
+    msgBlock,
+    initFilterOptions,
+    syncFilterUI,
+    syncModeChips,
+    syncLangUI,
+    readFiltersFromUI,
+    resetDBFilters,
+    updateDBStatus,
+    renderDB,
+    releaseLine,
+    episodeProgressText,
+    chipsHTML,
+    renderEpisodeBlock,
+    previewEpisodeSlider,
+    updateEpisodeUI,
+    episodeInfoFromAnime,
+    ensureEpisodeInfo,
+    ensureNotificationEpisodes,
+    notifRowHTML,
+    renderNotifications,
+    invalidateNotificationEpisodes,
+    allNotifications,
+    markNotificationsSeen,
+    updateBell,
+    renderUpcoming,
+    renderTierList,
+    renderStats,
+    updateCounters,
+    openCustomForm,
+    closeCustomForm,
+    renderCustomForm,
+    momentLabel,
+    momentCardHTML,
+    momentsHTML,
+    openMomentForm,
+    closeMomentForm,
+    renderMomentForm,
+    renderBackup,
+    openBackup,
+    closeBackup,
+    refreshViews,
+    syncBodyScroll,
+    tierShort,
+    openExchange,
+    closeExchange,
+    setExchangeMode,
+    switchExchangeList,
+    parseImportCode,
+    clearExchangeCode,
+    copyShareCode,
+    addExchangeItem,
+    exchangeRowHTML,
+    renderExchangeComparison,
+    renderExchange,
+    openModal,
+    closeModal,
+    renderModal,
+    renderFranchiseSection,
+    switchTab,
+    updateOfflineBanner,
+    toast,
+  });
+})(window.AniTier);
+
+</script>
+<script>
+/* ============================================================
+   AniTier — контроллер, события и запуск
+   Загружается последним, после app-store.js, app-api.js и app-render.js.
+   ============================================================ */
+(function (App) {
+  'use strict';
+
+  const C = window.AniTierCore;
+  const {
+    state,
+    LS_KEY,
+    MOMENTS_KEY,
+    CUSTOM_IMAGE_MAX,
+    MOMENT_VIDEO_MAX,
+    MOMENT_GIF_MAX,
+    PAGE_LIMIT,
+    SEARCH_TIMEOUT,
+    TIER_IDS,
+    TEST_MODE,
+    createAltSearchState,
+    saveState,
+    loadState,
+    loadMoments,
+    hasIn,
+    addToList,
+    removeFromList,
+    moveToTier,
+    toggleList,
+    getAnime,
+    watchedSet,
+    allIn,
+    getCustomCard,
+    nextCustomId,
+    newUid,
+    upsertCustomCard,
+    deleteCustomCard,
+    addMoment,
+    removeMoment,
+    findMoment,
+    momentsFor,
+    buildBackupPayload,
+    applyBackupData,
+    mediaPut,
+    mediaGet,
+    mediaDelete,
+    toggleEpisode,
+    setWatchedUpTo,
+    clearProgress,
+    epWord,
+    $,
+    $$,
+    startOfToday,
+    endOfToday,
+    startOfTomorrow,
+    addDays,
+    fuzzyDateInt,
+    parseDate,
+  } = App;
+
+  const {
+    clearAniListCache,
+    setDailySyncMode,
+    clearPersistentApiCache,
+    fillAltPage,
+    demoAnime,
+    fetchAniList,
+    mapAniList,
+    fetchTrackedAnime,
+    fetchRecentScheduleEvents,
+    fetchRecentFilms,
+    fetchFinishedAnime,
+    demoNotifications,
+    seedDemoEpisodeInfo,
+    demoUpcoming,
+    translateText,
+    cachedTranslation,
+    resolveSearchQuery,
+    fetchTikTokMeta,
+    driveSaveBackup,
+    driveLoadBackup,
+  } = App;
+
+  const DAILY_SYNC_KEY = 'anitier.daily-sync.v1';
+
+  const {
+    renderDB,
+    renderNotifications,
+    renderUpcoming,
+    renderTierList,
+    updateCounters,
+    updateBell,
+    updateOfflineBanner,
+    markNotificationsSeen,
+    invalidateNotificationEpisodes,
+    toast,
+    renderModal,
+    renderExchange,
+    openModal,
+    closeModal,
+    openCustomForm,
+    closeCustomForm,
+    renderCustomForm,
+    openMomentForm,
+    closeMomentForm,
+    renderMomentForm,
+    renderBackup,
+    openBackup,
+    closeBackup,
+    openExchange,
+    closeExchange,
+    setExchangeMode,
+    switchExchangeList,
+    parseImportCode,
+    clearExchangeCode,
+    copyShareCode,
+    addExchangeItem,
+    initFilterOptions,
+    syncFilterUI,
+    syncModeChips,
+    syncLangUI,
+    readFiltersFromUI,
+    resetDBFilters,
+    previewEpisodeSlider,
+    switchTab,
+    ensureNotificationEpisodes,
+  } = App;
+
+  async function fetchDB(force = false) {
+    const s = state.db;
+
+    if (force) {
+      s.revision += 1;
+      s.page = 1;
+      s.items = [];
+      s.hasNext = true;
+      s.error = null;
+      s.sources = [];
+      s.resolvedQuery = '';
+      s.resolveVia = '';
+      s.alt = createAltSearchState();
+      clearAniListCache();
+    }
+
+    if (s.loading) {
+      if (force) {
+        s.queued = true;
+        renderDB();
+      }
+      return;
+    }
+    if (!s.hasNext && s.items.length) return;
+
+    const revision = s.revision;
+    const page = s.page;
+    s.loading = true;
+    s.error = null;
+    renderDB();
+
+    try {
+      let usedAlt = false;
+
+      if (s.mode === 'custom') {
+        const all = C.filterItems(state.customCards, { query: s.query, filters: s.filters });
+        const pageData = C.slicePage(all, page, PAGE_LIMIT);
+        if (revision !== s.revision) return;
+        s.items.push(...pageData.items);
+        s.sources = ['Свои карточки'];
+        s.hasNext = pageData.hasNext;
+        s.page = page + 1;
+      } else if (!state.forceDemo && s.query) {
+        const alt = await fillAltPage(s, revision);
+        if (revision !== s.revision || alt.aborted) return;
+        if (alt.ok) {
+          s.items = C.dedupeById([...s.items, ...alt.items]);
+          s.sources = alt.sources;
+          s.hasNext = alt.hasNext;
+          s.page = page + 1;
+          usedAlt = true;
+        }
+      }
+
+      if (s.mode === 'custom') {
+        /* свои карточки не ходят в сеть */
+      } else if (state.forceDemo) {
+        const all = C.filterItems(demoAnime(), { query: s.query, filters: s.filters });
+        const pageData = C.slicePage(all, page, PAGE_LIMIT);
+        if (revision !== s.revision) return;
+        s.items.push(...pageData.items);
+        s.sources = [];
+        s.hasNext = pageData.hasNext;
+        s.page = page + 1;
+      } else if (!usedAlt) {
+        const variables = C.buildAniListVariables({
+          mode: s.mode,
+          query: s.query,
+          filters: s.filters,
+          page,
+          limit: PAGE_LIMIT,
+        });
+        const pageData = await fetchAniList(variables, { timeout: SEARCH_TIMEOUT });
+        if (revision !== s.revision) return;
+
+        const data = pageData.media.map(mapAniList);
+        s.items = C.dedupeById([...s.items, ...data]);
+        s.sources = ['AniList'];
+        s.hasNext = Boolean(pageData.pageInfo?.hasNextPage) && data.length > 0;
+        s.page = page + 1;
+        if (!data.length) s.hasNext = false;
+      }
+    } catch (err) {
+      if (revision !== s.revision) return;
+      console.error(err);
+      s.error = err.message || 'Ошибка сети';
+      state.offline = true;
+      if (!s.items.length) {
+        const all = C.filterItems(demoAnime(), { query: s.query, filters: s.filters });
+        const pageData = C.slicePage(all, page, PAGE_LIMIT);
+        s.items = pageData.items;
+        s.hasNext = pageData.hasNext;
+        s.page = page + 1;
+      }
+      toast('База недоступна — включён демо-режим');
+    } finally {
+      if (revision === s.revision) {
+        s.loading = false;
+        renderDB();
+        updateOfflineBanner();
+      } else if (!s.queued) {
+        s.loading = false;
+        renderDB();
+      }
+      if (s.queued) {
+        s.queued = false;
+        s.loading = false;
+        fetchDB();
+      }
+    }
+  }
+
+  function hasNotificationData() {
+    const n = state.notifications;
+    return Boolean(
+      (n.tracked.episodes && n.tracked.episodes.length)
+      || (n.tracked.seasons && n.tracked.seasons.length)
+      || (n.recent.episodes && n.recent.episodes.length)
+      || (n.recent.films && n.recent.films.length)
+      || (n.completed && n.completed.length),
+    );
+  }
+
+  function trackedMalIds() {
+    const ids = [];
+    for (const name of ['watched', 'planned']) {
+      for (const anime of allIn(name)) {
+        const id = Number(anime && anime.malId);
+        if (Number.isInteger(id) && id > 0) ids.push(id);
+      }
+    }
+    return [...new Set(ids)];
+  }
+
+  function trackedEpisodeGroups(mediaList, scheduleEvents) {
+    const byAnime = new Map();
+    for (const event of scheduleEvents) {
+      const anime = event && event.anime;
+      if (!anime || anime.id == null) continue;
+      const key = String(anime.id);
+      if (!byAnime.has(key)) byAnime.set(key, []);
+      byAnime.get(key).push(event);
+    }
+
+    const now = Date.now();
+    const cutoff = now - C.TRACKED_EPISODE_DAYS * 86400000;
+    const groups = [];
+    for (const anime of mediaList) {
+      if (!anime || anime.id == null) continue;
+      const watched = watchedSet(anime.id);
+      const events = (byAnime.get(String(anime.id)) || []).filter(event => {
+        const at = parseDate(event.date);
+        return at && at.getTime() >= cutoff && at.getTime() <= now && !watched.has(event.episode);
+      });
+
+      if (!events.length && anime.status === 'В эфире' && anime.nextEpisode) {
+        const nextN = Number(anime.nextEpisode.n);
+        const nextDate = parseDate(anime.nextEpisode.date);
+        if (nextN > 1 && nextDate) {
+          const episode = nextN - 1;
+          const estimated = new Date(nextDate.getTime() - 7 * 86400000);
+          if (estimated.getTime() >= cutoff && estimated.getTime() <= now && !watched.has(episode)) {
+            events.push({ anime, episode, date: estimated.toISOString() });
+          }
+        }
+      }
+
+      if (!events.length) continue;
+      const group = C.groupEpisodesByAnime(events)[0];
+      if (group) groups.push(group);
+    }
+
+    return groups.sort((a, b) => {
+      const at = a.latestAt ? new Date(a.latestAt).getTime() : 0;
+      const bt = b.latestAt ? new Date(b.latestAt).getTime() : 0;
+      return bt - at;
+    });
+  }
+
+  function applyDemoNotifications() {
+    const n = state.notifications;
+    const demo = demoNotifications();
+    n.tracked = demo.tracked;
+    n.recent = demo.recent;
+    n.completed = demo.completed;
+    n.loaded = true;
+    n.loading = false;
+    n.error = null;
+    seedDemoEpisodeInfo();
+    if (!n.tabTouched) n.tab = C.defaultNotificationTab(n);
+    renderNotifications();
+    if (state.tab === 'notifications') markNotificationsSeen();
+    updateBell();
+  }
+
+  async function fetchNotifications(force = false) {
+    const n = state.notifications;
+    if (n.loading) {
+      if (force) n.queued = true;
+      return;
+    }
+    if (hasNotificationData() && !force) return;
+    if (force) {
+      clearAniListCache();
+      invalidateNotificationEpisodes();
+    }
+
+    if (state.forceDemo) {
+      applyDemoNotifications();
+      return;
+    }
+
+    n.loading = true;
+    n.error = null;
+    renderNotifications();
+
+    try {
+      const malIds = trackedMalIds();
+      const results = await Promise.allSettled([
+        malIds.length ? fetchTrackedAnime(malIds) : Promise.resolve([]),
+        fetchRecentScheduleEvents(C.RECENT_EPISODE_DAYS, 4),
+        fetchRecentFilms(),
+        fetchFinishedAnime(),
+      ]);
+
+      const [trackedResult, scheduleResult, filmsResult, completedResult] = results;
+      const okCount = results.filter(result => result.status === 'fulfilled').length;
+      if (!okCount) {
+        const reason = results.find(result => result.status === 'rejected');
+        throw (reason && reason.reason) || new Error('Ошибка сети');
+      }
+
+      const trackedMedia = trackedResult.status === 'fulfilled' ? trackedResult.value : [];
+      const scheduleEvents = scheduleResult.status === 'fulfilled' ? scheduleResult.value : [];
+      const films = filmsResult.status === 'fulfilled' ? filmsResult.value : [];
+      const completed = completedResult.status === 'fulfilled' ? completedResult.value : [];
+
+      n.tracked = {
+        episodes: trackedEpisodeGroups(trackedMedia, scheduleEvents),
+        seasons: C.collectSeasons(trackedMedia, { releaseDays: C.SEASON_RELEASE_DAYS }),
+      };
+      n.recent = {
+        episodes: C.groupEpisodesByAnime(scheduleEvents).slice(0, 40),
+        films,
+      };
+      n.completed = completed;
+      n.loaded = true;
+      if (!n.tabTouched) n.tab = C.defaultNotificationTab(n);
+    } catch (err) {
+      console.error(err);
+      n.error = err.message || 'Ошибка сети';
+      state.offline = true;
+      if (!hasNotificationData()) applyDemoNotifications();
+      toast('Уведомления недоступны — включён демо-режим');
+    } finally {
+      n.loading = false;
+      renderNotifications();
+      if (state.tab === 'notifications') markNotificationsSeen();
+      updateBell();
+      updateOfflineBanner();
+      if (n.queued) {
+        n.queued = false;
+        fetchNotifications(true);
+      }
+    }
+  }
+
+  async function fetchUpcoming(force = false) {
+    const u = state.upcoming;
+    if (u.loading) {
+      if (force) u.queued = true;
+      return;
+    }
+    if (u.items.length && !force) return;
+    if (force) clearAniListCache();
+
+    if (state.forceDemo) {
+      u.items = demoUpcoming();
+      u.loaded = true;
+      u.loading = false;
+      u.error = null;
+      u.fallback = false;
+      renderUpcoming();
+      return;
+    }
+
+    u.loading = true;
+    u.error = null;
+    u.fallback = false;
+    renderUpcoming();
+
+    try {
+      const from = startOfTomorrow();
+      const to = addDays(startOfToday(), 91);
+      const startGreater = fuzzyDateInt(startOfToday());
+      const startLesser = fuzzyDateInt(to);
+      const all = [];
+
+      for (let page = 1; page <= 2; page++) {
+        const pageData = await fetchAniList({
+          type: 'ANIME',
+          status: 'NOT_YET_RELEASED',
+          sort: ['START_DATE'],
+          page,
+          perPage: 50,
+          startDateGreater: startGreater,
+          startDateLesser: startLesser,
+          isAdult: false,
+        });
+        all.push(...pageData.media.map(mapAniList));
+        if (!pageData.pageInfo?.hasNextPage) break;
+      }
+
+      u.items = C.dedupeById(all).filter(a => {
+        const d = parseDate(a.airedFrom);
+        return d && d >= from && d <= to;
+      }).sort((a, b) => new Date(a.airedFrom) - new Date(b.airedFrom));
+      u.loaded = true;
+    } catch (err) {
+      console.error(err);
+      u.error = err.message || 'Ошибка сети';
+      state.offline = true;
+      if (!u.items.length) u.items = demoUpcoming();
+      toast('Календарь премьер недоступен — включён демо-режим');
+    } finally {
+      u.loading = false;
+      renderUpcoming();
+      updateOfflineBanner();
+      if (u.queued) {
+        u.queued = false;
+        fetchUpcoming(true);
+      }
+    }
+  }
+
+  async function refreshCurrent() {
+    clearAniListCache();
+    if (state.tab === 'db') {
+      await fetchDB(true);
+    } else if (state.tab === 'notifications') {
+      await fetchNotifications(true);
+    } else if (state.tab === 'upcoming') {
+      await fetchUpcoming(true);
+    } else {
+      toast('Тир-листы хранятся локально — обновлять нечего');
+    }
+  }
+
+  async function retryAll() {
+    state.forceDemo = false;
+    clearAniListCache();
+    state.epInfo = {};
+    saveState();
+
+    state.db.revision += 1;
+    state.db.items = [];
+    state.db.page = 1;
+    state.db.hasNext = true;
+    state.db.error = null;
+    state.db.queued = false;
+    state.db.touched = false;
+
+    state.notifications.tracked = { episodes: [], seasons: [] };
+    state.notifications.recent = { episodes: [], films: [] };
+    state.notifications.completed = [];
+    state.notifications.tab = null;
+    state.notifications.loaded = false;
+    state.notifications.error = null;
+    state.notifications.queued = false;
+    state.upcoming.items = [];
+    state.upcoming.loaded = false;
+    state.upcoming.queued = false;
+    state.offline = false;
+    updateOfflineBanner();
+
+    await Promise.allSettled([fetchNotifications(), fetchUpcoming()]);
+    await fetchDB(true);
   }
 
   /* ---------------- drag & drop ---------------- */
@@ -5029,6 +7745,624 @@ body.mobile-app .offline-banner {
   /* ---------------- события ---------------- */
   let searchTimer = null;
 
+  async function translateModalSynopsis(id) {
+    const a = getAnime(id);
+    if (!a || !a.synopsis || C.hasCyrillic(a.synopsis)) return '';
+    const cached = cachedTranslation(a.synopsis);
+    if (cached) return cached;
+
+    const translated = await translateText(a.synopsis);
+    if (!translated || state.modalId !== id) return translated;
+    const el = $('#modal-content .modal-synopsis');
+    if (el) {
+      el.textContent = translated;
+      el.dataset.translated = '1';
+      el.title = 'Автоматический перевод';
+    }
+    return translated;
+  }
+
+  /* ---------------- свои карточки: сохранение ---------------- */
+  function readImageFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(reader.error || new Error('Не удалось прочитать файл'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function loadImageElement(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('Не удалось открыть изображение'));
+      img.src = src;
+    });
+  }
+
+  async function makeImageThumbnail(file, max = 480, quality = 0.78) {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await loadImageElement(url);
+      const width = img.naturalWidth || img.width || 1;
+      const height = img.naturalHeight || img.height || 1;
+      const scale = Math.min(1, max / Math.max(width, height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(width * scale));
+      canvas.height = Math.max(1, Math.round(height * scale));
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas недоступен');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      let data = canvas.toDataURL('image/jpeg', quality);
+      if (data.length > 450000) data = canvas.toDataURL('image/jpeg', 0.55);
+      return data;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  async function makeVideoThumbnail(file) {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.muted = true;
+    video.playsInline = true;
+    try {
+      await new Promise((resolve, reject) => {
+        video.onloadedmetadata = resolve;
+        video.onerror = () => reject(new Error('Не удалось прочитать видео'));
+        video.src = url;
+      });
+      if (Number.isFinite(video.duration) && video.duration > 0) {
+        await new Promise(resolve => {
+          const timer = setTimeout(resolve, 2500);
+          video.onseeked = () => { clearTimeout(timer); resolve(); };
+          try { video.currentTime = Math.min(1, video.duration / 3); } catch { clearTimeout(timer); resolve(); }
+        });
+      }
+      const width = video.videoWidth || 640;
+      const height = video.videoHeight || 360;
+      const scale = Math.min(1, 480 / Math.max(width, height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(width * scale));
+      canvas.height = Math.max(1, Math.round(height * scale));
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas недоступен');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      let data = canvas.toDataURL('image/jpeg', 0.72);
+      if (data.length > 450000) data = canvas.toDataURL('image/jpeg', 0.55);
+      return data;
+    } finally {
+      URL.revokeObjectURL(url);
+      video.removeAttribute('src');
+      try { video.load(); } catch { /* noop */ }
+    }
+  }
+
+  async function makeFileThumbnail(file) {
+    if (file.type === 'image/gif' || file.type.startsWith('image/')) return makeImageThumbnail(file);
+    if (file.type.startsWith('video/')) return makeVideoThumbnail(file);
+    return '';
+  }
+
+  async function saveCustomForm(form) {
+    if (state.customForm.busy) return;
+    const data = new FormData(form);
+    const title = String(data.get('title') || '').trim();
+    if (!title) {
+      state.customForm.error = 'Укажите название.';
+      renderCustomForm();
+      return;
+    }
+
+    const posterInput = form.querySelector('input[name="poster"]');
+    const file = posterInput && posterInput.files && posterInput.files[0] ? posterInput.files[0] : null;
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        state.customForm.error = 'Постер должен быть изображением.';
+        renderCustomForm();
+        return;
+      }
+      if (file.size > CUSTOM_IMAGE_MAX) {
+        state.customForm.error = `Постер больше ${C.formatBytes(CUSTOM_IMAGE_MAX)}.`;
+        renderCustomForm();
+        return;
+      }
+    }
+
+    state.customForm.busy = true;
+    state.customForm.error = '';
+    renderCustomForm();
+
+    try {
+      const editingId = state.customForm.editingId;
+      const existing = editingId != null ? getCustomCard(editingId) : null;
+      const id = existing ? existing.id : nextCustomId();
+      const customId = existing ? existing.customId : newUid();
+      let image = existing ? existing.image : '';
+
+      if (file) {
+        try { image = await makeImageThumbnail(file); } catch { image = existing ? existing.image : ''; }
+        const stored = await mediaPut('images', customId, file);
+        if (!stored) toast('Полный постер не сохранился — останется миниатюра');
+      }
+
+      const genres = String(data.get('genres') || '')
+        .split(/[,;]+/)
+        .map(value => value.trim())
+        .filter(Boolean)
+        .slice(0, 12);
+      const card = {
+        id,
+        customId,
+        custom: true,
+        title,
+        altTitle: String(data.get('altTitle') || '').trim(),
+        originalTitle: String(data.get('altTitle') || '').trim(),
+        image,
+        year: Number(data.get('year')) || null,
+        episodes: Number(data.get('episodes')) || null,
+        type: String(data.get('type') || ''),
+        status: '',
+        score: null,
+        synopsis: String(data.get('synopsis') || '').trim(),
+        genres,
+        createdAt: existing ? existing.createdAt : Date.now(),
+        updatedAt: Date.now(),
+      };
+      const saved = upsertCustomCard(card);
+      if (!saved) throw new Error('Не удалось сохранить карточку.');
+
+      state.customForm = { open: false, editingId: null, error: '', busy: false };
+      closeCustomForm(false);
+      state.db.mode = 'custom';
+      state.db.query = '';
+      const input = $('#search-input');
+      if (input) input.value = '';
+      syncModeChips();
+      fetchDB(true);
+      toast(existing ? 'Карточка обновлена' : 'Своя карточка создана');
+    } catch (err) {
+      state.customForm.busy = false;
+      state.customForm.error = err && err.message ? err.message : 'Не удалось сохранить карточку.';
+      renderCustomForm();
+    }
+  }
+
+  async function removeCustomCard(id) {
+    const card = getCustomCard(id);
+    if (!card) return;
+    if (!window.confirm(`Удалить «${card.title}» из своих карточек и списков?`)) return;
+    for (const moment of momentsFor(id)) {
+      if (moment.mediaKey) await mediaDelete('media', moment.mediaKey);
+    }
+    await mediaDelete('images', card.customId);
+    deleteCustomCard(id);
+    closeModal();
+    toast('Карточка удалена');
+  }
+
+  async function hydrateCustomImage(id) {
+    const card = getCustomCard(id);
+    if (!card || !card.customId || !card.image) return;
+    const blob = await mediaGet('images', card.customId);
+    if (!blob || state.modalId !== id) return;
+    const img = $('#modal-content .modal-poster img');
+    if (!img) return;
+    const url = URL.createObjectURL(blob);
+    img.onload = () => URL.revokeObjectURL(url);
+    img.src = url;
+  }
+
+  /* ---------------- моменты ---------------- */
+  function captureMomentDraft() {
+    const form = $('#moment-form');
+    if (!form) return;
+    const url = form.querySelector('input[name="url"]');
+    const title = form.querySelector('input[name="title"]');
+    if (url) state.momentForm.url = url.value;
+    if (title) state.momentForm.title = title.value;
+  }
+
+  async function saveMomentForm(form) {
+    const f = state.momentForm;
+    if (!f.open || f.busy) return;
+    const animeId = f.animeId;
+    const a = getAnime(animeId);
+    if (!a) return;
+    const data = new FormData(form);
+    const title = String(data.get('title') || '').trim();
+
+    if (f.mode === 'tiktok') {
+      const url = String(data.get('url') || '').trim();
+      if (!C.isTikTokUrl(url)) {
+        f.error = 'Нужна ссылка на TikTok.';
+        renderMomentForm();
+        return;
+      }
+      f.busy = true;
+      f.error = '';
+      renderMomentForm();
+      try {
+        const meta = await fetchTikTokMeta(url);
+        const videoId = meta.videoId || C.extractTikTokId(url);
+        if (!videoId) {
+          throw new Error('Не удалось найти видео в ссылке. Скопируйте полную ссылку на ролик из TikTok.');
+        }
+        addMoment(animeId, {
+          id: newUid(),
+          kind: 'tiktok',
+          title: title || meta.title || '',
+          url,
+          thumb: meta.thumb || '',
+          createdAt: Date.now(),
+        });
+        closeMomentForm(true);
+        toast('Момент добавлен');
+      } catch (err) {
+        f.busy = false;
+        f.error = err && err.message ? err.message : 'Не удалось добавить момент.';
+        renderMomentForm();
+      }
+      return;
+    }
+
+    const fileInput = form.querySelector('input[name="file"]');
+    const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+    if (!file) {
+      f.error = 'Выберите видео или GIF.';
+      renderMomentForm();
+      return;
+    }
+    const isGif = file.type === 'image/gif' || /\.gif$/i.test(file.name || '');
+    const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|mov|m4v)$/i.test(file.name || '');
+    if (!isGif && !isVideo) {
+      f.error = 'Подойдёт MP4, WebM или GIF.';
+      renderMomentForm();
+      return;
+    }
+    const limit = isGif ? MOMENT_GIF_MAX : MOMENT_VIDEO_MAX;
+    if (file.size > limit) {
+      f.error = `Файл больше ${C.formatBytes(limit)}.`;
+      renderMomentForm();
+      return;
+    }
+
+    f.busy = true;
+    f.error = '';
+    renderMomentForm();
+    try {
+      const mediaKey = newUid();
+      const stored = await mediaPut('media', mediaKey, file);
+      if (!stored) throw new Error('Браузер не смог сохранить файл. Попробуйте файл меньше.');
+      let thumb = '';
+      try { thumb = await makeFileThumbnail(file); } catch { thumb = ''; }
+      addMoment(animeId, {
+        id: mediaKey,
+        kind: isGif ? 'gif' : 'video',
+        title,
+        mediaKey,
+        thumb,
+        mime: file.type || '',
+        size: file.size,
+        createdAt: Date.now(),
+      });
+      closeMomentForm(true);
+      toast('Момент добавлен');
+    } catch (err) {
+      f.busy = false;
+      f.error = err && err.message ? err.message : 'Не удалось добавить момент.';
+      renderMomentForm();
+    }
+  }
+
+  const momentObjectUrls = new Set();
+
+  function revokeMomentUrls() {
+    for (const url of momentObjectUrls) URL.revokeObjectURL(url);
+    momentObjectUrls.clear();
+  }
+
+  async function playMoment(animeId, momentId, button) {
+    if (!button || button.dataset.loaded === '1') return;
+    const moment = findMoment(animeId, momentId);
+    if (!moment) return;
+
+    if (moment.kind === 'tiktok') {
+      const videoId = C.extractTikTokId(moment.url);
+      if (!videoId) { toast('Не удалось открыть TikTok'); return; }
+      button.innerHTML = `<iframe class="moment-frame" src="${C.tiktokPlayerUrl(videoId)}" title="TikTok" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+      button.dataset.loaded = '1';
+      button.classList.add('is-playing');
+      return;
+    }
+
+    const blob = await mediaGet('media', moment.mediaKey);
+    if (!blob) { toast('Файл не найден в этом браузере'); return; }
+    revokeMomentUrls();
+    const url = URL.createObjectURL(blob);
+    momentObjectUrls.add(url);
+    if (moment.kind === 'gif') {
+      button.innerHTML = `<img class="moment-gif" src="${url}" alt="">`;
+    } else {
+      button.innerHTML = `<video class="moment-video" src="${url}" controls autoplay playsinline></video>`;
+    }
+    button.dataset.loaded = '1';
+    button.classList.add('is-playing');
+  }
+
+  function safeFileName(value) {
+    return String(value || 'moment')
+      .replace(/[\\/:*?"<>|]+/g, ' ')
+      .trim()
+      .slice(0, 80) || 'moment';
+  }
+
+  async function shareMoment(animeId, momentId) {
+    const moment = findMoment(animeId, momentId);
+    if (!moment) return;
+    const anime = getAnime(animeId);
+    const title = moment.title || (anime ? anime.title : 'Момент AniTier');
+
+    if (moment.kind === 'tiktok') {
+      if (navigator.share) {
+        try { await navigator.share({ title, url: moment.url }); return; }
+        catch (err) { if (err && err.name === 'AbortError') return; }
+      }
+      try {
+        await navigator.clipboard.writeText(moment.url);
+        toast('Ссылка на TikTok скопирована');
+      } catch {
+        toast('Не удалось поделиться ссылкой');
+      }
+      return;
+    }
+
+    const blob = await mediaGet('media', moment.mediaKey);
+    if (!blob) { toast('Файл не найден в этом браузере'); return; }
+    const ext = moment.kind === 'gif' ? 'gif' : (moment.mime && moment.mime.includes('webm') ? 'webm' : 'mp4');
+    const mime = moment.mime || blob.type || 'application/octet-stream';
+    let file = null;
+    try { file = new File([blob], `${safeFileName(title)}.${ext}`, { type: mime }); } catch { file = null; }
+
+    if (file && navigator.canShare) {
+      try {
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title });
+          return;
+        }
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;
+      }
+    }
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = file ? file.name : `${safeFileName(title)}.${ext}`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast('Файл сохранён — отправьте его через мессенджер');
+  }
+
+  async function removeMomentAction(animeId, momentId) {
+    const moment = findMoment(animeId, momentId);
+    if (!moment) return;
+    if (!window.confirm('Удалить этот момент?')) return;
+    if (moment.mediaKey) await mediaDelete('media', moment.mediaKey);
+    removeMoment(animeId, momentId);
+    renderModal();
+    toast('Момент удалён');
+  }
+
+  /* ---------------- резервные копии и Google Drive ---------------- */
+  const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+  let gisPromise = null;
+  let driveToken = '';
+  let driveTokenExpiresAt = 0;
+
+  function googleClientId() {
+    const meta = document.querySelector('meta[name="anitier-google-client-id"]');
+    return meta ? String(meta.content || '').trim() : '';
+  }
+
+  function driveAvailable() {
+    return location.protocol !== 'file:' && Boolean(googleClientId());
+  }
+
+  function loadGisScript() {
+    if (window.google && window.google.accounts && window.google.accounts.oauth2) return Promise.resolve();
+    if (gisPromise) return gisPromise;
+    gisPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.onload = () => resolve();
+      script.onerror = () => {
+        gisPromise = null;
+        reject(new Error('Не удалось загрузить Google Sign-In. Проверьте сеть.'));
+      };
+      document.head.appendChild(script);
+    });
+    return gisPromise;
+  }
+
+  async function ensureDriveToken() {
+    if (driveToken && Date.now() < driveTokenExpiresAt - 60000) return driveToken;
+    const clientId = googleClientId();
+    if (!clientId) throw new Error('Google Drive не настроен: укажите client ID в meta-теге.');
+    if (location.protocol === 'file:') throw new Error('Google Drive недоступен в APK. Используйте файл.');
+    await loadGisScript();
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = (fn, value) => {
+        if (settled) return;
+        settled = true;
+        fn(value);
+      };
+      try {
+        const client = window.google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: DRIVE_SCOPE,
+          callback: response => {
+            if (response && response.access_token) {
+              driveToken = response.access_token;
+              driveTokenExpiresAt = Date.now() + (Number(response.expires_in) || 3600) * 1000;
+              finish(resolve, driveToken);
+            } else {
+              finish(reject, new Error(response && response.error
+                ? `Google Drive: ${response.error}`
+                : 'Не удалось получить доступ к Google Drive.'));
+            }
+          },
+          error_callback: error => {
+            finish(reject, new Error(error && error.message ? error.message : 'Окно Google закрыто.'));
+          },
+        });
+        client.requestAccessToken({ prompt: '' });
+      } catch (err) {
+        finish(reject, err);
+      }
+    });
+  }
+
+  function setBackupMessage(message, error) {
+    state.backup.busy = false;
+    state.backup.message = message || '';
+    state.backup.error = Boolean(error);
+    renderBackup();
+  }
+
+  function saveBackupFile() {
+    if (state.backup.busy) return;
+    let text = '';
+    try {
+      text = JSON.stringify(buildBackupPayload(), null, 2);
+    } catch (err) {
+      setBackupMessage(err && err.message ? err.message : 'Не удалось собрать копию.', true);
+      return;
+    }
+
+    if (window.AniTierAndroid && typeof window.AniTierAndroid.saveBackup === 'function') {
+      try {
+        window.AniTierAndroid.saveBackup(text, C.BACKUP_FILE);
+        setBackupMessage('Выберите папку в системном окне — файл сохранится туда.', false);
+        return;
+      } catch {
+        /* ниже обычное скачивание */
+      }
+    }
+
+    const blob = new Blob([text], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = C.BACKUP_FILE;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+    setBackupMessage('Файл сохранён. Проверьте папку загрузок.', false);
+    toast('Резервная копия скачана');
+  }
+
+  function readTextFile(file) {
+    if (file && typeof file.text === 'function') return file.text();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(reader.error || new Error('Не удалось прочитать файл'));
+      reader.readAsText(file);
+    });
+  }
+
+  async function restoreBackupText(text, source) {
+    let parsed = null;
+    try {
+      parsed = C.parseBackupJson(text);
+    } catch (err) {
+      setBackupMessage(err && err.message ? err.message : 'Не удалось прочитать копию.', true);
+      return false;
+    }
+    const where = source ? ` из «${source}»` : '';
+    if (!window.confirm(`Восстановить копию${where}? Текущие списки, прогресс и настройки будут заменены.`)) {
+      return false;
+    }
+    try {
+      const result = applyBackupData(parsed.data);
+      updateBell();
+      syncModeChips();
+      syncLangUI();
+      syncFilterUI();
+      if (state.db.mode === 'custom') fetchDB(true);
+      setBackupMessage(`Копия восстановлена: карточек — ${result.cards}, тайтлов с моментами — ${result.moments}.`, false);
+      toast('Резервная копия восстановлена');
+      return true;
+    } catch (err) {
+      setBackupMessage(err && err.message ? err.message : 'Не удалось восстановить копию.', true);
+      return false;
+    }
+  }
+
+  async function restoreBackupFile(file) {
+    if (!file) return;
+    if (file.size > 30 * 1024 * 1024) {
+      setBackupMessage('Файл больше 30 МБ — это не резервная копия AniTier.', true);
+      return;
+    }
+    try {
+      const text = await readTextFile(file);
+      await restoreBackupText(text, file.name || 'файл');
+    } catch (err) {
+      setBackupMessage(err && err.message ? err.message : 'Не удалось прочитать файл.', true);
+    }
+  }
+
+  async function saveBackupToDrive() {
+    if (state.backup.busy) return;
+    state.backup.busy = true;
+    state.backup.message = '';
+    state.backup.error = false;
+    renderBackup();
+    try {
+      const token = await ensureDriveToken();
+      const file = await driveSaveBackup(token, JSON.stringify(buildBackupPayload()));
+      const when = file && file.modifiedTime
+        ? new Date(file.modifiedTime).toLocaleString('ru-RU')
+        : new Date().toLocaleString('ru-RU');
+      setBackupMessage(`Сохранено в Google Drive · ${when}`, false);
+      toast('Копия сохранена в Google Drive');
+    } catch (err) {
+      if (err && err.code === 'AUTH') driveToken = '';
+      setBackupMessage(err && err.message ? err.message : 'Не удалось сохранить копию в Google Drive.', true);
+    }
+  }
+
+  async function restoreFromDrive() {
+    if (state.backup.busy) return;
+    state.backup.busy = true;
+    state.backup.message = '';
+    state.backup.error = false;
+    renderBackup();
+    try {
+      const token = await ensureDriveToken();
+      const loaded = await driveLoadBackup(token);
+      const when = loaded.file && loaded.file.modifiedTime
+        ? new Date(loaded.file.modifiedTime).toLocaleString('ru-RU')
+        : '';
+      state.backup.busy = false;
+      renderBackup();
+      await restoreBackupText(loaded.text, when ? `Google Drive, ${when}` : 'Google Drive');
+    } catch (err) {
+      if (err && err.code === 'AUTH') driveToken = '';
+      setBackupMessage(err && err.message ? err.message : 'Не удалось восстановить копию из Google Drive.', true);
+    }
+  }
+
   function bindEvents() {
     document.addEventListener('click', e => {
       const el = e.target.closest && e.target.closest('[data-action]');
@@ -5044,7 +8378,10 @@ body.mobile-app .offline-banner {
 
         case 'open':
           if (e.target.closest('button')) return;
-          if (id != null) openModal(id);
+          if (id != null) {
+            openModal(id);
+            translateModalSynopsis(id);
+          }
           break;
 
         case 'add-watched':
@@ -5074,6 +8411,12 @@ body.mobile-app .offline-banner {
           break;
         }
 
+        case 'retry-franchise':
+          state.franchiseById.delete(id);
+          state.franchiseErrors.delete(id);
+          renderModal();
+          break;
+
         case 'toggle-ep': {
           const ep = Number(el.dataset.ep);
           if (id != null && Number.isInteger(ep) && ep > 0) toggleEpisode(id, ep);
@@ -5102,7 +8445,6 @@ body.mobile-app .offline-banner {
           state.db.mode = mode;
           state.db.query = '';
           state.db.touched = true;
-          resetDBFilters();
           const input = $('#search-input');
           if (input) input.value = '';
           syncModeChips();
@@ -5120,7 +8462,6 @@ body.mobile-app .offline-banner {
 
         case 'reset-filters':
           resetDBFilters();
-          state.db.mode = 'popular';
           state.db.touched = true;
           syncModeChips();
           fetchDB(true);
@@ -5136,6 +8477,14 @@ body.mobile-app .offline-banner {
 
         case 'refresh-notifications':
           fetchNotifications(true);
+          break;
+
+        case 'notif-tab':
+          if (C.NOTIF_TABS.includes(el.dataset.notifTab)) {
+            state.notifications.tab = el.dataset.notifTab;
+            state.notifications.tabTouched = true;
+            renderNotifications();
+          }
           break;
 
         case 'refresh-upcoming':
@@ -5160,6 +8509,69 @@ body.mobile-app .offline-banner {
 
         case 'close-modal':
           closeModal();
+          break;
+
+        case 'open-backup':
+          openBackup();
+          break;
+
+        case 'close-backup':
+          closeBackup();
+          break;
+
+        case 'backup-download':
+          saveBackupFile();
+          break;
+
+        case 'backup-drive-save':
+          saveBackupToDrive();
+          break;
+
+        case 'backup-drive-load':
+          restoreFromDrive();
+          break;
+
+        case 'new-custom':
+          openCustomForm();
+          break;
+
+        case 'edit-custom':
+          openCustomForm(id);
+          break;
+
+        case 'delete-custom':
+          removeCustomCard(id);
+          break;
+
+        case 'close-custom':
+          closeCustomForm();
+          break;
+
+        case 'moment-add':
+          openMomentForm(id);
+          break;
+
+        case 'close-moment':
+          closeMomentForm();
+          break;
+
+        case 'moment-mode':
+          captureMomentDraft();
+          state.momentForm.mode = el.dataset.mode === 'file' ? 'file' : 'tiktok';
+          state.momentForm.error = '';
+          renderMomentForm();
+          break;
+
+        case 'moment-play':
+          playMoment(id, el.dataset.moment, el);
+          break;
+
+        case 'moment-share':
+          shareMoment(id, el.dataset.moment);
+          break;
+
+        case 'moment-delete':
+          removeMomentAction(id, el.dataset.moment);
           break;
 
         case 'exchange-export':
@@ -5216,6 +8628,38 @@ body.mobile-app .offline-banner {
       }
     });
 
+    document.addEventListener('submit', e => {
+      const form = e.target;
+      if (!form || !form.id) return;
+      if (form.id === 'custom-form') {
+        e.preventDefault();
+        saveCustomForm(form);
+      } else if (form.id === 'moment-form') {
+        e.preventDefault();
+        saveMomentForm(form);
+      }
+    });
+
+    document.addEventListener('change', e => {
+      const input = e.target;
+      if (!input || input.name !== 'poster' || !input.closest || !input.closest('#custom-form')) return;
+      const file = input.files && input.files[0];
+      const preview = $('#custom-poster-preview');
+      if (!preview || !file || !file.type.startsWith('image/')) return;
+      const url = URL.createObjectURL(file);
+      preview.innerHTML = `<img src="${url}" alt="Постер">`;
+      const img = preview.querySelector('img');
+      if (img) img.onload = () => URL.revokeObjectURL(url);
+    });
+
+    document.addEventListener('change', e => {
+      const input = e.target;
+      if (!input || input.dataset.action !== 'backup-file') return;
+      const file = input.files && input.files[0];
+      input.value = '';
+      restoreBackupFile(file);
+    });
+
     const search = $('#search-input');
     if (search) {
       search.addEventListener('input', () => {
@@ -5230,11 +8674,20 @@ body.mobile-app .offline-banner {
       });
     }
 
+    const langSelect = $('#search-lang');
+    if (langSelect) {
+      langSelect.addEventListener('change', () => {
+        state.settings.searchLang = C.normalizeSearchLang(langSelect.value);
+        saveState();
+        syncLangUI();
+        if (state.db.query.trim()) fetchDB(true);
+      });
+    }
+
     const filters = $('#db-filters');
     if (filters) {
       filters.addEventListener('change', () => {
         state.db.filters = readFiltersFromUI();
-        state.db.mode = 'popular';
         state.db.touched = true;
         syncModeChips();
         syncFilterUI();
@@ -5260,6 +8713,18 @@ body.mobile-app .offline-banner {
 
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
+        if (state.backup.open) {
+          closeBackup();
+          return;
+        }
+        if (state.momentForm.open) {
+          closeMomentForm();
+          return;
+        }
+        if (state.customForm.open) {
+          closeCustomForm();
+          return;
+        }
         if (state.exchange.open) {
           closeExchange();
           return;
@@ -5271,13 +8736,20 @@ body.mobile-app .offline-banner {
         parseImportCode();
         return;
       }
-      if (e.key === 'Enter' && e.target && e.target.matches && e.target.matches('.card, .notif, .tier-card')) {
+      if (e.key === 'Enter' && e.target && e.target.matches && e.target.matches('.card, .notif, .tier-card, .franchise-link')) {
         e.preventDefault();
-        openModal(Number(e.target.dataset.id));
+        const id = Number(e.target.dataset.id);
+        openModal(id);
+        translateModalSynopsis(id);
       }
     });
 
     window.addEventListener('storage', e => {
+      if (e.key === MOMENTS_KEY) {
+        loadMoments();
+        if (state.modalId != null) renderModal();
+        return;
+      }
       if (e.key !== LS_KEY) return;
       loadState();
       updateCounters();
@@ -5327,6 +8799,52 @@ body.mobile-app .offline-banner {
     dbObserver.observe(sentinel);
   }
 
+  function localDayKey(date = new Date()) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
+  function dailySyncIsDue(now = new Date()) {
+    return now.getHours() >= 3 && localStorage.getItem(DAILY_SYNC_KEY) !== localDayKey(now);
+  }
+
+  function nextDailySyncAt(now = new Date()) {
+    const next = new Date(now);
+    next.setHours(3, 0, 0, 0);
+    if (next <= now) next.setDate(next.getDate() + 1);
+    return next.getTime();
+  }
+
+  let dailySyncTimer = null;
+  function scheduleDailySync() {
+    clearTimeout(dailySyncTimer);
+    dailySyncTimer = setTimeout(() => {
+      if (dailySyncIsDue()) runDailySync();
+      else scheduleDailySync();
+    }, Math.min(nextDailySyncAt() - Date.now(), 2147480000));
+  }
+
+  let dailySyncRunning = false;
+  async function runDailySync() {
+    if (dailySyncRunning || state.forceDemo || !navigator.onLine) return;
+    dailySyncRunning = true;
+    setDailySyncMode(true);
+    clearAniListCache();
+    try {
+      await Promise.allSettled([fetchNotifications(true), fetchUpcoming(true)]);
+      await fetchDB(true);
+      if (state.notifications.error || state.upcoming.error || state.db.error) {
+        throw new Error('Ежедневная синхронизация завершилась не полностью');
+      }
+      localStorage.setItem(DAILY_SYNC_KEY, localDayKey());
+    } catch (err) {
+      console.warn('AniTier: ежедневная синхронизация не завершилась', err);
+    } finally {
+      setDailySyncMode(false);
+      dailySyncRunning = false;
+      scheduleDailySync();
+    }
+  }
+
   async function bootstrap() {
     try {
       await Promise.allSettled([fetchNotifications(), fetchUpcoming()]);
@@ -5335,17 +8853,29 @@ body.mobile-app .offline-banner {
       state.booting = false;
       state.bootstrapDone = true;
       renderDB();
+      scheduleDailySync();
+      if (dailySyncIsDue()) runDailySync();
     }
   }
 
   async function init() {
     state.booting = true;
+    if (!localStorage.getItem(DAILY_SYNC_KEY)) {
+      const now = new Date();
+      const initialMark = now.getHours() >= 3 ? localDayKey(now) : localDayKey(new Date(now.getTime() - 86400000));
+      localStorage.setItem(DAILY_SYNC_KEY, initialMark);
+    }
     loadState();
+    loadMoments();
     initFilterOptions();
     syncFilterUI();
     syncModeChips();
+    syncLangUI();
     bindEvents();
     setupInfiniteScroll();
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && dailySyncIsDue()) runDailySync();
+    });
 
     renderTierList('watched');
     renderTierList('planned');
@@ -5361,19 +8891,72 @@ body.mobile-app .offline-banner {
     if (modal) modal.hidden = true;
     const exchangeModal = $('#exchange-modal');
     if (exchangeModal) exchangeModal.hidden = true;
+    const customModal = $('#custom-modal');
+    if (customModal) customModal.hidden = true;
+    const momentModal = $('#moment-modal');
+    if (momentModal) momentModal.hidden = true;
+    const backupModal = $('#backup-modal');
+    if (backupModal) backupModal.hidden = true;
 
     return bootstrap();
   }
+
+  Object.assign(App, {
+    fetchDB,
+    fetchNotifications,
+    fetchUpcoming,
+    refreshCurrent,
+    retryAll,
+    saveCustomForm,
+    removeCustomCard,
+    hydrateCustomImage,
+    saveMomentForm,
+    playMoment,
+    shareMoment,
+    removeMomentAction,
+    openCustomForm,
+    closeCustomForm,
+    openMomentForm,
+    closeMomentForm,
+    captureMomentDraft,
+    revokeMomentUrls,
+    openBackup,
+    closeBackup,
+    saveBackupFile,
+    restoreBackupText,
+    restoreBackupFile,
+    saveBackupToDrive,
+    restoreFromDrive,
+    driveAvailable,
+    buildBackupPayload,
+    applyBackupData,
+    init,
+  });
 
   if (TEST_MODE) {
     window.__anitierTest = {
       state,
       init,
+      fetchAniList,
+      fetchAnimeRelations: App.fetchAnimeRelations,
+      clearPersistentApiCache,
+      clearMemoryApiCache: clearAniListCache,
+      dailySyncIsDue,
+      runDailySync,
+      fetchAniList,
+      clearPersistentApiCache,
+      clearMemoryApiCache: clearAniListCache,
+      dailySyncIsDue,
+      runDailySync,
       fetchDB,
       fetchNotifications,
       fetchUpcoming,
       resetDBFilters,
       syncFilterUI,
+      syncLangUI,
+      resolveSearchQuery,
+      translateText,
+      translateModalSynopsis,
       invalidateNotificationEpisodes,
       openExchange,
       closeExchange,
@@ -5382,13 +8965,27 @@ body.mobile-app .offline-banner {
       parseImportCode,
       addExchangeItem,
       renderExchange,
+      saveCustomForm,
+      removeCustomCard,
+      saveMomentForm,
+      removeMomentAction,
+      openCustomForm,
+      closeCustomForm,
+      openMomentForm,
+      closeMomentForm,
+      openBackup,
+      closeBackup,
+      restoreBackupText,
+      buildBackupPayload,
+      applyBackupData,
+      driveAvailable,
     };
   } else if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => { init(); });
   } else {
     init();
   }
-})();
+})(window.AniTier);
 
 </script>
 </body>

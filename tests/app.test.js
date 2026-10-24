@@ -117,6 +117,17 @@
         const vars = record.vars;
         const page = Number(vars.page) || 1;
 
+        if (body.query && body.query.includes('AnimeFranchise')) {
+          const currentId = Number(vars.id || 1000);
+          const current = rawAniList(currentId, currentId === 1000 ? 'База 1' : 'Следующий сезон', {
+            relations: currentId === 1000 ? { edges: [
+              { relationType: 'PREQUEL', node: rawAniList(999, 'Предыдущий сезон') },
+              { relationType: 'SEQUEL', node: rawAniList(1001, 'Следующий сезон', { seasonYear: 2025 }) },
+            ] } : { edges: [] },
+          });
+          return anilistResponse([current], false);
+        }
+
         if (vars.search) return anilistResponse(searchMedia(vars.search, page), false);
 
         if (vars.status === 'RELEASING') {
@@ -159,7 +170,7 @@
           ], false);
         }
 
-        if (vars.sort && vars.sort[0] === 'POPULARITY_DESC') {
+        if (vars.sort && ['POPULARITY_DESC', 'SCORE_DESC'].includes(vars.sort[0])) {
           dbRequests += 1;
           if (dbRequests === 1 && options.firstDB) {
             await options.firstDB;
@@ -276,6 +287,42 @@
     }
   });
 
+  T.test('app: карточка связывает сезоны, оценки и прогресс раздельно', async () => {
+    const calls = [];
+    const app = await T.mountApp({ query: '?test=1', setup(win) { win.fetch = baseFetch(calls); } });
+    try {
+      await app.win.__anitierTest.init();
+      const doc = app.win.document;
+      doc.querySelector('#db-grid .card').click();
+      await T.waitFor(() => doc.querySelector('.franchise-link[data-id="1001"]'), 'В карточке не появился переход к продолжению');
+      doc.querySelector('[data-action="set-tier"][data-id="1000"][data-tier="B"]').click();
+      doc.querySelector('.franchise-link[data-id="1001"]').click();
+      await T.waitFor(() => app.win.__anitierTest.state.modalId === 1001, 'Переход к следующему сезону не сработал');
+      doc.querySelector('[data-action="set-tier"][data-id="1001"][data-tier="A"]').click();
+      doc.querySelector('[data-action="toggle-ep"][data-id="1001"][data-ep="1"]').click();
+      const state = app.win.__anitierTest.state;
+      T.eq(state.lists.watched.A[0].id, 1001);
+      T.eq(state.lists.watched.B[0].id, 1000);
+      T.eq(state.progress[1001].watched, [1]);
+      T.eq(state.progress[1000], undefined);
+    } finally { app.close(); }
+  });
+
+  T.test('app: повторный запрос обслуживается локальным кэшем', async () => {
+    const calls = [];
+    const app = await T.mountApp({ query: '?test=1', setup(win) { win.fetch = baseFetch(calls); } });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const variables = { search: 'persistent-cache-proof-unique', page: 1, perPage: 20, type: 'ANIME', isAdult: false };
+      await api.fetchAniList(variables);
+      const before = calls.length;
+      api.clearMemoryApiCache();
+      await api.fetchAniList(variables);
+      T.eq(calls.length, before, 'Повторный запрос должен прочитаться из IndexedDB');
+    } finally { app.close(); }
+  });
+
   T.test('app: фильтры меняют переменные AniList и сбрасываются', async () => {
     const calls = [];
     const app = await T.mountApp({
@@ -291,6 +338,10 @@
       toggle.click();
       T.eq(doc.querySelector('#db-filters').hidden, false);
 
+      doc.querySelector('[data-mode="score"]').click();
+      await T.waitFor(() => app.win.__anitierTest.state.db.mode === 'score' && !app.win.__anitierTest.state.db.loading,
+        'Режим рейтинга не включился');
+
       const type = doc.querySelector('#filter-type');
       T.assert(type, 'Фильтр типа должен существовать');
       type.value = 'movie';
@@ -304,6 +355,8 @@
 
       const filteredCall = [...calls].reverse().find(call => call.vars && call.vars.format === 'MOVIE');
       T.eq(filteredCall.vars.perPage, 20);
+      T.eq(filteredCall.vars.sort, ['SCORE_DESC'], 'Фильтр применяется вместе с сортировкой по рейтингу');
+      T.eq(app.win.__anitierTest.state.db.mode, 'score', 'Фильтр не должен сбрасывать режим сортировки');
       T.eq(doc.querySelectorAll('#db-grid .card').length, 2);
       T.eq(doc.querySelector('#filter-count').textContent, '1');
       T.eq(doc.querySelector('#filter-count').hidden, false);
@@ -315,6 +368,7 @@
         'Сброс фильтров не вернул популярную базу',
       );
       T.eq(doc.querySelector('#filter-count').hidden, true);
+      T.eq(app.win.__anitierTest.state.db.mode, 'score', 'Сброс фильтров должен сохранить выбранный режим');
     } finally {
       app.close();
     }
@@ -376,19 +430,24 @@
       doc.querySelector('[data-action="tab"][data-tab="notifications"]').click();
 
       await T.waitFor(
-        () => doc.querySelector('input[data-action="ep-slider"][data-id="5114"]'),
+        () => doc.querySelector('[data-action="notif-tab"][data-notif-tab="tracked"]'),
+        'Не появились группы уведомлений',
+      );
+      const shortBlock = doc.querySelector('[data-ep-block="52991"]');
+      T.eq(shortBlock.querySelectorAll('input[data-action="ep-slider"]').length, 0, 'У тайтла с семью вышедшими сериями нет ползунка');
+      T.eq(shortBlock.querySelectorAll('.ep-chip').length, 7, 'У короткого тайтла должны быть кнопки серий');
+
+      doc.querySelector('[data-action="notif-tab"][data-notif-tab="recent"]').click();
+      await T.waitFor(
+        () => doc.querySelector('input[data-action="ep-slider"][data-id="21"]'),
         'У длинного тайтла нет ползунка прогресса серий',
       );
 
-      const longBlock = doc.querySelector('[data-ep-block="5114"]');
+      const longBlock = doc.querySelector('[data-ep-block="21"]');
       const slider = longBlock.querySelector('input[data-action="ep-slider"]');
-      T.eq(Number(slider.max), 64);
+      T.eq(Number(slider.max), 1200);
       T.eq(longBlock.querySelectorAll('.ep-chip').length, 0, 'У длинного тайтла не должно быть кнопок серий');
       T.eq(longBlock.querySelectorAll('.ep-step').length, 0, 'У длинного тайтла не должно быть шагов − / +');
-
-      const shortBlock = doc.querySelector('[data-ep-block="52991"]');
-      T.eq(shortBlock.querySelectorAll('input[data-action="ep-slider"]').length, 0, 'У короткого тайтла не должно быть ползунка');
-      T.eq(shortBlock.querySelectorAll('.ep-chip').length, 7, 'У короткого тайтла должны быть кнопки серий');
 
       const id = Number(slider.dataset.id);
       slider.value = '5';
@@ -451,6 +510,124 @@
     }
   });
 
+  T.test('app: язык поиска сохраняется и меняет разрешение запроса', async () => {
+    const calls = [];
+    let anilistSearch = '';
+    const app = await T.mountApp({
+      query: '?test=1',
+      setup(win) {
+        win.fetch = baseFetch(calls, {
+          onAniList(vars) { if (vars.search) anilistSearch = vars.search; },
+        });
+      },
+    });
+
+    try {
+      await app.win.__anitierTest.init();
+      const doc = app.win.document;
+      const state = app.win.__anitierTest.state;
+      const select = doc.querySelector('#search-lang');
+      T.assert(select, 'Селектор языка поиска должен существовать');
+      T.eq(select.value, 'auto');
+      T.eq(select.options.length, 4);
+
+      const input = doc.querySelector('#search-input');
+      input.value = 'Фрирен';
+      input.dispatchEvent(new app.win.Event('input', { bubbles: true }));
+
+      await T.waitFor(
+        () => !state.db.loading && state.db.query === 'Фрирен' && state.db.items.length === 3,
+        'Русский запрос не разрешился через словарь',
+        8000,
+      );
+      T.eq(anilistSearch, 'Sousou no Frieren');
+      T.eq(state.db.resolveVia, 'dictionary');
+
+      select.value = 'en';
+      select.dispatchEvent(new app.win.Event('change', { bubbles: true }));
+
+      await T.waitFor(
+        () => !state.db.loading && state.db.resolveVia === 'raw',
+        'Смена языка не перезапустила поиск с исходным запросом',
+        8000,
+      );
+      T.eq(state.db.resolvedQuery, 'Фрирен');
+      T.eq(anilistSearch, 'Фрирен', 'При английском языке запрос уходит как есть');
+
+      const saved = JSON.parse(app.win.localStorage.getItem('anitier.v1') || '{}');
+      T.eq(saved.settings.searchLang, 'en', 'Язык поиска должен сохраняться');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: перевод описания кэшируется и не повторяет запрос', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    const calls = [];
+
+    try {
+      app.win.AniTier.clearTranslationCache();
+      app.win.fetch = async (url) => {
+        const parsed = new URL(url);
+        calls.push(parsed);
+        if (parsed.hostname !== 'api.mymemory.translated.net') throw new Error(`Неожиданный запрос: ${url}`);
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            responseStatus: 200,
+            responseData: { translatedText: 'Эльфийка-маг Фрирен.' },
+          }),
+        };
+      };
+
+      const first = await app.win.__anitierTest.translateText('Elf mage Frieren.');
+      const second = await app.win.__anitierTest.translateText('Elf mage Frieren.');
+
+      T.eq(first, 'Эльфийка-маг Фрирен.');
+      T.eq(second, first);
+      T.eq(calls.length, 1, 'Повторный перевод должен браться из кэша');
+      T.eq(calls[0].searchParams.get('langpair'), 'en|ru');
+      T.eq(app.win.AniTier.cachedTranslation('Elf mage Frieren.'), first);
+    } finally {
+      app.win.AniTier.clearTranslationCache();
+      app.close();
+    }
+  });
+
+  T.test('app: русский синоним AniList становится основным названием', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+
+    try {
+      const a = app.win.AniTier.mapAniList({
+        id: 999,
+        idMal: null,
+        title: { romaji: 'Sousou no Frieren', english: "Frieren: Beyond Journey's End", native: '葬送のフリーレン' },
+        synonyms: ['Провожающая в последний путь Фрирен'],
+        format: 'TV',
+        episodes: 28,
+        status: 'FINISHED',
+        seasonYear: 2023,
+        startDate: { year: 2023, month: 9, day: 29 },
+        endDate: { year: 2024, month: 3, day: 22 },
+        averageScore: 91,
+        description: 'Elf mage Frieren.',
+        genres: ['Adventure', 'Drama', 'Fantasy'],
+        studios: { nodes: [] },
+        coverImage: { large: '' },
+        siteUrl: 'https://anilist.co/anime/999',
+        nextAiringEpisode: null,
+      });
+
+      T.eq(a.title, 'Провожающая в последний путь Фрирен');
+      T.eq(a.altTitle, 'Sousou no Frieren');
+      T.eq(a.originalTitle, 'Sousou no Frieren');
+      T.eq(a.title, app.win.AniTierCore.firstCyrillic(['Sousou no Frieren', a.title]));
+    } finally {
+      app.close();
+    }
+  });
+
   T.test('app: демо-база листается по 20 и фильтруется', async () => {
     const app = await T.mountApp({ query: '?demo=1&test=1' });
 
@@ -494,6 +671,163 @@
           && doc.querySelector('#db-grid').textContent.includes('Фрирен'),
         'Поиск по демо-базе не сработал',
       );
+    } finally {
+      app.close();
+    }
+  });
+  T.test('app: свои карточки сохраняются, попадают в списки и удаляются', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+
+    try {
+      await app.win.__anitierTest.init();
+      const App = app.win.AniTier;
+      const state = app.win.__anitierTest.state;
+
+      const card = App.upsertCustomCard({
+        id: -1,
+        customId: 'custom-1',
+        title: 'Своя карточка',
+        year: 2024,
+        episodes: 12,
+        type: 'TV',
+        genres: ['Драма'],
+      });
+      T.assert(card, 'Своя карточка должна сохраниться');
+      T.eq(state.customCards.length, 1);
+      T.eq(App.getAnime(-1).title, 'Своя карточка');
+
+      const stored = JSON.parse(app.win.localStorage.getItem('anitier.v1'));
+      T.eq(stored.customCards[0].customId, 'custom-1');
+      T.eq(stored.customCards[0].id, -1);
+
+      App.addToList('watched', card, 'S');
+      T.assert(App.hasIn('watched', -1), 'Своя карточка должна попасть в тир-лист');
+
+      T.eq(App.addMoment(-1, { id: 'bad', kind: 'tiktok', url: 'https://example.com/video/1' }), null);
+      App.addMoment(-1, {
+        id: 'moment-1',
+        kind: 'tiktok',
+        url: 'https://www.tiktok.com/@user/video/7412345678901234567',
+        title: 'Любимая сцена',
+      });
+      T.eq(App.momentsFor(-1).length, 1);
+
+      App.deleteCustomCard(-1);
+      T.eq(state.customCards.length, 0);
+      T.assert(!App.hasIn('watched', -1), 'Удаление карточки должно убрать её из списков');
+      T.eq(App.momentsFor(-1).length, 0, 'Моменты удалённой карточки должны исчезнуть');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: режим «Мои карточки» показывает только свои тайтлы', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+
+    try {
+      await app.win.__anitierTest.init();
+      const App = app.win.AniTier;
+      const doc = app.win.document;
+
+      App.upsertCustomCard({ id: -1, customId: 'custom-1', title: 'Только моя', year: 2024 });
+      doc.querySelector('[data-action="mode"][data-mode="custom"]').click();
+
+      await T.waitFor(
+        () => doc.querySelectorAll('#db-grid .card').length === 1,
+        'Режим своих карточек не показал одну карточку',
+      );
+      T.eq(doc.querySelector('#db-grid .card-title').textContent, 'Только моя');
+      T.includes(doc.querySelector('#db-status').textContent, 'Свои карточки');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: резервная копия восстанавливает списки, карточки и моменты', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+
+    try {
+      await app.win.__anitierTest.init();
+      const App = app.win.AniTier;
+      const state = app.win.__anitierTest.state;
+
+      const card = App.upsertCustomCard({
+        id: -1,
+        customId: 'custom-1',
+        title: 'До копии',
+        year: 2024,
+        image: 'data:image/jpeg;base64,AAAA',
+      });
+      App.addToList('watched', card, 'A');
+      App.addMoment(-1, {
+        id: 'moment-1',
+        kind: 'tiktok',
+        url: 'https://www.tiktok.com/@user/video/7412345678901234567',
+        title: 'Сцена',
+      });
+
+      const payload = App.buildBackupPayload();
+      T.eq(payload.kind, 'anitier.backup');
+      T.eq(payload.version, 2);
+      T.eq(payload.data.state.customCards.length, 1);
+      T.eq(payload.data.moments['-1'].length, 1);
+      T.includes(JSON.stringify(payload.data.state.customCards[0].image), 'data:image/jpeg');
+
+      app.win.localStorage.clear();
+      App.loadState();
+      App.loadMoments();
+      T.eq(state.customCards.length, 0);
+      T.eq(state.moments['-1'], undefined);
+
+      App.applyBackupData(payload.data);
+      T.eq(state.customCards.length, 1);
+      T.eq(state.customCards[0].title, 'До копии');
+      T.assert(App.hasIn('watched', -1), 'Список из копии должен восстановиться');
+      T.eq(App.momentsFor(-1).length, 1);
+      T.eq(App.momentsFor(-1)[0].title, 'Сцена');
+
+      const restoredText = JSON.stringify(payload);
+      app.win.confirm = () => true;
+      const ok = await app.win.__anitierTest.restoreBackupText(restoredText, 'тест');
+      T.eq(ok, true);
+      T.eq(state.customCards.length, 1);
+      T.includes(app.win.document.querySelector('#backup-content').textContent, 'Копия восстановлена');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: Google Drive сохраняет копию multipart и перезаписывает файл', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+
+    try {
+      const calls = [];
+      app.win.fetch = async (url, options = {}) => {
+        calls.push({
+          url: String(url),
+          method: options.method || 'GET',
+          headers: options.headers || {},
+          body: options.body,
+        });
+        const body = String(url).includes('/upload/drive/')
+          ? { id: 'file-1', name: 'anitier-backup.json' }
+          : { files: [{ id: 'file-1', name: 'anitier-backup.json' }] };
+        return new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      };
+
+      const saved = await app.win.AniTier.driveSaveBackup('token', '{"kind":"test"}');
+      T.eq(saved.id, 'file-1');
+      T.eq(calls.length, 2);
+      T.includes(calls[0].url, 'drive/v3/files?');
+      T.eq(calls[1].method, 'PATCH');
+      T.includes(calls[1].headers['Content-Type'], 'multipart/related; boundary=');
+      const multipart = await calls[1].body.text();
+      T.includes(multipart, '"name":"anitier-backup.json"');
+      T.includes(multipart, '{"kind":"test"}');
+      T.assert(multipart.startsWith('--'), 'Тело должно начинаться с multipart-границы');
     } finally {
       app.close();
     }

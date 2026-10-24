@@ -131,6 +131,19 @@ body.mobile-app .db-tools {
   gap: 8px;
 }
 
+body.mobile-app .lang-field {
+  flex: 1 1 calc(50% - 4px);
+  min-width: 0;
+}
+body.mobile-app .lang-field > span {
+  display: none;
+}
+body.mobile-app .lang-field select {
+  width: 100%;
+  min-height: 44px;
+  font-size: 16px;
+}
+
 body.mobile-app .search,
 body.mobile-app .search input {
   width: 100%;
@@ -143,7 +156,8 @@ body.mobile-app .search input {
 }
 
 body.mobile-app .filter-toggle {
-  width: 100%;
+  flex: 1 1 calc(50% - 4px);
+  width: auto;
   justify-content: center;
   min-height: 44px;
 }
@@ -273,6 +287,17 @@ body.mobile-app .tier-pick {
   width: 42px;
   height: 42px;
 }
+
+/* ---------- свои карточки и моменты ---------- */
+body.mobile-app .custom-content { padding: 20px 14px 24px; }
+body.mobile-app .backup-content { padding: 20px 14px 24px; }
+body.mobile-app .form-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+body.mobile-app .form-row .form-field:last-child { grid-column: 1 / -1; }
+body.mobile-app .custom-poster-preview { width: 120px; }
+body.mobile-app .moments-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+body.mobile-app .moment-preview { max-height: none; }
+body.mobile-app .moment-actions { gap: 10px; }
+body.mobile-app .custom-new { width: 100%; }
 
 /* ---------- мелочи ---------- */
 body.mobile-app .btn:not(.btn-tiny),

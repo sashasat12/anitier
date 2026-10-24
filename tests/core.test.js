@@ -70,6 +70,29 @@
     T.eq(search.sort, undefined);
   });
 
+  T.test('core: фильтры уточняют режимы до сортировки', () => {
+    const C = core();
+    const rankedMovies = C.buildAniListVariables({
+      mode: 'score', filters: { type: 'movie', status: 'complete', year: '2024', genre: '1', minScore: '8' },
+    });
+    T.eq(rankedMovies.format, 'MOVIE');
+    T.eq(rankedMovies.status, 'FINISHED');
+    T.eq(rankedMovies.seasonYear, 2024);
+    T.eq(rankedMovies.genre, 'Action');
+    T.eq(rankedMovies.averageScoreGreater, 79);
+    T.eq(rankedMovies.sort, ['SCORE_DESC']);
+
+    const airing = C.buildAniListVariables({ mode: 'airing', filters: { type: 'tv' } });
+    T.eq(airing.status, 'RELEASING');
+    T.eq(airing.format, 'TV');
+    T.eq(airing.sort, ['POPULARITY_DESC']);
+
+    const movies = C.buildAniListVariables({ mode: 'movie', filters: { year: '2025' } });
+    T.eq(movies.format, 'MOVIE');
+    T.eq(movies.seasonYear, 2025);
+    T.eq(movies.sort, ['POPULARITY_DESC']);
+  });
+
   T.test('core: demo-фильтр учитывает запрос, тип, год, жанр и рейтинг', () => {
     const C = core();
     const items = [
@@ -167,5 +190,82 @@
       [{ id: 52991, title: 'Фрирен', altTitle: 'Sousou no Frieren', year: 2023 }],
     ], seen);
     T.eq(repeated.length, 0);
+  });
+  T.test('core: язык запроса и русские жанры', () => {
+    const C = core();
+    T.eq(C.detectQueryLang('Фрирен'), 'ru');
+    T.eq(C.detectQueryLang('Атака титанов'), 'ru');
+    T.eq(C.detectQueryLang('葬送のフリーレン'), 'ja');
+    T.eq(C.detectQueryLang('Jujutsu Kaisen'), 'en');
+    T.eq(C.detectQueryLang(''), 'en');
+
+    T.eq(C.normalizeSearchLang('RU'), 'ru');
+    T.eq(C.normalizeSearchLang('ja'), 'ja');
+    T.eq(C.normalizeSearchLang('немецкий'), 'auto');
+    T.eq(C.normalizeSearchLang(null), 'auto');
+
+    T.eq(C.genreRu('Slice of Life'), 'Повседневность');
+    T.eq(C.genreRu('Sci-Fi'), 'Фантастика');
+    T.eq(C.genreRu('Ecchi'), 'Этти');
+    T.eq(C.genreRu('Elf'), 'Эльфы');
+    T.eq(C.genreRu('Magic'), 'Магия');
+    T.eq(C.genreRu('Драма'), 'Драма');
+    T.eq(C.genreRu('Unknown Genre'), 'Unknown Genre');
+
+    T.eq(C.firstCyrillic(['Sousou no Frieren', 'Провожающая в последний путь Фрирен']), 'Провожающая в последний путь Фрирен');
+    T.eq(C.firstCyrillic(['Sousou no Frieren', '']), '');
+  });
+
+  T.test('core: резервная копия проверяет формат и версию', () => {
+    const C = core();
+    const valid = C.parseBackupJson(JSON.stringify({
+      kind: 'anitier.backup',
+      version: 2,
+      createdAt: '2026-10-23T12:00:00.000Z',
+      data: { state: { watched: {} } },
+    }));
+    T.eq(valid.version, 2);
+    T.eq(valid.data.state.watched, {});
+    T.eq(valid.createdAt, '2026-10-23T12:00:00.000Z');
+
+    let error = '';
+    try { C.parseBackupJson('{'); } catch (err) { error = err.message; }
+    T.includes(error, 'не JSON');
+
+    error = '';
+    try { C.parseBackupJson(JSON.stringify({ kind: 'other', version: 2, data: {} })); } catch (err) { error = err.message; }
+    T.includes(error, 'не резервная копия');
+
+    error = '';
+    try { C.parseBackupJson(JSON.stringify({ kind: 'anitier.backup', version: 99, data: {} })); } catch (err) { error = err.message; }
+    T.includes(error, 'более новой версии');
+
+    error = '';
+    try { C.parseBackupJson(JSON.stringify({ kind: 'anitier.backup', version: 2 })); } catch (err) { error = err.message; }
+    T.includes(error, 'нет данных');
+  });
+
+  T.test('core: ссылки TikTok распознаются и превращаются в плеер', () => {
+    const C = core();
+    T.assert(C.isTikTokUrl('https://www.tiktok.com/@user/video/7412345678901234567'));
+    T.assert(C.isTikTokUrl('https://vm.tiktok.com/ZMabc123/'));
+    T.assert(!C.isTikTokUrl('http://www.tiktok.com/@user/video/7412345678901234567'));
+    T.assert(!C.isTikTokUrl('https://tiktok.com.evil.example/video/7412345678901234567'));
+    T.assert(!C.isTikTokUrl('https://example.com/video/7412345678901234567'));
+
+    T.eq(C.extractTikTokId('https://www.tiktok.com/@user/video/7412345678901234567?is_from_webapp=1'), '7412345678901234567');
+    T.eq(C.extractTikTokId('https://www.tiktok.com/embed/v2/7412345678901234567'), '7412345678901234567');
+    T.eq(C.extractTikTokId('https://www.tiktok.com/@user/video/'), '');
+    T.eq(C.tiktokPlayerUrl('7412345678901234567'), 'https://www.tiktok.com/player/v1/7412345678901234567?autoplay=1&music_info=0&description=0&rel=0');
+    T.eq(C.tiktokPlayerUrl(''), '');
+  });
+
+  T.test('core: размеры файлов показываются по-русски', () => {
+    const C = core();
+    T.eq(C.formatBytes(0), '0 Б');
+    T.eq(C.formatBytes(512), '512 Б');
+    T.eq(C.formatBytes(2048), '2 КБ');
+    T.eq(C.formatBytes(5 * 1024 * 1024), '5.0 МБ');
+    T.eq(C.formatBytes(40 * 1024 * 1024), '40 МБ');
   });
 })();

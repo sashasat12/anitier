@@ -14,6 +14,9 @@ $html = Read-Text 'mobile\index.html'
 $styles = Read-Text 'styles.css'
 $mobileStyles = Read-Text 'mobile\mobile.css'
 $core = Read-Text 'core.js'
+$store = Read-Text 'app-store.js'
+$api = Read-Text 'app-api.js'
+$render = Read-Text 'app-render.js'
 $app = Read-Text 'app.js'
 
 $html = $html.Replace(
@@ -23,9 +26,12 @@ $html = $html.Replace(
 
 $html = $html.Replace(
   '<script src="../core.js" defer></script>' + "`n" +
+  '<script src="../app-store.js" defer></script>' + "`n" +
+  '<script src="../app-api.js" defer></script>' + "`n" +
+  '<script src="../app-render.js" defer></script>' + "`n" +
   '<script src="../app.js" defer></script>' + "`n" +
   '<script src="mobile.js" defer></script>',
-  "<script>`n$core`n</script>`n<script>`n$app`n</script>"
+  "<script>`n$core`n</script>`n<script>`n$store`n</script>`n<script>`n$api`n</script>`n<script>`n$render`n</script>`n<script>`n$app`n</script>"
 )
 
 $html = $html.Replace('<link rel="manifest" href="manifest.webmanifest">' + "`n", '')

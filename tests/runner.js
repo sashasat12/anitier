@@ -69,6 +69,7 @@
       const win = iframe.contentWindow;
       try {
         await T.waitFor(() => win.__anitierTest, 'Приложение не выставило тестовый API', 4000);
+        if (win.__anitierTest.clearPersistentApiCache) await win.__anitierTest.clearPersistentApiCache();
         win.localStorage.clear();
         if (setup) await setup(win);
         return {

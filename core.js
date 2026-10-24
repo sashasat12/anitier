@@ -48,6 +48,96 @@
     { id: 62, label: 'Исекай', names: ['Исекай', 'Isekai'] },
   ];
 
+  const SEARCH_LANGS = [
+    { value: 'auto', label: 'Авто' },
+    { value: 'ru', label: 'Русский' },
+    { value: 'en', label: 'English' },
+    { value: 'ja', label: '日本語' },
+  ];
+
+  const EXTRA_GENRE_RU = {
+    ecchi: 'Этти',
+    'boys love': 'BL',
+    'girls love': 'GL',
+    hentai: 'Хентай',
+    'adult cast': 'Взрослые герои',
+    elf: 'Эльфы',
+    elves: 'Эльфы',
+    magic: 'Магия',
+    demons: 'Демоны',
+    monster: 'Монстры',
+    monsters: 'Монстры',
+    ghost: 'Призраки',
+    ghosts: 'Призраки',
+    'martial arts': 'Боевые искусства',
+    friendship: 'Дружба',
+    'coming of age': 'Взросление',
+    tragedy: 'Трагедия',
+    'time travel': 'Путешествия во времени',
+    'post-apocalyptic': 'Постапокалипсис',
+    cyberpunk: 'Киберпанк',
+    game: 'Игры',
+    games: 'Игры',
+    harem: 'Гарем',
+    isekai: 'Исекай',
+    villainess: 'Злодейка',
+    reincarnation: 'Перерождение',
+    ninja: 'Ниндзя',
+    pirate: 'Пираты',
+    pirates: 'Пираты',
+    robot: 'Роботы',
+    robots: 'Роботы',
+    idol: 'Идолы',
+    police: 'Полиция',
+    crime: 'Криминал',
+    'school life': 'Школа',
+    'high school': 'Школа',
+  };
+
+  const GENRE_RU = (() => {
+    const map = {};
+    for (const genre of GENRES) {
+      for (const name of genre.names) {
+        if (/[a-z]/i.test(name)) map[name.toLowerCase()] = genre.label;
+      }
+    }
+    return map;
+  })();
+
+  function hasCyrillic(value) {
+    return /[\u0400-\u04ff]/.test(String(value == null ? '' : value));
+  }
+
+  function hasJapanese(value) {
+    return /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(String(value == null ? '' : value));
+  }
+
+  function firstCyrillic(values) {
+    for (const value of Array.isArray(values) ? values : []) {
+      const text = String(value == null ? '' : value).trim();
+      if (text && hasCyrillic(text)) return text;
+    }
+    return '';
+  }
+
+  function normalizeSearchLang(value) {
+    const key = String(value == null ? '' : value).trim().toLowerCase();
+    return SEARCH_LANGS.some(lang => lang.value === key) ? key : 'auto';
+  }
+
+  function detectQueryLang(query) {
+    const text = String(query == null ? '' : query).trim();
+    if (hasJapanese(text)) return 'ja';
+    if (hasCyrillic(text)) return 'ru';
+    return 'en';
+  }
+
+  function genreRu(name) {
+    const raw = String(name == null ? '' : name).trim();
+    if (!raw || hasCyrillic(raw)) return raw;
+    return GENRE_RU[raw.toLowerCase()] || EXTRA_GENRE_RU[raw.toLowerCase()] || raw;
+  }
+
   const TYPES = [
     { value: 'tv', label: 'ТВ-сериал' },
     { value: 'movie', label: 'Фильм' },
@@ -172,6 +262,8 @@
     const variables = { page, perPage: limit, type: 'ANIME', isAdult: false };
     const active = hasActiveFilters(filters);
 
+    if (mode === 'airing') variables.status = 'RELEASING';
+    if (mode === 'movie') variables.format = 'MOVIE';
     if (query) variables.search = query;
     if (filters.type) variables.format = ANILIST_FORMATS[filters.type];
     if (filters.status) variables.status = ANILIST_STATUSES[filters.status];
@@ -182,27 +274,8 @@
     }
     if (filters.minScore) variables.averageScoreGreater = Number(filters.minScore) * 10 - 1;
 
-    if (query) {
-      if (active) variables.sort = [mode === 'score' ? 'SCORE_DESC' : 'POPULARITY_DESC'];
-      return variables;
-    }
-
-    if (active) {
-      variables.sort = [mode === 'score' ? 'SCORE_DESC' : 'POPULARITY_DESC'];
-      return variables;
-    }
-
-    if (mode === 'score') {
-      variables.sort = ['SCORE_DESC'];
-    } else if (mode === 'airing') {
-      variables.status = 'RELEASING';
-      variables.sort = ['POPULARITY_DESC'];
-    } else if (mode === 'movie') {
-      variables.format = 'MOVIE';
-      variables.sort = ['POPULARITY_DESC'];
-    } else {
-      variables.sort = ['POPULARITY_DESC'];
-    }
+    if (mode === 'score') variables.sort = ['SCORE_DESC'];
+    else if (!query || active) variables.sort = ['POPULARITY_DESC'];
 
     return variables;
   }
@@ -553,18 +626,276 @@
     };
   }
 
+  /* ---------------- резервные копии и моменты ---------------- */
+  const BACKUP_KIND = 'anitier.backup';
+  const BACKUP_VERSION = 2;
+  const BACKUP_FILE = 'anitier-backup.json';
+
+  function parseBackupJson(text) {
+    let payload = null;
+    try {
+      payload = JSON.parse(String(text == null ? '' : text));
+    } catch {
+      throw new Error('Файл повреждён: внутри не JSON.');
+    }
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      throw new Error('Это не резервная копия AniTier.');
+    }
+    if (payload.kind !== BACKUP_KIND) throw new Error('Это не резервная копия AniTier.');
+    const version = Number(payload.version);
+    if (!Number.isFinite(version) || version < 1) {
+      throw new Error('В файле не указана версия резервной копии.');
+    }
+    if (version > BACKUP_VERSION) {
+      throw new Error('Копия создана в более новой версии AniTier. Обновите приложение.');
+    }
+    if (!payload.data || typeof payload.data !== 'object' || Array.isArray(payload.data)) {
+      throw new Error('В копии нет данных приложения.');
+    }
+    return {
+      kind: BACKUP_KIND,
+      version,
+      createdAt: typeof payload.createdAt === 'string' ? payload.createdAt.slice(0, 60) : '',
+      data: payload.data,
+    };
+  }
+
+  function isTikTokUrl(value) {
+    try {
+      const url = new URL(String(value == null ? '' : value).trim());
+      const host = url.hostname.toLowerCase();
+      return url.protocol === 'https:' && (host === 'tiktok.com' || host.endsWith('.tiktok.com'));
+    } catch {
+      return false;
+    }
+  }
+
+  function extractTikTokId(value) {
+    const text = String(value == null ? '' : value).trim();
+    const patterns = [
+      /\/video\/(\d{6,})/i,
+      /\/embed\/v2\/(\d{6,})/i,
+      /\/player\/v1\/(\d{6,})/i,
+      /\/v\/(\d{6,})\.html/i,
+    ];
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match) return match[1];
+    }
+    return '';
+  }
+
+  function tiktokPlayerUrl(videoId) {
+    const id = String(videoId == null ? '' : videoId).replace(/\D/g, '');
+    if (!id) return '';
+    return `https://www.tiktok.com/player/v1/${id}?autoplay=1&music_info=0&description=0&rel=0`;
+  }
+
+  /* ---------------- уведомления: события и группировка ---------------- */
+  const NOTIF_TABS = ['tracked', 'recent', 'completed'];
+  const NOTIF_TAB_LABELS = {
+    tracked: 'Отслеживаемое',
+    recent: 'Недавно вышло',
+    completed: 'Завершилось',
+  };
+  const TRACKED_EPISODE_DAYS = 7;
+  const RECENT_EPISODE_DAYS = 7;
+  const RECENT_FILM_DAYS = 180;
+  const COMPLETED_DAYS = 30;
+  const SEASON_RELEASE_DAYS = 180;
+
+  function episodeEventKey(animeId, episode) {
+    return `ep:${Number(animeId)}:${Number(episode)}`;
+  }
+
+  function seasonEventKey(animeId, sequelId) {
+    return `season:${Number(animeId)}:${Number(sequelId)}`;
+  }
+
+  function filmEventKey(id) {
+    return `film:${Number(id)}`;
+  }
+
+  function completedEventKey(id) {
+    return `completed:${Number(id)}`;
+  }
+
+  function groupEpisodesByAnime(items) {
+    const groups = new Map();
+    for (const item of Array.isArray(items) ? items : []) {
+      const anime = item && item.anime;
+      const episode = Number(item && (item.episode != null ? item.episode : item.n));
+      if (!anime || anime.id == null || !Number.isInteger(episode) || episode <= 0) continue;
+      const date = item.date || item.airingAt || null;
+      const key = String(anime.id);
+      if (!groups.has(key)) {
+        groups.set(key, { anime, episodes: [], latestAt: null, count: 0 });
+      }
+      const group = groups.get(key);
+      if (group.episodes.some(ep => ep.n === episode)) continue;
+      group.episodes.push({ n: episode, date });
+      group.count += 1;
+      if (date && (!group.latestAt || new Date(date) > new Date(group.latestAt))) group.latestAt = date;
+    }
+
+    return [...groups.values()]
+      .map(group => ({
+        ...group,
+        episodes: group.episodes.sort((a, b) => a.n - b.n),
+      }))
+      .sort((a, b) => {
+        const at = a.latestAt ? new Date(a.latestAt).getTime() : 0;
+        const bt = b.latestAt ? new Date(b.latestAt).getTime() : 0;
+        if (bt !== at) return bt - at;
+        return String(a.anime.title || '').localeCompare(String(b.anime.title || ''), 'ru');
+      });
+  }
+
+  function episodeRangeLabel(numbers) {
+    const list = [...new Set((Array.isArray(numbers) ? numbers : [])
+      .map(Number)
+      .filter(n => Number.isInteger(n) && n > 0))].sort((a, b) => a - b);
+    if (!list.length) return '';
+
+    const parts = [];
+    let start = list[0];
+    let prev = list[0];
+    const flush = () => {
+      parts.push(start === prev ? String(start) : `${start}–${prev}`);
+    };
+    for (let i = 1; i < list.length; i += 1) {
+      const value = list[i];
+      if (value === prev + 1) {
+        prev = value;
+        continue;
+      }
+      flush();
+      start = value;
+      prev = value;
+    }
+    flush();
+    return parts.join(', ');
+  }
+
+  function collectSeasons(mediaList, options = {}) {
+    const now = options.now == null ? Date.now() : Number(options.now);
+    const releaseDays = Number(options.releaseDays) || SEASON_RELEASE_DAYS;
+    const cutoff = now - releaseDays * 86400000;
+    const found = new Map();
+
+    for (const media of Array.isArray(mediaList) ? mediaList : []) {
+      if (!media) continue;
+      const relations = Array.isArray(media.relations) ? media.relations : [];
+      for (const relation of relations) {
+        const sequel = relation && relation.anime;
+        const type = relation && relation.relationType;
+        if (!sequel || sequel.id == null || sequel.id === media.id) continue;
+        const isSequel = type === 'SEQUEL';
+        const isFilmSideStory = type === 'SIDE_STORY' && sequel.type === 'Movie';
+        if (!isSequel && !isFilmSideStory) continue;
+        if (!['В эфире', 'Анонс', 'Завершено'].includes(sequel.status)) continue;
+
+        const date = sequel.airedTo || sequel.airedFrom || null;
+        const timestamp = date ? new Date(date).getTime() : 0;
+        if (sequel.status === 'Завершено' && (!timestamp || timestamp < cutoff || timestamp > now)) continue;
+
+        const key = String(sequel.id);
+        if (found.has(key)) continue;
+        found.set(key, {
+          anime: media,
+          sequel,
+          relationType: type,
+          status: sequel.status,
+          date,
+        });
+      }
+    }
+
+    const priority = { 'В эфире': 0, 'Анонс': 1, 'Завершено': 2 };
+    return [...found.values()].sort((a, b) => {
+      const pa = priority[a.status] == null ? 9 : priority[a.status];
+      const pb = priority[b.status] == null ? 9 : priority[b.status];
+      if (pa !== pb) return pa - pb;
+      const at = a.date ? new Date(a.date).getTime() : 0;
+      const bt = b.date ? new Date(b.date).getTime() : 0;
+      return bt - at;
+    });
+  }
+
+  function collectNotificationKeys(data) {
+    const keys = new Set();
+    const addGroup = (group) => {
+      if (!group || !group.anime) return;
+      for (const episode of group.episodes || []) {
+        if (episode && episode.n) keys.add(episodeEventKey(group.anime.id, episode.n));
+      }
+    };
+    const tracked = data && data.tracked ? data.tracked : {};
+    const recent = data && data.recent ? data.recent : {};
+    for (const group of tracked.episodes || []) addGroup(group);
+    for (const item of tracked.seasons || []) {
+      if (item && item.anime && item.sequel) keys.add(seasonEventKey(item.anime.id, item.sequel.id));
+    }
+    for (const group of recent.episodes || []) addGroup(group);
+    for (const film of recent.films || []) {
+      if (film && film.id != null) keys.add(filmEventKey(film.id));
+    }
+    for (const anime of (data && data.completed) || []) {
+      if (anime && anime.id != null) keys.add(completedEventKey(anime.id));
+    }
+    return [...keys];
+  }
+
+  function defaultNotificationTab(data) {
+    const tracked = data && data.tracked ? data.tracked : {};
+    const hasTracked = Boolean((tracked.episodes || []).length || (tracked.seasons || []).length);
+    return hasTracked ? 'tracked' : 'recent';
+  }
+
+  function formatBytes(value) {
+    const bytes = Number(value) || 0;
+    if (bytes < 1024) return `${bytes} Б`;
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} КБ`;
+    return `${(bytes / (1024 * 1024)).toFixed(bytes < 10 * 1024 * 1024 ? 1 : 0)} МБ`;
+  }
+
   return {
     PAGE_LIMIT,
     TIER_IDS,
     SHARE_PREFIX,
     SHARE_KIND,
     SHARE_VERSION,
+    BACKUP_KIND,
+    BACKUP_VERSION,
+    BACKUP_FILE,
     makeTierShare,
     encodeTierShare,
     parseTierShare,
     compareTierLists,
     compactShareAnime,
+    parseBackupJson,
+    isTikTokUrl,
+    extractTikTokId,
+    tiktokPlayerUrl,
+    formatBytes,
+    NOTIF_TABS,
+    NOTIF_TAB_LABELS,
+    TRACKED_EPISODE_DAYS,
+    RECENT_EPISODE_DAYS,
+    RECENT_FILM_DAYS,
+    COMPLETED_DAYS,
+    SEASON_RELEASE_DAYS,
+    episodeEventKey,
+    seasonEventKey,
+    filmEventKey,
+    completedEventKey,
+    groupEpisodesByAnime,
+    episodeRangeLabel,
+    collectSeasons,
+    collectNotificationKeys,
+    defaultNotificationTab,
     GENRES,
+    SEARCH_LANGS,
     TYPES,
     STATUSES,
     SCORES,
@@ -573,6 +904,12 @@
     hasActiveFilters,
     countActiveFilters,
     genreById,
+    genreRu,
+    hasCyrillic,
+    hasJapanese,
+    firstCyrillic,
+    normalizeSearchLang,
+    detectQueryLang,
     matchesFilters,
     filterItems,
     buildAniListVariables,

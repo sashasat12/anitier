@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AniTier Mobile — аниме в кармане</title>
 <meta name="description" content="Мобильная версия AniTier: база аниме, уведомления о премьерах, тир-листы и календарь. Работает как приложение.">
+<meta name="anitier-google-client-id" content="">
 <meta name="theme-color" content="#0c0d14">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -29,6 +30,7 @@
 
   <div class="topbar-actions">
     <button class="icon-btn install-btn" id="install-app" type="button" title="Установить приложение" aria-label="Установить приложение" hidden>↓</button>
+    <button class="icon-btn" data-action="open-backup" title="Резервная копия" aria-label="Резервная копия">⇩</button>
     <button class="icon-btn" data-action="refresh" title="Обновить текущую вкладку" aria-label="Обновить">⟳</button>
   </div>
 </header>
@@ -68,9 +70,19 @@
         <div class="search">
           <input id="search-input" type="search" placeholder="Поиск: «Фрирен», «Jujutsu Kaisen»…" autocomplete="off" aria-label="Поиск аниме">
         </div>
+        <label class="lang-field" title="Язык поискового запроса">
+          <span>Язык</span>
+          <select id="search-lang" aria-label="Язык поиска">
+            <option value="auto">Авто</option>
+            <option value="ru">Русский</option>
+            <option value="en">English</option>
+            <option value="ja">日本語</option>
+          </select>
+        </label>
         <button class="btn btn-ghost filter-toggle" data-action="toggle-filters" aria-expanded="false" aria-controls="db-filters">
           Фильтры <b class="filter-count" id="filter-count" hidden>0</b>
         </button>
+        <button class="btn btn-ghost custom-new" data-action="new-custom">+ Своя карточка</button>
       </div>
     </div>
 
@@ -125,6 +137,7 @@
       <button class="chip" data-action="mode" data-mode="score">Топ по рейтингу</button>
       <button class="chip" data-action="mode" data-mode="airing">Сейчас выходит</button>
       <button class="chip" data-action="mode" data-mode="movie">Фильмы</button>
+      <button class="chip" data-action="mode" data-mode="custom">Мои карточки</button>
     </div>
 
     <div class="db-status" id="db-status" aria-live="polite"></div>
@@ -217,9 +230,39 @@
   </div>
 </div>
 
+<!-- ================= РЕЗЕРВНАЯ КОПИЯ ================= -->
+<div class="modal" id="backup-modal" hidden>
+  <div class="modal-backdrop" data-action="close-backup"></div>
+  <div class="modal-panel backup-panel" id="backup-panel" role="dialog" aria-modal="true" aria-labelledby="backup-title" tabindex="-1">
+    <button class="modal-close" data-action="close-backup" aria-label="Закрыть">✕</button>
+    <div class="backup-content" id="backup-content"></div>
+  </div>
+</div>
+
+<!-- ================= СВОЯ КАРТОЧКА ================= -->
+<div class="modal" id="custom-modal" hidden>
+  <div class="modal-backdrop" data-action="close-custom"></div>
+  <div class="modal-panel custom-panel" id="custom-panel" role="dialog" aria-modal="true" aria-labelledby="custom-title" tabindex="-1">
+    <button class="modal-close" data-action="close-custom" aria-label="Закрыть">✕</button>
+    <div class="custom-content" id="custom-content"></div>
+  </div>
+</div>
+
+<!-- ================= МОМЕНТ ================= -->
+<div class="modal" id="moment-modal" hidden>
+  <div class="modal-backdrop" data-action="close-moment"></div>
+  <div class="modal-panel custom-panel" id="moment-panel" role="dialog" aria-modal="true" aria-labelledby="moment-title" tabindex="-1">
+    <button class="modal-close" data-action="close-moment" aria-label="Закрыть">✕</button>
+    <div class="custom-content" id="moment-content"></div>
+  </div>
+</div>
+
 <div id="toasts" aria-live="polite" aria-atomic="false"></div>
 
 <script src="../core.js" defer></script>
+<script src="../app-store.js" defer></script>
+<script src="../app-api.js" defer></script>
+<script src="../app-render.js" defer></script>
 <script src="../app.js" defer></script>
 <script src="mobile.js" defer></script>
 </body>
