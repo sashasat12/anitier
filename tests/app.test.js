@@ -679,6 +679,37 @@
     }
   });
 
+  T.test('app: длинное описание переводится частями до лимита MyMemory', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    const calls = [];
+
+    try {
+      app.win.AniTier.clearTranslationCache();
+      app.win.fetch = async url => {
+        const parsed = new URL(url);
+        calls.push(parsed);
+        const chunk = parsed.searchParams.get('q');
+        T.assert(chunk.length <= 500, `Часть перевода превышает лимит: ${chunk.length}`);
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ responseStatus: 200, responseData: { translatedText: `Часть ${calls.length}` } }),
+        };
+      };
+
+      const source = 'A'.repeat(1200);
+      const first = await app.win.__anitierTest.translateText(source);
+      const second = await app.win.__anitierTest.translateText(source);
+
+      T.eq(first, 'Часть 1 Часть 2 Часть 3');
+      T.eq(second, first, 'Перевод всего описания должен кэшироваться');
+      T.eq(calls.length, 3, 'Каждая часть запрашивается один раз');
+    } finally {
+      app.win.AniTier.clearTranslationCache();
+      app.close();
+    }
+  });
+
   T.test('app: в описании карточки можно переключить перевод и оригинал', async () => {
     const app = await T.mountApp({ query: '?demo=1&test=1' });
     try {

@@ -262,17 +262,22 @@ body.mobile-app .modal {
 
 body.mobile-app .modal-panel {
   width: 100%;
+  min-width: 0;
   max-height: 92dvh;
+  overflow-x: hidden;
   border-radius: 22px 22px 0 0;
   padding-bottom: env(safe-area-inset-bottom);
   animation: none;
 }
 
 body.mobile-app .modal-grid {
+  min-width: 0;
   grid-template-columns: 1fr;
   gap: 14px;
   padding: 18px 14px 22px;
 }
+
+body.mobile-app .modal-info { min-width: 0; }
 
 body.mobile-app .modal-poster-wrap {
   display: flex;
@@ -300,6 +305,8 @@ body.mobile-app .moment-actions { gap: 10px; }
 body.mobile-app .custom-new { width: 100%; }
 body.mobile-app .franchise-section { padding: 12px; }
 body.mobile-app .franchise-list {
+  width: 100%;
+  min-width: 0;
   grid-auto-flow: column;
   grid-auto-columns: minmax(145px, 43vw);
   grid-template-columns: none;

@@ -767,6 +767,21 @@
     return loadTranslationCache().get(translationKey(value)) || '';
   }
 
+  function splitTranslationChunks(text, maxLength = 450) {
+    const chunks = [];
+    let remaining = String(text || '');
+    while (remaining.length > maxLength) {
+      let cut = Math.max(remaining.lastIndexOf(' ', maxLength), remaining.lastIndexOf('\n', maxLength));
+      if (cut < maxLength * 0.55) cut = maxLength;
+      if (cut > 0 && /[\uD800-\uDBFF]/.test(remaining[cut - 1]) && /[\uDC00-\uDFFF]/.test(remaining[cut] || '')) cut -= 1;
+      const chunk = remaining.slice(0, cut).trim();
+      if (chunk) chunks.push(chunk);
+      remaining = remaining.slice(cut).trimStart();
+    }
+    if (remaining.trim()) chunks.push(remaining.trim());
+    return chunks;
+  }
+
   async function translateText(text) {
     const source = String(text || '').trim();
     if (!source) return '';
@@ -780,14 +795,19 @@
     const pair = C.hasJapanese(source) ? 'ja|ru' : 'en|ru';
     const promise = (async () => {
       try {
-        const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(source)}&langpair=${pair}`;
-        const json = await fetchWithTimeout(url, {}, 8000);
-        const status = Number(json?.responseStatus);
-        if (status && status !== 200) return '';
-        const translated = decodeEntities(json?.responseData?.translatedText || '').trim();
-        if (!translated || translated === source) return '';
-        if (/MYMEMORY WARNING/i.test(translated)) return '';
-        if (!C.hasCyrillic(translated)) return '';
+        const chunks = splitTranslationChunks(source);
+        const translatedChunks = [];
+        for (const chunk of chunks) {
+          const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=${pair}`;
+          const json = await fetchWithTimeout(url, {}, 8000);
+          const status = Number(json?.responseStatus);
+          if (status && status !== 200) return '';
+          const translatedChunk = decodeEntities(json?.responseData?.translatedText || '').trim();
+          if (!translatedChunk || translatedChunk === chunk || /MYMEMORY WARNING/i.test(translatedChunk) || !C.hasCyrillic(translatedChunk)) return '';
+          translatedChunks.push(translatedChunk);
+        }
+        const translated = translatedChunks.join(' ');
+        if (!translated) return '';
         cache.set(key, translated);
         saveTranslationCache();
         return translated;
