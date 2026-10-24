@@ -43,6 +43,8 @@
     mediaPut,
     mediaGet,
     mediaDelete,
+    mediaEntries,
+    mediaPutMany,
     toggleEpisode,
     setWatchedUpTo,
     clearProgress,
@@ -75,12 +77,15 @@
     translateText,
     cachedTranslation,
     resolveSearchQuery,
+    searchQueryForAlt,
     fetchTikTokMeta,
     driveSaveBackup,
     driveLoadBackup,
   } = App;
 
   const DAILY_SYNC_KEY = 'anitier.daily-sync.v1';
+  const MEDIA_ARCHIVE_MAGIC = 'ANITIER-MEDIA/1\n';
+  const MEDIA_ARCHIVE_LIMIT = 500 * 1024 * 1024;
 
   const {
     renderDB,
@@ -561,20 +566,44 @@
   /* ---------------- события ---------------- */
   let searchTimer = null;
 
+  function persistCatalogPreferences() {
+    state.settings.catalog = {
+      tab: state.tab,
+      mode: state.db.mode,
+      query: state.db.query,
+      filters: state.db.filters,
+    };
+    saveState();
+  }
+
+  function restoreCatalogPreferences() {
+    const catalog = state.settings.catalog || {};
+    state.tab = catalog.tab || 'db';
+    state.db.mode = catalog.mode || 'popular';
+    state.db.query = catalog.query || '';
+    state.db.filters = C.normalizeFilters(catalog.filters);
+    const input = $('#search-input');
+    if (input) input.value = state.db.query;
+    syncFilterUI();
+    syncModeChips();
+    switchTab(state.tab, { silent: true, deferActions: true, deferPersistence: true });
+  }
+
   async function translateModalSynopsis(id) {
     const a = getAnime(id);
     if (!a || !a.synopsis || C.hasCyrillic(a.synopsis)) return '';
     const cached = cachedTranslation(a.synopsis);
     if (cached) return cached;
-
-    const translated = await translateText(a.synopsis);
-    if (!translated || state.modalId !== id) return translated;
-    const el = $('#modal-content .modal-synopsis');
-    if (el) {
-      el.textContent = translated;
-      el.dataset.translated = '1';
-      el.title = 'Автоматический перевод';
-    }
+    if (state.synopsisTranslating.has(id)) return '';
+    state.synopsisTranslating.add(id);
+    const status = $('#modal-content .synopsis-translation-status');
+    if (status) status.textContent = 'Переводим…';
+    let translated = '';
+    try { translated = await translateText(a.synopsis); }
+    catch { translated = ''; }
+    finally { state.synopsisTranslating.delete(id); }
+    if (state.modalId !== id) return translated;
+    if (App.renderModal) App.renderModal();
     return translated;
   }
 
@@ -737,6 +766,7 @@
       const input = $('#search-input');
       if (input) input.value = '';
       syncModeChips();
+      persistCatalogPreferences();
       fetchDB(true);
       toast(existing ? 'Карточка обновлена' : 'Своя карточка создана');
     } catch (err) {
@@ -1097,6 +1127,10 @@
   }
 
   async function restoreBackupText(text, source) {
+    if (!C.isBackupSizeAllowed(String(text == null ? '' : text).length)) {
+      setBackupMessage('Файл больше 30 МБ — это не резервная копия AniTier.', true);
+      return false;
+    }
     let parsed = null;
     try {
       parsed = C.parseBackupJson(text);
@@ -1110,11 +1144,10 @@
     }
     try {
       const result = applyBackupData(parsed.data);
-      updateBell();
-      syncModeChips();
+      restoreCatalogPreferences();
       syncLangUI();
-      syncFilterUI();
-      if (state.db.mode === 'custom') fetchDB(true);
+      updateBell();
+      if (state.tab === 'db') fetchDB(true);
       setBackupMessage(`Копия восстановлена: карточек — ${result.cards}, тайтлов с моментами — ${result.moments}.`, false);
       toast('Резервная копия восстановлена');
       return true;
@@ -1126,7 +1159,7 @@
 
   async function restoreBackupFile(file) {
     if (!file) return;
-    if (file.size > 30 * 1024 * 1024) {
+    if (!C.isBackupSizeAllowed(file.size)) {
       setBackupMessage('Файл больше 30 МБ — это не резервная копия AniTier.', true);
       return;
     }
@@ -1135,6 +1168,140 @@
       await restoreBackupText(text, file.name || 'файл');
     } catch (err) {
       setBackupMessage(err && err.message ? err.message : 'Не удалось прочитать файл.', true);
+    }
+  }
+
+  async function buildMediaArchive() {
+    const entries = await mediaEntries();
+    const totalBytes = entries.reduce((sum, entry) => sum + entry.blob.size, 0);
+    if (totalBytes > MEDIA_ARCHIVE_LIMIT) throw new Error('Медиаархив больше 500 МБ. Удалите часть медиа и повторите экспорт.');
+    const manifest = entries.map(entry => ({
+      store: entry.store,
+      key: entry.key,
+      type: entry.blob.type || 'application/octet-stream',
+      size: entry.blob.size,
+    }));
+    const manifestBytes = new TextEncoder().encode(JSON.stringify({ kind: 'anitier.media', version: 1, entries: manifest }));
+    const header = new Uint8Array(20);
+    header.set(new TextEncoder().encode(MEDIA_ARCHIVE_MAGIC), 0);
+    new DataView(header.buffer).setUint32(16, manifestBytes.length, false);
+    return {
+      blob: new Blob([header, manifestBytes, ...entries.map(entry => entry.blob)], { type: 'application/octet-stream' }),
+      count: entries.length,
+      size: totalBytes,
+    };
+  }
+
+  function androidSaveMedia(blob) {
+    return new Promise((resolve, reject) => {
+      const bridge = window.AniTierAndroid;
+      let finished = false;
+      const settle = (ok, message) => {
+        if (finished) return;
+        finished = true;
+        delete window.__anitierMediaSaveReady;
+        delete window.__anitierMediaSaveFinished;
+        if (ok) resolve();
+        else reject(new Error(message || 'Не удалось сохранить медиаархив через Android.'));
+      };
+      window.__anitierMediaSaveReady = async ready => {
+        if (!ready) { settle(false, 'Не удалось открыть файл для сохранения.'); return; }
+        try {
+          const chunkSize = 256 * 1024;
+          for (let offset = 0; offset < blob.size; offset += chunkSize) {
+            const bytes = new Uint8Array(await blob.slice(offset, offset + chunkSize).arrayBuffer());
+            let binary = '';
+            for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+            if (!bridge.writeMediaChunk(btoa(binary))) throw new Error('Не удалось записать часть медиаархива.');
+          }
+          bridge.finishMediaSave(true);
+        } catch (error) {
+          bridge.finishMediaSave(false);
+          settle(false, error && error.message ? error.message : 'Не удалось передать медиаархив в Android.');
+        }
+      };
+      window.__anitierMediaSaveFinished = ok => settle(Boolean(ok), 'Не удалось сохранить медиаархив.');
+      try { bridge.beginMediaSave('anitier-media.bin'); }
+      catch (error) { settle(false, error && error.message); }
+    });
+  }
+
+  async function exportMediaFile() {
+    if (state.backup.busy) return;
+    state.backup.busy = true;
+    state.backup.message = '';
+    state.backup.error = false;
+    renderBackup();
+    try {
+      const archive = await buildMediaArchive();
+      if (window.AniTierAndroid && typeof window.AniTierAndroid.beginMediaSave === 'function') {
+        await androidSaveMedia(archive.blob);
+        setBackupMessage(`Медиаархив сохранён: ${archive.count} файлов, ${C.formatBytes(archive.size)}.`, false);
+        return;
+      }
+      const url = URL.createObjectURL(archive.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'anitier-media.bin';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+      setBackupMessage(`Медиаархив скачан: ${archive.count} файлов, ${C.formatBytes(archive.size)}.`, false);
+    } catch (error) {
+      setBackupMessage(error && error.message ? error.message : 'Не удалось экспортировать медиа.', true);
+    }
+  }
+
+  async function importMediaFile(file) {
+    if (!file) return;
+    if (state.backup.busy) return;
+    if (file.size > MEDIA_ARCHIVE_LIMIT) {
+      setBackupMessage('Файл больше 500 МБ — импорт медиа остановлен.', true);
+      return;
+    }
+    state.backup.busy = true;
+    state.backup.message = '';
+    state.backup.error = false;
+    renderBackup();
+    try {
+      if (file.size < 20) throw new Error('Файл слишком короткий и не похож на медиаархив AniTier.');
+      const header = new Uint8Array(await file.slice(0, 20).arrayBuffer());
+      const magic = new TextDecoder().decode(header.slice(0, 16));
+      if (magic !== MEDIA_ARCHIVE_MAGIC) throw new Error('Это не медиаархив AniTier.');
+      const manifestSize = new DataView(header.buffer, header.byteOffset, header.byteLength).getUint32(16, false);
+      if (!manifestSize || manifestSize > 10 * 1024 * 1024 || 20 + manifestSize > file.size) throw new Error('Повреждён заголовок медиаархива.');
+      let manifest;
+      try { manifest = JSON.parse(await file.slice(20, 20 + manifestSize).text()); }
+      catch { throw new Error('Манифест медиаархива повреждён.'); }
+      if (!manifest || manifest.kind !== 'anitier.media' || manifest.version !== 1 || !Array.isArray(manifest.entries) || manifest.entries.length > 10000) {
+        throw new Error('Формат медиаархива не поддерживается.');
+      }
+      let offset = 20 + manifestSize;
+      const entries = [];
+      for (const item of manifest.entries) {
+        const size = Number(item && item.size);
+        if (!item || !['images', 'media'].includes(item.store) || typeof item.key !== 'string' || !item.key || item.key.length > 120
+          || !Number.isSafeInteger(size) || size < 0 || offset + size > file.size) {
+          throw new Error('В медиаархиве есть некорректная запись.');
+        }
+        entries.push({ store: item.store, key: item.key, blob: file.slice(offset, offset + size, String(item.type || '').slice(0, 100)) });
+        offset += size;
+      }
+      if (offset !== file.size) throw new Error('Размер медиаархива не совпадает с его содержимым.');
+      const totalBytes = entries.reduce((sum, entry) => sum + entry.blob.size, 0);
+      const replace = entries.length ? ' Одноимённые медиафайлы будут заменены.' : '';
+      if (!window.confirm(`Импортировать ${entries.length} файлов (${C.formatBytes(totalBytes)})?${replace}`)) {
+        state.backup.busy = false;
+        renderBackup();
+        return false;
+      }
+      await mediaPutMany(entries);
+      setBackupMessage(`Импортировано файлов: ${entries.length} · ${C.formatBytes(totalBytes)}.`, false);
+      return true;
+    } catch (error) {
+      setBackupMessage(error && error.message ? error.message : 'Не удалось импортировать медиа.', true);
+      return false;
     }
   }
 
@@ -1200,6 +1367,16 @@
           }
           break;
 
+        case 'synopsis-mode': {
+          if (id == null || !['translated', 'original'].includes(el.dataset.mode)) break;
+          const anime = getAnime(id);
+          if (!anime) break;
+          if (el.dataset.mode === 'translated' && !cachedTranslation(anime.synopsis)) break;
+          state.synopsisModes.set(id, el.dataset.mode);
+          renderModal();
+          break;
+        }
+
         case 'add-watched':
           toggleList('watched', getAnime(id));
           break;
@@ -1264,6 +1441,7 @@
           const input = $('#search-input');
           if (input) input.value = '';
           syncModeChips();
+          persistCatalogPreferences();
           fetchDB(true);
           break;
         }
@@ -1280,6 +1458,7 @@
           resetDBFilters();
           state.db.touched = true;
           syncModeChips();
+          persistCatalogPreferences();
           fetchDB(true);
           break;
 
@@ -1337,6 +1516,10 @@
 
         case 'backup-download':
           saveBackupFile();
+          break;
+
+        case 'media-export':
+          exportMediaFile();
           break;
 
         case 'backup-drive-save':
@@ -1476,6 +1659,14 @@
       restoreBackupFile(file);
     });
 
+    document.addEventListener('change', e => {
+      const input = e.target;
+      if (!input || input.dataset.action !== 'media-file') return;
+      const file = input.files && input.files[0];
+      input.value = '';
+      importMediaFile(file);
+    });
+
     const search = $('#search-input');
     if (search) {
       search.addEventListener('input', () => {
@@ -1484,6 +1675,7 @@
         searchTimer = setTimeout(() => {
           state.db.query = val;
           state.db.touched = true;
+          persistCatalogPreferences();
           syncModeChips();
           fetchDB(true);
         }, 500);
@@ -1505,6 +1697,7 @@
       filters.addEventListener('change', () => {
         state.db.filters = readFiltersFromUI();
         state.db.touched = true;
+        persistCatalogPreferences();
         syncModeChips();
         syncFilterUI();
         fetchDB(true);
@@ -1684,8 +1877,7 @@
     loadState();
     loadMoments();
     initFilterOptions();
-    syncFilterUI();
-    syncModeChips();
+    restoreCatalogPreferences();
     syncLangUI();
     bindEvents();
     setupInfiniteScroll();
@@ -1741,8 +1933,13 @@
     saveBackupFile,
     restoreBackupText,
     restoreBackupFile,
+    exportMediaFile,
+    buildMediaArchive,
+    androidSaveMedia,
+    importMediaFile,
     saveBackupToDrive,
     restoreFromDrive,
+    persistCatalogPreferences,
     driveAvailable,
     buildBackupPayload,
     applyBackupData,
@@ -1759,6 +1956,7 @@
       clearMemoryApiCache: clearAniListCache,
       dailySyncIsDue,
       runDailySync,
+      persistCatalogPreferences,
       fetchAniList,
       clearPersistentApiCache,
       clearMemoryApiCache: clearAniListCache,
@@ -1771,6 +1969,7 @@
       syncFilterUI,
       syncLangUI,
       resolveSearchQuery,
+      searchQueryForAlt,
       translateText,
       translateModalSynopsis,
       invalidateNotificationEpisodes,
@@ -1792,6 +1991,10 @@
       openBackup,
       closeBackup,
       restoreBackupText,
+      exportMediaFile,
+      buildMediaArchive,
+      androidSaveMedia,
+      importMediaFile,
       buildBackupPayload,
       applyBackupData,
       driveAvailable,

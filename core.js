@@ -630,6 +630,12 @@
   const BACKUP_KIND = 'anitier.backup';
   const BACKUP_VERSION = 2;
   const BACKUP_FILE = 'anitier-backup.json';
+  const BACKUP_MAX_BYTES = 30 * 1024 * 1024;
+
+  function isBackupSizeAllowed(size) {
+    const value = Number(size);
+    return Number.isFinite(value) && value >= 0 && value <= BACKUP_MAX_BYTES;
+  }
 
   function parseBackupJson(text) {
     let payload = null;
@@ -868,6 +874,8 @@
     BACKUP_KIND,
     BACKUP_VERSION,
     BACKUP_FILE,
+    BACKUP_MAX_BYTES,
+    isBackupSizeAllowed,
     makeTierShare,
     encodeTierShare,
     parseTierShare,

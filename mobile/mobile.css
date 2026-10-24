@@ -298,6 +298,21 @@ body.mobile-app .moments-grid { grid-template-columns: repeat(2, minmax(0, 1fr))
 body.mobile-app .moment-preview { max-height: none; }
 body.mobile-app .moment-actions { gap: 10px; }
 body.mobile-app .custom-new { width: 100%; }
+body.mobile-app .franchise-section { padding: 12px; }
+body.mobile-app .franchise-list {
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(145px, 43vw);
+  grid-template-columns: none;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+  padding: 2px 2px 9px;
+}
+body.mobile-app .franchise-link { scroll-snap-align: start; }
+body.mobile-app .franchise-link-main { gap: 5px; padding: 9px; }
+body.mobile-app .franchise-link-main b { font-size: 11px; }
+body.mobile-app .franchise-link-status { font-size: 8.5px; }
 
 /* ---------- мелочи ---------- */
 body.mobile-app .btn:not(.btn-tiny),

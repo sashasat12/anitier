@@ -17,14 +17,17 @@ import android.webkit.WebViewClient;
 import android.widget.Toast;
 
 import java.io.OutputStream;
+import android.util.Base64;
 
 public class MainActivity extends Activity {
     private static final int REQUEST_FILE_CHOOSER = 1001;
     private static final int REQUEST_SAVE_BACKUP = 1002;
+    private static final int REQUEST_SAVE_MEDIA = 1003;
 
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
     private String pendingBackupJson;
+    private OutputStream pendingMediaOutput;
 
     @SuppressWarnings("deprecation")
     @Override
@@ -158,6 +161,20 @@ public class MainActivity extends Activity {
             return;
         }
 
+        if (requestCode == REQUEST_SAVE_MEDIA) {
+            if (resultCode == RESULT_OK && data != null && data.getData() != null) {
+                try {
+                    pendingMediaOutput = getContentResolver().openOutputStream(data.getData());
+                } catch (Exception error) {
+                    pendingMediaOutput = null;
+                }
+                notifyMediaSaveReady(pendingMediaOutput != null);
+            } else {
+                notifyMediaSaveReady(false);
+            }
+            return;
+        }
+
         super.onActivityResult(requestCode, resultCode, data);
     }
 
@@ -183,6 +200,65 @@ public class MainActivity extends Activity {
                 }
             });
         }
+
+        @JavascriptInterface
+        public void beginMediaSave(final String fileName) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                    intent.addCategory(Intent.CATEGORY_OPENABLE);
+                    intent.setType("application/octet-stream");
+                    intent.putExtra(Intent.EXTRA_TITLE, fileName == null || fileName.isEmpty()
+                            ? "anitier-media.bin" : fileName);
+                    try {
+                        startActivityForResult(intent, REQUEST_SAVE_MEDIA);
+                    } catch (Exception error) {
+                        notifyMediaSaveReady(false);
+                    }
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public boolean writeMediaChunk(String base64) {
+            if (pendingMediaOutput == null || base64 == null) return false;
+            try {
+                pendingMediaOutput.write(Base64.decode(base64, Base64.DEFAULT));
+                return true;
+            } catch (Exception error) {
+                return false;
+            }
+        }
+
+        @JavascriptInterface
+        public void finishMediaSave(boolean success) {
+            boolean saved = success;
+            try {
+                if (pendingMediaOutput != null) {
+                    if (success) pendingMediaOutput.flush();
+                    pendingMediaOutput.close();
+                } else {
+                    saved = false;
+                }
+            } catch (Exception error) {
+                saved = false;
+            } finally {
+                pendingMediaOutput = null;
+            }
+            final boolean result = saved;
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(MainActivity.this, result ? "Медиаархив сохранён" : "Не удалось сохранить медиаархив", Toast.LENGTH_SHORT).show();
+                    if (webView != null) webView.evaluateJavascript("window.__anitierMediaSaveFinished(" + result + ")", null);
+                }
+            });
+        }
+    }
+
+    private void notifyMediaSaveReady(final boolean ready) {
+        if (webView != null) webView.evaluateJavascript("window.__anitierMediaSaveReady(" + ready + ")", null);
     }
 
     @Override

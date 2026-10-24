@@ -191,24 +191,37 @@
   function resetDBFilters() {
     state.db.filters = C.normalizeFilters(C.DEFAULT_FILTERS);
     syncFilterUI();
+    if (App.persistCatalogPreferences) App.persistCatalogPreferences();
   }
 
   function updateDBStatus() {
     const el = $('#db-status');
     if (!el) return;
     const s = state.db;
+    const resolutionLabels = {
+      dictionary: 'словарь AniTier',
+      anilist: 'название AniList',
+      mymemory: 'перевод MyMemory',
+      raw: 'исходный запрос',
+    };
+    const resolution = s.query && s.resolveVia ? ` · запрос: ${resolutionLabels[s.resolveVia] || 'без преобразования'}` : '';
+    const unavailable = s.alt && s.alt.failedSources && s.alt.failedSources.length
+      ? ` · недоступен: ${s.alt.failedSources.join(', ')}`
+      : '';
     if (!s.items.length) {
-      el.textContent = '';
+      el.textContent = s.query && !s.loading
+        ? `Проверено: ${s.sources.length ? s.sources.join(' + ') : 'нет доступных источников'}${resolution}${unavailable}`
+        : '';
       return;
     }
     const page = Math.max(1, s.page - 1);
     const sources = s.sources.length ? ` · ${s.sources.join(' + ')}` : '';
     if (s.loading) {
-      el.textContent = `Показано ${s.items.length} · загружаем страницу ${s.page}…${sources}`;
+      el.textContent = `Показано ${s.items.length} · загружаем страницу ${s.page}…${sources}${resolution}${unavailable}`;
     } else if (s.hasNext) {
-      el.textContent = `Показано ${s.items.length} · страница ${page}${sources}`;
+      el.textContent = `Показано ${s.items.length} · страница ${page}${sources}${resolution}${unavailable}`;
     } else {
-      el.textContent = `Показано ${s.items.length} · все результаты${sources}`;
+      el.textContent = `Показано ${s.items.length} · все результаты${sources}${resolution}${unavailable}`;
     }
   }
 
@@ -225,7 +238,10 @@
       return;
     }
     if (s.error && !s.items.length) {
-      grid.innerHTML = msgBlock('⚠️', 'Не удалось загрузить базу', s.error, 'retry-db');
+      const status = s.query && s.resolveVia
+        ? ` Поиск: ${s.resolveVia === 'dictionary' ? 'словарь AniTier' : s.resolveVia === 'anilist' ? 'название AniList' : s.resolveVia === 'mymemory' ? 'перевод MyMemory' : 'исходная фраза'}.`
+        : '';
+      grid.innerHTML = msgBlock('⚠️', 'Не удалось загрузить базу', `${s.error}${status}`, 'retry-db');
       if (more) more.hidden = true;
       updateDBStatus();
       return;
@@ -244,7 +260,23 @@
       }
       const hasFilters = C.hasActiveFilters(s.filters);
       let text = 'Попробуйте обновить данные.';
-      if (s.query) text = `По запросу «${s.query}» нет результатов. Попробуйте другое название или ослабьте фильтры.`;
+      if (s.query) {
+        const resolutionLabels = {
+          dictionary: 'подобрано английское название из словаря AniTier',
+          anilist: 'найден английский вариант названия в AniList',
+          mymemory: 'название переведено через MyMemory',
+          raw: 'запрос передан без преобразования',
+        };
+        const resolution = resolutionLabels[s.resolveVia] || 'запрос передан без преобразования';
+        const tried = s.sources.length ? ` Проверены: ${s.sources.join(' и ')}.` : '';
+        const unavailable = s.alt && s.alt.failedSources && s.alt.failedSources.length
+          ? ` Не ответили: ${s.alt.failedSources.join(' и ')}.`
+          : '';
+        const resolved = s.resolvedQuery && s.resolvedQuery !== s.query
+          ? ` Искали «${s.resolvedQuery}» (${resolution}).`
+          : ` Способ поиска: ${resolution}.`;
+        text = `По запросу «${s.query}» нет результатов.${resolved}${tried}${unavailable} Попробуйте другое название или ослабьте фильтры.`;
+      }
       else if (hasFilters) text = 'По выбранным фильтрам ничего не нашлось. Попробуйте ослабить условия.';
       grid.innerHTML = msgBlock('🔎', 'Ничего не нашлось', text);
       if (more) more.hidden = true;
@@ -811,9 +843,19 @@
           </label>
         </div>
       </div>
+      <div class="backup-block">
+        <h3>Медиа отдельно</h3>
+        <p>Перенесите полные постеры, видео и GIF в отдельном архиве до 500 МБ. Для переноса на другое устройство сначала восстановите JSON-копию, затем импортируйте этот архив.</p>
+        <div class="form-actions">
+          <button class="btn btn-ghost" type="button" data-action="media-export"${disabled}>${f.busy ? 'Подождите…' : 'Экспортировать медиа'}</button>
+          <label class="btn btn-ghost file-btn${f.busy ? ' is-disabled' : ''}">Импортировать медиа
+            <input type="file" accept=".bin,application/octet-stream" data-action="media-file"${disabled} hidden>
+          </label>
+        </div>
+      </div>
       ${driveBlock}
       ${status}
-      <p class="form-note backup-note">Видео и GIF из моментов не входят в копию: они слишком большие для JSON. После восстановления на новом устройстве останутся подписи, ссылки TikTok и миниатюры.</p>`;
+      <p class="form-note backup-note">В JSON входят подписи, ссылки TikTok и миниатюры. Полные постеры, видео и GIF переносите отдельным медиаархивом.</p>`;
   }
 
   function openBackup() {
@@ -1166,6 +1208,7 @@
 
   function franchiseRelationLabel(type) {
     if (type === 'PREQUEL' || type === 'PARENT') return 'Смотреть раньше';
+    if (type === 'CURRENT') return 'Текущая часть';
     if (type === 'SEQUEL') return 'Следующий сезон';
     if (type === 'SPIN_OFF') return 'Спин-офф';
     return 'Связанная история';
@@ -1183,17 +1226,23 @@
     if (!related) return '<div class="modal-section franchise-section"><div class="modal-label">Сезоны и порядок просмотра</div><p class="hint">Проверяем, есть ли связанные сезоны…</p></div>';
     if (!related.length) return '<div class="modal-section franchise-section"><div class="modal-label">Сезоны и порядок просмотра</div><p class="hint">Связанные сезоны и продолжения не найдены.</p></div>';
 
-    const rows = related.map(link => {
+    const before = related.filter(link => link.relationType === 'PREQUEL' || link.relationType === 'PARENT');
+    const after = related.filter(link => link.relationType !== 'PREQUEL' && link.relationType !== 'PARENT');
+    const ordered = [...before, { anime, relationType: 'CURRENT' }, ...after];
+    const rows = ordered.map(link => {
       const item = link.anime;
       const tier = findTier('watched', item.id) || findTier('planned', item.id);
       const progress = watchedCount(item.id);
-      const meta = [item.year || '', item.episodes ? `${item.episodes} серий` : '', tier ? `тир ${tier}` : 'не в тир-листе', progress ? `просмотрено ${progress}` : ''].filter(Boolean).join(' · ');
-      return `<article class="franchise-link" data-action="open" data-id="${item.id}" tabindex="0" role="button" aria-label="Открыть ${esc(item.title)}">
-        <span class="franchise-link-main"><span class="franchise-link-kind">${esc(franchiseRelationLabel(link.relationType))}</span><b>${esc(item.title)}</b><small>${esc(meta)}</small></span>
-        <span class="franchise-link-arrow" aria-hidden="true">›</span>
+      const isCurrent = link.relationType === 'CURRENT';
+      const meta = [typeRu(item.type) || '', item.year || '', item.episodes ? `${item.episodes} серий` : ''].filter(Boolean).join(' · ');
+      const listStatus = tier ? `В тире ${tier}` : 'Не в тир-листе';
+      const progressStatus = progress ? `Просмотрено ${progress}${item.episodes ? ` из ${item.episodes}` : ''}` : '';
+      return `<article class="franchise-link${isCurrent ? ' franchise-current' : ''}" data-action="open" data-id="${item.id}" tabindex="0" role="button"${isCurrent ? ' aria-current="true"' : ''} aria-label="${isCurrent ? 'Текущая часть: ' : 'Открыть: '}${esc(item.title)}">
+        <span class="franchise-poster"><img ${imgAttrs(item)}>${item.score ? `<span class="franchise-score">★ ${item.score.toFixed(1)}</span>` : ''}<span class="franchise-link-arrow" aria-hidden="true">›</span></span>
+        <span class="franchise-link-main"><span class="franchise-link-kind">${esc(franchiseRelationLabel(link.relationType))}</span><b>${esc(item.title)}</b><small>${esc(meta || 'Данные уточняются')}</small><span class="franchise-link-status">${esc(listStatus)}${progressStatus ? ` · ${esc(progressStatus)}` : ''}</span></span>
       </article>`;
     }).join('');
-    return `<div class="modal-section franchise-section"><div class="modal-label">Сезоны и порядок просмотра</div><div class="franchise-list">${rows}</div><p class="hint">Добавляйте сезоны в тир-лист отдельно: у каждого свой тир и прогресс серий.</p></div>`;
+    return `<div class="modal-section franchise-section"><div class="modal-label">Сезоны и порядок просмотра</div><p class="franchise-intro">Сначала приквелы, затем открытая часть и продолжения. Нажмите карточку, чтобы перейти к сезону.</p><div class="franchise-list">${rows}</div><p class="hint">У каждого сезона свой тир-лист и прогресс серий.</p></div>`;
   }
 
   function loadFranchise(anime) {
@@ -1265,7 +1314,19 @@
     const genres = (a.genres || []).map(g => `<span class="tag">${esc(C.genreRu(g))}</span>`).join('');
     const poster = a.image || makePoster(a.title, a.id);
     const translatedSynopsis = App.cachedTranslation ? App.cachedTranslation(a.synopsis) : '';
-    const synopsis = translatedSynopsis || a.synopsis || 'Описание пока недоступно.';
+    const canTranslateSynopsis = Boolean(a.synopsis && !C.hasCyrillic(a.synopsis));
+    const synopsisMode = state.synopsisModes.get(a.id) || 'translated';
+    const showTranslatedSynopsis = Boolean(canTranslateSynopsis && translatedSynopsis && synopsisMode !== 'original');
+    const synopsis = (showTranslatedSynopsis ? translatedSynopsis : a.synopsis) || 'Описание пока недоступно.';
+    const synopsisControls = canTranslateSynopsis
+      ? `<div class="synopsis-toolbar">
+          <span class="synopsis-translation-status" role="status">${translatedSynopsis ? (showTranslatedSynopsis ? 'Перевод MyMemory' : 'Оригинал') : (state.synopsisTranslating.has(a.id) ? 'Переводим…' : 'Перевод пока недоступен')}</span>
+          <div class="synopsis-switch" role="group" aria-label="Язык описания">
+            <button type="button" data-action="synopsis-mode" data-id="${a.id}" data-mode="translated" aria-pressed="${showTranslatedSynopsis ? 'true' : 'false'}"${translatedSynopsis ? '' : ' disabled'}>Перевод</button>
+            <button type="button" data-action="synopsis-mode" data-id="${a.id}" data-mode="original" aria-pressed="${!showTranslatedSynopsis ? 'true' : 'false'}">Оригинал</button>
+          </div>
+        </div>`
+      : '';
 
     content.innerHTML = `
       <div class="modal-grid">
@@ -1298,7 +1359,11 @@
             ${renderEpisodeBlock(a, 'modal')}
           </div>
           ${momentsHTML(a)}
-          <p class="modal-synopsis"${translatedSynopsis ? ' data-translated="1" title="Автоматический перевод"' : ''}>${esc(synopsis)}</p>
+          <section class="modal-section modal-synopsis-section">
+            <div class="modal-label">Описание</div>
+            ${synopsisControls}
+            <p class="modal-synopsis"${showTranslatedSynopsis ? ' data-translated="1" title="Автоматический перевод"' : ''}>${esc(synopsis)}</p>
+          </section>
           ${genres ? `<div class="tags">${genres}</div>` : ''}
           ${sourceLine}
         </div>
@@ -1325,10 +1390,13 @@
     });
     $$('.view').forEach(v => { v.hidden = v.id !== 'view-' + tab; });
 
-    if (tab === 'db') renderDB();
-    if (tab === 'watched' || tab === 'planned') renderTierList(tab);
-    if (tab === 'notifications') { renderNotifications(); markNotificationsSeen(); fetchNotifications(); ensureNotificationEpisodes(); }
-    if (tab === 'upcoming') fetchUpcoming();
+    if (!opts.deferActions) {
+      if (tab === 'db') renderDB();
+      if (tab === 'watched' || tab === 'planned') renderTierList(tab);
+      if (tab === 'notifications') { renderNotifications(); markNotificationsSeen(); fetchNotifications(); ensureNotificationEpisodes(); }
+      if (tab === 'upcoming') fetchUpcoming();
+    }
+    if (!opts.deferPersistence && App.persistCatalogPreferences) App.persistCatalogPreferences();
     updateOfflineBanner();
 
     if (!opts.silent) window.scrollTo({ top: 0, behavior: 'smooth' });

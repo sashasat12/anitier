@@ -295,6 +295,11 @@
       const doc = app.win.document;
       doc.querySelector('#db-grid .card').click();
       await T.waitFor(() => doc.querySelector('.franchise-link[data-id="1001"]'), 'В карточке не появился переход к продолжению');
+      const seasonCard = doc.querySelector('.franchise-link[data-id="1001"]');
+      T.assert(seasonCard.querySelector('.franchise-poster img').getAttribute('src'), 'Карточка сезона должна содержать постер');
+      T.includes(seasonCard.textContent, 'Следующий сезон');
+      T.includes(seasonCard.textContent, '2025');
+      T.assert(doc.querySelector('.franchise-current[aria-current="true"]'), 'Текущая часть должна быть отмечена в порядке просмотра');
       doc.querySelector('[data-action="set-tier"][data-id="1000"][data-tier="B"]').click();
       doc.querySelector('.franchise-link[data-id="1001"]').click();
       await T.waitFor(() => app.win.__anitierTest.state.modalId === 1001, 'Переход к следующему сезону не сработал');
@@ -561,6 +566,85 @@
     }
   });
 
+  T.test('app: расширенный словарь распознаёт русский запрос и объясняет пустую выдачу', async () => {
+    const calls = [];
+    let anilistSearch = '';
+    const app = await T.mountApp({
+      query: '?test=1',
+      setup(win) {
+        win.fetch = baseFetch(calls, { onAniList(vars) { if (vars.search) anilistSearch = vars.search; } });
+      },
+    });
+    try {
+      await app.win.__anitierTest.init();
+      T.eq(app.win.AniTier.searchQueryForAlt('Доктор Стоун'), 'Dr. Stone');
+      T.eq(app.win.AniTier.searchQueryForAlt('Доктор'), 'Доктор', 'Неполное совпадение не должно подставлять случайное название');
+      const input = app.win.document.querySelector('#search-input');
+      input.value = 'Доктор Стоун';
+      input.dispatchEvent(new app.win.Event('input', { bubbles: true }));
+      const state = app.win.__anitierTest.state;
+      await T.waitFor(() => !state.db.loading && state.db.query === 'Доктор Стоун' && state.db.resolveVia === 'dictionary', 'Запрос не прошёл через словарь');
+      T.eq(state.db.items.length, 0);
+      T.eq(anilistSearch, 'Dr. Stone');
+      const status = app.win.document.querySelector('#db-status').textContent;
+      T.includes(status, 'словарь AniTier');
+      T.includes(status, 'AniList + Kitsu', 'При пустой выдаче должно быть видно, какие источники проверены');
+    } finally { app.close(); }
+  });
+
+  T.test('app: вкладка и параметры каталога восстанавливаются из localStorage', async () => {
+    const saved = {
+      watched: {},
+      planned: {},
+      settings: {
+        searchLang: 'en',
+        catalog: { tab: 'watched', mode: 'score', query: 'Frieren', filters: { type: 'movie', year: '2024', minScore: '8' } },
+      },
+    };
+    const app = await T.mountApp({
+      query: '?demo=1&test=1',
+      setup(win) { win.localStorage.setItem('anitier.v1', JSON.stringify(saved)); },
+    });
+    try {
+      await app.win.__anitierTest.init();
+      const state = app.win.__anitierTest.state;
+      const doc = app.win.document;
+      T.eq(state.tab, 'watched');
+      T.eq(state.db.mode, 'score');
+      T.eq(state.db.query, 'Frieren');
+      T.eq(state.db.filters, { type: 'movie', status: '', year: '2024', genre: '', minScore: '8' });
+      T.eq(doc.querySelector('#search-input').value, 'Frieren');
+      T.eq(doc.querySelector('#filter-type').value, 'movie');
+      T.eq(doc.querySelector('#filter-year').value, '2024');
+      T.eq(doc.querySelector('#filter-score').value, '8');
+      T.eq(doc.querySelector('#view-watched').hidden, false);
+      T.eq(doc.querySelector('#view-db').hidden, true);
+
+      doc.querySelector('[data-action="mode"][data-mode="airing"]').click();
+      const type = doc.querySelector('#filter-type');
+      type.value = 'tv';
+      type.dispatchEvent(new app.win.Event('change', { bubbles: true }));
+      const status = doc.querySelector('#filter-status');
+      status.value = 'complete';
+      status.dispatchEvent(new app.win.Event('change', { bubbles: true }));
+      doc.querySelector('#filter-year').value = '';
+      doc.querySelector('#filter-score').value = '';
+      doc.querySelector('#filter-score').dispatchEvent(new app.win.Event('change', { bubbles: true }));
+      const input = doc.querySelector('#search-input');
+      input.value = 'Доктор Стоун';
+      input.dispatchEvent(new app.win.Event('input', { bubbles: true }));
+      doc.querySelector('[data-action="tab"][data-tab="upcoming"]').click();
+      await T.waitFor(() => {
+        const current = JSON.parse(app.win.localStorage.getItem('anitier.v1') || '{}');
+        return current.settings && current.settings.catalog && current.settings.catalog.query === 'Доктор Стоун';
+      }, 'Изменения каталога не сохранились', 6000);
+      const stored = JSON.parse(app.win.localStorage.getItem('anitier.v1'));
+      T.eq(stored.settings.catalog.tab, 'upcoming');
+      T.eq(stored.settings.catalog.mode, 'airing');
+      T.eq(stored.settings.catalog.filters, { type: 'tv', status: 'complete', year: '', genre: '', minScore: '' });
+    } finally { app.close(); }
+  });
+
   T.test('app: перевод описания кэшируется и не повторяет запрос', async () => {
     const app = await T.mountApp({ query: '?demo=1&test=1' });
     const calls = [];
@@ -589,6 +673,53 @@
       T.eq(calls.length, 1, 'Повторный перевод должен браться из кэша');
       T.eq(calls[0].searchParams.get('langpair'), 'en|ru');
       T.eq(app.win.AniTier.cachedTranslation('Elf mage Frieren.'), first);
+    } finally {
+      app.win.AniTier.clearTranslationCache();
+      app.close();
+    }
+  });
+
+  T.test('app: в описании карточки можно переключить перевод и оригинал', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      App.clearTranslationCache();
+      await win.__anitierTest.init();
+      let requests = 0;
+      win.fetch = async url => {
+        requests += 1;
+        T.includes(String(url), 'api.mymemory.translated.net');
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ responseStatus: 200, responseData: { translatedText: 'Маг-путешественник ищет дорогу домой.' } }),
+        };
+      };
+      const anime = App.mapAniList(rawAniList(9001, 'Journey Mage', {
+        idMal: 69001,
+        description: 'A traveling mage is looking for the way home.',
+      }));
+      const state = win.__anitierTest.state;
+      state.modalId = anime.id;
+      state.franchiseById.set(anime.id, []);
+      App.renderModal();
+      T.includes(win.document.querySelector('.modal-synopsis').textContent, 'A traveling mage');
+
+      await win.__anitierTest.translateModalSynopsis(anime.id);
+      let synopsis = win.document.querySelector('.modal-synopsis');
+      T.eq(synopsis.textContent, 'Маг-путешественник ищет дорогу домой.');
+      T.eq(win.document.querySelector('[data-action="synopsis-mode"][data-mode="translated"]').getAttribute('aria-pressed'), 'true');
+
+      win.document.querySelector('[data-action="synopsis-mode"][data-mode="original"]').click();
+      T.eq(state.synopsisModes.get(anime.id), 'original', 'Кнопка должна менять выбранный язык описания');
+      synopsis = win.document.querySelector('.modal-synopsis');
+      T.eq(synopsis.textContent, 'A traveling mage is looking for the way home.');
+      T.eq(win.document.querySelector('[data-action="synopsis-mode"][data-mode="original"]').getAttribute('aria-pressed'), 'true');
+
+      win.document.querySelector('[data-action="synopsis-mode"][data-mode="translated"]').click();
+      T.eq(win.document.querySelector('.modal-synopsis').textContent, 'Маг-путешественник ищет дорогу домой.');
+      T.eq(requests, 1, 'Переключение не должно повторно запрашивать перевод');
     } finally {
       app.win.AniTier.clearTranslationCache();
       app.close();
@@ -795,6 +926,80 @@
     } finally {
       app.close();
     }
+  });
+
+  T.test('app: ошибка записи резервной копии возвращает исходные значения хранилища', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      const storage = win.localStorage;
+      const originals = {
+        [win.AniTier.LS_KEY]: JSON.stringify({ watched: { S: [{ id: 77, title: 'Старое' }] } }),
+        [win.AniTier.MOMENTS_KEY]: JSON.stringify({ '77': [] }),
+        [win.AniTier.TRANSLATIONS_KEY]: JSON.stringify({ old: 'перевод' }),
+      };
+      for (const [key, value] of Object.entries(originals)) storage.setItem(key, value);
+      const originalSetItem = storage.setItem.bind(storage);
+      let failOnce = true;
+      storage.setItem = (key, value) => {
+        if (key === win.AniTier.MOMENTS_KEY && failOnce) {
+          failOnce = false;
+          throw new Error('QuotaExceededError');
+        }
+        return originalSetItem(key, value);
+      };
+
+      let error = '';
+      try {
+        win.AniTier.applyBackupData({
+          state: { watched: { A: [{ id: 88, title: 'Новое' }] }, planned: {} },
+          moments: {},
+          translations: {},
+        });
+      } catch (err) { error = err.message; }
+
+      T.includes(error, 'Прежние данные возвращены');
+      for (const [key, value] of Object.entries(originals)) T.eq(storage.getItem(key), value, `Не восстановлен ${key}`);
+      T.eq(win.__anitierTest.state.lists.watched.S[0].title, 'Старое');
+    } finally { app.close(); }
+  });
+
+  T.test('app: медиаархив переносит постеры, видео и GIF записи', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const App = app.win.AniTier;
+      await App.mediaPut('images', 'test-poster', new Blob(['poster-data'], { type: 'image/jpeg' }));
+      await App.mediaPut('media', 'test-video', new Blob(['video-data'], { type: 'video/mp4' }));
+      const archive = await app.win.__anitierTest.buildMediaArchive();
+      T.eq(archive.count, 2);
+      await App.mediaDelete('images', 'test-poster');
+      await App.mediaDelete('media', 'test-video');
+      app.win.confirm = () => true;
+      T.eq(await app.win.__anitierTest.importMediaFile(archive.blob), true);
+      T.eq(await (await App.mediaGet('images', 'test-poster')).text(), 'poster-data');
+      T.eq(await (await App.mediaGet('media', 'test-video')).text(), 'video-data');
+    } finally { app.close(); }
+  });
+
+  T.test('app: медиаархив передаётся в Android небольшими частями', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      const received = [];
+      let fileName = '';
+      win.AniTierAndroid = {
+        beginMediaSave(name) { fileName = name; win.__anitierMediaSaveReady(true); },
+        writeMediaChunk(value) { received.push(win.atob(value)); return true; },
+        finishMediaSave(ok) { win.__anitierMediaSaveFinished(ok); },
+      };
+      const bytes = new Uint8Array(600000);
+      for (let i = 0; i < bytes.length; i++) bytes[i] = i % 251;
+      await win.__anitierTest.androidSaveMedia(new Blob([bytes]));
+      T.eq(fileName, 'anitier-media.bin');
+      T.eq(received.length, 3, 'Архив должен уйти тремя фрагментами по 256 КиБ');
+      T.eq(received.join('').length, bytes.length);
+      T.eq(received.join('').charCodeAt(599999), bytes[599999]);
+    } finally { app.close(); }
   });
 
   T.test('app: Google Drive сохраняет копию multipart и перезаписывает файл', async () => {

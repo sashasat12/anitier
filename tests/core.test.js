@@ -191,6 +191,31 @@
     ], seen);
     T.eq(repeated.length, 0);
   });
+
+  T.test('core: склейка учитывает альтернативные названия и годы, не сливая похожие тайтлы', () => {
+    const C = core();
+    const merged = C.mergeUniqueAnime([
+      [
+        { id: -1, title: 'Атака титанов', aliases: ['Shingeki no Kyojin', 'Attack on Titan'], year: 2013 },
+        { id: -2, title: 'Naruto', year: 2002 },
+        { id: -3, title: 'Blue Lock', year: 2022 },
+        { id: -4, title: 'Twin Title', year: 2020 },
+        { id: -5, title: 'Twin Title', year: 2024 },
+        { id: -6, title: 'Title Without Year' },
+      ],
+      [
+        { id: -101, title: 'Attack on Titan', aliases: ['Атака титанов'], year: 2013 },
+        { id: -102, title: 'Naruto: Shippuuden', aliases: ['Naruto Shippuden'], year: 2007 },
+        { id: -103, title: 'Blue Period', year: 2021 },
+        { id: -104, title: 'Twin Title', year: 2020 },
+        { id: -105, title: 'Twin Title', year: 2024 },
+        { id: -106, title: 'Title Without Year', year: 2024 },
+      ],
+    ]);
+
+    T.eq(merged.length, 9, 'Дубликат по альтернативным названиям убирается; разные годы и похожие названия остаются');
+    T.eq(merged.map(item => item.id), [-1, -2, -102, -3, -103, -4, -5, -6, -106]);
+  });
   T.test('core: язык запроса и русские жанры', () => {
     const C = core();
     T.eq(C.detectQueryLang('Фрирен'), 'ru');
@@ -243,6 +268,14 @@
     error = '';
     try { C.parseBackupJson(JSON.stringify({ kind: 'anitier.backup', version: 2 })); } catch (err) { error = err.message; }
     T.includes(error, 'нет данных');
+  });
+
+  T.test('core: размер резервной копии ограничен 30 МБ', () => {
+    const C = core();
+    T.assert(C.isBackupSizeAllowed(30 * 1024 * 1024));
+    T.assert(!C.isBackupSizeAllowed(30 * 1024 * 1024 + 1));
+    T.assert(!C.isBackupSizeAllowed(-1));
+    T.assert(!C.isBackupSizeAllowed(Infinity));
   });
 
   T.test('core: ссылки TikTok распознаются и превращаются в плеер', () => {

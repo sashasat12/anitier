@@ -548,6 +548,79 @@
     'ангельские ритмы': 'Angel Beats!',
     'мастера меча онлайн': 'Sword Art Online',
     'нет игры нет жизни': 'No Game No Life',
+    'наруто': 'Naruto',
+    'наруто ураганные хроники': 'Naruto: Shippuuden',
+    'боруто': 'Boruto: Naruto Next Generations',
+    'джо джо': 'JoJo no Kimyou na Bouken',
+    'невероятные приключения джо джо': 'JoJo no Kimyou na Bouken',
+    'доктор стоун': 'Dr. Stone',
+    'токийские мстители': 'Tokyo Revengers',
+    'класс убийц': 'Ansatsu Kyoushitsu',
+    'класс превосходства': 'Youkoso Jitsuryoku Shijou Shugi no Kyoushitsu e',
+    'обещанный неверленд': 'Yakusoku no Neverland',
+    'паразит учение о жизни': 'Kiseijuu: Sei no Kakuritsu',
+    'паразит': 'Kiseijuu: Sei no Kakuritsu',
+    'тетрадь смерти': 'Death Note',
+    'психопаспорт': 'Psycho-Pass',
+    'самурай чамплу': 'Samurai Champloo',
+    'созданный в бездне': 'Made in Abyss',
+    'дитя погоды': 'Tenki no Ko',
+    'унесённые призраками': 'Sen to Chihiro no Kamikakushi',
+    'унесенные призраками': 'Sen to Chihiro no Kamikakushi',
+    'принцесса мононоке': 'Mononoke Hime',
+    'мой сосед тоторо': 'Tonari no Totoro',
+    'ходячий замок': 'Howl no Ugoku Shiro',
+    'киберпанк': 'Cyberpunk: Edgerunners',
+    'киберпанк бегущие по краю': 'Cyberpunk: Edgerunners',
+    'синяя тюрьма': 'Blue Lock',
+    'голубой экзорцист': 'Ao no Exorcist',
+    'чёрный клевер': 'Black Clover',
+    'черный клевер': 'Black Clover',
+    'семья шпиона': 'Spy x Family',
+    'семья шпиона код белый': 'Spy x Family Code: White',
+    'поднятие уровня в одиночку': 'Ore dake Level Up na Ken',
+    'соло левелинг': 'Ore dake Level Up na Ken',
+    'дандадан': 'Dandadan',
+    'подземелье вкусностей': 'Dungeon Meshi',
+    'фрирен': 'Sousou no Frieren',
+    'провожающая в последний путь фрирен': 'Sousou no Frieren',
+    'магическая битва': 'Jujutsu Kaisen',
+    'человек бензопила': 'Chainsaw Man',
+    'человек-бензопила': 'Chainsaw Man',
+    'клинок рассекающий демонов': 'Kimetsu no Yaiba',
+    'клинок, рассекающий демонов': 'Kimetsu no Yaiba',
+    'атака титанов': 'Shingeki no Kyojin',
+    'атака на титанов': 'Shingeki no Kyojin',
+    'стальной алхимик': 'Fullmetal Alchemist',
+    'стальной алхимик братство': 'Fullmetal Alchemist: Brotherhood',
+    'хантер хантер': 'Hunter x Hunter',
+    'охотник х охотник': 'Hunter x Hunter',
+    'повелитель': 'Overlord',
+    'восхождение героя щита': 'Tate no Yuusha no Nariagari',
+    'эта прекрасная жизнь': 'Kono Subarashii Sekai ni Shukufuku wo!',
+    'коносуба': 'Kono Subarashii Sekai ni Shukufuku wo!',
+    'ре зеро': 'Re:Zero kara Hajimeru Isekai Seikatsu',
+    'ре зеро жизнь с нуля': 'Re:Zero kara Hajimeru Isekai Seikatsu',
+    'врата штейна': 'Steins;Gate',
+    'волейбол': 'Haikyuu!!',
+    'токийский гуль': 'Tokyo Ghoul',
+    'ангельские ритмы': 'Angel Beats!',
+    'ангельские ритмы!': 'Angel Beats!',
+    'форма голоса': 'Koe no Katachi',
+    'твоё имя': 'Kimi no Na wa',
+    'твое имя': 'Kimi no Na wa',
+    'ванпанчмен': 'One Punch Man',
+    'ван панч мен': 'One Punch Man',
+    'восемьдесят шесть': '86',
+    'эрго прокси': 'Ergo Proxy',
+    'моногатари': 'Bakemonogatari',
+    'триган': 'Trigun',
+    'крутой учитель онидзука': 'Great Teacher Onizuka',
+    'гуррен лаганн': 'Tengen Toppa Gurren Lagann',
+    'код гиас': 'Code Geass: Hangyaku no Lelouch',
+    'сад изящных слов': 'Kotonoha no Niwa',
+    'девочка покорившая время': 'Toki wo Kakeru Shoujo',
+    'девочка, покорившая время': 'Toki wo Kakeru Shoujo',
   };
 
   let ruAliasIndex = null;
@@ -575,14 +648,7 @@
     const index = buildRuAliasIndex();
     if (index.has(needle)) return index.get(needle);
 
-    let best = null;
-    for (const [ruKey, alt] of index) {
-      if (!ruKey || !alt) continue;
-      if (ruKey.includes(needle) || needle.includes(ruKey)) {
-        if (!best || ruKey.length < best.length) best = { length: ruKey.length, alt };
-      }
-    }
-    return best ? best.alt : raw;
+    return raw;
   }
 
   const resolveCache = new Map();
@@ -851,6 +917,7 @@
       let succeeded = 0;
       for (const result of results) {
         if (!result.ok) {
+          if (!alt.failedSources.includes(result.source)) alt.failedSources.push(result.source);
           if (result.source === 'AniList') alt.anilistDone = true;
           if (result.source === 'Kitsu') alt.kitsuDone = true;
           continue;

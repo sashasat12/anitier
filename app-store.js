@@ -208,6 +208,17 @@
   const MONTHS_FULL = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 
   const VIEW_TABS = ['db', 'notifications', 'watched', 'planned', 'upcoming'];
+  const DB_MODES = ['popular', 'score', 'airing', 'movie', 'custom'];
+
+  function normalizeCatalogPreferences(raw) {
+    const value = raw && typeof raw === 'object' ? raw : {};
+    return {
+      tab: VIEW_TABS.includes(value.tab) ? value.tab : 'db',
+      mode: DB_MODES.includes(value.mode) ? value.mode : 'popular',
+      query: String(value.query == null ? '' : value.query).trim().slice(0, 160),
+      filters: C.normalizeFilters(value.filters),
+    };
+  }
 
   /* Русские названия для популярных тайтлов (MAL id) */
   const RU_TITLES = {
@@ -389,6 +400,7 @@
     forceDemo: new URLSearchParams(location.search).has('demo'),
     settings: {
       searchLang: 'auto',
+      catalog: normalizeCatalogPreferences(),
     },
     modalId: null,
     exchange: {
@@ -405,6 +417,8 @@
     franchiseById: new Map(),
     franchiseLoading: new Set(),
     franchiseErrors: new Map(),
+    synopsisModes: new Map(),
+    synopsisTranslating: new Set(),
     customCards: [],
     moments: {},
     customForm: { open: false, editingId: null, error: '', busy: false },
@@ -462,6 +476,7 @@
       buffer: [],
       seen: new Set(),
       sources: [],
+      failedSources: [],
       providerOk: false,
     };
   }
@@ -742,8 +757,11 @@
       epInfo: rawState.epInfo && typeof rawState.epInfo === 'object' ? rawState.epInfo : {},
       seenNotifications: Array.isArray(rawState.seenNotifications) ? rawState.seenNotifications : [],
       settings: rawState.settings && typeof rawState.settings === 'object'
-        ? { searchLang: C.normalizeSearchLang(rawState.settings.searchLang) }
-        : { searchLang: 'auto' },
+        ? {
+          searchLang: C.normalizeSearchLang(rawState.settings.searchLang),
+          catalog: normalizeCatalogPreferences(rawState.settings.catalog),
+        }
+        : { searchLang: 'auto', catalog: normalizeCatalogPreferences() },
     };
 
     const moments = {};
@@ -762,13 +780,37 @@
       }
     }
 
+    const nextValues = new Map([
+      [LS_KEY, JSON.stringify(cleanState)],
+      [MOMENTS_KEY, JSON.stringify(moments)],
+      [TRANSLATIONS_KEY, Object.keys(translations).length ? JSON.stringify(translations) : null],
+    ]);
+    let previousValues;
     try {
-      localStorage.setItem(LS_KEY, JSON.stringify(cleanState));
-      localStorage.setItem(MOMENTS_KEY, JSON.stringify(moments));
-      if (Object.keys(translations).length) localStorage.setItem(TRANSLATIONS_KEY, JSON.stringify(translations));
-      else localStorage.removeItem(TRANSLATIONS_KEY);
-    } catch (err) {
-      throw new Error('Браузер не смог записать копию: не хватает места.');
+      previousValues = new Map([...nextValues.keys()].map(key => [key, localStorage.getItem(key)]));
+    } catch {
+      throw new Error('Не удалось прочитать текущие данные перед восстановлением.');
+    }
+
+    try {
+      for (const [key, value] of nextValues) {
+        if (value == null) localStorage.removeItem(key);
+        else localStorage.setItem(key, value);
+      }
+    } catch {
+      let rollbackFailed = false;
+      for (const [key, value] of previousValues) {
+        try {
+          if (value == null) localStorage.removeItem(key);
+          else localStorage.setItem(key, value);
+        } catch { rollbackFailed = true; }
+      }
+      loadState();
+      loadMoments();
+      if (App.reloadTranslationCache) App.reloadTranslationCache();
+      throw new Error(rollbackFailed
+        ? 'Не удалось восстановить копию или вернуть прежние данные. Проверьте хранилище браузера.'
+        : 'Браузер не смог записать копию: не хватает места. Прежние данные возвращены.');
     }
 
     loadState();
@@ -848,6 +890,41 @@
     });
   }
 
+  async function mediaEntries() {
+    const db = await openMediaDB();
+    if (!db) throw new Error('Хранилище медиа недоступно.');
+    return new Promise((resolve, reject) => {
+      const entries = [];
+      try {
+        const tx = db.transaction(['images', 'media'], 'readonly');
+        for (const storeName of ['images', 'media']) {
+          const request = tx.objectStore(storeName).openCursor();
+          request.onsuccess = () => {
+            const cursor = request.result;
+            if (!cursor) return;
+            if (cursor.value instanceof Blob) entries.push({ store: storeName, key: String(cursor.key), blob: cursor.value });
+            cursor.continue();
+          };
+        }
+        tx.oncomplete = () => resolve(entries);
+        tx.onerror = tx.onabort = () => reject(new Error('Не удалось прочитать медиа из хранилища.'));
+      } catch (error) { reject(error); }
+    });
+  }
+
+  async function mediaPutMany(entries) {
+    const db = await openMediaDB();
+    if (!db) throw new Error('Хранилище медиа недоступно.');
+    return new Promise((resolve, reject) => {
+      try {
+        const tx = db.transaction(['images', 'media'], 'readwrite');
+        for (const entry of entries) tx.objectStore(entry.store).put(entry.blob, entry.key);
+        tx.oncomplete = () => resolve(entries.length);
+        tx.onerror = tx.onabort = () => reject(new Error('Не удалось записать медиа. Исходные файлы сохранены.'));
+      } catch (error) { reject(error); }
+    });
+  }
+
   function loadState() {
     let raw = null;
     try { raw = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch { raw = null; }
@@ -859,6 +936,7 @@
       state.seenNotifications = new Set();
       state.customCards = [];
       state.settings.searchLang = 'auto';
+      state.settings.catalog = normalizeCatalogPreferences();
       return;
     }
     state.lists.watched = normalizeTiers(raw.watched);
@@ -874,6 +952,7 @@
       .slice(0, CUSTOM_LIMIT);
     state.seenNotifications = new Set(Array.isArray(raw.seenNotifications) ? raw.seenNotifications : []);
     state.settings.searchLang = C.normalizeSearchLang(raw.settings && raw.settings.searchLang);
+    state.settings.catalog = normalizeCatalogPreferences(raw.settings && raw.settings.catalog);
 
     state.progress = {};
     if (raw.progress && typeof raw.progress === 'object') {
@@ -908,7 +987,10 @@
         progress: state.progress,
         epInfo,
         seenNotifications: [...state.seenNotifications],
-        settings: { searchLang: C.normalizeSearchLang(state.settings.searchLang) },
+        settings: {
+          searchLang: C.normalizeSearchLang(state.settings.searchLang),
+          catalog: normalizeCatalogPreferences(state.settings.catalog),
+        },
       }));
     } catch (err) {
       console.warn('localStorage', err);
@@ -1135,6 +1217,8 @@
     mediaPut,
     mediaGet,
     mediaDelete,
+    mediaEntries,
+    mediaPutMany,
     loadState,
     saveState,
     allIn,

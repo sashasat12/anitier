@@ -1216,8 +1216,34 @@ button { font-family: inherit; }
 .tier-pick.tier-N { color: #e6ebfa; }
 .hint { margin: 10px 0 0; font-size: 11.5px; color: var(--muted); }
 
+.modal-synopsis-section { margin-top: 18px; }
+.synopsis-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: -2px 0 12px; }
+.synopsis-translation-status { color: var(--muted); font-size: 10.5px; }
+.synopsis-switch {
+  display: inline-flex;
+  flex: 0 0 auto;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0,0,0,.18);
+}
+.synopsis-switch button {
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.synopsis-switch button[aria-pressed="true"] { background: rgba(138,92,255,.2); color: #e2d8ff; }
+.synopsis-switch button:disabled { opacity: .5; cursor: default; }
+.synopsis-switch button:focus-visible { outline: 2px solid #ff6e9f; outline-offset: 1px; }
 .modal-synopsis {
-  margin: 0 0 16px;
+  margin: 0;
   color: #c3cada;
   font-size: 13.5px;
   line-height: 1.65;
@@ -1244,6 +1270,129 @@ button { font-family: inherit; }
   padding-bottom: 2px;
 }
 .mal-link:hover { color: #fff; }
+
+/* ---------- карточки порядка просмотра ---------- */
+.franchise-intro { margin: -3px 0 13px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.franchise-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 11px;
+}
+.franchise-link {
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: linear-gradient(160deg, rgba(255,255,255,.055), rgba(255,255,255,.018));
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.franchise-link:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 77, 141, .5);
+  box-shadow: 0 12px 28px rgba(0,0,0,.26);
+}
+.franchise-link:focus-visible { outline: 2px solid #ff6e9f; outline-offset: 3px; }
+.franchise-current {
+  border-color: rgba(255, 77, 141, .65);
+  background: linear-gradient(160deg, rgba(255,77,141,.15), rgba(138,92,255,.08));
+  box-shadow: inset 0 0 0 1px rgba(255,77,141,.15);
+}
+.franchise-current:hover { border-color: rgba(255, 77, 141, .85); }
+.franchise-poster {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  background: #10121b;
+}
+.franchise-poster::after {
+  content: '';
+  position: absolute;
+  inset: 45% 0 0;
+  background: linear-gradient(transparent, rgba(7,8,14,.72));
+  pointer-events: none;
+}
+.franchise-poster img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.franchise-score {
+  position: absolute;
+  z-index: 1;
+  top: 8px;
+  right: 8px;
+  padding: 4px 7px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 8px;
+  background: rgba(8,10,16,.78);
+  color: #ffd27a;
+  font-size: 10px;
+  font-weight: 800;
+  backdrop-filter: blur(8px);
+}
+.franchise-link-arrow {
+  position: absolute;
+  z-index: 1;
+  right: 9px;
+  bottom: 9px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 50%;
+  background: rgba(8,10,16,.7);
+  color: white;
+  font-size: 20px;
+  line-height: 1;
+  transition: transform .18s ease, background .18s ease;
+}
+.franchise-link:hover .franchise-link-arrow { transform: translateX(2px); background: rgba(255,77,141,.8); }
+.franchise-link-main { min-width: 0; display: flex; flex: 1; flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px; }
+.franchise-link-kind {
+  max-width: 100%;
+  padding: 4px 7px;
+  overflow: hidden;
+  border: 1px solid rgba(138,92,255,.28);
+  border-radius: 7px;
+  background: rgba(138,92,255,.12);
+  color: #d1c0ff;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .045em;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+.franchise-current .franchise-link-kind { border-color: rgba(255,77,141,.3); background: rgba(255,77,141,.13); color: #ffb3cd; }
+.franchise-link-main b {
+  display: -webkit-box;
+  width: 100%;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.franchise-link-main small { color: var(--muted); font-size: 10px; line-height: 1.3; }
+.franchise-link-status {
+  display: -webkit-box;
+  width: 100%;
+  margin-top: auto;
+  overflow: hidden;
+  color: #aab2c7;
+  font-size: 9px;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.franchise-current .franchise-link-status { color: #ffc2d5; }
+.franchise-section > .hint { margin-top: 12px; }
 
 /* ---------- свои карточки и моменты ---------- */
 .badge-custom {
@@ -2160,6 +2309,21 @@ body.mobile-app .moments-grid { grid-template-columns: repeat(2, minmax(0, 1fr))
 body.mobile-app .moment-preview { max-height: none; }
 body.mobile-app .moment-actions { gap: 10px; }
 body.mobile-app .custom-new { width: 100%; }
+body.mobile-app .franchise-section { padding: 12px; }
+body.mobile-app .franchise-list {
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(145px, 43vw);
+  grid-template-columns: none;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+  padding: 2px 2px 9px;
+}
+body.mobile-app .franchise-link { scroll-snap-align: start; }
+body.mobile-app .franchise-link-main { gap: 5px; padding: 9px; }
+body.mobile-app .franchise-link-main b { font-size: 11px; }
+body.mobile-app .franchise-link-status { font-size: 8.5px; }
 
 /* ---------- мелочи ---------- */
 body.mobile-app .btn:not(.btn-tiny),
@@ -3094,6 +3258,12 @@ body.mobile-app .offline-banner {
   const BACKUP_KIND = 'anitier.backup';
   const BACKUP_VERSION = 2;
   const BACKUP_FILE = 'anitier-backup.json';
+  const BACKUP_MAX_BYTES = 30 * 1024 * 1024;
+
+  function isBackupSizeAllowed(size) {
+    const value = Number(size);
+    return Number.isFinite(value) && value >= 0 && value <= BACKUP_MAX_BYTES;
+  }
 
   function parseBackupJson(text) {
     let payload = null;
@@ -3332,6 +3502,8 @@ body.mobile-app .offline-banner {
     BACKUP_KIND,
     BACKUP_VERSION,
     BACKUP_FILE,
+    BACKUP_MAX_BYTES,
+    isBackupSizeAllowed,
     makeTierShare,
     encodeTierShare,
     parseTierShare,
@@ -3597,6 +3769,17 @@ body.mobile-app .offline-banner {
   const MONTHS_FULL = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 
   const VIEW_TABS = ['db', 'notifications', 'watched', 'planned', 'upcoming'];
+  const DB_MODES = ['popular', 'score', 'airing', 'movie', 'custom'];
+
+  function normalizeCatalogPreferences(raw) {
+    const value = raw && typeof raw === 'object' ? raw : {};
+    return {
+      tab: VIEW_TABS.includes(value.tab) ? value.tab : 'db',
+      mode: DB_MODES.includes(value.mode) ? value.mode : 'popular',
+      query: String(value.query == null ? '' : value.query).trim().slice(0, 160),
+      filters: C.normalizeFilters(value.filters),
+    };
+  }
 
   /* Русские названия для популярных тайтлов (MAL id) */
   const RU_TITLES = {
@@ -3778,6 +3961,7 @@ body.mobile-app .offline-banner {
     forceDemo: new URLSearchParams(location.search).has('demo'),
     settings: {
       searchLang: 'auto',
+      catalog: normalizeCatalogPreferences(),
     },
     modalId: null,
     exchange: {
@@ -3794,6 +3978,8 @@ body.mobile-app .offline-banner {
     franchiseById: new Map(),
     franchiseLoading: new Set(),
     franchiseErrors: new Map(),
+    synopsisModes: new Map(),
+    synopsisTranslating: new Set(),
     customCards: [],
     moments: {},
     customForm: { open: false, editingId: null, error: '', busy: false },
@@ -3851,6 +4037,7 @@ body.mobile-app .offline-banner {
       buffer: [],
       seen: new Set(),
       sources: [],
+      failedSources: [],
       providerOk: false,
     };
   }
@@ -4131,8 +4318,11 @@ body.mobile-app .offline-banner {
       epInfo: rawState.epInfo && typeof rawState.epInfo === 'object' ? rawState.epInfo : {},
       seenNotifications: Array.isArray(rawState.seenNotifications) ? rawState.seenNotifications : [],
       settings: rawState.settings && typeof rawState.settings === 'object'
-        ? { searchLang: C.normalizeSearchLang(rawState.settings.searchLang) }
-        : { searchLang: 'auto' },
+        ? {
+          searchLang: C.normalizeSearchLang(rawState.settings.searchLang),
+          catalog: normalizeCatalogPreferences(rawState.settings.catalog),
+        }
+        : { searchLang: 'auto', catalog: normalizeCatalogPreferences() },
     };
 
     const moments = {};
@@ -4151,13 +4341,37 @@ body.mobile-app .offline-banner {
       }
     }
 
+    const nextValues = new Map([
+      [LS_KEY, JSON.stringify(cleanState)],
+      [MOMENTS_KEY, JSON.stringify(moments)],
+      [TRANSLATIONS_KEY, Object.keys(translations).length ? JSON.stringify(translations) : null],
+    ]);
+    let previousValues;
     try {
-      localStorage.setItem(LS_KEY, JSON.stringify(cleanState));
-      localStorage.setItem(MOMENTS_KEY, JSON.stringify(moments));
-      if (Object.keys(translations).length) localStorage.setItem(TRANSLATIONS_KEY, JSON.stringify(translations));
-      else localStorage.removeItem(TRANSLATIONS_KEY);
-    } catch (err) {
-      throw new Error('Браузер не смог записать копию: не хватает места.');
+      previousValues = new Map([...nextValues.keys()].map(key => [key, localStorage.getItem(key)]));
+    } catch {
+      throw new Error('Не удалось прочитать текущие данные перед восстановлением.');
+    }
+
+    try {
+      for (const [key, value] of nextValues) {
+        if (value == null) localStorage.removeItem(key);
+        else localStorage.setItem(key, value);
+      }
+    } catch {
+      let rollbackFailed = false;
+      for (const [key, value] of previousValues) {
+        try {
+          if (value == null) localStorage.removeItem(key);
+          else localStorage.setItem(key, value);
+        } catch { rollbackFailed = true; }
+      }
+      loadState();
+      loadMoments();
+      if (App.reloadTranslationCache) App.reloadTranslationCache();
+      throw new Error(rollbackFailed
+        ? 'Не удалось восстановить копию или вернуть прежние данные. Проверьте хранилище браузера.'
+        : 'Браузер не смог записать копию: не хватает места. Прежние данные возвращены.');
     }
 
     loadState();
@@ -4237,6 +4451,41 @@ body.mobile-app .offline-banner {
     });
   }
 
+  async function mediaEntries() {
+    const db = await openMediaDB();
+    if (!db) throw new Error('Хранилище медиа недоступно.');
+    return new Promise((resolve, reject) => {
+      const entries = [];
+      try {
+        const tx = db.transaction(['images', 'media'], 'readonly');
+        for (const storeName of ['images', 'media']) {
+          const request = tx.objectStore(storeName).openCursor();
+          request.onsuccess = () => {
+            const cursor = request.result;
+            if (!cursor) return;
+            if (cursor.value instanceof Blob) entries.push({ store: storeName, key: String(cursor.key), blob: cursor.value });
+            cursor.continue();
+          };
+        }
+        tx.oncomplete = () => resolve(entries);
+        tx.onerror = tx.onabort = () => reject(new Error('Не удалось прочитать медиа из хранилища.'));
+      } catch (error) { reject(error); }
+    });
+  }
+
+  async function mediaPutMany(entries) {
+    const db = await openMediaDB();
+    if (!db) throw new Error('Хранилище медиа недоступно.');
+    return new Promise((resolve, reject) => {
+      try {
+        const tx = db.transaction(['images', 'media'], 'readwrite');
+        for (const entry of entries) tx.objectStore(entry.store).put(entry.blob, entry.key);
+        tx.oncomplete = () => resolve(entries.length);
+        tx.onerror = tx.onabort = () => reject(new Error('Не удалось записать медиа. Исходные файлы сохранены.'));
+      } catch (error) { reject(error); }
+    });
+  }
+
   function loadState() {
     let raw = null;
     try { raw = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch { raw = null; }
@@ -4248,6 +4497,7 @@ body.mobile-app .offline-banner {
       state.seenNotifications = new Set();
       state.customCards = [];
       state.settings.searchLang = 'auto';
+      state.settings.catalog = normalizeCatalogPreferences();
       return;
     }
     state.lists.watched = normalizeTiers(raw.watched);
@@ -4263,6 +4513,7 @@ body.mobile-app .offline-banner {
       .slice(0, CUSTOM_LIMIT);
     state.seenNotifications = new Set(Array.isArray(raw.seenNotifications) ? raw.seenNotifications : []);
     state.settings.searchLang = C.normalizeSearchLang(raw.settings && raw.settings.searchLang);
+    state.settings.catalog = normalizeCatalogPreferences(raw.settings && raw.settings.catalog);
 
     state.progress = {};
     if (raw.progress && typeof raw.progress === 'object') {
@@ -4297,7 +4548,10 @@ body.mobile-app .offline-banner {
         progress: state.progress,
         epInfo,
         seenNotifications: [...state.seenNotifications],
-        settings: { searchLang: C.normalizeSearchLang(state.settings.searchLang) },
+        settings: {
+          searchLang: C.normalizeSearchLang(state.settings.searchLang),
+          catalog: normalizeCatalogPreferences(state.settings.catalog),
+        },
       }));
     } catch (err) {
       console.warn('localStorage', err);
@@ -4524,6 +4778,8 @@ body.mobile-app .offline-banner {
     mediaPut,
     mediaGet,
     mediaDelete,
+    mediaEntries,
+    mediaPutMany,
     loadState,
     saveState,
     allIn,
@@ -5095,6 +5351,79 @@ body.mobile-app .offline-banner {
     'ангельские ритмы': 'Angel Beats!',
     'мастера меча онлайн': 'Sword Art Online',
     'нет игры нет жизни': 'No Game No Life',
+    'наруто': 'Naruto',
+    'наруто ураганные хроники': 'Naruto: Shippuuden',
+    'боруто': 'Boruto: Naruto Next Generations',
+    'джо джо': 'JoJo no Kimyou na Bouken',
+    'невероятные приключения джо джо': 'JoJo no Kimyou na Bouken',
+    'доктор стоун': 'Dr. Stone',
+    'токийские мстители': 'Tokyo Revengers',
+    'класс убийц': 'Ansatsu Kyoushitsu',
+    'класс превосходства': 'Youkoso Jitsuryoku Shijou Shugi no Kyoushitsu e',
+    'обещанный неверленд': 'Yakusoku no Neverland',
+    'паразит учение о жизни': 'Kiseijuu: Sei no Kakuritsu',
+    'паразит': 'Kiseijuu: Sei no Kakuritsu',
+    'тетрадь смерти': 'Death Note',
+    'психопаспорт': 'Psycho-Pass',
+    'самурай чамплу': 'Samurai Champloo',
+    'созданный в бездне': 'Made in Abyss',
+    'дитя погоды': 'Tenki no Ko',
+    'унесённые призраками': 'Sen to Chihiro no Kamikakushi',
+    'унесенные призраками': 'Sen to Chihiro no Kamikakushi',
+    'принцесса мононоке': 'Mononoke Hime',
+    'мой сосед тоторо': 'Tonari no Totoro',
+    'ходячий замок': 'Howl no Ugoku Shiro',
+    'киберпанк': 'Cyberpunk: Edgerunners',
+    'киберпанк бегущие по краю': 'Cyberpunk: Edgerunners',
+    'синяя тюрьма': 'Blue Lock',
+    'голубой экзорцист': 'Ao no Exorcist',
+    'чёрный клевер': 'Black Clover',
+    'черный клевер': 'Black Clover',
+    'семья шпиона': 'Spy x Family',
+    'семья шпиона код белый': 'Spy x Family Code: White',
+    'поднятие уровня в одиночку': 'Ore dake Level Up na Ken',
+    'соло левелинг': 'Ore dake Level Up na Ken',
+    'дандадан': 'Dandadan',
+    'подземелье вкусностей': 'Dungeon Meshi',
+    'фрирен': 'Sousou no Frieren',
+    'провожающая в последний путь фрирен': 'Sousou no Frieren',
+    'магическая битва': 'Jujutsu Kaisen',
+    'человек бензопила': 'Chainsaw Man',
+    'человек-бензопила': 'Chainsaw Man',
+    'клинок рассекающий демонов': 'Kimetsu no Yaiba',
+    'клинок, рассекающий демонов': 'Kimetsu no Yaiba',
+    'атака титанов': 'Shingeki no Kyojin',
+    'атака на титанов': 'Shingeki no Kyojin',
+    'стальной алхимик': 'Fullmetal Alchemist',
+    'стальной алхимик братство': 'Fullmetal Alchemist: Brotherhood',
+    'хантер хантер': 'Hunter x Hunter',
+    'охотник х охотник': 'Hunter x Hunter',
+    'повелитель': 'Overlord',
+    'восхождение героя щита': 'Tate no Yuusha no Nariagari',
+    'эта прекрасная жизнь': 'Kono Subarashii Sekai ni Shukufuku wo!',
+    'коносуба': 'Kono Subarashii Sekai ni Shukufuku wo!',
+    'ре зеро': 'Re:Zero kara Hajimeru Isekai Seikatsu',
+    'ре зеро жизнь с нуля': 'Re:Zero kara Hajimeru Isekai Seikatsu',
+    'врата штейна': 'Steins;Gate',
+    'волейбол': 'Haikyuu!!',
+    'токийский гуль': 'Tokyo Ghoul',
+    'ангельские ритмы': 'Angel Beats!',
+    'ангельские ритмы!': 'Angel Beats!',
+    'форма голоса': 'Koe no Katachi',
+    'твоё имя': 'Kimi no Na wa',
+    'твое имя': 'Kimi no Na wa',
+    'ванпанчмен': 'One Punch Man',
+    'ван панч мен': 'One Punch Man',
+    'восемьдесят шесть': '86',
+    'эрго прокси': 'Ergo Proxy',
+    'моногатари': 'Bakemonogatari',
+    'триган': 'Trigun',
+    'крутой учитель онидзука': 'Great Teacher Onizuka',
+    'гуррен лаганн': 'Tengen Toppa Gurren Lagann',
+    'код гиас': 'Code Geass: Hangyaku no Lelouch',
+    'сад изящных слов': 'Kotonoha no Niwa',
+    'девочка покорившая время': 'Toki wo Kakeru Shoujo',
+    'девочка, покорившая время': 'Toki wo Kakeru Shoujo',
   };
 
   let ruAliasIndex = null;
@@ -5122,14 +5451,7 @@ body.mobile-app .offline-banner {
     const index = buildRuAliasIndex();
     if (index.has(needle)) return index.get(needle);
 
-    let best = null;
-    for (const [ruKey, alt] of index) {
-      if (!ruKey || !alt) continue;
-      if (ruKey.includes(needle) || needle.includes(ruKey)) {
-        if (!best || ruKey.length < best.length) best = { length: ruKey.length, alt };
-      }
-    }
-    return best ? best.alt : raw;
+    return raw;
   }
 
   const resolveCache = new Map();
@@ -5398,6 +5720,7 @@ body.mobile-app .offline-banner {
       let succeeded = 0;
       for (const result of results) {
         if (!result.ok) {
+          if (!alt.failedSources.includes(result.source)) alt.failedSources.push(result.source);
           if (result.source === 'AniList') alt.anilistDone = true;
           if (result.source === 'Kitsu') alt.kitsuDone = true;
           continue;
@@ -5933,24 +6256,37 @@ body.mobile-app .offline-banner {
   function resetDBFilters() {
     state.db.filters = C.normalizeFilters(C.DEFAULT_FILTERS);
     syncFilterUI();
+    if (App.persistCatalogPreferences) App.persistCatalogPreferences();
   }
 
   function updateDBStatus() {
     const el = $('#db-status');
     if (!el) return;
     const s = state.db;
+    const resolutionLabels = {
+      dictionary: 'словарь AniTier',
+      anilist: 'название AniList',
+      mymemory: 'перевод MyMemory',
+      raw: 'исходный запрос',
+    };
+    const resolution = s.query && s.resolveVia ? ` · запрос: ${resolutionLabels[s.resolveVia] || 'без преобразования'}` : '';
+    const unavailable = s.alt && s.alt.failedSources && s.alt.failedSources.length
+      ? ` · недоступен: ${s.alt.failedSources.join(', ')}`
+      : '';
     if (!s.items.length) {
-      el.textContent = '';
+      el.textContent = s.query && !s.loading
+        ? `Проверено: ${s.sources.length ? s.sources.join(' + ') : 'нет доступных источников'}${resolution}${unavailable}`
+        : '';
       return;
     }
     const page = Math.max(1, s.page - 1);
     const sources = s.sources.length ? ` · ${s.sources.join(' + ')}` : '';
     if (s.loading) {
-      el.textContent = `Показано ${s.items.length} · загружаем страницу ${s.page}…${sources}`;
+      el.textContent = `Показано ${s.items.length} · загружаем страницу ${s.page}…${sources}${resolution}${unavailable}`;
     } else if (s.hasNext) {
-      el.textContent = `Показано ${s.items.length} · страница ${page}${sources}`;
+      el.textContent = `Показано ${s.items.length} · страница ${page}${sources}${resolution}${unavailable}`;
     } else {
-      el.textContent = `Показано ${s.items.length} · все результаты${sources}`;
+      el.textContent = `Показано ${s.items.length} · все результаты${sources}${resolution}${unavailable}`;
     }
   }
 
@@ -5967,7 +6303,10 @@ body.mobile-app .offline-banner {
       return;
     }
     if (s.error && !s.items.length) {
-      grid.innerHTML = msgBlock('⚠️', 'Не удалось загрузить базу', s.error, 'retry-db');
+      const status = s.query && s.resolveVia
+        ? ` Поиск: ${s.resolveVia === 'dictionary' ? 'словарь AniTier' : s.resolveVia === 'anilist' ? 'название AniList' : s.resolveVia === 'mymemory' ? 'перевод MyMemory' : 'исходная фраза'}.`
+        : '';
+      grid.innerHTML = msgBlock('⚠️', 'Не удалось загрузить базу', `${s.error}${status}`, 'retry-db');
       if (more) more.hidden = true;
       updateDBStatus();
       return;
@@ -5986,7 +6325,23 @@ body.mobile-app .offline-banner {
       }
       const hasFilters = C.hasActiveFilters(s.filters);
       let text = 'Попробуйте обновить данные.';
-      if (s.query) text = `По запросу «${s.query}» нет результатов. Попробуйте другое название или ослабьте фильтры.`;
+      if (s.query) {
+        const resolutionLabels = {
+          dictionary: 'подобрано английское название из словаря AniTier',
+          anilist: 'найден английский вариант названия в AniList',
+          mymemory: 'название переведено через MyMemory',
+          raw: 'запрос передан без преобразования',
+        };
+        const resolution = resolutionLabels[s.resolveVia] || 'запрос передан без преобразования';
+        const tried = s.sources.length ? ` Проверены: ${s.sources.join(' и ')}.` : '';
+        const unavailable = s.alt && s.alt.failedSources && s.alt.failedSources.length
+          ? ` Не ответили: ${s.alt.failedSources.join(' и ')}.`
+          : '';
+        const resolved = s.resolvedQuery && s.resolvedQuery !== s.query
+          ? ` Искали «${s.resolvedQuery}» (${resolution}).`
+          : ` Способ поиска: ${resolution}.`;
+        text = `По запросу «${s.query}» нет результатов.${resolved}${tried}${unavailable} Попробуйте другое название или ослабьте фильтры.`;
+      }
       else if (hasFilters) text = 'По выбранным фильтрам ничего не нашлось. Попробуйте ослабить условия.';
       grid.innerHTML = msgBlock('🔎', 'Ничего не нашлось', text);
       if (more) more.hidden = true;
@@ -6553,9 +6908,19 @@ body.mobile-app .offline-banner {
           </label>
         </div>
       </div>
+      <div class="backup-block">
+        <h3>Медиа отдельно</h3>
+        <p>Перенесите полные постеры, видео и GIF в отдельном архиве до 500 МБ. Для переноса на другое устройство сначала восстановите JSON-копию, затем импортируйте этот архив.</p>
+        <div class="form-actions">
+          <button class="btn btn-ghost" type="button" data-action="media-export"${disabled}>${f.busy ? 'Подождите…' : 'Экспортировать медиа'}</button>
+          <label class="btn btn-ghost file-btn${f.busy ? ' is-disabled' : ''}">Импортировать медиа
+            <input type="file" accept=".bin,application/octet-stream" data-action="media-file"${disabled} hidden>
+          </label>
+        </div>
+      </div>
       ${driveBlock}
       ${status}
-      <p class="form-note backup-note">Видео и GIF из моментов не входят в копию: они слишком большие для JSON. После восстановления на новом устройстве останутся подписи, ссылки TikTok и миниатюры.</p>`;
+      <p class="form-note backup-note">В JSON входят подписи, ссылки TikTok и миниатюры. Полные постеры, видео и GIF переносите отдельным медиаархивом.</p>`;
   }
 
   function openBackup() {
@@ -6908,6 +7273,7 @@ body.mobile-app .offline-banner {
 
   function franchiseRelationLabel(type) {
     if (type === 'PREQUEL' || type === 'PARENT') return 'Смотреть раньше';
+    if (type === 'CURRENT') return 'Текущая часть';
     if (type === 'SEQUEL') return 'Следующий сезон';
     if (type === 'SPIN_OFF') return 'Спин-офф';
     return 'Связанная история';
@@ -6925,17 +7291,23 @@ body.mobile-app .offline-banner {
     if (!related) return '<div class="modal-section franchise-section"><div class="modal-label">Сезоны и порядок просмотра</div><p class="hint">Проверяем, есть ли связанные сезоны…</p></div>';
     if (!related.length) return '<div class="modal-section franchise-section"><div class="modal-label">Сезоны и порядок просмотра</div><p class="hint">Связанные сезоны и продолжения не найдены.</p></div>';
 
-    const rows = related.map(link => {
+    const before = related.filter(link => link.relationType === 'PREQUEL' || link.relationType === 'PARENT');
+    const after = related.filter(link => link.relationType !== 'PREQUEL' && link.relationType !== 'PARENT');
+    const ordered = [...before, { anime, relationType: 'CURRENT' }, ...after];
+    const rows = ordered.map(link => {
       const item = link.anime;
       const tier = findTier('watched', item.id) || findTier('planned', item.id);
       const progress = watchedCount(item.id);
-      const meta = [item.year || '', item.episodes ? `${item.episodes} серий` : '', tier ? `тир ${tier}` : 'не в тир-листе', progress ? `просмотрено ${progress}` : ''].filter(Boolean).join(' · ');
-      return `<article class="franchise-link" data-action="open" data-id="${item.id}" tabindex="0" role="button" aria-label="Открыть ${esc(item.title)}">
-        <span class="franchise-link-main"><span class="franchise-link-kind">${esc(franchiseRelationLabel(link.relationType))}</span><b>${esc(item.title)}</b><small>${esc(meta)}</small></span>
-        <span class="franchise-link-arrow" aria-hidden="true">›</span>
+      const isCurrent = link.relationType === 'CURRENT';
+      const meta = [typeRu(item.type) || '', item.year || '', item.episodes ? `${item.episodes} серий` : ''].filter(Boolean).join(' · ');
+      const listStatus = tier ? `В тире ${tier}` : 'Не в тир-листе';
+      const progressStatus = progress ? `Просмотрено ${progress}${item.episodes ? ` из ${item.episodes}` : ''}` : '';
+      return `<article class="franchise-link${isCurrent ? ' franchise-current' : ''}" data-action="open" data-id="${item.id}" tabindex="0" role="button"${isCurrent ? ' aria-current="true"' : ''} aria-label="${isCurrent ? 'Текущая часть: ' : 'Открыть: '}${esc(item.title)}">
+        <span class="franchise-poster"><img ${imgAttrs(item)}>${item.score ? `<span class="franchise-score">★ ${item.score.toFixed(1)}</span>` : ''}<span class="franchise-link-arrow" aria-hidden="true">›</span></span>
+        <span class="franchise-link-main"><span class="franchise-link-kind">${esc(franchiseRelationLabel(link.relationType))}</span><b>${esc(item.title)}</b><small>${esc(meta || 'Данные уточняются')}</small><span class="franchise-link-status">${esc(listStatus)}${progressStatus ? ` · ${esc(progressStatus)}` : ''}</span></span>
       </article>`;
     }).join('');
-    return `<div class="modal-section franchise-section"><div class="modal-label">Сезоны и порядок просмотра</div><div class="franchise-list">${rows}</div><p class="hint">Добавляйте сезоны в тир-лист отдельно: у каждого свой тир и прогресс серий.</p></div>`;
+    return `<div class="modal-section franchise-section"><div class="modal-label">Сезоны и порядок просмотра</div><p class="franchise-intro">Сначала приквелы, затем открытая часть и продолжения. Нажмите карточку, чтобы перейти к сезону.</p><div class="franchise-list">${rows}</div><p class="hint">У каждого сезона свой тир-лист и прогресс серий.</p></div>`;
   }
 
   function loadFranchise(anime) {
@@ -7007,7 +7379,19 @@ body.mobile-app .offline-banner {
     const genres = (a.genres || []).map(g => `<span class="tag">${esc(C.genreRu(g))}</span>`).join('');
     const poster = a.image || makePoster(a.title, a.id);
     const translatedSynopsis = App.cachedTranslation ? App.cachedTranslation(a.synopsis) : '';
-    const synopsis = translatedSynopsis || a.synopsis || 'Описание пока недоступно.';
+    const canTranslateSynopsis = Boolean(a.synopsis && !C.hasCyrillic(a.synopsis));
+    const synopsisMode = state.synopsisModes.get(a.id) || 'translated';
+    const showTranslatedSynopsis = Boolean(canTranslateSynopsis && translatedSynopsis && synopsisMode !== 'original');
+    const synopsis = (showTranslatedSynopsis ? translatedSynopsis : a.synopsis) || 'Описание пока недоступно.';
+    const synopsisControls = canTranslateSynopsis
+      ? `<div class="synopsis-toolbar">
+          <span class="synopsis-translation-status" role="status">${translatedSynopsis ? (showTranslatedSynopsis ? 'Перевод MyMemory' : 'Оригинал') : (state.synopsisTranslating.has(a.id) ? 'Переводим…' : 'Перевод пока недоступен')}</span>
+          <div class="synopsis-switch" role="group" aria-label="Язык описания">
+            <button type="button" data-action="synopsis-mode" data-id="${a.id}" data-mode="translated" aria-pressed="${showTranslatedSynopsis ? 'true' : 'false'}"${translatedSynopsis ? '' : ' disabled'}>Перевод</button>
+            <button type="button" data-action="synopsis-mode" data-id="${a.id}" data-mode="original" aria-pressed="${!showTranslatedSynopsis ? 'true' : 'false'}">Оригинал</button>
+          </div>
+        </div>`
+      : '';
 
     content.innerHTML = `
       <div class="modal-grid">
@@ -7040,7 +7424,11 @@ body.mobile-app .offline-banner {
             ${renderEpisodeBlock(a, 'modal')}
           </div>
           ${momentsHTML(a)}
-          <p class="modal-synopsis"${translatedSynopsis ? ' data-translated="1" title="Автоматический перевод"' : ''}>${esc(synopsis)}</p>
+          <section class="modal-section modal-synopsis-section">
+            <div class="modal-label">Описание</div>
+            ${synopsisControls}
+            <p class="modal-synopsis"${showTranslatedSynopsis ? ' data-translated="1" title="Автоматический перевод"' : ''}>${esc(synopsis)}</p>
+          </section>
           ${genres ? `<div class="tags">${genres}</div>` : ''}
           ${sourceLine}
         </div>
@@ -7067,10 +7455,13 @@ body.mobile-app .offline-banner {
     });
     $$('.view').forEach(v => { v.hidden = v.id !== 'view-' + tab; });
 
-    if (tab === 'db') renderDB();
-    if (tab === 'watched' || tab === 'planned') renderTierList(tab);
-    if (tab === 'notifications') { renderNotifications(); markNotificationsSeen(); fetchNotifications(); ensureNotificationEpisodes(); }
-    if (tab === 'upcoming') fetchUpcoming();
+    if (!opts.deferActions) {
+      if (tab === 'db') renderDB();
+      if (tab === 'watched' || tab === 'planned') renderTierList(tab);
+      if (tab === 'notifications') { renderNotifications(); markNotificationsSeen(); fetchNotifications(); ensureNotificationEpisodes(); }
+      if (tab === 'upcoming') fetchUpcoming();
+    }
+    if (!opts.deferPersistence && App.persistCatalogPreferences) App.persistCatalogPreferences();
     updateOfflineBanner();
 
     if (!opts.silent) window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -7227,6 +7618,8 @@ body.mobile-app .offline-banner {
     mediaPut,
     mediaGet,
     mediaDelete,
+    mediaEntries,
+    mediaPutMany,
     toggleEpisode,
     setWatchedUpTo,
     clearProgress,
@@ -7259,12 +7652,15 @@ body.mobile-app .offline-banner {
     translateText,
     cachedTranslation,
     resolveSearchQuery,
+    searchQueryForAlt,
     fetchTikTokMeta,
     driveSaveBackup,
     driveLoadBackup,
   } = App;
 
   const DAILY_SYNC_KEY = 'anitier.daily-sync.v1';
+  const MEDIA_ARCHIVE_MAGIC = 'ANITIER-MEDIA/1\n';
+  const MEDIA_ARCHIVE_LIMIT = 500 * 1024 * 1024;
 
   const {
     renderDB,
@@ -7745,20 +8141,44 @@ body.mobile-app .offline-banner {
   /* ---------------- события ---------------- */
   let searchTimer = null;
 
+  function persistCatalogPreferences() {
+    state.settings.catalog = {
+      tab: state.tab,
+      mode: state.db.mode,
+      query: state.db.query,
+      filters: state.db.filters,
+    };
+    saveState();
+  }
+
+  function restoreCatalogPreferences() {
+    const catalog = state.settings.catalog || {};
+    state.tab = catalog.tab || 'db';
+    state.db.mode = catalog.mode || 'popular';
+    state.db.query = catalog.query || '';
+    state.db.filters = C.normalizeFilters(catalog.filters);
+    const input = $('#search-input');
+    if (input) input.value = state.db.query;
+    syncFilterUI();
+    syncModeChips();
+    switchTab(state.tab, { silent: true, deferActions: true, deferPersistence: true });
+  }
+
   async function translateModalSynopsis(id) {
     const a = getAnime(id);
     if (!a || !a.synopsis || C.hasCyrillic(a.synopsis)) return '';
     const cached = cachedTranslation(a.synopsis);
     if (cached) return cached;
-
-    const translated = await translateText(a.synopsis);
-    if (!translated || state.modalId !== id) return translated;
-    const el = $('#modal-content .modal-synopsis');
-    if (el) {
-      el.textContent = translated;
-      el.dataset.translated = '1';
-      el.title = 'Автоматический перевод';
-    }
+    if (state.synopsisTranslating.has(id)) return '';
+    state.synopsisTranslating.add(id);
+    const status = $('#modal-content .synopsis-translation-status');
+    if (status) status.textContent = 'Переводим…';
+    let translated = '';
+    try { translated = await translateText(a.synopsis); }
+    catch { translated = ''; }
+    finally { state.synopsisTranslating.delete(id); }
+    if (state.modalId !== id) return translated;
+    if (App.renderModal) App.renderModal();
     return translated;
   }
 
@@ -7921,6 +8341,7 @@ body.mobile-app .offline-banner {
       const input = $('#search-input');
       if (input) input.value = '';
       syncModeChips();
+      persistCatalogPreferences();
       fetchDB(true);
       toast(existing ? 'Карточка обновлена' : 'Своя карточка создана');
     } catch (err) {
@@ -8281,6 +8702,10 @@ body.mobile-app .offline-banner {
   }
 
   async function restoreBackupText(text, source) {
+    if (!C.isBackupSizeAllowed(String(text == null ? '' : text).length)) {
+      setBackupMessage('Файл больше 30 МБ — это не резервная копия AniTier.', true);
+      return false;
+    }
     let parsed = null;
     try {
       parsed = C.parseBackupJson(text);
@@ -8294,11 +8719,10 @@ body.mobile-app .offline-banner {
     }
     try {
       const result = applyBackupData(parsed.data);
-      updateBell();
-      syncModeChips();
+      restoreCatalogPreferences();
       syncLangUI();
-      syncFilterUI();
-      if (state.db.mode === 'custom') fetchDB(true);
+      updateBell();
+      if (state.tab === 'db') fetchDB(true);
       setBackupMessage(`Копия восстановлена: карточек — ${result.cards}, тайтлов с моментами — ${result.moments}.`, false);
       toast('Резервная копия восстановлена');
       return true;
@@ -8310,7 +8734,7 @@ body.mobile-app .offline-banner {
 
   async function restoreBackupFile(file) {
     if (!file) return;
-    if (file.size > 30 * 1024 * 1024) {
+    if (!C.isBackupSizeAllowed(file.size)) {
       setBackupMessage('Файл больше 30 МБ — это не резервная копия AniTier.', true);
       return;
     }
@@ -8319,6 +8743,140 @@ body.mobile-app .offline-banner {
       await restoreBackupText(text, file.name || 'файл');
     } catch (err) {
       setBackupMessage(err && err.message ? err.message : 'Не удалось прочитать файл.', true);
+    }
+  }
+
+  async function buildMediaArchive() {
+    const entries = await mediaEntries();
+    const totalBytes = entries.reduce((sum, entry) => sum + entry.blob.size, 0);
+    if (totalBytes > MEDIA_ARCHIVE_LIMIT) throw new Error('Медиаархив больше 500 МБ. Удалите часть медиа и повторите экспорт.');
+    const manifest = entries.map(entry => ({
+      store: entry.store,
+      key: entry.key,
+      type: entry.blob.type || 'application/octet-stream',
+      size: entry.blob.size,
+    }));
+    const manifestBytes = new TextEncoder().encode(JSON.stringify({ kind: 'anitier.media', version: 1, entries: manifest }));
+    const header = new Uint8Array(20);
+    header.set(new TextEncoder().encode(MEDIA_ARCHIVE_MAGIC), 0);
+    new DataView(header.buffer).setUint32(16, manifestBytes.length, false);
+    return {
+      blob: new Blob([header, manifestBytes, ...entries.map(entry => entry.blob)], { type: 'application/octet-stream' }),
+      count: entries.length,
+      size: totalBytes,
+    };
+  }
+
+  function androidSaveMedia(blob) {
+    return new Promise((resolve, reject) => {
+      const bridge = window.AniTierAndroid;
+      let finished = false;
+      const settle = (ok, message) => {
+        if (finished) return;
+        finished = true;
+        delete window.__anitierMediaSaveReady;
+        delete window.__anitierMediaSaveFinished;
+        if (ok) resolve();
+        else reject(new Error(message || 'Не удалось сохранить медиаархив через Android.'));
+      };
+      window.__anitierMediaSaveReady = async ready => {
+        if (!ready) { settle(false, 'Не удалось открыть файл для сохранения.'); return; }
+        try {
+          const chunkSize = 256 * 1024;
+          for (let offset = 0; offset < blob.size; offset += chunkSize) {
+            const bytes = new Uint8Array(await blob.slice(offset, offset + chunkSize).arrayBuffer());
+            let binary = '';
+            for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+            if (!bridge.writeMediaChunk(btoa(binary))) throw new Error('Не удалось записать часть медиаархива.');
+          }
+          bridge.finishMediaSave(true);
+        } catch (error) {
+          bridge.finishMediaSave(false);
+          settle(false, error && error.message ? error.message : 'Не удалось передать медиаархив в Android.');
+        }
+      };
+      window.__anitierMediaSaveFinished = ok => settle(Boolean(ok), 'Не удалось сохранить медиаархив.');
+      try { bridge.beginMediaSave('anitier-media.bin'); }
+      catch (error) { settle(false, error && error.message); }
+    });
+  }
+
+  async function exportMediaFile() {
+    if (state.backup.busy) return;
+    state.backup.busy = true;
+    state.backup.message = '';
+    state.backup.error = false;
+    renderBackup();
+    try {
+      const archive = await buildMediaArchive();
+      if (window.AniTierAndroid && typeof window.AniTierAndroid.beginMediaSave === 'function') {
+        await androidSaveMedia(archive.blob);
+        setBackupMessage(`Медиаархив сохранён: ${archive.count} файлов, ${C.formatBytes(archive.size)}.`, false);
+        return;
+      }
+      const url = URL.createObjectURL(archive.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'anitier-media.bin';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+      setBackupMessage(`Медиаархив скачан: ${archive.count} файлов, ${C.formatBytes(archive.size)}.`, false);
+    } catch (error) {
+      setBackupMessage(error && error.message ? error.message : 'Не удалось экспортировать медиа.', true);
+    }
+  }
+
+  async function importMediaFile(file) {
+    if (!file) return;
+    if (state.backup.busy) return;
+    if (file.size > MEDIA_ARCHIVE_LIMIT) {
+      setBackupMessage('Файл больше 500 МБ — импорт медиа остановлен.', true);
+      return;
+    }
+    state.backup.busy = true;
+    state.backup.message = '';
+    state.backup.error = false;
+    renderBackup();
+    try {
+      if (file.size < 20) throw new Error('Файл слишком короткий и не похож на медиаархив AniTier.');
+      const header = new Uint8Array(await file.slice(0, 20).arrayBuffer());
+      const magic = new TextDecoder().decode(header.slice(0, 16));
+      if (magic !== MEDIA_ARCHIVE_MAGIC) throw new Error('Это не медиаархив AniTier.');
+      const manifestSize = new DataView(header.buffer, header.byteOffset, header.byteLength).getUint32(16, false);
+      if (!manifestSize || manifestSize > 10 * 1024 * 1024 || 20 + manifestSize > file.size) throw new Error('Повреждён заголовок медиаархива.');
+      let manifest;
+      try { manifest = JSON.parse(await file.slice(20, 20 + manifestSize).text()); }
+      catch { throw new Error('Манифест медиаархива повреждён.'); }
+      if (!manifest || manifest.kind !== 'anitier.media' || manifest.version !== 1 || !Array.isArray(manifest.entries) || manifest.entries.length > 10000) {
+        throw new Error('Формат медиаархива не поддерживается.');
+      }
+      let offset = 20 + manifestSize;
+      const entries = [];
+      for (const item of manifest.entries) {
+        const size = Number(item && item.size);
+        if (!item || !['images', 'media'].includes(item.store) || typeof item.key !== 'string' || !item.key || item.key.length > 120
+          || !Number.isSafeInteger(size) || size < 0 || offset + size > file.size) {
+          throw new Error('В медиаархиве есть некорректная запись.');
+        }
+        entries.push({ store: item.store, key: item.key, blob: file.slice(offset, offset + size, String(item.type || '').slice(0, 100)) });
+        offset += size;
+      }
+      if (offset !== file.size) throw new Error('Размер медиаархива не совпадает с его содержимым.');
+      const totalBytes = entries.reduce((sum, entry) => sum + entry.blob.size, 0);
+      const replace = entries.length ? ' Одноимённые медиафайлы будут заменены.' : '';
+      if (!window.confirm(`Импортировать ${entries.length} файлов (${C.formatBytes(totalBytes)})?${replace}`)) {
+        state.backup.busy = false;
+        renderBackup();
+        return false;
+      }
+      await mediaPutMany(entries);
+      setBackupMessage(`Импортировано файлов: ${entries.length} · ${C.formatBytes(totalBytes)}.`, false);
+      return true;
+    } catch (error) {
+      setBackupMessage(error && error.message ? error.message : 'Не удалось импортировать медиа.', true);
+      return false;
     }
   }
 
@@ -8384,6 +8942,16 @@ body.mobile-app .offline-banner {
           }
           break;
 
+        case 'synopsis-mode': {
+          if (id == null || !['translated', 'original'].includes(el.dataset.mode)) break;
+          const anime = getAnime(id);
+          if (!anime) break;
+          if (el.dataset.mode === 'translated' && !cachedTranslation(anime.synopsis)) break;
+          state.synopsisModes.set(id, el.dataset.mode);
+          renderModal();
+          break;
+        }
+
         case 'add-watched':
           toggleList('watched', getAnime(id));
           break;
@@ -8448,6 +9016,7 @@ body.mobile-app .offline-banner {
           const input = $('#search-input');
           if (input) input.value = '';
           syncModeChips();
+          persistCatalogPreferences();
           fetchDB(true);
           break;
         }
@@ -8464,6 +9033,7 @@ body.mobile-app .offline-banner {
           resetDBFilters();
           state.db.touched = true;
           syncModeChips();
+          persistCatalogPreferences();
           fetchDB(true);
           break;
 
@@ -8521,6 +9091,10 @@ body.mobile-app .offline-banner {
 
         case 'backup-download':
           saveBackupFile();
+          break;
+
+        case 'media-export':
+          exportMediaFile();
           break;
 
         case 'backup-drive-save':
@@ -8660,6 +9234,14 @@ body.mobile-app .offline-banner {
       restoreBackupFile(file);
     });
 
+    document.addEventListener('change', e => {
+      const input = e.target;
+      if (!input || input.dataset.action !== 'media-file') return;
+      const file = input.files && input.files[0];
+      input.value = '';
+      importMediaFile(file);
+    });
+
     const search = $('#search-input');
     if (search) {
       search.addEventListener('input', () => {
@@ -8668,6 +9250,7 @@ body.mobile-app .offline-banner {
         searchTimer = setTimeout(() => {
           state.db.query = val;
           state.db.touched = true;
+          persistCatalogPreferences();
           syncModeChips();
           fetchDB(true);
         }, 500);
@@ -8689,6 +9272,7 @@ body.mobile-app .offline-banner {
       filters.addEventListener('change', () => {
         state.db.filters = readFiltersFromUI();
         state.db.touched = true;
+        persistCatalogPreferences();
         syncModeChips();
         syncFilterUI();
         fetchDB(true);
@@ -8868,8 +9452,7 @@ body.mobile-app .offline-banner {
     loadState();
     loadMoments();
     initFilterOptions();
-    syncFilterUI();
-    syncModeChips();
+    restoreCatalogPreferences();
     syncLangUI();
     bindEvents();
     setupInfiniteScroll();
@@ -8925,8 +9508,13 @@ body.mobile-app .offline-banner {
     saveBackupFile,
     restoreBackupText,
     restoreBackupFile,
+    exportMediaFile,
+    buildMediaArchive,
+    androidSaveMedia,
+    importMediaFile,
     saveBackupToDrive,
     restoreFromDrive,
+    persistCatalogPreferences,
     driveAvailable,
     buildBackupPayload,
     applyBackupData,
@@ -8943,6 +9531,7 @@ body.mobile-app .offline-banner {
       clearMemoryApiCache: clearAniListCache,
       dailySyncIsDue,
       runDailySync,
+      persistCatalogPreferences,
       fetchAniList,
       clearPersistentApiCache,
       clearMemoryApiCache: clearAniListCache,
@@ -8955,6 +9544,7 @@ body.mobile-app .offline-banner {
       syncFilterUI,
       syncLangUI,
       resolveSearchQuery,
+      searchQueryForAlt,
       translateText,
       translateModalSynopsis,
       invalidateNotificationEpisodes,
@@ -8976,6 +9566,10 @@ body.mobile-app .offline-banner {
       openBackup,
       closeBackup,
       restoreBackupText,
+      exportMediaFile,
+      buildMediaArchive,
+      androidSaveMedia,
+      importMediaFile,
       buildBackupPayload,
       applyBackupData,
       driveAvailable,
