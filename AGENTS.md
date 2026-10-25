@@ -53,6 +53,11 @@ powershell -ExecutionPolicy Bypass -File .\android\build-apk.ps1
 graphify extract . --code-only
 graphify cluster-only . --no-label
 graphify query "вопрос"      # scoped подграф вместо чтения файлов
+
+# снимки графа по версиям и отчёт об изменениях
+powershell -ExecutionPolicy Bypass -File .\graph-versions.ps1                    # пересобрать и сохранить снимок текущей версии
+powershell -ExecutionPolicy Bypass -File .\graph-versions.ps1 -Tag v1.8.1        # снимок из git-тега
+powershell -ExecutionPolicy Bypass -File .\graph-versions.ps1 -Diff v1.8.1 v1.9.0 # отчёт об изменениях
 ```
 
 ## Граф знаний
