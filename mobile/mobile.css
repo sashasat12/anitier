@@ -347,12 +347,6 @@ body.mobile-app .filter-reset {
   touch-action: manipulation;
 }
 
-body.mobile-app .footer {
-  padding-bottom: calc(12px + env(safe-area-inset-bottom));
-  font-size: 11px;
-  text-align: center;
-}
-
 body.mobile-app .offline-banner {
   position: sticky;
   top: calc(56px + env(safe-area-inset-top));

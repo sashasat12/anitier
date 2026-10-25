@@ -2247,8 +2247,8 @@
     updateOfflineBanner();
     renderDB();
 
-    const yearEl = $('#footer-year');
-    if (yearEl) yearEl.textContent = new Date().getFullYear();
+    const versionEl = $('#footer-version');
+    if (versionEl) versionEl.textContent = C.APP_VERSION || '';
 
     const modal = $('#modal');
     if (modal) modal.hidden = true;

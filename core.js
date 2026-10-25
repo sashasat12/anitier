@@ -999,7 +999,7 @@
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.9.0';
+  const APP_VERSION = '1.9.1';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   function versionParts(value) {
