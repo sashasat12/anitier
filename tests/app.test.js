@@ -1325,6 +1325,65 @@
     }
   });
 
+  T.test('app: карточки тир-листа заполняют ряд без пустой полосы справа', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      const doc = win.document;
+      await win.__anitierTest.init();
+
+      const make = (id, title) => App.mapAniList(rawAniList(id, title, { idMal: id, title: { romaji: title } }));
+      App.addToList('planned', make(9201, 'Alpha Show'), 'S', true);
+      App.addToList('planned', make(9202, 'Beta Show'), 'S', true);
+      App.switchTab('planned');
+
+      const drop = doc.querySelector('#tiers-planned .tier-drop[data-tier="S"]');
+      T.assert(drop, 'Ряд тира S отрисован');
+      const cards = [...drop.querySelectorAll('.tier-card')];
+      T.eq(cards.length, 2, 'В тире два тайтла');
+
+      const width = cards[0].getBoundingClientRect().width;
+      T.assert(width > 126, `Карточка крупнее прежних 126px: ${Math.round(width)}`);
+      T.assert(width <= 241, 'Карточка не растягивается сверх предела');
+
+      const row = drop.getBoundingClientRect();
+      const left = cards[0].getBoundingClientRect().left - row.left;
+      const right = row.right - cards[cards.length - 1].getBoundingClientRect().right;
+      T.assert(Math.abs(left - right) <= 2, `Ряд заполнен симметрично: слева ${Math.round(left)}, справа ${Math.round(right)}`);
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: история изменений открывается из настроек и возвращает назад', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      const doc = win.document;
+      await win.__anitierTest.init();
+
+      App.openSettings();
+      const open = doc.querySelector('#settings-content [data-action="open-changelog"]');
+      T.assert(open, 'В настройках есть кнопка истории изменений');
+      open.click();
+
+      const content = doc.querySelector('#settings-content');
+      T.includes(content.textContent, 'История изменений');
+      T.includes(content.textContent, win.AniTierCore.APP_VERSION, 'Текущая версия в списке');
+      T.includes(content.textContent, '1.0.0', 'Видна и старая версия');
+      T.eq(content.querySelectorAll('.changelog-release').length, win.AniTierCore.CHANGELOG.length, 'Показаны все записи');
+      T.assert(content.querySelector('.changelog-badge'), 'Текущая версия помечена');
+
+      content.querySelector('[data-action="settings-back"]').click();
+      T.includes(doc.querySelector('#settings-content').textContent, 'Настройки', 'Назад возвращает в настройки');
+      T.assert(doc.querySelector('#settings-content [data-action="open-changelog"]'), 'Кнопка истории снова на месте');
+    } finally {
+      app.close();
+    }
+  });
+
   T.test('app: проверка обновлений сравнивает версию с GitHub', async () => {
     const app = await T.mountApp({ query: '?demo=1&test=1' });
     try {

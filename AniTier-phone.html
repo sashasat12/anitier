@@ -969,10 +969,10 @@ button { font-family: inherit; }
   border-radius: 14px;
   border: 1px dashed rgba(255, 255, 255, .1);
   background: linear-gradient(180deg, rgba(255, 255, 255, .028), rgba(255, 255, 255, .012));
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(126px, 1fr));
   gap: 10px;
-  align-content: flex-start;
+  align-content: start;
   transition: border-color .18s, background .18s, box-shadow .18s;
 }
 .tier-drop.is-over {
@@ -981,6 +981,7 @@ button { font-family: inherit; }
   box-shadow: inset 0 0 0 3px rgba(255, 77, 141, .08);
 }
 .tier-hint {
+  grid-column: 1 / -1;
   align-self: center;
   padding: 8px 10px;
   color: rgba(255, 255, 255, .22);
@@ -991,7 +992,8 @@ button { font-family: inherit; }
 
 .tier-card {
   position: relative;
-  width: 126px;
+  width: 100%;
+  min-width: 0;
   border-radius: 12px;
   border: 1px solid var(--line);
   background: #11151f;
@@ -1672,6 +1674,61 @@ button { font-family: inherit; }
   font-size: 11.5px;
 }
 .backup-block .form-actions { margin-top: 0; }
+
+/* ---------- история изменений ---------- */
+.changelog-screen-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.changelog-screen-head h2 { margin: 0; font-size: clamp(20px, 3vw, 24px); }
+.changelog-screen-head .btn { min-height: 36px; }
+.changelog { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
+.changelog-release {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .025);
+}
+.changelog-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.changelog-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: -.01em;
+}
+.changelog-badge {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(255, 77, 141, .16);
+  color: #ff9dbc;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.changelog-date { color: var(--muted); font-size: 11px; }
+.changelog-title { margin: 4px 0 8px; color: var(--text); font-size: 12.5px; font-weight: 600; }
+.changelog-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+.changelog-list li + li { margin-top: 4px; }
+.changelog-list li::marker { color: rgba(255, 77, 141, .65); }
+
 .backup-status {
   margin: 0 0 12px;
   padding: 10px 12px;
@@ -2051,8 +2108,7 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
   .tier-label > span { font-size: 20px; }
   .tier-label small { font-size: 7.5px; letter-spacing: .03em; }
   .tier-label em { font-size: 9px; padding: 0 6px; }
-  .tier-drop { padding: 8px; gap: 8px; min-height: 96px; }
-  .tier-card { width: 102px; }
+  .tier-drop { padding: 8px; gap: 8px; min-height: 96px; grid-template-columns: repeat(auto-fit, minmax(102px, 1fr)); }
   .tc-title { font-size: 10.5px; }
   .tc-remove { opacity: 1; width: 21px; height: 21px; }
 
@@ -2087,7 +2143,7 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .filters { grid-template-columns: 1fr; }
   .filter-reset { grid-column: auto; }
-  .tier-card { width: 92px; }
+  .tier-drop { grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); }
 }
 
 @media (hover: none) {
@@ -2363,9 +2419,8 @@ body.mobile-app .tier-drop {
   padding: 7px;
   gap: 7px;
   min-height: 90px;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
 }
-
-body.mobile-app .tier-card { width: 92px; }
 
 /* ---------- модалка как нижний лист ---------- */
 body.mobile-app .modal {
@@ -3774,8 +3829,82 @@ body.mobile-app .offline-banner {
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.9.1';
+  const APP_VERSION = '1.10.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
+
+  /* История изменений для экрана «Что нового». Новые версии — сверху.
+     Пункты пишем для пользователя: что теперь можно сделать, а не как это сделано. */
+  const CHANGELOG = [
+    {
+      version: '1.10.0',
+      date: '25 октября 2026',
+      title: 'История изменений и карточки на всю ширину',
+      items: [
+        'В настройках появился экран «История изменений»: что нового было в каждой версии.',
+        'Карточки в «Просмотрено» и «Запланировано» растягиваются по ширине экрана — справа больше нет пустой полосы.',
+      ],
+    },
+    {
+      version: '1.9.1',
+      date: '25 октября 2026',
+      title: 'Подвал без лишнего',
+      items: [
+        'Подвал сайта стал одной тихой строкой: версия, источники данных и напоминание, что списки хранятся в браузере.',
+        'В мобильной версии и APK подвал убран совсем — он только занимал место над нижней панелью.',
+      ],
+    },
+    {
+      version: '1.9.0',
+      date: '25 октября 2026',
+      title: 'Премьеры без повторов',
+      items: [
+        '«Скоро выйдут» больше не показывает тайтлы из «Просмотрено» и «Запланировано».',
+        'В календаре премьер появились поиск по названию, жанру и студии, фильтры по типу и месяцу, порядок по дате или названию.',
+        'Статус над сеткой показывает, сколько премьер скрыто из ваших списков.',
+      ],
+    },
+    {
+      version: '1.8.1',
+      date: '25 октября 2026',
+      title: 'Настройки и перетаскивание',
+      items: [
+        'Экран настроек: язык поиска, переводчик описаний, резервная копия, обмен тир-листами, проверка обновлений.',
+        'Напоминания о выходе серий в APK.',
+        'Перетаскивание карточек переписано: карточка идёт за пальцем после долгого нажатия и за мышью, страница прокручивается у краёв.',
+        'Поиск аниме в TikTok открывается прямо в приложении TikTok.',
+      ],
+    },
+    {
+      version: '1.6.0',
+      date: '24 октября 2026',
+      title: 'Перевод и TikTok',
+      items: [
+        'Выбор переводчика описаний и автоматический резервный перевод.',
+        'Поиск аниме в TikTok и добавление видео в карточку.',
+        'Крупнее постеры в уведомлениях, автопрокрутка при переносе карточек, горизонтальный выбор сезонов.',
+      ],
+    },
+    {
+      version: '1.5.0',
+      date: '24 октября 2026',
+      title: 'Каталог и карточки',
+      items: [
+        'Карточки сезонов и порядок просмотра.',
+        'Перевод описаний с переключением между оригиналом и переводом.',
+        'Улучшения поиска, фильтров и объединения данных AniList и Kitsu.',
+      ],
+    },
+    {
+      version: '1.0.0',
+      date: '22 октября 2026',
+      title: 'Первый релиз',
+      items: [
+        'База аниме через AniList и Kitsu, тир-листы, экспорт и импорт.',
+        'Уведомления, календарь премьер, прогресс серий.',
+        'Мобильная PWA и Android APK.',
+      ],
+    },
+  ];
 
   function versionParts(value) {
     return String(value == null ? '' : value)
@@ -3894,6 +4023,7 @@ body.mobile-app .offline-banner {
     RELEASE_NOTIFICATION_HORIZON_DAYS,
     APP_VERSION,
     GITHUB_URL,
+    CHANGELOG,
     compareVersions,
     parseLatestRelease,
     dragScrollDelta,
@@ -7267,6 +7397,42 @@ body.mobile-app .offline-banner {
     }).join('');
 
     renderStats(name);
+    layoutTierCards(root);
+  }
+
+  /* Карточки тир-листа делят ряд по-честному: если тайтлов немного, они
+     растягиваются на всю ширину, но не шире разумного предела; если предел
+     сработал — ряд центрируется, чтобы пустое место не копилось справа.
+     Когда тайтлов больше, чем помещается, работает обычная сетка. */
+  function layoutTierCards(root) {
+    if (!root) return;
+    const narrow = (typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 720px)').matches)
+      || document.body.classList.contains('mobile-app');
+    const minWidth = narrow ? 92 : 126;
+    const maxWidth = narrow ? 160 : 240;
+
+    for (const drop of root.querySelectorAll('.tier-drop')) {
+      const cards = drop.querySelectorAll('.tier-card');
+      drop.style.removeProperty('grid-template-columns');
+      drop.style.removeProperty('justify-content');
+      if (!cards.length) continue;
+      const style = window.getComputedStyle(drop);
+      const gap = parseFloat(style.columnGap) || 0;
+      const padding = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
+      const width = drop.clientWidth - padding;
+      if (width <= 0) continue;
+      const capacity = Math.max(1, Math.floor((width + gap) / (minWidth + gap)));
+
+      if (cards.length <= capacity) {
+        const per = Math.min(maxWidth, Math.floor((width - gap * (cards.length - 1)) / cards.length));
+        if (per >= minWidth) {
+          drop.style.gridTemplateColumns = `repeat(${cards.length}, ${per}px)`;
+          drop.style.justifyContent = 'center';
+          continue;
+        }
+      }
+      drop.style.gridTemplateColumns = `repeat(${Math.min(cards.length, capacity)}, minmax(0, 1fr))`;
+    }
   }
 
   function renderStats(name) {
@@ -7571,6 +7737,22 @@ body.mobile-app .offline-banner {
   }
 
   /* ---------------- настройки ---------------- */
+  function changelogHTML(current) {
+    const list = Array.isArray(C.CHANGELOG) ? C.CHANGELOG : [];
+    if (!list.length) return '<p class="custom-sub">История изменений пока пуста.</p>';
+    return `<div class="changelog">${list.map(entry => `
+      <article class="changelog-release">
+        <header class="changelog-head">
+          <h3>${esc(entry.version)}${entry.version === current ? '<span class="changelog-badge">текущая</span>' : ''}</h3>
+          ${entry.date ? `<span class="changelog-date">${esc(entry.date)}</span>` : ''}
+        </header>
+        ${entry.title ? `<p class="changelog-title">${esc(entry.title)}</p>` : ''}
+        <ul class="changelog-list">
+          ${(entry.items || []).map(item => `<li>${esc(item)}</li>`).join('')}
+        </ul>
+      </article>`).join('')}</div>`;
+  }
+
   function renderSettings() {
     const box = $('#settings-content');
     if (!box) return;
@@ -7583,6 +7765,16 @@ body.mobile-app .offline-banner {
     const searchLang = C.normalizeSearchLang(state.settings.searchLang);
     const provider = state.settings.translationProvider || 'auto';
     const github = C.GITHUB_URL || '';
+
+    if (screen.view === 'changelog') {
+      box.innerHTML = `<div class="changelog-screen-head">
+          <button class="btn btn-ghost" type="button" data-action="settings-back">← Назад</button>
+          <h2 id="settings-title">История изменений</h2>
+        </div>
+        <p class="custom-sub">Версия ${esc(version)} · что появилось в приложении.</p>
+        ${changelogHTML(version)}`;
+      return;
+    }
 
     const reminders = remindersSupported
       ? `<div class="backup-block">
@@ -7636,6 +7828,11 @@ body.mobile-app .offline-banner {
         </div>
       </div>
       <div class="backup-block">
+        <h3>Что нового</h3>
+        <p>История изменений по версиям: что появилось, что исправили и что стало удобнее.</p>
+        <button class="btn btn-ghost" type="button" data-action="open-changelog">История изменений</button>
+      </div>
+      <div class="backup-block">
         <h3>О приложении</h3>
         <p>Версия ${esc(version)}. Исходники и новости — на GitHub.</p>
         <div class="form-actions">
@@ -7650,7 +7847,7 @@ body.mobile-app .offline-banner {
   function openSettings() {
     if (state.modalId != null) closeModal();
     if (state.backup && state.backup.open) closeBackup();
-    state.settingsScreen = { open: true, checking: false, message: '', error: false, latest: null };
+    state.settingsScreen = { open: true, view: 'main', checking: false, message: '', error: false, latest: null };
     renderSettings();
     const modal = $('#settings-modal');
     if (modal) modal.hidden = false;
@@ -7660,7 +7857,7 @@ body.mobile-app .offline-banner {
   }
 
   function closeSettings() {
-    state.settingsScreen = { open: false, checking: false, message: '', error: false, latest: null };
+    state.settingsScreen = { open: false, view: 'main', checking: false, message: '', error: false, latest: null };
     const modal = $('#settings-modal');
     if (modal) modal.hidden = true;
     syncBodyScroll();
@@ -8269,6 +8466,7 @@ body.mobile-app .offline-banner {
     renderUpcoming,
     renderTierList,
     renderStats,
+    layoutTierCards,
     updateCounters,
     openCustomForm,
     closeCustomForm,
@@ -8406,6 +8604,7 @@ body.mobile-app .offline-banner {
     renderNotifications,
     renderUpcoming,
     renderTierList,
+    layoutTierCards,
     updateCounters,
     updateBell,
     updateOfflineBanner,
@@ -9903,6 +10102,15 @@ body.mobile-app .offline-banner {
   }
 
   function bindEvents() {
+    let tierLayoutTimer = 0;
+    window.addEventListener('resize', () => {
+      clearTimeout(tierLayoutTimer);
+      tierLayoutTimer = setTimeout(() => {
+        layoutTierCards(document.getElementById('tiers-watched'));
+        layoutTierCards(document.getElementById('tiers-planned'));
+      }, 120);
+    });
+
     document.addEventListener('click', e => {
       if (Date.now() < suppressTierClickUntil && e.target.closest && e.target.closest('.tier-card')) {
         e.preventDefault();
@@ -10120,6 +10328,24 @@ body.mobile-app .offline-banner {
 
         case 'check-updates':
           checkForUpdates();
+          break;
+
+        case 'open-changelog':
+          state.settingsScreen.view = 'changelog';
+          renderSettings();
+          {
+            const panel = $('#settings-panel');
+            if (panel) panel.scrollTop = 0;
+          }
+          break;
+
+        case 'settings-back':
+          state.settingsScreen.view = 'main';
+          renderSettings();
+          {
+            const panel = $('#settings-panel');
+            if (panel) panel.scrollTop = 0;
+          }
           break;
 
         case 'open-link':

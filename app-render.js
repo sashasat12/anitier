@@ -735,6 +735,42 @@
     }).join('');
 
     renderStats(name);
+    layoutTierCards(root);
+  }
+
+  /* Карточки тир-листа делят ряд по-честному: если тайтлов немного, они
+     растягиваются на всю ширину, но не шире разумного предела; если предел
+     сработал — ряд центрируется, чтобы пустое место не копилось справа.
+     Когда тайтлов больше, чем помещается, работает обычная сетка. */
+  function layoutTierCards(root) {
+    if (!root) return;
+    const narrow = (typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 720px)').matches)
+      || document.body.classList.contains('mobile-app');
+    const minWidth = narrow ? 92 : 126;
+    const maxWidth = narrow ? 160 : 240;
+
+    for (const drop of root.querySelectorAll('.tier-drop')) {
+      const cards = drop.querySelectorAll('.tier-card');
+      drop.style.removeProperty('grid-template-columns');
+      drop.style.removeProperty('justify-content');
+      if (!cards.length) continue;
+      const style = window.getComputedStyle(drop);
+      const gap = parseFloat(style.columnGap) || 0;
+      const padding = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
+      const width = drop.clientWidth - padding;
+      if (width <= 0) continue;
+      const capacity = Math.max(1, Math.floor((width + gap) / (minWidth + gap)));
+
+      if (cards.length <= capacity) {
+        const per = Math.min(maxWidth, Math.floor((width - gap * (cards.length - 1)) / cards.length));
+        if (per >= minWidth) {
+          drop.style.gridTemplateColumns = `repeat(${cards.length}, ${per}px)`;
+          drop.style.justifyContent = 'center';
+          continue;
+        }
+      }
+      drop.style.gridTemplateColumns = `repeat(${Math.min(cards.length, capacity)}, minmax(0, 1fr))`;
+    }
   }
 
   function renderStats(name) {
@@ -1039,6 +1075,22 @@
   }
 
   /* ---------------- настройки ---------------- */
+  function changelogHTML(current) {
+    const list = Array.isArray(C.CHANGELOG) ? C.CHANGELOG : [];
+    if (!list.length) return '<p class="custom-sub">История изменений пока пуста.</p>';
+    return `<div class="changelog">${list.map(entry => `
+      <article class="changelog-release">
+        <header class="changelog-head">
+          <h3>${esc(entry.version)}${entry.version === current ? '<span class="changelog-badge">текущая</span>' : ''}</h3>
+          ${entry.date ? `<span class="changelog-date">${esc(entry.date)}</span>` : ''}
+        </header>
+        ${entry.title ? `<p class="changelog-title">${esc(entry.title)}</p>` : ''}
+        <ul class="changelog-list">
+          ${(entry.items || []).map(item => `<li>${esc(item)}</li>`).join('')}
+        </ul>
+      </article>`).join('')}</div>`;
+  }
+
   function renderSettings() {
     const box = $('#settings-content');
     if (!box) return;
@@ -1051,6 +1103,16 @@
     const searchLang = C.normalizeSearchLang(state.settings.searchLang);
     const provider = state.settings.translationProvider || 'auto';
     const github = C.GITHUB_URL || '';
+
+    if (screen.view === 'changelog') {
+      box.innerHTML = `<div class="changelog-screen-head">
+          <button class="btn btn-ghost" type="button" data-action="settings-back">← Назад</button>
+          <h2 id="settings-title">История изменений</h2>
+        </div>
+        <p class="custom-sub">Версия ${esc(version)} · что появилось в приложении.</p>
+        ${changelogHTML(version)}`;
+      return;
+    }
 
     const reminders = remindersSupported
       ? `<div class="backup-block">
@@ -1104,6 +1166,11 @@
         </div>
       </div>
       <div class="backup-block">
+        <h3>Что нового</h3>
+        <p>История изменений по версиям: что появилось, что исправили и что стало удобнее.</p>
+        <button class="btn btn-ghost" type="button" data-action="open-changelog">История изменений</button>
+      </div>
+      <div class="backup-block">
         <h3>О приложении</h3>
         <p>Версия ${esc(version)}. Исходники и новости — на GitHub.</p>
         <div class="form-actions">
@@ -1118,7 +1185,7 @@
   function openSettings() {
     if (state.modalId != null) closeModal();
     if (state.backup && state.backup.open) closeBackup();
-    state.settingsScreen = { open: true, checking: false, message: '', error: false, latest: null };
+    state.settingsScreen = { open: true, view: 'main', checking: false, message: '', error: false, latest: null };
     renderSettings();
     const modal = $('#settings-modal');
     if (modal) modal.hidden = false;
@@ -1128,7 +1195,7 @@
   }
 
   function closeSettings() {
-    state.settingsScreen = { open: false, checking: false, message: '', error: false, latest: null };
+    state.settingsScreen = { open: false, view: 'main', checking: false, message: '', error: false, latest: null };
     const modal = $('#settings-modal');
     if (modal) modal.hidden = true;
     syncBodyScroll();
@@ -1737,6 +1804,7 @@
     renderUpcoming,
     renderTierList,
     renderStats,
+    layoutTierCards,
     updateCounters,
     openCustomForm,
     closeCustomForm,

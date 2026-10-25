@@ -443,4 +443,18 @@
     T.eq(C.upcomingMonthKey('2026-11-05'), '2026-11');
     T.eq(C.upcomingMonthKey(''), '');
   });
+
+  T.test('core: история изменений начинается с текущей версии и идёт по убыванию', () => {
+    const C = core();
+    const list = C.CHANGELOG;
+    T.assert(Array.isArray(list) && list.length > 0, 'История изменений не пуста');
+    T.eq(list[0].version, C.APP_VERSION, 'Первая запись — текущая версия');
+    for (let i = 1; i < list.length; i++) {
+      T.eq(C.compareVersions(list[i - 1].version, list[i].version), 1, `Порядок версий: ${list[i - 1].version} выше ${list[i].version}`);
+    }
+    for (const entry of list) {
+      T.assert(entry.title, `У версии ${entry.version} есть заголовок`);
+      T.assert(Array.isArray(entry.items) && entry.items.length > 0, `У версии ${entry.version} есть пункты`);
+    }
+  });
 })();

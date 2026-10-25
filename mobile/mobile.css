@@ -262,9 +262,8 @@ body.mobile-app .tier-drop {
   padding: 7px;
   gap: 7px;
   min-height: 90px;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
 }
-
-body.mobile-app .tier-card { width: 92px; }
 
 /* ---------- модалка как нижний лист ---------- */
 body.mobile-app .modal {

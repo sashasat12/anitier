@@ -92,6 +92,7 @@
     renderNotifications,
     renderUpcoming,
     renderTierList,
+    layoutTierCards,
     updateCounters,
     updateBell,
     updateOfflineBanner,
@@ -1589,6 +1590,15 @@
   }
 
   function bindEvents() {
+    let tierLayoutTimer = 0;
+    window.addEventListener('resize', () => {
+      clearTimeout(tierLayoutTimer);
+      tierLayoutTimer = setTimeout(() => {
+        layoutTierCards(document.getElementById('tiers-watched'));
+        layoutTierCards(document.getElementById('tiers-planned'));
+      }, 120);
+    });
+
     document.addEventListener('click', e => {
       if (Date.now() < suppressTierClickUntil && e.target.closest && e.target.closest('.tier-card')) {
         e.preventDefault();
@@ -1806,6 +1816,24 @@
 
         case 'check-updates':
           checkForUpdates();
+          break;
+
+        case 'open-changelog':
+          state.settingsScreen.view = 'changelog';
+          renderSettings();
+          {
+            const panel = $('#settings-panel');
+            if (panel) panel.scrollTop = 0;
+          }
+          break;
+
+        case 'settings-back':
+          state.settingsScreen.view = 'main';
+          renderSettings();
+          {
+            const panel = $('#settings-panel');
+            if (panel) panel.scrollTop = 0;
+          }
           break;
 
         case 'open-link':
