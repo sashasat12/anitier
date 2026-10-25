@@ -433,6 +433,9 @@
     backup: { open: false, busy: false, message: '', error: false },
     settingsScreen: { open: false, checking: false, message: '', error: false, latest: null },
     lists: { watched: emptyTiers(), planned: emptyTiers() },
+    /* Поиск и фильтры внутри «Просмотрено» и «Запланировано». Не сохраняются:
+       после перезапуска тир-лист снова показывает все тайтлы. */
+    listViews: { watched: emptyListView(), planned: emptyListView() },
     progress: {},
     epInfo: {},
     seenNotifications: new Set(),
@@ -480,6 +483,10 @@
     const o = {};
     for (const t of TIER_IDS) o[t] = [];
     return o;
+  }
+
+  function emptyListView() {
+    return { query: '', filters: C.normalizeFilters(C.DEFAULT_FILTERS) };
   }
 
   function createAltSearchState() {

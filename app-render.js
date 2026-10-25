@@ -713,15 +713,112 @@
   }
 
   /* ---------------- тир-листы ---------------- */
+  function listView(name) {
+    if (!state.listViews) state.listViews = {};
+    let view = state.listViews[name];
+    if (!view || typeof view !== 'object') view = { query: '', filters: C.DEFAULT_FILTERS };
+    view.query = String(view.query || '');
+    view.filters = C.normalizeFilters(view.filters);
+    state.listViews[name] = view;
+    return view;
+  }
+
+  function listToolsHTML(name) {
+    const typeOptions = C.TYPES
+      .map(item => `<option value="${esc(item.value)}">${esc(item.label)}</option>`).join('');
+    const scoreOptions = C.SCORES
+      .map(item => `<option value="${esc(item.value)}">${esc(item.label)}</option>`).join('');
+    return `<div class="search">
+        <input id="${name}-search" type="search" data-list-search="${name}" placeholder="Поиск: название, жанр, студия" autocomplete="off" aria-label="Поиск в списке">
+      </div>
+      <label class="filter-field">
+        <span>Тип</span>
+        <select id="${name}-type" data-list-filter="type" aria-label="Тип"><option value="">Любой</option>${typeOptions}</select>
+      </label>
+      <label class="filter-field">
+        <span>Жанр</span>
+        <select id="${name}-genre" data-list-filter="genre" aria-label="Жанр"><option value="">Любой</option></select>
+      </label>
+      <label class="filter-field">
+        <span>Год</span>
+        <select id="${name}-year" data-list-filter="year" aria-label="Год"><option value="">Любой</option></select>
+      </label>
+      <label class="filter-field">
+        <span>Рейтинг</span>
+        <select id="${name}-score" data-list-filter="minScore" aria-label="Рейтинг"><option value="">Любой</option>${scoreOptions}</select>
+      </label>
+      <button class="btn btn-ghost filter-reset" type="button" data-action="reset-list" data-list="${name}">Сбросить</button>`;
+  }
+
+  /* Панель поиска и фильтров строится один раз: при вводе перерисовывается
+     только тир-лист, поэтому поле не теряет фокус и курсор. */
+  function syncListControls(name, items) {
+    const tools = document.getElementById('list-tools-' + name);
+    if (!tools) return;
+    if (!tools.dataset.ready) {
+      tools.innerHTML = listToolsHTML(name);
+      tools.dataset.ready = '1';
+    }
+    const view = listView(name);
+    const search = tools.querySelector(`#${name}-search`);
+    if (search && document.activeElement !== search && search.value !== view.query) {
+      search.value = view.query;
+    }
+    const type = tools.querySelector(`#${name}-type`);
+    if (type) type.value = view.filters.type || '';
+    const score = tools.querySelector(`#${name}-score`);
+    if (score) score.value = view.filters.minScore || '';
+
+    const options = C.listFilterOptions(items);
+
+    const year = tools.querySelector(`#${name}-year`);
+    if (year) {
+      const keys = options.years.map(String);
+      const current = [...year.options].slice(1).map(option => option.value);
+      if (current.join('|') !== keys.join('|')) {
+        year.innerHTML = '<option value="">Любой</option>'
+          + keys.map(key => `<option value="${key}">${key}</option>`).join('');
+      }
+      if (!keys.includes(view.filters.year)) view.filters.year = '';
+      year.value = view.filters.year;
+    }
+
+    const genre = tools.querySelector(`#${name}-genre`);
+    if (genre) {
+      const keys = options.genres.map(item => String(item.id));
+      const current = [...genre.options].slice(1).map(option => option.value);
+      if (current.join('|') !== keys.join('|')) {
+        genre.innerHTML = '<option value="">Любой</option>'
+          + options.genres.map(item => `<option value="${item.id}">${esc(item.label)}</option>`).join('');
+      }
+      if (!keys.includes(view.filters.genre)) view.filters.genre = '';
+      genre.value = view.filters.genre;
+    }
+  }
+
+  function updateListStatus(name, all, shown) {
+    const el = document.getElementById('list-status-' + name);
+    if (!el) return;
+    const view = listView(name);
+    const active = C.countActiveFilters(view.filters) + (view.query.trim() ? 1 : 0);
+    if (!active) { el.textContent = ''; return; }
+    el.textContent = `Показано ${shown.length} из ${all.length} · фильтров: ${active}`;
+  }
+
   function renderTierList(name) {
     const root = document.getElementById(name === 'watched' ? 'tiers-watched' : 'tiers-planned');
     if (!root) return;
     const list = state.lists[name];
+    const all = allIn(name);
+    const shown = new Set(C.filterItems(all, listView(name)));
+    syncListControls(name, all);
 
     root.innerHTML = TIERS.map(t => {
-      const items = list[t.id] || [];
+      const tierItems = list[t.id] || [];
+      const items = tierItems.filter(a => shown.has(a));
+      const hidden = tierItems.length > 0 && items.length === 0;
       return `<div class="tier-row">
-        <div class="tier-label tier-${t.id}" title="${esc(t.name)}">
+        <div class="tier-label tier-${t.id}" title="${esc(t.name)}${items.length !== tierItems.length ? ` — показано ${items.length} из ${tierItems.length}` : ''}">
           <span>${t.label}</span>
           <small>${esc(t.id === 'N' ? 'Без оц.' : t.name)}</small>
           <em>${items.length}</em>
@@ -729,12 +826,13 @@
         <div class="tier-drop" data-list="${name}" data-tier="${t.id}">
           ${items.length
             ? items.map(a => tierCardHTML(name, a, t.id)).join('')
-            : '<span class="tier-hint">Перетащите аниме сюда</span>'}
+            : `<span class="tier-hint">${hidden ? 'Скрыто фильтром' : 'Перетащите аниме сюда'}</span>`}
         </div>
       </div>`;
     }).join('');
 
-    renderStats(name);
+    renderStats(name, all, [...shown]);
+    updateListStatus(name, all, [...shown]);
     layoutTierCards(root);
   }
 
@@ -773,18 +871,19 @@
     }
   }
 
-  function renderStats(name) {
+  function renderStats(name, all = allIn(name), shown = all) {
     const el = document.getElementById('stats-' + name);
     if (!el) return;
-    const all = allIn(name);
-    const eps = all.reduce((s, a) => s + (Number(a.episodes) || 0), 0);
-    const scored = all.filter(a => typeof a.score === 'number');
+    const items = Array.isArray(shown) ? shown : all;
+    const eps = items.reduce((s, a) => s + (Number(a.episodes) || 0), 0);
+    const scored = items.filter(a => typeof a.score === 'number');
     const avg = scored.length ? (scored.reduce((s, a) => s + a.score, 0) / scored.length).toFixed(2) : '—';
+    const topTier = items.filter(a => (state.lists[name].S || []).includes(a)).length;
     el.innerHTML = `
-      <div class="stat"><b>${all.length}</b><span>тайтлов</span></div>
+      <div class="stat"><b>${items.length}</b><span>тайтлов</span></div>
       <div class="stat"><b>${eps}</b><span>серий (известных)</span></div>
       <div class="stat"><b>${avg}</b><span>средний балл</span></div>
-      <div class="stat"><b>${(state.lists[name].S || []).length}</b><span>в тире S</span></div>`;
+      <div class="stat"><b>${topTier}</b><span>в тире S</span></div>`;
   }
 
   function updateCounters() {

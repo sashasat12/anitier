@@ -118,6 +118,26 @@
     T.eq(filtered.map(item => item.id), [2]);
   });
 
+  T.test('core: поиск в тир-листе идёт по жанрам, студиям и алиасам', () => {
+    const C = core();
+    const items = [
+      { id: 1, title: 'Альфа', altTitle: 'Alpha', genres: ['Action'], studios: ['Mappa'], year: 2020 },
+      { id: 2, title: 'Бета', originalTitle: 'Beta', genres: ['Romance'], studios: ['Kyoto Animation'], year: 2021 },
+      { id: 3, title: 'Гамма', aliases: ['Gamma'], genres: ['Drama'], studios: ['Ufotable'], year: 2020 },
+    ];
+    const ids = list => list.map(item => item.id);
+
+    T.eq(ids(C.filterItems(items, { query: 'mappa' })), [1], 'Ищет по студии');
+    T.eq(ids(C.filterItems(items, { query: 'романтика' })), [2], 'Ищет по русскому жанру');
+    T.eq(ids(C.filterItems(items, { query: 'gamma' })), [3], 'Ищет по алиасу');
+    T.eq(ids(C.filterItems(items, { query: 'beta' })), [2], 'Ищет по оригинальному названию');
+    T.eq(ids(C.filterItems(items, { filters: { year: '2020', genre: '1' } })), [1], 'Фильтры года и жанра складываются');
+
+    const options = C.listFilterOptions(items);
+    T.eq(options.years, [2021, 2020], 'Годы идут по убыванию');
+    T.eq(options.genres.map(genre => genre.label), ['Экшен', 'Драма', 'Романтика'], 'В фильтре только жанры из списка');
+  });
+
   T.test('core: активные фильтры считаются и нормализуются', () => {
     const C = core();
     const filters = C.normalizeFilters({ type: ' tv ', status: '', year: '2016', genre: '1', minScore: '8' });

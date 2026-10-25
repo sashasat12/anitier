@@ -43,7 +43,7 @@
     <b class="badge" id="bell-badge" hidden>0</b>
   </button>
   <button class="tab" role="tab" data-action="tab" data-tab="watched">
-    <span class="tab-ico" aria-hidden="true">✓</span><span>Смотрю</span>
+    <span class="tab-ico" aria-hidden="true">✓</span><span>Просмотрено</span>
     <b class="count" id="count-watched">0</b>
   </button>
   <button class="tab" role="tab" data-action="tab" data-tab="planned">
@@ -175,6 +175,8 @@
       </div>
     </div>
     <div class="stats" id="stats-watched"></div>
+    <div class="filters list-tools" id="list-tools-watched" data-list-tools="watched"></div>
+    <div class="db-status" id="list-status-watched" aria-live="polite"></div>
     <div class="tierlist" id="tiers-watched"></div>
   </section>
 
@@ -192,6 +194,8 @@
       </div>
     </div>
     <div class="stats" id="stats-planned"></div>
+    <div class="filters list-tools" id="list-tools-planned" data-list-tools="planned"></div>
+    <div class="db-status" id="list-status-planned" aria-live="polite"></div>
     <div class="tierlist" id="tiers-planned"></div>
   </section>
 

@@ -1331,6 +1331,87 @@
     }
   });
 
+  T.test('app: поиск и фильтры внутри «Просмотрено» показывают нужные тайтлы', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      const doc = win.document;
+      await win.__anitierTest.init();
+
+      const make = (id, title, extra) => Object.assign({
+        id,
+        malId: id,
+        title,
+        altTitle: '',
+        originalTitle: '',
+        type: 'TV',
+        status: 'Завершено',
+        year: 2020,
+        score: 8,
+        genres: ['Action'],
+        studios: ['Mappa'],
+        episodes: 12,
+        image: '',
+      }, extra);
+
+      App.addToList('watched', make(9401, 'Альфа', { year: 2020, score: 8.5 }), 'S', true);
+      App.addToList('watched', make(9402, 'Бета', {
+        genres: ['Romance'], studios: ['Kyoto Animation'], year: 2021, score: 7,
+      }), 'A', true);
+      App.addToList('watched', make(9403, 'Гамма', {
+        genres: ['Drama'], studios: ['Ufotable'], year: 2020, score: 9,
+      }), 'B', true);
+      App.switchTab('watched');
+
+      const tools = doc.querySelector('#list-tools-watched');
+      T.assert(tools, 'В тир-листе есть панель поиска и фильтров');
+      const search = doc.querySelector('#watched-search');
+      T.assert(search, 'Есть поле поиска по списку');
+      T.eq(
+        [...doc.querySelector('#watched-year').options].slice(1).map(option => option.value),
+        ['2021', '2020'],
+        'Годы берутся из самого списка',
+      );
+      T.eq(doc.querySelector('#watched-genre').options.length, 4, 'В жанрах только три жанра из списка');
+
+      const cards = () => doc.querySelectorAll('#tiers-watched .tier-card').length;
+      T.eq(cards(), 3, 'Без фильтров видны все тайтлы');
+
+      search.value = 'mappa';
+      search.dispatchEvent(new win.Event('input', { bubbles: true }));
+      T.eq(cards(), 1, 'Поиск по студии оставил один тайтл');
+      T.eq(doc.querySelector('#watched-search'), search, 'Поле поиска не пересоздаётся при вводе');
+      T.includes(doc.querySelector('#list-status-watched').textContent, 'Показано 1 из 3');
+      T.eq(doc.querySelector('#stats-watched .stat b').textContent, '1', 'Статистика считает показанные тайтлы');
+      T.includes(doc.querySelector('#tiers-watched').textContent, 'Альфа');
+      T.assert(!doc.querySelector('#tiers-watched').textContent.includes('Бета'), 'Другие тайтлы скрыты');
+
+      search.value = '';
+      search.dispatchEvent(new win.Event('input', { bubbles: true }));
+      T.eq(cards(), 3, 'Пустой поиск возвращает весь список');
+
+      const genre = doc.querySelector('#watched-genre');
+      genre.value = '22';
+      genre.dispatchEvent(new win.Event('change', { bubbles: true }));
+      T.eq(cards(), 1, 'Фильтр по жанру оставил романтику');
+      T.includes(doc.querySelector('#tiers-watched').textContent, 'Бета');
+
+      const year = doc.querySelector('#watched-year');
+      year.value = '2020';
+      year.dispatchEvent(new win.Event('change', { bubbles: true }));
+      T.eq(cards(), 0, 'Фильтры по году и жанру складываются');
+      T.includes(doc.querySelector('#list-status-watched').textContent, 'Показано 0 из 3');
+
+      doc.querySelector('#list-tools-watched [data-action="reset-list"]').click();
+      T.eq(cards(), 3, 'Сброс возвращает весь список');
+      T.eq(doc.querySelector('#watched-search').value, '', 'Поле поиска очищено');
+      T.eq(doc.querySelector('#list-status-watched').textContent, '', 'Статус фильтров скрывается без фильтров');
+    } finally {
+      app.close();
+    }
+  });
+
   T.test('app: карточки тир-листа заполняют ряд без пустой полосы справа', async () => {
     const app = await T.mountApp({ query: '?demo=1&test=1' });
     try {

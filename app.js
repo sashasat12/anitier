@@ -1796,6 +1796,13 @@
           App.renderUpcoming();
           break;
 
+        case 'reset-list': {
+          const name = el.dataset.list === 'planned' ? 'planned' : 'watched';
+          state.listViews[name] = { query: '', filters: C.normalizeFilters(C.DEFAULT_FILTERS) };
+          renderTierList(name);
+          break;
+        }
+
         case 'retry-all':
           retryAll();
           break;
@@ -2063,6 +2070,16 @@
     }
 
     document.addEventListener('input', e => {
+      const listSearch = e.target.closest && e.target.closest('[data-list-search]');
+      if (listSearch) {
+        const name = listSearch.dataset.listSearch === 'planned' ? 'planned' : 'watched';
+        if (!state.listViews[name]) {
+          state.listViews[name] = { query: '', filters: C.normalizeFilters(C.DEFAULT_FILTERS) };
+        }
+        state.listViews[name].query = listSearch.value;
+        renderTierList(name);
+        return;
+      }
       const tiktokQuery = e.target.closest && e.target.closest('#tiktok-import-search');
       if (tiktokQuery && state.tiktokImport.open) {
         state.tiktokImport.query = tiktokQuery.value;
@@ -2090,6 +2107,21 @@
           renderModal();
           if (state.synopsisModes.get(animeId) !== 'original') translateModalSynopsis(animeId);
         }
+      }
+      const listField = e.target.closest && e.target.closest('select[data-list-filter]');
+      if (listField) {
+        const tools = listField.closest('[data-list-tools]');
+        const name = tools && tools.dataset.listTools === 'planned' ? 'planned' : 'watched';
+        if (!state.listViews[name]) {
+          state.listViews[name] = { query: '', filters: C.normalizeFilters(C.DEFAULT_FILTERS) };
+        }
+        const view = state.listViews[name];
+        view.filters = C.normalizeFilters({
+          ...view.filters,
+          [listField.dataset.listFilter]: listField.value,
+        });
+        renderTierList(name);
+        return;
       }
       const slider = e.target.closest && e.target.closest('input[data-action="ep-slider"]');
       if (!slider) return;

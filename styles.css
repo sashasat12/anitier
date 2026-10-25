@@ -411,6 +411,11 @@ button { font-family: inherit; }
 .upcoming-tools .search { grid-column: 1 / -1; }
 .upcoming-tools .search input { width: 100%; }
 
+/* ---------- поиск и фильтры в тир-листах ---------- */
+.list-tools { margin-top: 0; }
+.list-tools .search { grid-column: 1 / -1; }
+.list-tools .search input { width: 100%; }
+
 .db-status {
   min-height: 18px;
   margin: -6px 0 12px;

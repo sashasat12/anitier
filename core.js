@@ -222,16 +222,39 @@
   }
 
   function filterItems(items, options = {}) {
-    const query = String(options.query || '').trim().toLowerCase();
+    const query = normalizeTitleKey(options.query);
     const filters = normalizeFilters(options.filters);
 
     return (Array.isArray(items) ? items : []).filter(anime => {
-      if (query) {
-        const haystack = `${anime.title || ''} ${anime.altTitle || ''}`.toLowerCase();
-        if (!haystack.includes(query)) return false;
-      }
+      if (!anime) return false;
+      if (query && !searchHaystack(anime).includes(query)) return false;
       return matchesFilters(anime, filters);
     });
+  }
+
+  /**
+   * Что реально есть в списке: годы и жанры для выпадающих фильтров.
+   * Пустых вариантов не показываем, поэтому в списке остаются только нужные.
+   */
+  function listFilterOptions(items) {
+    const years = new Set();
+    const genres = new Set();
+
+    for (const anime of Array.isArray(items) ? items : []) {
+      if (!anime) continue;
+      const year = Number(anime.year);
+      if (Number.isFinite(year) && year > 0) years.add(year);
+      const names = Array.isArray(anime.genres) ? anime.genres : [];
+      for (const genre of GENRES) {
+        if (names.some(name => genre.names.includes(name))) genres.add(String(genre.id));
+      }
+    }
+
+    return {
+      years: [...years].sort((a, b) => b - a),
+      genres: GENRES.filter(genre => genres.has(String(genre.id)))
+        .map(genre => ({ id: genre.id, label: genre.label })),
+    };
   }
 
   /* ---------------- «Скоро выйдут»: свои списки и фильтры ---------------- */
@@ -254,8 +277,8 @@
     return list.filter(anime => anime && !animeIdentityKeys(anime).some(key => seen.has(key)));
   }
 
-  /** Строка для поиска по премьере: названия, альтернативы, жанры, студии. */
-  function upcomingHaystack(anime) {
+  /** Строка для поиска по тайтлу: названия, альтернативы, жанры, студии. */
+  function searchHaystack(anime) {
     if (!anime) return '';
     const parts = [anime.title, anime.altTitle, anime.originalTitle];
     if (Array.isArray(anime.aliases)) parts.push(...anime.aliases);
@@ -282,7 +305,7 @@
     const result = (Array.isArray(items) ? items : []).filter(anime => {
       if (!anime) return false;
       if (month && upcomingMonthKey(anime.airedFrom) !== month) return false;
-      if (query && !upcomingHaystack(anime).includes(query)) return false;
+      if (query && !searchHaystack(anime).includes(query)) return false;
       return matchesFilters(anime, filters);
     });
 
@@ -999,12 +1022,23 @@
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.10.1';
+  const APP_VERSION = '1.11.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* История изменений для экрана «Что нового». Новые версии — сверху.
      Пункты пишем для пользователя: что теперь можно сделать, а не как это сделано. */
   const CHANGELOG = [
+    {
+      version: '1.11.0',
+      date: '25 октября 2026',
+      title: 'Поиск и фильтры в тир-листах',
+      items: [
+        'В «Просмотрено» и «Запланировано» появился поиск по названию, жанру и студии.',
+        'Фильтры по типу, жанру, году и рейтингу: можно показать друзьям только нужные тайтлы.',
+        'Над тир-листом видно, сколько тайтлов показано из всего списка; сброс возвращает полный список.',
+        'В мобильной версии вкладка «Смотрю» теперь называется «Просмотрено».',
+      ],
+    },
     {
       version: '1.10.1',
       date: '25 октября 2026',
@@ -1224,6 +1258,8 @@
     detectQueryLang,
     matchesFilters,
     filterItems,
+    listFilterOptions,
+    searchHaystack,
     upcomingMonthKey,
     excludeListed,
     filterUpcoming,

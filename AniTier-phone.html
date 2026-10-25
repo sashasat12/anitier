@@ -425,6 +425,11 @@ button { font-family: inherit; }
 .upcoming-tools .search { grid-column: 1 / -1; }
 .upcoming-tools .search input { width: 100%; }
 
+/* ---------- поиск и фильтры в тир-листах ---------- */
+.list-tools { margin-top: 0; }
+.list-tools .search { grid-column: 1 / -1; }
+.list-tools .search input { width: 100%; }
+
 .db-status {
   min-height: 18px;
   margin: -6px 0 12px;
@@ -2574,7 +2579,7 @@ body.mobile-app .offline-banner {
     <b class="badge" id="bell-badge" hidden>0</b>
   </button>
   <button class="tab" role="tab" data-action="tab" data-tab="watched">
-    <span class="tab-ico" aria-hidden="true">✓</span><span>Смотрю</span>
+    <span class="tab-ico" aria-hidden="true">✓</span><span>Просмотрено</span>
     <b class="count" id="count-watched">0</b>
   </button>
   <button class="tab" role="tab" data-action="tab" data-tab="planned">
@@ -2706,6 +2711,8 @@ body.mobile-app .offline-banner {
       </div>
     </div>
     <div class="stats" id="stats-watched"></div>
+    <div class="filters list-tools" id="list-tools-watched" data-list-tools="watched"></div>
+    <div class="db-status" id="list-status-watched" aria-live="polite"></div>
     <div class="tierlist" id="tiers-watched"></div>
   </section>
 
@@ -2723,6 +2730,8 @@ body.mobile-app .offline-banner {
       </div>
     </div>
     <div class="stats" id="stats-planned"></div>
+    <div class="filters list-tools" id="list-tools-planned" data-list-tools="planned"></div>
+    <div class="db-status" id="list-status-planned" aria-live="polite"></div>
     <div class="tierlist" id="tiers-planned"></div>
   </section>
 
@@ -3052,16 +3061,39 @@ body.mobile-app .offline-banner {
   }
 
   function filterItems(items, options = {}) {
-    const query = String(options.query || '').trim().toLowerCase();
+    const query = normalizeTitleKey(options.query);
     const filters = normalizeFilters(options.filters);
 
     return (Array.isArray(items) ? items : []).filter(anime => {
-      if (query) {
-        const haystack = `${anime.title || ''} ${anime.altTitle || ''}`.toLowerCase();
-        if (!haystack.includes(query)) return false;
-      }
+      if (!anime) return false;
+      if (query && !searchHaystack(anime).includes(query)) return false;
       return matchesFilters(anime, filters);
     });
+  }
+
+  /**
+   * Что реально есть в списке: годы и жанры для выпадающих фильтров.
+   * Пустых вариантов не показываем, поэтому в списке остаются только нужные.
+   */
+  function listFilterOptions(items) {
+    const years = new Set();
+    const genres = new Set();
+
+    for (const anime of Array.isArray(items) ? items : []) {
+      if (!anime) continue;
+      const year = Number(anime.year);
+      if (Number.isFinite(year) && year > 0) years.add(year);
+      const names = Array.isArray(anime.genres) ? anime.genres : [];
+      for (const genre of GENRES) {
+        if (names.some(name => genre.names.includes(name))) genres.add(String(genre.id));
+      }
+    }
+
+    return {
+      years: [...years].sort((a, b) => b - a),
+      genres: GENRES.filter(genre => genres.has(String(genre.id)))
+        .map(genre => ({ id: genre.id, label: genre.label })),
+    };
   }
 
   /* ---------------- «Скоро выйдут»: свои списки и фильтры ---------------- */
@@ -3084,8 +3116,8 @@ body.mobile-app .offline-banner {
     return list.filter(anime => anime && !animeIdentityKeys(anime).some(key => seen.has(key)));
   }
 
-  /** Строка для поиска по премьере: названия, альтернативы, жанры, студии. */
-  function upcomingHaystack(anime) {
+  /** Строка для поиска по тайтлу: названия, альтернативы, жанры, студии. */
+  function searchHaystack(anime) {
     if (!anime) return '';
     const parts = [anime.title, anime.altTitle, anime.originalTitle];
     if (Array.isArray(anime.aliases)) parts.push(...anime.aliases);
@@ -3112,7 +3144,7 @@ body.mobile-app .offline-banner {
     const result = (Array.isArray(items) ? items : []).filter(anime => {
       if (!anime) return false;
       if (month && upcomingMonthKey(anime.airedFrom) !== month) return false;
-      if (query && !upcomingHaystack(anime).includes(query)) return false;
+      if (query && !searchHaystack(anime).includes(query)) return false;
       return matchesFilters(anime, filters);
     });
 
@@ -3829,12 +3861,23 @@ body.mobile-app .offline-banner {
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.10.1';
+  const APP_VERSION = '1.11.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* История изменений для экрана «Что нового». Новые версии — сверху.
      Пункты пишем для пользователя: что теперь можно сделать, а не как это сделано. */
   const CHANGELOG = [
+    {
+      version: '1.11.0',
+      date: '25 октября 2026',
+      title: 'Поиск и фильтры в тир-листах',
+      items: [
+        'В «Просмотрено» и «Запланировано» появился поиск по названию, жанру и студии.',
+        'Фильтры по типу, жанру, году и рейтингу: можно показать друзьям только нужные тайтлы.',
+        'Над тир-листом видно, сколько тайтлов показано из всего списка; сброс возвращает полный список.',
+        'В мобильной версии вкладка «Смотрю» теперь называется «Просмотрено».',
+      ],
+    },
     {
       version: '1.10.1',
       date: '25 октября 2026',
@@ -4054,6 +4097,8 @@ body.mobile-app .offline-banner {
     detectQueryLang,
     matchesFilters,
     filterItems,
+    listFilterOptions,
+    searchHaystack,
     upcomingMonthKey,
     excludeListed,
     filterUpcoming,
@@ -4503,6 +4548,9 @@ body.mobile-app .offline-banner {
     backup: { open: false, busy: false, message: '', error: false },
     settingsScreen: { open: false, checking: false, message: '', error: false, latest: null },
     lists: { watched: emptyTiers(), planned: emptyTiers() },
+    /* Поиск и фильтры внутри «Просмотрено» и «Запланировано». Не сохраняются:
+       после перезапуска тир-лист снова показывает все тайтлы. */
+    listViews: { watched: emptyListView(), planned: emptyListView() },
     progress: {},
     epInfo: {},
     seenNotifications: new Set(),
@@ -4550,6 +4598,10 @@ body.mobile-app .offline-banner {
     const o = {};
     for (const t of TIER_IDS) o[t] = [];
     return o;
+  }
+
+  function emptyListView() {
+    return { query: '', filters: C.normalizeFilters(C.DEFAULT_FILTERS) };
   }
 
   function createAltSearchState() {
@@ -7384,15 +7436,112 @@ body.mobile-app .offline-banner {
   }
 
   /* ---------------- тир-листы ---------------- */
+  function listView(name) {
+    if (!state.listViews) state.listViews = {};
+    let view = state.listViews[name];
+    if (!view || typeof view !== 'object') view = { query: '', filters: C.DEFAULT_FILTERS };
+    view.query = String(view.query || '');
+    view.filters = C.normalizeFilters(view.filters);
+    state.listViews[name] = view;
+    return view;
+  }
+
+  function listToolsHTML(name) {
+    const typeOptions = C.TYPES
+      .map(item => `<option value="${esc(item.value)}">${esc(item.label)}</option>`).join('');
+    const scoreOptions = C.SCORES
+      .map(item => `<option value="${esc(item.value)}">${esc(item.label)}</option>`).join('');
+    return `<div class="search">
+        <input id="${name}-search" type="search" data-list-search="${name}" placeholder="Поиск: название, жанр, студия" autocomplete="off" aria-label="Поиск в списке">
+      </div>
+      <label class="filter-field">
+        <span>Тип</span>
+        <select id="${name}-type" data-list-filter="type" aria-label="Тип"><option value="">Любой</option>${typeOptions}</select>
+      </label>
+      <label class="filter-field">
+        <span>Жанр</span>
+        <select id="${name}-genre" data-list-filter="genre" aria-label="Жанр"><option value="">Любой</option></select>
+      </label>
+      <label class="filter-field">
+        <span>Год</span>
+        <select id="${name}-year" data-list-filter="year" aria-label="Год"><option value="">Любой</option></select>
+      </label>
+      <label class="filter-field">
+        <span>Рейтинг</span>
+        <select id="${name}-score" data-list-filter="minScore" aria-label="Рейтинг"><option value="">Любой</option>${scoreOptions}</select>
+      </label>
+      <button class="btn btn-ghost filter-reset" type="button" data-action="reset-list" data-list="${name}">Сбросить</button>`;
+  }
+
+  /* Панель поиска и фильтров строится один раз: при вводе перерисовывается
+     только тир-лист, поэтому поле не теряет фокус и курсор. */
+  function syncListControls(name, items) {
+    const tools = document.getElementById('list-tools-' + name);
+    if (!tools) return;
+    if (!tools.dataset.ready) {
+      tools.innerHTML = listToolsHTML(name);
+      tools.dataset.ready = '1';
+    }
+    const view = listView(name);
+    const search = tools.querySelector(`#${name}-search`);
+    if (search && document.activeElement !== search && search.value !== view.query) {
+      search.value = view.query;
+    }
+    const type = tools.querySelector(`#${name}-type`);
+    if (type) type.value = view.filters.type || '';
+    const score = tools.querySelector(`#${name}-score`);
+    if (score) score.value = view.filters.minScore || '';
+
+    const options = C.listFilterOptions(items);
+
+    const year = tools.querySelector(`#${name}-year`);
+    if (year) {
+      const keys = options.years.map(String);
+      const current = [...year.options].slice(1).map(option => option.value);
+      if (current.join('|') !== keys.join('|')) {
+        year.innerHTML = '<option value="">Любой</option>'
+          + keys.map(key => `<option value="${key}">${key}</option>`).join('');
+      }
+      if (!keys.includes(view.filters.year)) view.filters.year = '';
+      year.value = view.filters.year;
+    }
+
+    const genre = tools.querySelector(`#${name}-genre`);
+    if (genre) {
+      const keys = options.genres.map(item => String(item.id));
+      const current = [...genre.options].slice(1).map(option => option.value);
+      if (current.join('|') !== keys.join('|')) {
+        genre.innerHTML = '<option value="">Любой</option>'
+          + options.genres.map(item => `<option value="${item.id}">${esc(item.label)}</option>`).join('');
+      }
+      if (!keys.includes(view.filters.genre)) view.filters.genre = '';
+      genre.value = view.filters.genre;
+    }
+  }
+
+  function updateListStatus(name, all, shown) {
+    const el = document.getElementById('list-status-' + name);
+    if (!el) return;
+    const view = listView(name);
+    const active = C.countActiveFilters(view.filters) + (view.query.trim() ? 1 : 0);
+    if (!active) { el.textContent = ''; return; }
+    el.textContent = `Показано ${shown.length} из ${all.length} · фильтров: ${active}`;
+  }
+
   function renderTierList(name) {
     const root = document.getElementById(name === 'watched' ? 'tiers-watched' : 'tiers-planned');
     if (!root) return;
     const list = state.lists[name];
+    const all = allIn(name);
+    const shown = new Set(C.filterItems(all, listView(name)));
+    syncListControls(name, all);
 
     root.innerHTML = TIERS.map(t => {
-      const items = list[t.id] || [];
+      const tierItems = list[t.id] || [];
+      const items = tierItems.filter(a => shown.has(a));
+      const hidden = tierItems.length > 0 && items.length === 0;
       return `<div class="tier-row">
-        <div class="tier-label tier-${t.id}" title="${esc(t.name)}">
+        <div class="tier-label tier-${t.id}" title="${esc(t.name)}${items.length !== tierItems.length ? ` — показано ${items.length} из ${tierItems.length}` : ''}">
           <span>${t.label}</span>
           <small>${esc(t.id === 'N' ? 'Без оц.' : t.name)}</small>
           <em>${items.length}</em>
@@ -7400,12 +7549,13 @@ body.mobile-app .offline-banner {
         <div class="tier-drop" data-list="${name}" data-tier="${t.id}">
           ${items.length
             ? items.map(a => tierCardHTML(name, a, t.id)).join('')
-            : '<span class="tier-hint">Перетащите аниме сюда</span>'}
+            : `<span class="tier-hint">${hidden ? 'Скрыто фильтром' : 'Перетащите аниме сюда'}</span>`}
         </div>
       </div>`;
     }).join('');
 
-    renderStats(name);
+    renderStats(name, all, [...shown]);
+    updateListStatus(name, all, [...shown]);
     layoutTierCards(root);
   }
 
@@ -7444,18 +7594,19 @@ body.mobile-app .offline-banner {
     }
   }
 
-  function renderStats(name) {
+  function renderStats(name, all = allIn(name), shown = all) {
     const el = document.getElementById('stats-' + name);
     if (!el) return;
-    const all = allIn(name);
-    const eps = all.reduce((s, a) => s + (Number(a.episodes) || 0), 0);
-    const scored = all.filter(a => typeof a.score === 'number');
+    const items = Array.isArray(shown) ? shown : all;
+    const eps = items.reduce((s, a) => s + (Number(a.episodes) || 0), 0);
+    const scored = items.filter(a => typeof a.score === 'number');
     const avg = scored.length ? (scored.reduce((s, a) => s + a.score, 0) / scored.length).toFixed(2) : '—';
+    const topTier = items.filter(a => (state.lists[name].S || []).includes(a)).length;
     el.innerHTML = `
-      <div class="stat"><b>${all.length}</b><span>тайтлов</span></div>
+      <div class="stat"><b>${items.length}</b><span>тайтлов</span></div>
       <div class="stat"><b>${eps}</b><span>серий (известных)</span></div>
       <div class="stat"><b>${avg}</b><span>средний балл</span></div>
-      <div class="stat"><b>${(state.lists[name].S || []).length}</b><span>в тире S</span></div>`;
+      <div class="stat"><b>${topTier}</b><span>в тире S</span></div>`;
   }
 
   function updateCounters() {
@@ -10317,6 +10468,13 @@ body.mobile-app .offline-banner {
           App.renderUpcoming();
           break;
 
+        case 'reset-list': {
+          const name = el.dataset.list === 'planned' ? 'planned' : 'watched';
+          state.listViews[name] = { query: '', filters: C.normalizeFilters(C.DEFAULT_FILTERS) };
+          renderTierList(name);
+          break;
+        }
+
         case 'retry-all':
           retryAll();
           break;
@@ -10584,6 +10742,16 @@ body.mobile-app .offline-banner {
     }
 
     document.addEventListener('input', e => {
+      const listSearch = e.target.closest && e.target.closest('[data-list-search]');
+      if (listSearch) {
+        const name = listSearch.dataset.listSearch === 'planned' ? 'planned' : 'watched';
+        if (!state.listViews[name]) {
+          state.listViews[name] = { query: '', filters: C.normalizeFilters(C.DEFAULT_FILTERS) };
+        }
+        state.listViews[name].query = listSearch.value;
+        renderTierList(name);
+        return;
+      }
       const tiktokQuery = e.target.closest && e.target.closest('#tiktok-import-search');
       if (tiktokQuery && state.tiktokImport.open) {
         state.tiktokImport.query = tiktokQuery.value;
@@ -10611,6 +10779,21 @@ body.mobile-app .offline-banner {
           renderModal();
           if (state.synopsisModes.get(animeId) !== 'original') translateModalSynopsis(animeId);
         }
+      }
+      const listField = e.target.closest && e.target.closest('select[data-list-filter]');
+      if (listField) {
+        const tools = listField.closest('[data-list-tools]');
+        const name = tools && tools.dataset.listTools === 'planned' ? 'planned' : 'watched';
+        if (!state.listViews[name]) {
+          state.listViews[name] = { query: '', filters: C.normalizeFilters(C.DEFAULT_FILTERS) };
+        }
+        const view = state.listViews[name];
+        view.filters = C.normalizeFilters({
+          ...view.filters,
+          [listField.dataset.listFilter]: listField.value,
+        });
+        renderTierList(name);
+        return;
       }
       const slider = e.target.closest && e.target.closest('input[data-action="ep-slider"]');
       if (!slider) return;

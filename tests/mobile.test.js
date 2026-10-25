@@ -34,6 +34,8 @@
       );
       T.eq(tabs.length, 5, 'В нижней навигации должно быть 5 разделов');
       T.includes(nav.textContent, 'Скоро', 'Потерялся раздел «Скоро»');
+      T.includes(nav.textContent, 'Просмотрено', 'Раздел просмотренного подписан понятно');
+      T.assert(!nav.textContent.includes('Смотрю'), 'Старая подпись «Смотрю» убрана');
       T.assert(!tabs.some(tab => tab.scrollWidth > tab.clientWidth + 1), 'Подпись вкладки не помещается');
       const franchiseScroller = doc.createElement('div');
       franchiseScroller.className = 'franchise-list';
