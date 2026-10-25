@@ -522,6 +522,9 @@
   let dragGesture = null;
   let dragGhost = null;
   let suppressTierClickUntil = 0;
+  /* Время, до которого повторное «назад» на вкладке «База аниме» закрывает приложение. */
+  let exitBackArmedUntil = 0;
+  const EXIT_BACK_WINDOW = 2500;
 
   /* Пока тащим карточку, прокрутка должна быть мгновенной: со smooth
      каждый кадр отменяет предыдущую анимацию и страница почти не едет. */
@@ -2411,7 +2414,18 @@
     if (state.exchange.open) { closeExchange(); return true; }
     if (state.modalId != null) { closeModal(); return true; }
     if (state.tab !== 'db') { switchTab('db'); return true; }
-    return false;
+
+    /* Выход из приложения подтверждается вторым нажатием: первый раз
+       показываем подсказку, второе нажатие в течение пары секунд закрывает
+       APK. Случайное нажатие больше не выкидывает из приложения. */
+    const now = Date.now();
+    if (now < exitBackArmedUntil) {
+      exitBackArmedUntil = 0;
+      return false;
+    }
+    exitBackArmedUntil = now + EXIT_BACK_WINDOW;
+    toast('Нажмите «Назад» ещё раз, чтобы выйти');
+    return true;
   }
 
   Object.assign(App, {

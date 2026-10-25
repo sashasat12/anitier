@@ -3829,12 +3829,21 @@ body.mobile-app .offline-banner {
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.10.0';
+  const APP_VERSION = '1.10.1';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* История изменений для экрана «Что нового». Новые версии — сверху.
      Пункты пишем для пользователя: что теперь можно сделать, а не как это сделано. */
   const CHANGELOG = [
+    {
+      version: '1.10.1',
+      date: '25 октября 2026',
+      title: 'Случайный выход из приложения',
+      items: [
+        'В APK выход из приложения подтверждается вторым нажатием «Назад» на вкладке «База аниме».',
+        'Первый раз приложение показывает подсказку и остаётся открытым — случайное нажатие больше не выкидывает из AniTier.',
+      ],
+    },
     {
       version: '1.10.0',
       date: '25 октября 2026',
@@ -9034,6 +9043,9 @@ body.mobile-app .offline-banner {
   let dragGesture = null;
   let dragGhost = null;
   let suppressTierClickUntil = 0;
+  /* Время, до которого повторное «назад» на вкладке «База аниме» закрывает приложение. */
+  let exitBackArmedUntil = 0;
+  const EXIT_BACK_WINDOW = 2500;
 
   /* Пока тащим карточку, прокрутка должна быть мгновенной: со smooth
      каждый кадр отменяет предыдущую анимацию и страница почти не едет. */
@@ -10923,7 +10935,18 @@ body.mobile-app .offline-banner {
     if (state.exchange.open) { closeExchange(); return true; }
     if (state.modalId != null) { closeModal(); return true; }
     if (state.tab !== 'db') { switchTab('db'); return true; }
-    return false;
+
+    /* Выход из приложения подтверждается вторым нажатием: первый раз
+       показываем подсказку, второе нажатие в течение пары секунд закрывает
+       APK. Случайное нажатие больше не выкидывает из приложения. */
+    const now = Date.now();
+    if (now < exitBackArmedUntil) {
+      exitBackArmedUntil = 0;
+      return false;
+    }
+    exitBackArmedUntil = now + EXIT_BACK_WINDOW;
+    toast('Нажмите «Назад» ещё раз, чтобы выйти');
+    return true;
   }
 
   Object.assign(App, {

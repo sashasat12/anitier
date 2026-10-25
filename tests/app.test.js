@@ -1219,7 +1219,13 @@
       const state = win.__anitierTest.state;
       await win.__anitierTest.init();
 
-      T.eq(App.handleAndroidBack(), false, 'На главной выход отдаём системе');
+      T.eq(App.handleAndroidBack(), true, 'Первый «назад» на главной не выходит из приложения');
+      T.includes(
+        win.document.querySelector('#toasts').textContent,
+        'ещё раз',
+        'Показана подсказка о повторном нажатии',
+      );
+      T.eq(App.handleAndroidBack(), false, 'Второе нажатие подряд выходит из приложения');
 
       if (!win.document.querySelector('#db-grid .card')) {
         await T.waitFor(() => win.document.querySelector('#db-grid .card'), 'Карточки базы не отрисовались');
