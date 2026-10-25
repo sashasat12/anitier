@@ -14,6 +14,7 @@
     EXCHANGE_FILTERS,
     TYPE_RU,
     typeRu,
+    normalizeUpdateCheck,
     MONTHS_SHORT,
     MONTHS_FULL,
     VIEW_TABS,
@@ -1173,6 +1174,47 @@
     syncBodyScroll();
   }
 
+  /* ---------------- карточка обновления ---------------- */
+  function renderUpdateCard() {
+    const el = $('#update-card');
+    if (!el) return;
+    const card = state.updateCard;
+    if (!card) {
+      el.hidden = true;
+      el.innerHTML = '';
+      return;
+    }
+
+    if (card.mode === 'ask') {
+      el.innerHTML = `<div class="update-card-body">
+        <span class="update-card-kicker">Обновления</span>
+        <h3>Проверять обновления при запуске?</h3>
+        <p>AniTier сможет сразу предлагать новую версию. Проверка обращается только к GitHub и не отправляет ваши списки.</p>
+        <div class="update-card-actions">
+          <button class="btn btn-primary" type="button" data-action="update-allow">Разрешить</button>
+          <button class="btn btn-ghost" type="button" data-action="update-deny">Не проверять</button>
+        </div>
+      </div>`;
+      el.hidden = false;
+      return;
+    }
+
+    const release = card.release || {};
+    const version = release.version || '';
+    el.innerHTML = `<div class="update-card-body">
+      <span class="update-card-kicker">Доступно обновление</span>
+      <h3>AniTier ${esc(version)}</h3>
+      <p>У вас ${esc(C.APP_VERSION)}. ${card.apk
+        ? 'Скачайте APK и установите поверх — списки и настройки сохранятся.'
+        : 'Откройте релиз на GitHub и установите свежую версию.'}</p>
+      <div class="update-card-actions">
+        <button class="btn btn-primary" type="button" data-action="open-update">${card.apk ? 'Скачать APK' : 'Открыть релиз'}</button>
+        <button class="btn btn-ghost" type="button" data-action="dismiss-update">Позже</button>
+      </div>
+    </div>`;
+    el.hidden = false;
+  }
+
   /* ---------------- настройки ---------------- */
   function changelogHTML(current) {
     const list = Array.isArray(C.CHANGELOG) ? C.CHANGELOG : [];
@@ -1201,6 +1243,7 @@
       && Boolean(App.releaseNotificationsEnabled && App.releaseNotificationsEnabled());
     const searchLang = C.normalizeSearchLang(state.settings.searchLang);
     const provider = state.settings.translationProvider || 'auto';
+    const updateCheck = normalizeUpdateCheck(state.settings.updateCheck);
     const github = C.GITHUB_URL || '';
 
     if (screen.view === 'changelog') {
@@ -1272,6 +1315,14 @@
       <div class="backup-block">
         <h3>О приложении</h3>
         <p>Версия ${esc(version)}. Исходники и новости — на GitHub.</p>
+        <label class="settings-field">
+          <span>Проверка обновлений</span>
+          <select data-action="settings-update-check" aria-label="Проверка обновлений при запуске">
+            <option value="on"${updateCheck === 'on' ? ' selected' : ''}>Проверять при запуске</option>
+            <option value="ask"${updateCheck === 'ask' ? ' selected' : ''}>Спрашивать при запуске</option>
+            <option value="off"${updateCheck === 'off' ? ' selected' : ''}>Не проверять</option>
+          </select>
+        </label>
         <div class="form-actions">
           <button class="btn btn-ghost" type="button" data-action="open-link" data-url="${esc(github)}">GitHub</button>
           <button class="btn btn-primary" type="button" data-action="check-updates"${screen.checking ? ' disabled' : ''}>${screen.checking ? 'Проверяем…' : 'Проверить обновления'}</button>
@@ -1919,6 +1970,7 @@
     openBackup,
     closeBackup,
     renderSettings,
+    renderUpdateCard,
     openSettings,
     closeSettings,
     refreshViews,

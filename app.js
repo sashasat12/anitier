@@ -113,6 +113,8 @@
     openBackup,
     closeBackup,
     renderSettings,
+    renderUpdateCard,
+    normalizeUpdateCheck,
     openSettings,
     closeSettings,
     openExchange,
@@ -1828,6 +1830,34 @@
           checkForUpdates();
           break;
 
+        case 'update-allow':
+          state.settings.updateCheck = 'on';
+          state.settings.lastUpdateCheck = 0;
+          state.updateCard = null;
+          saveState();
+          renderUpdateCard();
+          toast('Проверяем обновления…');
+          autoCheckUpdates();
+          break;
+
+        case 'update-deny':
+          state.settings.updateCheck = 'off';
+          state.updateCard = null;
+          saveState();
+          renderUpdateCard();
+          break;
+
+        case 'dismiss-update':
+          state.updateCard = null;
+          renderUpdateCard();
+          break;
+
+        case 'open-update':
+          if (state.updateCard && state.updateCard.url) openExternalLink(state.updateCard.url);
+          state.updateCard = null;
+          renderUpdateCard();
+          break;
+
         case 'open-changelog':
           state.settingsScreen.view = 'changelog';
           renderSettings();
@@ -2098,6 +2128,15 @@
       if (settingsLang) applySettingsChange('searchLang', settingsLang.value);
       const settingsProvider = e.target.closest && e.target.closest('select[data-action="settings-translation"]');
       if (settingsProvider) applySettingsChange('translationProvider', settingsProvider.value);
+      const settingsUpdate = e.target.closest && e.target.closest('select[data-action="settings-update-check"]');
+      if (settingsUpdate) {
+        state.settings.updateCheck = normalizeUpdateCheck(settingsUpdate.value);
+        state.settings.lastUpdateCheck = 0;
+        saveState();
+        if (state.settings.updateCheck === 'on') autoCheckUpdates();
+        if (state.settings.updateCheck !== 'ask') renderUpdateCard();
+        return;
+      }
       const provider = e.target.closest && e.target.closest('select[data-action="synopsis-provider"]');
       if (provider) {
         state.settings.translationProvider = ['mymemory', 'google'].includes(provider.value) ? provider.value : 'auto';
@@ -2282,6 +2321,7 @@
       renderDB();
       scheduleDailySync();
       if (dailySyncIsDue()) runDailySync();
+      if (!TEST_MODE) setTimeout(() => { autoCheckUpdates(); }, 1500);
     }
   }
 
@@ -2372,6 +2412,46 @@
   }
 
   /* ---------------- проверка обновлений ---------------- */
+  const UPDATE_CHECK_INTERVAL = 12 * 3600000;
+
+  /* Карточка «доступно обновление»: в APK ведём сразу на APK, в браузере — на релиз. */
+  function showUpdateAvailable(release) {
+    const bridge = releaseBridge();
+    const apk = Boolean(bridge && typeof bridge.openUrl === 'function');
+    const base = String(C.GITHUB_URL || '').replace(/\/+$/, '');
+    state.updateCard = {
+      mode: 'available',
+      release,
+      apk,
+      url: apk ? `${base}/releases/latest/download/AniTier.apk` : (release.url || base),
+    };
+    renderUpdateCard();
+  }
+
+  /* При запуске: спросить разрешение один раз или проверить молча. */
+  async function autoCheckUpdates() {
+    const mode = normalizeUpdateCheck(state.settings.updateCheck);
+    if (mode === 'ask') {
+      state.updateCard = { mode: 'ask' };
+      renderUpdateCard();
+      return;
+    }
+    if (mode !== 'on') return;
+
+    const last = Number(state.settings.lastUpdateCheck) || 0;
+    if (Date.now() - last < UPDATE_CHECK_INTERVAL) return;
+    state.settings.lastUpdateCheck = Date.now();
+    saveState();
+
+    try {
+      if (typeof App.fetchLatestRelease !== 'function') return;
+      const release = await App.fetchLatestRelease();
+      if (C.compareVersions(release.version, C.APP_VERSION) > 0) showUpdateAvailable(release);
+    } catch (_) {
+      /* нет сети или GitHub недоступен — молча ждём следующего запуска */
+    }
+  }
+
   async function checkForUpdates() {
     const screen = state.settingsScreen;
     if (!screen || screen.checking) return;
@@ -2387,8 +2467,10 @@
       const current = C.APP_VERSION;
       screen.latest = release;
       const diff = C.compareVersions(release.version, current);
-      if (diff > 0) screen.message = `Доступна версия ${release.version}, у вас ${current}.`;
-      else if (diff < 0) screen.message = `У вас версия ${current}, на GitHub опубликована ${release.version}.`;
+      if (diff > 0) {
+        screen.message = `Доступна версия ${release.version}, у вас ${current}.`;
+        showUpdateAvailable(release);
+      } else if (diff < 0) screen.message = `У вас версия ${current}, на GitHub опубликована ${release.version}.`;
       else screen.message = `У вас последняя версия ${current}.`;
     } catch (err) {
       screen.error = true;
@@ -2502,6 +2584,9 @@
     toggleReleaseNotifications,
     releaseNotificationsEnabled,
     checkForUpdates,
+    autoCheckUpdates,
+    showUpdateAvailable,
+    renderUpdateCard,
     openSettings,
     closeSettings,
     renderSettings,

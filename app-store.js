@@ -215,6 +215,14 @@
     return TRANSLATION_PROVIDERS.includes(value) ? value : 'auto';
   }
 
+  const UPDATE_CHECK_MODES = ['ask', 'on', 'off'];
+
+  /* 'ask' — спросить разрешение один раз, 'on' — проверять при запуске, 'off' — не проверять. */
+  function normalizeUpdateCheck(value) {
+    const key = String(value == null ? '' : value).trim().toLowerCase();
+    return UPDATE_CHECK_MODES.includes(key) ? key : 'ask';
+  }
+
   function normalizeCatalogPreferences(raw) {
     const value = raw && typeof raw === 'object' ? raw : {};
     return {
@@ -406,6 +414,8 @@
     settings: {
       searchLang: 'auto',
       translationProvider: 'auto',
+      updateCheck: 'ask',
+      lastUpdateCheck: 0,
       catalog: normalizeCatalogPreferences(),
     },
     modalId: null,
@@ -432,6 +442,7 @@
     tiktokImport: { open: false, url: '', title: '', thumb: '', query: '', loading: false },
     backup: { open: false, busy: false, message: '', error: false },
     settingsScreen: { open: false, checking: false, message: '', error: false, latest: null },
+    updateCard: null,
     lists: { watched: emptyTiers(), planned: emptyTiers() },
     /* Поиск и фильтры внутри «Просмотрено» и «Запланировано». Не сохраняются:
        после перезапуска тир-лист снова показывает все тайтлы. */
@@ -783,9 +794,17 @@
         ? {
           searchLang: C.normalizeSearchLang(rawState.settings.searchLang),
           translationProvider: normalizeTranslationProvider(rawState.settings.translationProvider),
+          updateCheck: normalizeUpdateCheck(rawState.settings.updateCheck),
+          lastUpdateCheck: Number(rawState.settings.lastUpdateCheck) || 0,
           catalog: normalizeCatalogPreferences(rawState.settings.catalog),
         }
-        : { searchLang: 'auto', translationProvider: 'auto', catalog: normalizeCatalogPreferences() },
+        : {
+          searchLang: 'auto',
+          translationProvider: 'auto',
+          updateCheck: 'ask',
+          lastUpdateCheck: 0,
+          catalog: normalizeCatalogPreferences(),
+        },
     };
 
     const moments = {};
@@ -1015,6 +1034,8 @@
         settings: {
           searchLang: C.normalizeSearchLang(state.settings.searchLang),
           translationProvider: normalizeTranslationProvider(state.settings.translationProvider),
+          updateCheck: normalizeUpdateCheck(state.settings.updateCheck),
+          lastUpdateCheck: Number(state.settings.lastUpdateCheck) || 0,
           catalog: normalizeCatalogPreferences(state.settings.catalog),
         },
       }));
@@ -1249,6 +1270,8 @@
     mediaPutMany,
     loadState,
     saveState,
+    normalizeUpdateCheck,
+    UPDATE_CHECK_MODES,
     allIn,
     hasIn,
     findTier,

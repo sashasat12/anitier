@@ -671,14 +671,14 @@ button { font-family: inherit; }
   font-size: 12.5px;
 }
 
-.notif-list { display: flex; flex-direction: column; gap: 10px; }
+.notif-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; align-items: stretch; }
 
 .notif {
-  display: grid;
-  grid-template-columns: 92px minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 16px;
-  padding: 14px 16px 14px 12px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
   border-radius: var(--radius);
   border: 1px solid var(--line);
   background: var(--panel);
@@ -689,38 +689,46 @@ button { font-family: inherit; }
 .notif:hover {
   border-color: rgba(255, 77, 141, .34);
   background: rgba(28, 33, 48, .9);
-  transform: translateX(3px);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .4);
 }
 .notif-date {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 2;
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
   gap: 5px;
-  width: 100%;
-  padding: 3px 5px;
+  width: auto;
+  padding: 3px 7px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, .045);
-  border: 1px solid var(--line);
-  color: var(--muted);
+  background: rgba(8, 10, 18, .8);
+  border: 1px solid rgba(255, 255, 255, .16);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+  color: #cdd3e6;
   font-size: 10px;
   line-height: 1.1;
   text-transform: uppercase;
   letter-spacing: .04em;
 }
-.notif-date b { font-size: 13px; color: var(--text); letter-spacing: -.02em; }
-.notif-visual { display: flex; min-width: 0; flex-direction: column; gap: 6px; }
+.notif-date b { font-size: 13px; color: #fff; letter-spacing: -.02em; }
+.notif-visual { position: relative; display: block; min-width: 0; }
 .notif-poster {
-  width: 92px;
-  height: 132px;
+  width: 100%;
+  height: 170px;
   object-fit: cover;
-  border-radius: 9px;
+  border-radius: 0;
   display: block;
   background: #0b0e16;
 }
-.notif-body { min-width: 0; }
+.notif-body { flex: 1; min-width: 0; padding: 12px 14px 10px; }
 .notif-title {
   margin: 0;
+  padding-right: 8px;
   font-size: 14.5px;
   font-weight: 800;
   letter-spacing: -.01em;
@@ -2834,6 +2842,7 @@ body.mobile-app .offline-banner {
   </div>
 </div>
 
+<div class="update-card" id="update-card" role="status" aria-live="polite" hidden></div>
 <div id="toasts" aria-live="polite" aria-atomic="false"></div>
 
 <script>
@@ -4330,6 +4339,14 @@ body.mobile-app .offline-banner {
     return TRANSLATION_PROVIDERS.includes(value) ? value : 'auto';
   }
 
+  const UPDATE_CHECK_MODES = ['ask', 'on', 'off'];
+
+  /* 'ask' — спросить разрешение один раз, 'on' — проверять при запуске, 'off' — не проверять. */
+  function normalizeUpdateCheck(value) {
+    const key = String(value == null ? '' : value).trim().toLowerCase();
+    return UPDATE_CHECK_MODES.includes(key) ? key : 'ask';
+  }
+
   function normalizeCatalogPreferences(raw) {
     const value = raw && typeof raw === 'object' ? raw : {};
     return {
@@ -4521,6 +4538,8 @@ body.mobile-app .offline-banner {
     settings: {
       searchLang: 'auto',
       translationProvider: 'auto',
+      updateCheck: 'ask',
+      lastUpdateCheck: 0,
       catalog: normalizeCatalogPreferences(),
     },
     modalId: null,
@@ -4547,6 +4566,7 @@ body.mobile-app .offline-banner {
     tiktokImport: { open: false, url: '', title: '', thumb: '', query: '', loading: false },
     backup: { open: false, busy: false, message: '', error: false },
     settingsScreen: { open: false, checking: false, message: '', error: false, latest: null },
+    updateCard: null,
     lists: { watched: emptyTiers(), planned: emptyTiers() },
     /* Поиск и фильтры внутри «Просмотрено» и «Запланировано». Не сохраняются:
        после перезапуска тир-лист снова показывает все тайтлы. */
@@ -4898,9 +4918,17 @@ body.mobile-app .offline-banner {
         ? {
           searchLang: C.normalizeSearchLang(rawState.settings.searchLang),
           translationProvider: normalizeTranslationProvider(rawState.settings.translationProvider),
+          updateCheck: normalizeUpdateCheck(rawState.settings.updateCheck),
+          lastUpdateCheck: Number(rawState.settings.lastUpdateCheck) || 0,
           catalog: normalizeCatalogPreferences(rawState.settings.catalog),
         }
-        : { searchLang: 'auto', translationProvider: 'auto', catalog: normalizeCatalogPreferences() },
+        : {
+          searchLang: 'auto',
+          translationProvider: 'auto',
+          updateCheck: 'ask',
+          lastUpdateCheck: 0,
+          catalog: normalizeCatalogPreferences(),
+        },
     };
 
     const moments = {};
@@ -5130,6 +5158,8 @@ body.mobile-app .offline-banner {
         settings: {
           searchLang: C.normalizeSearchLang(state.settings.searchLang),
           translationProvider: normalizeTranslationProvider(state.settings.translationProvider),
+          updateCheck: normalizeUpdateCheck(state.settings.updateCheck),
+          lastUpdateCheck: Number(state.settings.lastUpdateCheck) || 0,
           catalog: normalizeCatalogPreferences(state.settings.catalog),
         },
       }));
@@ -5364,6 +5394,8 @@ body.mobile-app .offline-banner {
     mediaPutMany,
     loadState,
     saveState,
+    normalizeUpdateCheck,
+    UPDATE_CHECK_MODES,
     allIn,
     hasIn,
     findTier,
@@ -6737,6 +6769,7 @@ body.mobile-app .offline-banner {
     EXCHANGE_FILTERS,
     TYPE_RU,
     typeRu,
+    normalizeUpdateCheck,
     MONTHS_SHORT,
     MONTHS_FULL,
     VIEW_TABS,
@@ -7896,6 +7929,47 @@ body.mobile-app .offline-banner {
     syncBodyScroll();
   }
 
+  /* ---------------- карточка обновления ---------------- */
+  function renderUpdateCard() {
+    const el = $('#update-card');
+    if (!el) return;
+    const card = state.updateCard;
+    if (!card) {
+      el.hidden = true;
+      el.innerHTML = '';
+      return;
+    }
+
+    if (card.mode === 'ask') {
+      el.innerHTML = `<div class="update-card-body">
+        <span class="update-card-kicker">Обновления</span>
+        <h3>Проверять обновления при запуске?</h3>
+        <p>AniTier сможет сразу предлагать новую версию. Проверка обращается только к GitHub и не отправляет ваши списки.</p>
+        <div class="update-card-actions">
+          <button class="btn btn-primary" type="button" data-action="update-allow">Разрешить</button>
+          <button class="btn btn-ghost" type="button" data-action="update-deny">Не проверять</button>
+        </div>
+      </div>`;
+      el.hidden = false;
+      return;
+    }
+
+    const release = card.release || {};
+    const version = release.version || '';
+    el.innerHTML = `<div class="update-card-body">
+      <span class="update-card-kicker">Доступно обновление</span>
+      <h3>AniTier ${esc(version)}</h3>
+      <p>У вас ${esc(C.APP_VERSION)}. ${card.apk
+        ? 'Скачайте APK и установите поверх — списки и настройки сохранятся.'
+        : 'Откройте релиз на GitHub и установите свежую версию.'}</p>
+      <div class="update-card-actions">
+        <button class="btn btn-primary" type="button" data-action="open-update">${card.apk ? 'Скачать APK' : 'Открыть релиз'}</button>
+        <button class="btn btn-ghost" type="button" data-action="dismiss-update">Позже</button>
+      </div>
+    </div>`;
+    el.hidden = false;
+  }
+
   /* ---------------- настройки ---------------- */
   function changelogHTML(current) {
     const list = Array.isArray(C.CHANGELOG) ? C.CHANGELOG : [];
@@ -7924,6 +7998,7 @@ body.mobile-app .offline-banner {
       && Boolean(App.releaseNotificationsEnabled && App.releaseNotificationsEnabled());
     const searchLang = C.normalizeSearchLang(state.settings.searchLang);
     const provider = state.settings.translationProvider || 'auto';
+    const updateCheck = normalizeUpdateCheck(state.settings.updateCheck);
     const github = C.GITHUB_URL || '';
 
     if (screen.view === 'changelog') {
@@ -7995,6 +8070,14 @@ body.mobile-app .offline-banner {
       <div class="backup-block">
         <h3>О приложении</h3>
         <p>Версия ${esc(version)}. Исходники и новости — на GitHub.</p>
+        <label class="settings-field">
+          <span>Проверка обновлений</span>
+          <select data-action="settings-update-check" aria-label="Проверка обновлений при запуске">
+            <option value="on"${updateCheck === 'on' ? ' selected' : ''}>Проверять при запуске</option>
+            <option value="ask"${updateCheck === 'ask' ? ' selected' : ''}>Спрашивать при запуске</option>
+            <option value="off"${updateCheck === 'off' ? ' selected' : ''}>Не проверять</option>
+          </select>
+        </label>
         <div class="form-actions">
           <button class="btn btn-ghost" type="button" data-action="open-link" data-url="${esc(github)}">GitHub</button>
           <button class="btn btn-primary" type="button" data-action="check-updates"${screen.checking ? ' disabled' : ''}>${screen.checking ? 'Проверяем…' : 'Проверить обновления'}</button>
@@ -8642,6 +8725,7 @@ body.mobile-app .offline-banner {
     openBackup,
     closeBackup,
     renderSettings,
+    renderUpdateCard,
     openSettings,
     closeSettings,
     refreshViews,
@@ -8785,6 +8869,8 @@ body.mobile-app .offline-banner {
     openBackup,
     closeBackup,
     renderSettings,
+    renderUpdateCard,
+    normalizeUpdateCheck,
     openSettings,
     closeSettings,
     openExchange,
@@ -10500,6 +10586,34 @@ body.mobile-app .offline-banner {
           checkForUpdates();
           break;
 
+        case 'update-allow':
+          state.settings.updateCheck = 'on';
+          state.settings.lastUpdateCheck = 0;
+          state.updateCard = null;
+          saveState();
+          renderUpdateCard();
+          toast('Проверяем обновления…');
+          autoCheckUpdates();
+          break;
+
+        case 'update-deny':
+          state.settings.updateCheck = 'off';
+          state.updateCard = null;
+          saveState();
+          renderUpdateCard();
+          break;
+
+        case 'dismiss-update':
+          state.updateCard = null;
+          renderUpdateCard();
+          break;
+
+        case 'open-update':
+          if (state.updateCard && state.updateCard.url) openExternalLink(state.updateCard.url);
+          state.updateCard = null;
+          renderUpdateCard();
+          break;
+
         case 'open-changelog':
           state.settingsScreen.view = 'changelog';
           renderSettings();
@@ -10770,6 +10884,15 @@ body.mobile-app .offline-banner {
       if (settingsLang) applySettingsChange('searchLang', settingsLang.value);
       const settingsProvider = e.target.closest && e.target.closest('select[data-action="settings-translation"]');
       if (settingsProvider) applySettingsChange('translationProvider', settingsProvider.value);
+      const settingsUpdate = e.target.closest && e.target.closest('select[data-action="settings-update-check"]');
+      if (settingsUpdate) {
+        state.settings.updateCheck = normalizeUpdateCheck(settingsUpdate.value);
+        state.settings.lastUpdateCheck = 0;
+        saveState();
+        if (state.settings.updateCheck === 'on') autoCheckUpdates();
+        if (state.settings.updateCheck !== 'ask') renderUpdateCard();
+        return;
+      }
       const provider = e.target.closest && e.target.closest('select[data-action="synopsis-provider"]');
       if (provider) {
         state.settings.translationProvider = ['mymemory', 'google'].includes(provider.value) ? provider.value : 'auto';
@@ -10954,6 +11077,7 @@ body.mobile-app .offline-banner {
       renderDB();
       scheduleDailySync();
       if (dailySyncIsDue()) runDailySync();
+      if (!TEST_MODE) setTimeout(() => { autoCheckUpdates(); }, 1500);
     }
   }
 
@@ -11044,6 +11168,46 @@ body.mobile-app .offline-banner {
   }
 
   /* ---------------- проверка обновлений ---------------- */
+  const UPDATE_CHECK_INTERVAL = 12 * 3600000;
+
+  /* Карточка «доступно обновление»: в APK ведём сразу на APK, в браузере — на релиз. */
+  function showUpdateAvailable(release) {
+    const bridge = releaseBridge();
+    const apk = Boolean(bridge && typeof bridge.openUrl === 'function');
+    const base = String(C.GITHUB_URL || '').replace(/\/+$/, '');
+    state.updateCard = {
+      mode: 'available',
+      release,
+      apk,
+      url: apk ? `${base}/releases/latest/download/AniTier.apk` : (release.url || base),
+    };
+    renderUpdateCard();
+  }
+
+  /* При запуске: спросить разрешение один раз или проверить молча. */
+  async function autoCheckUpdates() {
+    const mode = normalizeUpdateCheck(state.settings.updateCheck);
+    if (mode === 'ask') {
+      state.updateCard = { mode: 'ask' };
+      renderUpdateCard();
+      return;
+    }
+    if (mode !== 'on') return;
+
+    const last = Number(state.settings.lastUpdateCheck) || 0;
+    if (Date.now() - last < UPDATE_CHECK_INTERVAL) return;
+    state.settings.lastUpdateCheck = Date.now();
+    saveState();
+
+    try {
+      if (typeof App.fetchLatestRelease !== 'function') return;
+      const release = await App.fetchLatestRelease();
+      if (C.compareVersions(release.version, C.APP_VERSION) > 0) showUpdateAvailable(release);
+    } catch (_) {
+      /* нет сети или GitHub недоступен — молча ждём следующего запуска */
+    }
+  }
+
   async function checkForUpdates() {
     const screen = state.settingsScreen;
     if (!screen || screen.checking) return;
@@ -11059,8 +11223,10 @@ body.mobile-app .offline-banner {
       const current = C.APP_VERSION;
       screen.latest = release;
       const diff = C.compareVersions(release.version, current);
-      if (diff > 0) screen.message = `Доступна версия ${release.version}, у вас ${current}.`;
-      else if (diff < 0) screen.message = `У вас версия ${current}, на GitHub опубликована ${release.version}.`;
+      if (diff > 0) {
+        screen.message = `Доступна версия ${release.version}, у вас ${current}.`;
+        showUpdateAvailable(release);
+      } else if (diff < 0) screen.message = `У вас версия ${current}, на GitHub опубликована ${release.version}.`;
       else screen.message = `У вас последняя версия ${current}.`;
     } catch (err) {
       screen.error = true;
@@ -11174,6 +11340,9 @@ body.mobile-app .offline-banner {
     toggleReleaseNotifications,
     releaseNotificationsEnabled,
     checkForUpdates,
+    autoCheckUpdates,
+    showUpdateAvailable,
+    renderUpdateCard,
     openSettings,
     closeSettings,
     renderSettings,
