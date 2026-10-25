@@ -1379,6 +1379,13 @@
       content.querySelector('[data-action="settings-back"]').click();
       T.includes(doc.querySelector('#settings-content').textContent, 'Настройки', 'Назад возвращает в настройки');
       T.assert(doc.querySelector('#settings-content [data-action="open-changelog"]'), 'Кнопка истории снова на месте');
+
+      doc.querySelector('[data-action="open-changelog"]').click();
+      T.eq(App.handleAndroidBack(), true, 'Системная «назад» из истории не закрывает настройки');
+      T.eq(doc.querySelector('#settings-modal').hidden, false, 'Модалка осталась открытой');
+      T.assert(doc.querySelector('#settings-content [data-action="open-changelog"]'), 'Вернулись в настройки');
+      T.eq(App.handleAndroidBack(), true, 'Повторное «назад» закрывает настройки');
+      T.eq(doc.querySelector('#settings-modal').hidden, true);
     } finally {
       app.close();
     }

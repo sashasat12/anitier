@@ -2394,7 +2394,17 @@
   /* Системная кнопка «назад» в Android: сначала закрываем слои интерфейса. */
   function handleAndroidBack() {
     if (state.tiktokImport.open) { closeTikTokImport(); return true; }
-    if (state.settingsScreen && state.settingsScreen.open) { closeSettings(); return true; }
+    if (state.settingsScreen && state.settingsScreen.open) {
+      if (state.settingsScreen.view === 'changelog') {
+        state.settingsScreen.view = 'main';
+        renderSettings();
+        const panel = $('#settings-panel');
+        if (panel) panel.scrollTop = 0;
+        return true;
+      }
+      closeSettings();
+      return true;
+    }
     if (state.backup.open) { closeBackup(); return true; }
     if (state.momentForm.open) { closeMomentForm(); return true; }
     if (state.customForm.open) { closeCustomForm(); return true; }
