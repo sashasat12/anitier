@@ -431,6 +431,7 @@
     momentForm: { open: false, animeId: null, mode: 'tiktok', error: '', busy: false, url: '', title: '' },
     tiktokImport: { open: false, url: '', title: '', thumb: '', query: '', loading: false },
     backup: { open: false, busy: false, message: '', error: false },
+    settingsScreen: { open: false, checking: false, message: '', error: false, latest: null },
     lists: { watched: emptyTiers(), planned: emptyTiers() },
     progress: {},
     epInfo: {},

@@ -91,9 +91,13 @@
     </article>`;
   }
 
+  /* Карточки таскаются только своими pointer-событиями: нативный drag-and-drop
+     на телефоне перехватывает долгое нажатие и обрывает жест, а на мыши
+     не даёт управлять прокруткой. */
+
   function tierCardHTML(list, a, tier) {
     const wc = watchedCount(a.id);
-    return `<article class="tier-card" draggable="true" data-action="open" data-id="${a.id}" data-list="${list}" data-tier="${tier}" tabindex="0">
+    return `<article class="tier-card" data-action="open" data-id="${a.id}" data-list="${list}" data-tier="${tier}" tabindex="0">
       <img ${imgAttrs(a)}>
       <button class="tc-remove" data-action="remove" data-id="${a.id}" data-list="${list}" title="Убрать из списка" aria-label="Убрать из списка">✕</button>
       <div class="tc-body">
@@ -935,6 +939,102 @@
     syncBodyScroll();
   }
 
+  /* ---------------- настройки ---------------- */
+  function renderSettings() {
+    const box = $('#settings-content');
+    if (!box) return;
+    const screen = state.settingsScreen || {};
+    const version = C.APP_VERSION || '—';
+    const bridge = typeof window !== 'undefined' ? window.AniTierAndroid : null;
+    const remindersSupported = Boolean(bridge && typeof bridge.setReleaseNotificationsEnabled === 'function');
+    const remindersOn = remindersSupported
+      && Boolean(App.releaseNotificationsEnabled && App.releaseNotificationsEnabled());
+    const searchLang = C.normalizeSearchLang(state.settings.searchLang);
+    const provider = state.settings.translationProvider || 'auto';
+    const github = C.GITHUB_URL || '';
+
+    const reminders = remindersSupported
+      ? `<div class="backup-block">
+          <h3>Напоминания о сериях</h3>
+          <p>Телефон пришлёт уведомление, когда выходит новая серия отслеживаемого тайтла. Расписание обновляется при каждом открытии «Событий».</p>
+          <button class="btn ${remindersOn ? 'btn-primary' : 'btn-ghost'} settings-toggle" type="button" data-action="release-notifications" id="release-notif-toggle" aria-pressed="${remindersOn ? 'true' : 'false'}">${remindersOn ? '✓ Напоминания включены' : 'Включить напоминания'}</button>
+        </div>`
+      : `<div class="backup-block">
+          <h3>Напоминания о сериях</h3>
+          <p class="form-note">Работают в приложении для Android. На сайте и в PWA напоминания не приходят.</p>
+        </div>`;
+
+    let updateStatus = '';
+    if (screen.message) {
+      updateStatus = `<p class="backup-status${screen.error ? ' is-error' : ''}" role="status">${esc(screen.message)}</p>`;
+    }
+    const release = screen.latest;
+    const releaseLink = release && release.url && C.compareVersions(release.version, version) > 0
+      ? `<button class="btn btn-ghost" type="button" data-action="open-link" data-url="${esc(release.url)}">Открыть релиз ${esc(release.version)}</button>`
+      : '';
+
+    box.innerHTML = `<h2 id="settings-title">Настройки</h2>
+      <p class="custom-sub">AniTier ${esc(version)} · данные хранятся только на этом устройстве.</p>
+      ${reminders}
+      <div class="backup-block">
+        <h3>Поиск и перевод</h3>
+        <label class="settings-field">
+          <span>Язык поиска</span>
+          <select data-action="settings-search-lang" aria-label="Язык поиска">
+            <option value="auto"${searchLang === 'auto' ? ' selected' : ''}>Авто</option>
+            <option value="ru"${searchLang === 'ru' ? ' selected' : ''}>Русский</option>
+            <option value="en"${searchLang === 'en' ? ' selected' : ''}>English</option>
+            <option value="ja"${searchLang === 'ja' ? ' selected' : ''}>日本語</option>
+          </select>
+        </label>
+        <label class="settings-field">
+          <span>Перевод синопсисов</span>
+          <select data-action="settings-translation" aria-label="Провайдер перевода">
+            <option value="auto"${provider === 'auto' ? ' selected' : ''}>Авто: MyMemory → Google</option>
+            <option value="mymemory"${provider === 'mymemory' ? ' selected' : ''}>MyMemory</option>
+            <option value="google"${provider === 'google' ? ' selected' : ''}>Google Переводчик</option>
+          </select>
+        </label>
+      </div>
+      <div class="backup-block">
+        <h3>Данные</h3>
+        <p>Списки, прогресс, свои карточки, моменты и настройки. Импорт и экспорт — в резервной копии.</p>
+        <div class="form-actions">
+          <button class="btn btn-ghost" type="button" data-action="open-backup">Резервная копия и перенос</button>
+          <button class="btn btn-ghost" type="button" data-action="open-exchange">Обмен тир-листом</button>
+        </div>
+      </div>
+      <div class="backup-block">
+        <h3>О приложении</h3>
+        <p>Версия ${esc(version)}. Исходники и новости — на GitHub.</p>
+        <div class="form-actions">
+          <button class="btn btn-ghost" type="button" data-action="open-link" data-url="${esc(github)}">GitHub</button>
+          <button class="btn btn-primary" type="button" data-action="check-updates"${screen.checking ? ' disabled' : ''}>${screen.checking ? 'Проверяем…' : 'Проверить обновления'}</button>
+          ${releaseLink}
+        </div>
+        ${updateStatus}
+      </div>`;
+  }
+
+  function openSettings() {
+    if (state.modalId != null) closeModal();
+    if (state.backup && state.backup.open) closeBackup();
+    state.settingsScreen = { open: true, checking: false, message: '', error: false, latest: null };
+    renderSettings();
+    const modal = $('#settings-modal');
+    if (modal) modal.hidden = false;
+    syncBodyScroll();
+    const panel = $('#settings-panel');
+    if (panel) { panel.scrollTop = 0; panel.focus({ preventScroll: true }); }
+  }
+
+  function closeSettings() {
+    state.settingsScreen = { open: false, checking: false, message: '', error: false, latest: null };
+    const modal = $('#settings-modal');
+    if (modal) modal.hidden = true;
+    syncBodyScroll();
+  }
+
   function refreshViews() {
     updateCounters();
     renderTierList('watched');
@@ -1552,6 +1652,9 @@
     renderBackup,
     openBackup,
     closeBackup,
+    renderSettings,
+    openSettings,
+    closeSettings,
     refreshViews,
     syncBodyScroll,
     tierShort,

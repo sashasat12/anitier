@@ -485,48 +485,59 @@
     const calls = [];
     try {
       await win.__anitierTest.init();
-      win.scrollBy = (x, y) => calls.push({ x, y });
+      const doc = win.document;
+      win.AniTier.scrollPageBy = delta => calls.push({ x: 0, y: delta });
       win.requestAnimationFrame = callback => win.setTimeout(() => callback(Date.now()), 0);
       win.cancelAnimationFrame = id => win.clearTimeout(id);
-      const source = win.document.createElement('div');
+      const source = doc.createElement('div');
       source.className = 'tier-card';
       source.dataset.list = 'watched';
       source.dataset.id = '1';
-      source.draggable = true;
-      const target = win.document.createElement('div');
+      const target = doc.createElement('div');
       target.className = 'tier-drop';
       target.dataset.list = 'watched';
       target.dataset.tier = 'F';
-      win.document.body.append(source, target);
+      doc.body.append(source, target);
+      doc.elementFromPoint = () => target;
 
-      source.dispatchEvent(new win.Event('dragstart', { bubbles: true, cancelable: true }));
-      const over = new win.Event('dragover', { bubbles: true, cancelable: true });
-      Object.defineProperty(over, 'clientY', { value: win.innerHeight - 1 });
-      target.dispatchEvent(over);
-      await T.waitFor(() => calls.some(call => call.y > 0), 'Страница не прокрутилась у нижнего края');
-      target.dispatchEvent(new win.Event('dragend', { bubbles: true }));
-      T.assert(calls.some(call => call.y > 0), 'Ожидалась прокрутка вниз');
-
-      calls.length = 0;
-      source.dataset.id = '999999';
-      win.document.elementFromPoint = () => target;
       const pointerEvent = (name, values) => {
         const event = new win.Event(name, { bubbles: true, cancelable: true });
         for (const [key, value] of Object.entries(values)) Object.defineProperty(event, key, { value });
         return event;
       };
+
+      /* Палец: карточка поднимается после долгого нажатия. */
       source.dispatchEvent(pointerEvent('pointerdown', {
         pointerType: 'touch', isPrimary: true, pointerId: 7, clientX: 20, clientY: 30,
       }));
-      await new Promise(resolve => win.setTimeout(resolve, 390));
-      win.document.dispatchEvent(pointerEvent('pointermove', {
+      await new Promise(resolve => win.setTimeout(resolve, 400));
+      T.assert(doc.querySelector('.tier-drag-ghost'), 'Под пальцем появляется призрак карточки');
+      doc.dispatchEvent(pointerEvent('pointermove', {
         pointerType: 'touch', isPrimary: true, pointerId: 7, clientX: 20, clientY: win.innerHeight - 1,
       }));
       await T.waitFor(() => calls.some(call => call.y > 0), 'Перетаскивание пальцем не прокрутило страницу');
-      win.document.dispatchEvent(pointerEvent('pointerup', {
+      doc.dispatchEvent(pointerEvent('pointerup', {
         pointerType: 'touch', isPrimary: true, pointerId: 7, clientX: 20, clientY: win.innerHeight - 1,
       }));
       T.assert(!target.classList.contains('is-over'), 'Зона сброса должна очиститься после отпускания');
+      T.eq(doc.querySelector('.tier-drag-ghost'), null, 'Призрак исчезает после отпускания');
+
+      /* Мышь: перетаскивание начинается сразу после сдвига. */
+      calls.length = 0;
+      source.dataset.id = '1';
+      source.dispatchEvent(pointerEvent('pointerdown', {
+        pointerType: 'mouse', isPrimary: true, button: 0, pointerId: 8, clientX: 20, clientY: 30,
+      }));
+      doc.dispatchEvent(pointerEvent('pointermove', {
+        pointerType: 'mouse', isPrimary: true, pointerId: 8, clientX: 22, clientY: 40,
+      }));
+      doc.dispatchEvent(pointerEvent('pointermove', {
+        pointerType: 'mouse', isPrimary: true, pointerId: 8, clientX: 22, clientY: win.innerHeight - 1,
+      }));
+      await T.waitFor(() => calls.some(call => call.y > 0), 'Перетаскивание мышью не прокрутило страницу');
+      doc.dispatchEvent(pointerEvent('pointerup', {
+        pointerType: 'mouse', isPrimary: true, pointerId: 8, clientX: 22, clientY: win.innerHeight - 1,
+      }));
     } finally {
       app.close();
     }
@@ -1195,6 +1206,306 @@
       T.includes(multipart, '"name":"anitier-backup.json"');
       T.includes(multipart, '{"kind":"test"}');
       T.assert(multipart.startsWith('--'), 'Тело должно начинаться с multipart-границы');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: системная кнопка «назад» закрывает модалку и возвращает на базу', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      const state = win.__anitierTest.state;
+      await win.__anitierTest.init();
+
+      T.eq(App.handleAndroidBack(), false, 'На главной выход отдаём системе');
+
+      if (!win.document.querySelector('#db-grid .card')) {
+        await T.waitFor(() => win.document.querySelector('#db-grid .card'), 'Карточки базы не отрисовались');
+      }
+      const opened = win.document.querySelector('#db-grid .card');
+      T.assert(opened, 'В базе должна быть хотя бы одна карточка');
+      opened.click();
+      T.assert(state.modalId != null, 'Карточка должна открыть модалку');
+
+      T.eq(App.handleAndroidBack(), true);
+      T.eq(state.modalId, null, 'Назад закрывает модалку');
+      T.assert(win.document.querySelector('#modal').hidden, 'Модалка должна скрыться');
+
+      win.document.querySelector('[data-action="tab"][data-tab="watched"]').click();
+      T.eq(state.tab, 'watched');
+      T.eq(App.handleAndroidBack(), true);
+      T.eq(state.tab, 'db', 'Со второй вкладки назад ведёт на базу');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: напоминания на телефоне планируются и переключаются', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      const calls = [];
+      let enabled = false;
+      win.AniTierAndroid = {
+        areReleaseNotificationsEnabled: () => enabled,
+        setReleaseNotificationsEnabled: value => { enabled = value; calls.push(['set', value]); },
+        scheduleReleaseNotifications: json => { calls.push(['schedule', json]); },
+      };
+
+      await win.__anitierTest.init();
+      await App.fetchNotifications(true);
+      App.syncReleaseNotifications();
+      T.eq(calls[0][0], 'schedule', 'Расписание отправляется в Android');
+      const items = JSON.parse(calls[0][1]);
+      T.assert(Array.isArray(items) && items.length > 0, 'В Android уходит массив серий');
+      for (const item of items) {
+        T.assert(item.id != null && item.title && item.n > 0, 'У серии есть id, название и номер');
+        T.assert(!Number.isNaN(new Date(item.date).getTime()), 'Дата серии разбирается');
+      }
+
+      App.toggleReleaseNotifications();
+      T.eq(calls[calls.length - 1][0], 'set');
+      T.eq(enabled, true, 'Переключатель включает напоминания');
+
+      const scheduleCalls = () => calls.filter(call => call[0] === 'schedule').length;
+      const before = scheduleCalls();
+      App.onReleaseNotificationPermissionResult(true);
+      T.eq(enabled, true);
+      T.eq(scheduleCalls(), before + 1, 'После разрешения расписание обновляется');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: на сайте напоминания не включаются без Android', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      delete win.AniTierAndroid;
+      T.eq(win.AniTier.releaseNotificationsEnabled(), false);
+      win.AniTier.toggleReleaseNotifications();
+      T.assert(win.document.querySelector('#release-notif-toggle') === null || win.document.querySelector('#release-notif-toggle').hidden);
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: настройки открываются, показывают версию и меняют язык поиска', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      const doc = win.document;
+      const state = win.__anitierTest.state;
+      await win.__anitierTest.init();
+
+      doc.querySelector('[data-action="open-settings"]').click();
+      const modal = doc.querySelector('#settings-modal');
+      T.eq(modal.hidden, false, 'Модалка настроек открывается');
+      const content = doc.querySelector('#settings-content').textContent;
+      T.includes(content, 'Настройки');
+      T.includes(content, win.AniTierCore.APP_VERSION, 'В настройках видна версия приложения');
+      T.includes(content, 'Проверить обновления');
+      T.includes(content, 'GitHub');
+
+      const lang = doc.querySelector('select[data-action="settings-search-lang"]');
+      lang.value = 'en';
+      lang.dispatchEvent(new win.Event('change', { bubbles: true }));
+      T.eq(state.settings.searchLang, 'en', 'Язык поиска применяется');
+      const saved = JSON.parse(win.localStorage.getItem(win.AniTier.LS_KEY) || '{}');
+      T.eq(saved.settings ? saved.settings.searchLang : null, 'en', 'Настройка сохраняется');
+
+      T.eq(App.handleAndroidBack(), true, 'Назад закрывает настройки');
+      T.eq(modal.hidden, true);
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: проверка обновлений сравнивает версию с GitHub', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      const doc = win.document;
+      App.openSettings();
+
+      App.fetchLatestRelease = async () => ({
+        version: '99.0.0',
+        name: 'Новая сборка',
+        url: 'https://github.com/sashasat12/anitier/releases/tag/v99.0.0',
+        notes: '',
+      });
+      await App.checkForUpdates();
+      const text = doc.querySelector('#settings-content').textContent;
+      T.includes(text, '99.0.0', 'Показана версия с GitHub');
+      T.assert(doc.querySelector('#settings-content [data-action="open-link"][data-url*="releases/tag"]'), 'Есть кнопка релиза');
+
+      App.fetchLatestRelease = async () => ({ version: win.AniTierCore.APP_VERSION, name: '', url: '', notes: '' });
+      await App.checkForUpdates();
+      T.includes(doc.querySelector('#settings-content').textContent, 'последняя версия');
+
+      App.fetchLatestRelease = async () => { throw new Error('Сети нет'); };
+      await App.checkForUpdates();
+      T.includes(doc.querySelector('#settings-content').textContent, 'Сети нет', 'Ошибка показывается в настройках');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: GitHub из настроек открывается через мост Android или новую вкладку', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      const doc = win.document;
+      await win.__anitierTest.init();
+      App.openSettings();
+
+      const opened = [];
+      win.AniTierAndroid = { openUrl: url => opened.push(['bridge', url]) };
+      const github = doc.querySelector('#settings-content [data-action="open-link"]');
+      T.assert(github, 'Кнопка GitHub есть в настройках');
+      T.includes(github.dataset.url, 'github.com/sashasat12/anitier');
+      github.click();
+      T.eq(opened.length, 1, 'В APK ссылка уходит в мост');
+      T.eq(String(opened[0][0]), 'bridge', 'Вызван системный мост');
+      T.includes(String(opened[0][1]), 'github.com', 'Мост получил ссылку');
+
+      delete win.AniTierAndroid;
+      const popups = [];
+      win.open = (...args) => { popups.push(args); return null; };
+      github.click();
+      T.eq(popups.length, 1, 'В браузере ссылка открывается новой вкладкой');
+      T.includes(popups[0][0], 'github.com');
+
+      opened.length = 0;
+      App.openExternalLink('javascript:alert(1)');
+      T.eq(opened.length, 0, 'Опасные схемы не открываются');
+    } finally {
+      app.close();
+    }
+  });
+  T.test('app: автопрокрутка реально двигает страницу, пока палец у края', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1', height: 600 });
+    try {
+      const win = app.win;
+      const doc = win.document;
+      await win.__anitierTest.init();
+
+      const spacer = doc.createElement('div');
+      spacer.style.cssText = 'height:3000px;width:1px';
+      doc.body.appendChild(spacer);
+      win.scrollTo(0, 0);
+      const scroller = doc.scrollingElement || doc.documentElement;
+
+      const source = doc.createElement('div');
+      source.className = 'tier-card';
+      source.dataset.list = 'watched';
+      source.dataset.id = '1';
+      const target = doc.createElement('div');
+      target.className = 'tier-drop';
+      target.dataset.list = 'watched';
+      target.dataset.tier = 'F';
+      doc.body.append(source, target);
+      doc.elementFromPoint = () => target;
+
+      const pointerEvent = (name, values) => {
+        const event = new win.Event(name, { bubbles: true, cancelable: true });
+        for (const [key, value] of Object.entries(values)) Object.defineProperty(event, key, { value });
+        return event;
+      };
+
+      source.dispatchEvent(pointerEvent('pointerdown', {
+        pointerType: 'mouse', isPrimary: true, button: 0, pointerId: 3, clientX: 20, clientY: 30,
+      }));
+      doc.dispatchEvent(pointerEvent('pointermove', {
+        pointerType: 'mouse', isPrimary: true, pointerId: 3, clientX: 22, clientY: 40,
+      }));
+      doc.dispatchEvent(pointerEvent('pointermove', {
+        pointerType: 'mouse', isPrimary: true, pointerId: 3, clientX: 22, clientY: win.innerHeight - 1,
+      }));
+
+      await T.waitFor(() => scroller.scrollTop > 0, 'Страница не начала прокручиваться');
+      const first = scroller.scrollTop;
+      await new Promise(resolve => win.setTimeout(resolve, 250));
+      T.assert(scroller.scrollTop > first, 'Прокрутка продолжается, пока курсор у нижнего края');
+
+      doc.dispatchEvent(pointerEvent('pointerup', {
+        pointerType: 'mouse', isPrimary: true, pointerId: 3, clientX: 22, clientY: win.innerHeight - 1,
+      }));
+      const stopped = scroller.scrollTop;
+      await new Promise(resolve => win.setTimeout(resolve, 200));
+      T.eq(scroller.scrollTop, stopped, 'После отпускания прокрутка прекращается');
+    } finally {
+      app.close();
+    }
+  });
+  T.test('app: долгое нажатие на карточке не обрывается выделением и меню', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      const doc = win.document;
+      await win.__anitierTest.init();
+
+      const card = doc.createElement('div');
+      card.className = 'tier-card';
+      card.dataset.list = 'watched';
+      card.dataset.id = '1';
+      doc.body.appendChild(card);
+
+      const down = new win.Event('pointerdown', { bubbles: true, cancelable: true });
+      Object.defineProperty(down, 'pointerType', { value: 'touch' });
+      Object.defineProperty(down, 'isPrimary', { value: true });
+      Object.defineProperty(down, 'clientX', { value: 10 });
+      Object.defineProperty(down, 'clientY', { value: 10 });
+      Object.defineProperty(down, 'pointerId', { value: 1 });
+      card.dispatchEvent(down);
+
+      const menu = new win.Event('contextmenu', { bubbles: true, cancelable: true });
+      card.dispatchEvent(menu);
+      T.eq(menu.defaultPrevented, true, 'Контекстное меню по долгому нажатию отменяется');
+
+      const select = new win.Event('selectstart', { bubbles: true, cancelable: true });
+      card.dispatchEvent(select);
+      T.eq(select.defaultPrevented, true, 'Выделение текста на карточке не начинается');
+
+      await T.waitFor(() => card.classList.contains('dragging'), 'Долгое нажатие не включило перетаскивание');
+      T.assert(doc.querySelector('.tier-drag-ghost'), 'Появился призрак карточки');
+      T.eq(card.hasAttribute('draggable'), false, 'Нативного перетаскивания у карточки нет');
+      const up = new win.Event('pointerup', { bubbles: true, cancelable: true });
+      Object.defineProperty(up, 'clientX', { value: 10 });
+      Object.defineProperty(up, 'clientY', { value: 10 });
+      card.dispatchEvent(up);
+    } finally {
+      app.close();
+    }
+  });
+  T.test('app: поиск в TikTok идёт в приложение, иначе в браузер', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      await win.__anitierTest.init();
+
+      const asked = [];
+      win.AniTierAndroid = { openTikTokSearch: query => { asked.push(query); return true; } };
+      App.openTikTokSearch('Атака титанов');
+      T.eq(asked.length, 1, 'Поиск уходит в приложение TikTok');
+      T.eq(asked[0], 'Атака титанов');
+
+      delete win.AniTierAndroid;
+      const popups = [];
+      win.open = (...args) => { popups.push(args); return null; };
+      App.openTikTokSearch('Bleach');
+      T.eq(popups.length, 1, 'Без приложения открывается браузер');
+      T.includes(decodeURIComponent(popups[0][0]), 'tiktok.com/search');
+      T.includes(decodeURIComponent(popups[0][0]), 'Bleach');
+
+      T.eq(App.openTikTokSearch('   '), false, 'Пустой запрос ничего не открывает');
     } finally {
       app.close();
     }

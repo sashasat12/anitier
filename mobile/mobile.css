@@ -123,6 +123,12 @@ body.mobile-app .section-head {
   margin-bottom: 14px;
 }
 
+body.mobile-app .section-head .head-actions { gap: 8px; }
+body.mobile-app .section-head .head-actions .btn {
+  flex: 1 1 calc(50% - 4px);
+  min-height: 44px;
+}
+
 body.mobile-app .section-title h1 { font-size: 22px; }
 body.mobile-app .section-title .sub { font-size: 12px; }
 
@@ -201,13 +207,16 @@ body.mobile-app .db-status {
 
 body.mobile-app .grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 11px;
 }
 
-body.mobile-app .card-body { padding: 8px 9px 10px; }
-body.mobile-app .card-title { font-size: 12px; line-height: 1.28; }
+body.mobile-app .card { border-radius: 16px; }
+body.mobile-app .card .poster { aspect-ratio: 2 / 3; }
+body.mobile-app .card-body { padding: 10px 11px 12px; }
+body.mobile-app .card-title { font-size: 13.5px; line-height: 1.32; }
 body.mobile-app .card-meta,
-body.mobile-app .card-date { font-size: 10px; }
+body.mobile-app .card-date { font-size: 10.5px; }
+body.mobile-app .card-actions .mini-btn { width: 42px; height: 42px; }
 
 body.mobile-app .load-row { margin-top: 18px; }
 body.mobile-app .load-row .btn { min-height: 44px; width: 100%; }

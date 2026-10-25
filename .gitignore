@@ -7,6 +7,12 @@ android/anitier.keystore
 AniTier.apk.idsig
 android/assets/index.html
 
+# Graphify knowledge graph (generated locally, rebuild: see AGENTS.md)
+graphify-out/
+
+# Local OpenCode integration written by: graphify install --platform opencode
+.opencode/
+
 # Local OS/editor files
 .DS_Store
 Thumbs.db

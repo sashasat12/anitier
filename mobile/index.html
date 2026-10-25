@@ -30,6 +30,7 @@
 
   <div class="topbar-actions">
     <button class="icon-btn install-btn" id="install-app" type="button" title="Установить приложение" aria-label="Установить приложение" hidden>↓</button>
+    <button class="icon-btn" data-action="open-settings" title="Настройки" aria-label="Настройки">⚙</button>
     <button class="icon-btn" data-action="open-backup" title="Резервная копия" aria-label="Резервная копия">⇩</button>
     <button class="icon-btn" data-action="refresh" title="Обновить текущую вкладку" aria-label="Обновить">⟳</button>
   </div>
@@ -165,7 +166,7 @@
     <div class="section-head">
       <div class="section-title">
         <h1>Просмотрено</h1>
-        <p class="sub">Разложи тайтлы по тирам — от S до F. Карточки перетаскиваются мышью.</p>
+        <p class="sub">Разложи тайтлы по тирам — от S до F. Карточки перетаскиваются мышью или долгим нажатием.</p>
       </div>
       <div class="head-actions">
         <button class="btn btn-ghost" data-action="exchange-export" data-list="watched">Экспорт</button>
@@ -236,6 +237,15 @@
   <div class="modal-panel backup-panel" id="backup-panel" role="dialog" aria-modal="true" aria-labelledby="backup-title" tabindex="-1">
     <button class="modal-close" data-action="close-backup" aria-label="Закрыть">✕</button>
     <div class="backup-content" id="backup-content"></div>
+  </div>
+</div>
+
+<!-- ================= НАСТРОЙКИ ================= -->
+<div class="modal" id="settings-modal" hidden>
+  <div class="modal-backdrop" data-action="close-settings"></div>
+  <div class="modal-panel backup-panel" id="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title" tabindex="-1">
+    <button class="modal-close" data-action="close-settings" aria-label="Закрыть">✕</button>
+    <div class="backup-content" id="settings-content"></div>
   </div>
 </div>
 

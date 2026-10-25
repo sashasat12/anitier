@@ -111,6 +111,9 @@
     renderBackup,
     openBackup,
     closeBackup,
+    renderSettings,
+    openSettings,
+    closeSettings,
     openExchange,
     closeExchange,
     setExchangeMode,
@@ -339,6 +342,7 @@
 
     if (state.forceDemo) {
       applyDemoNotifications();
+      syncReleaseNotifications();
       return;
     }
 
@@ -390,6 +394,7 @@
       if (state.tab === 'notifications') markNotificationsSeen();
       updateBell();
       updateOfflineBanner();
+      syncReleaseNotifications();
       if (n.queued) {
         n.queued = false;
         fetchNotifications(true);
@@ -513,28 +518,93 @@
   let dragState = null;
   let dragPointerY = null;
   let dragAutoScrollFrame = 0;
-  let touchDrag = null;
+  let dragGesture = null;
+  let dragGhost = null;
   let suppressTierClickUntil = 0;
+
+  /* Пока тащим карточку, прокрутка должна быть мгновенной: со smooth
+     каждый кадр отменяет предыдущую анимацию и страница почти не едет. */
+  function setInstantScroll(on) {
+    const scroller = document.scrollingElement || document.documentElement;
+    if (!scroller || !scroller.style) return;
+    if (on) {
+      if (scroller.dataset.dragSmooth != null) return;
+      scroller.dataset.dragSmooth = scroller.style.scrollBehavior || '';
+      scroller.style.scrollBehavior = 'auto';
+    } else if (scroller.dataset.dragSmooth != null) {
+      scroller.style.scrollBehavior = scroller.dataset.dragSmooth;
+      delete scroller.dataset.dragSmooth;
+    }
+  }
+
+  function scrollPageBy(delta) {
+    const scroller = document.scrollingElement || document.documentElement;
+    if (!scroller) return;
+    const max = Math.max(0, (scroller.scrollHeight || 0) - (scroller.clientHeight || 0));
+    const next = Math.max(0, Math.min(max, (scroller.scrollTop || 0) + delta));
+    if (next !== scroller.scrollTop) scroller.scrollTop = next;
+  }
+
+  /* «Призрак» карточки, который едет за пальцем или курсором. */
+  function createDragGhost(card) {
+    removeDragGhost();
+    const rect = card.getBoundingClientRect();
+    const ghost = card.cloneNode(true);
+    ghost.classList.add('tier-drag-ghost');
+    ghost.classList.remove('dragging');
+    ghost.removeAttribute('tabindex');
+    ghost.removeAttribute('data-action');
+    ghost.setAttribute('aria-hidden', 'true');
+    ghost.style.width = `${rect.width}px`;
+    document.body.appendChild(ghost);
+    dragGhost = ghost;
+    return ghost;
+  }
+
+  function moveDragGhost(x, y) {
+    if (!dragGhost) return;
+    dragGhost.style.left = `${x}px`;
+    dragGhost.style.top = `${y}px`;
+  }
+
+  function removeDragGhost() {
+    if (dragGhost && dragGhost.parentNode) dragGhost.parentNode.removeChild(dragGhost);
+    dragGhost = null;
+  }
+
+  /* Подсветка тира под пальцем или курсором. */
+  function updateDragTarget(x, y) {
+    if (!dragGesture) return;
+    const hit = document.elementFromPoint(x, y);
+    const drop = hit && hit.closest ? hit.closest('.tier-drop') : null;
+    $$('.tier-drop.is-over').forEach(item => { if (item !== drop) item.classList.remove('is-over'); });
+    if (drop && drop.dataset.list === dragGesture.list) drop.classList.add('is-over');
+    dragGesture.drop = drop;
+  }
+
+  function activateDrag(gesture) {
+    if (dragGesture !== gesture || gesture.active) return;
+    clearTimeout(gesture.timer);
+    gesture.active = true;
+    dragState = { list: gesture.list, id: gesture.id };
+    gesture.card.classList.add('dragging');
+    try { gesture.card.setPointerCapture(gesture.pointerId); } catch { /* старые WebView */ }
+    createDragGhost(gesture.card);
+    moveDragGhost(gesture.clientX, gesture.clientY);
+    if (gesture.pointerType === 'touch' && navigator.vibrate) navigator.vibrate(18);
+  }
 
   function runDragAutoScroll() {
     if (dragAutoScrollFrame || !dragState) return;
+    setInstantScroll(true);
     const step = () => {
       dragAutoScrollFrame = 0;
       if (!dragState || dragPointerY == null) return;
       const height = window.innerHeight || document.documentElement.clientHeight;
-      const edge = Math.max(52, Math.min(110, height * .14));
-      let delta = 0;
-      if (dragPointerY > height - edge) delta = Math.ceil(((dragPointerY - (height - edge)) / edge) * 24);
-      else if (dragPointerY < edge) delta = -Math.ceil(((edge - dragPointerY) / edge) * 24);
+      const delta = C.dragScrollDelta(dragPointerY, height);
       if (!delta) return;
-      window.scrollBy(0, delta);
-      if (touchDrag && touchDrag.active && touchDrag.clientX != null) {
-        const hit = document.elementFromPoint(touchDrag.clientX, touchDrag.clientY);
-        const drop = hit && hit.closest ? hit.closest('.tier-drop') : null;
-        $$('.tier-drop.is-over').forEach(item => { if (item !== drop) item.classList.remove('is-over'); });
-        if (drop && drop.dataset.list === touchDrag.list) drop.classList.add('is-over');
-        touchDrag.drop = drop;
-      }
+      App.scrollPageBy(delta);
+      if (dragGesture && dragGesture.active) updateDragTarget(dragGesture.clientX, dragGesture.clientY);
       dragAutoScrollFrame = window.requestAnimationFrame(step);
     };
     dragAutoScrollFrame = window.requestAnimationFrame(step);
@@ -543,111 +613,94 @@
   function cleanupDrag() {
     dragState = null;
     dragPointerY = null;
-    if (touchDrag && touchDrag.timer) clearTimeout(touchDrag.timer);
-    touchDrag = null;
+    if (dragGesture && dragGesture.timer) clearTimeout(dragGesture.timer);
+    dragGesture = null;
     if (dragAutoScrollFrame) window.cancelAnimationFrame(dragAutoScrollFrame);
     dragAutoScrollFrame = 0;
+    removeDragGhost();
+    setInstantScroll(false);
     $$('.tier-card.dragging').forEach(c => c.classList.remove('dragging'));
     $$('.tier-drop.is-over').forEach(d => d.classList.remove('is-over'));
   }
 
   function bindDragEvents() {
-    document.addEventListener('dragstart', e => {
-      const card = e.target.closest && e.target.closest('.tier-card');
-      if (!card) return;
-      dragState = { list: card.dataset.list, id: Number(card.dataset.id) };
-      card.classList.add('dragging');
-      try {
-        e.dataTransfer.setData('text/plain', String(card.dataset.id));
-        e.dataTransfer.effectAllowed = 'move';
-      } catch { /* noop */ }
-    });
-
-    document.addEventListener('dragend', cleanupDrag);
-
-    document.addEventListener('dragover', e => {
-      if (!dragState) return;
-      dragPointerY = e.clientY;
-      runDragAutoScroll();
-      const drop = e.target.closest && e.target.closest('.tier-drop');
-      if (!drop) return;
-      e.preventDefault();
-      try { e.dataTransfer.dropEffect = 'move'; } catch { /* noop */ }
-      if (!drop.classList.contains('is-over')) {
-        $$('.tier-drop.is-over').forEach(d => d.classList.remove('is-over'));
-        drop.classList.add('is-over');
-      }
-    });
-
-    document.addEventListener('dragleave', e => {
-      const drop = e.target.closest && e.target.closest('.tier-drop');
-      if (drop && !drop.contains(e.relatedTarget)) drop.classList.remove('is-over');
-    });
-
-    document.addEventListener('drop', e => {
-      if (!dragState) return;
-      const drop = e.target.closest && e.target.closest('.tier-drop');
-      if (!drop) return;
-      e.preventDefault();
-      const name = drop.dataset.list;
-      const tier = drop.dataset.tier;
-      const { list, id } = dragState;
-      cleanupDrag();
-      if (name !== list) return;
-      moveToTier(name, id, tier);
-    });
-
     document.addEventListener('pointerdown', e => {
-      if (e.pointerType !== 'touch' || !e.isPrimary) return;
+      if (dragGesture || !e.isPrimary) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
       const card = e.target.closest && e.target.closest('.tier-card');
       if (!card || e.target.closest('button')) return;
+      const pointerType = e.pointerType || 'mouse';
       const gesture = {
         card,
         list: card.dataset.list,
         id: Number(card.dataset.id),
+        pointerType,
         startX: e.clientX,
         startY: e.clientY,
+        clientX: e.clientX,
+        clientY: e.clientY,
         pointerId: e.pointerId,
         active: false,
         timer: 0,
+        drop: null,
       };
-      gesture.timer = setTimeout(() => {
-        if (touchDrag !== gesture) return;
-        gesture.active = true;
-        dragState = { list: gesture.list, id: gesture.id };
-        card.classList.add('dragging');
-        try { card.setPointerCapture(gesture.pointerId); } catch { /* старые WebView */ }
-        if (navigator.vibrate) navigator.vibrate(18);
-      }, 360);
-      touchDrag = gesture;
+      /* Пальцем — после долгого нажатия, мышью — сразу после сдвига:
+         обычный клик должен открывать тайтл. */
+      if (pointerType === 'touch') {
+        gesture.timer = setTimeout(() => activateDrag(gesture), 360);
+      }
+      dragGesture = gesture;
     }, { passive: true });
 
+    /* Пока карточка тащится, отдаём прокрутку автопрокрутке:
+       без этого браузер забирает жест себе и присылает pointercancel. */
+    document.addEventListener('touchmove', e => {
+      if (!dragGesture || !dragGesture.active) return;
+      e.preventDefault();
+    }, { passive: false });
+
+    /* Долгое нажатие в Android-WebView тянет за собой выделение текста и
+       contextmenu, а Chrome вместе с ними присылает pointercancel — жест
+       обрывается, и автопрокрутка не запускается. Гасим их, пока палец на карточке. */
+    document.addEventListener('contextmenu', e => {
+      const card = e.target && e.target.closest && e.target.closest('.tier-card');
+      if (card && (dragGesture || dragState)) e.preventDefault();
+    });
+
+    document.addEventListener('selectstart', e => {
+      const card = e.target && e.target.closest && e.target.closest('.tier-card');
+      if (card && (dragGesture || dragState)) e.preventDefault();
+    });
+
     document.addEventListener('pointermove', e => {
-      if (!touchDrag) return;
-      if (!touchDrag.active) {
-        if (Math.hypot(e.clientX - touchDrag.startX, e.clientY - touchDrag.startY) > 12) {
-          clearTimeout(touchDrag.timer);
-          touchDrag = null;
+      const gesture = dragGesture;
+      if (!gesture) return;
+      gesture.clientX = e.clientX;
+      gesture.clientY = e.clientY;
+      if (!gesture.active) {
+        const moved = Math.hypot(e.clientX - gesture.startX, e.clientY - gesture.startY);
+        if (gesture.pointerType === 'touch') {
+          if (moved > 12) {
+            clearTimeout(gesture.timer);
+            dragGesture = null;
+          }
+          return;
         }
-        return;
+        if (moved < 6) return;
+        activateDrag(gesture);
       }
       e.preventDefault();
-      touchDrag.clientX = e.clientX;
-      touchDrag.clientY = e.clientY;
       dragPointerY = e.clientY;
+      moveDragGhost(e.clientX, e.clientY);
+      updateDragTarget(e.clientX, e.clientY);
       runDragAutoScroll();
-      const hit = document.elementFromPoint(e.clientX, e.clientY);
-      const drop = hit && hit.closest ? hit.closest('.tier-drop') : null;
-      $$('.tier-drop.is-over').forEach(item => { if (item !== drop) item.classList.remove('is-over'); });
-      if (drop && drop.dataset.list === touchDrag.list) drop.classList.add('is-over');
-      touchDrag.drop = drop;
     }, { passive: false });
 
     document.addEventListener('pointerup', e => {
-      if (!touchDrag) return;
-      const gesture = touchDrag;
+      const gesture = dragGesture;
+      if (!gesture) return;
       clearTimeout(gesture.timer);
-      touchDrag = null;
+      dragGesture = null;
       if (!gesture.active) return;
       const hit = document.elementFromPoint(e.clientX, e.clientY);
       const drop = hit && hit.closest ? hit.closest('.tier-drop') : gesture.drop;
@@ -916,6 +969,20 @@
       window.location.href = target;
       return true;
     }
+  }
+
+  /* Поиск: в APK сначала открываем приложение TikTok, если его нет — браузер. */
+  function openTikTokSearch(query) {
+    const text = String(query == null ? '' : query).trim();
+    if (!text) return false;
+    const bridge = typeof window !== 'undefined' ? window.AniTierAndroid : null;
+    if (bridge && typeof bridge.openTikTokSearch === 'function') {
+      try {
+        return bridge.openTikTokSearch(text);
+      } catch { /* ниже обычный путь через ссылку */ }
+    }
+    const url = C.tiktokSearchUrl(text);
+    return url ? openTikTokUrl(url) : false;
   }
 
   function closeTikTokImport() {
@@ -1559,8 +1626,7 @@
         case 'tiktok-search': {
           const anime = getAnime(id);
           const query = anime ? [anime.title, anime.altTitle].filter(Boolean).join(' ') : '';
-          const url = C.tiktokSearchUrl(query);
-          if (url) openTikTokUrl(url);
+          if (query) openTikTokSearch(query);
           break;
         }
 
@@ -1679,6 +1745,10 @@
           fetchNotifications(true);
           break;
 
+        case 'release-notifications':
+          toggleReleaseNotifications();
+          break;
+
         case 'notif-tab':
           if (C.NOTIF_TABS.includes(el.dataset.notifTab)) {
             state.notifications.tab = el.dataset.notifTab;
@@ -1712,7 +1782,28 @@
           break;
 
         case 'open-backup':
+          closeSettings();
           openBackup();
+          break;
+
+        case 'open-settings':
+          openSettings();
+          break;
+
+        case 'close-settings':
+          closeSettings();
+          break;
+
+        case 'check-updates':
+          checkForUpdates();
+          break;
+
+        case 'open-link':
+          openExternalLink(el.dataset.url);
+          break;
+        case 'open-exchange':
+          closeSettings();
+          openExchange('export', state.tab === 'planned' ? 'planned' : 'watched');
           break;
 
         case 'close-backup':
@@ -1924,6 +2015,10 @@
     });
 
     document.addEventListener('change', e => {
+      const settingsLang = e.target.closest && e.target.closest('select[data-action="settings-search-lang"]');
+      if (settingsLang) applySettingsChange('searchLang', settingsLang.value);
+      const settingsProvider = e.target.closest && e.target.closest('select[data-action="settings-translation"]');
+      if (settingsProvider) applySettingsChange('translationProvider', settingsProvider.value);
       const provider = e.target.closest && e.target.closest('select[data-action="synopsis-provider"]');
       if (provider) {
         state.settings.translationProvider = ['mymemory', 'google'].includes(provider.value) ? provider.value : 'auto';
@@ -1945,6 +2040,10 @@
       if (e.key === 'Escape') {
         if (state.tiktokImport.open) {
           closeTikTokImport();
+          return;
+        }
+        if (state.settingsScreen && state.settingsScreen.open) {
+          closeSettings();
           return;
         }
         if (state.backup.open) {
@@ -2134,6 +2233,118 @@
     return bootstrap();
   }
 
+  /* ---------------- напоминания на телефоне ---------------- */
+  function releaseBridge() {
+    return typeof window !== 'undefined' ? window.AniTierAndroid : null;
+  }
+
+  function releaseNotificationsEnabled() {
+    const bridge = releaseBridge();
+    if (!bridge || typeof bridge.areReleaseNotificationsEnabled !== 'function') return false;
+    try {
+      return Boolean(bridge.areReleaseNotificationsEnabled());
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function syncReleaseNotifications() {
+    const bridge = releaseBridge();
+    if (!bridge || typeof bridge.scheduleReleaseNotifications !== 'function') return;
+    const items = C.buildReleaseNotificationItems(state.notifications, state.epInfo);
+    try {
+      bridge.scheduleReleaseNotifications(JSON.stringify(items));
+    } catch (err) {
+      console.warn('AniTier: не удалось запланировать напоминания', err);
+    }
+  }
+
+  function toggleReleaseNotifications() {
+    const bridge = releaseBridge();
+    if (!bridge || typeof bridge.setReleaseNotificationsEnabled !== 'function') {
+      toast('Напоминания работают только в приложении для Android');
+      return;
+    }
+    bridge.setReleaseNotificationsEnabled(!releaseNotificationsEnabled());
+    if (state.settingsScreen && state.settingsScreen.open) renderSettings();
+  }
+
+  /* Вызывается из MainActivity после ответа на запрос разрешений. */
+  function onReleaseNotificationPermissionResult(enabled) {
+    if (state.tab === 'notifications') renderNotifications();
+    if (state.settingsScreen && state.settingsScreen.open) renderSettings();
+    toast(enabled ? 'Напоминания о сериях включены' : 'Напоминания о сериях выключены');
+    if (enabled) syncReleaseNotifications();
+  }
+
+  /* ---------------- проверка обновлений ---------------- */
+  async function checkForUpdates() {
+    const screen = state.settingsScreen;
+    if (!screen || screen.checking) return;
+    screen.checking = true;
+    screen.message = '';
+    screen.error = false;
+    screen.latest = null;
+    if (screen.open) renderSettings();
+
+    try {
+      if (typeof App.fetchLatestRelease !== 'function') throw new Error('Проверка обновлений недоступна');
+      const release = await App.fetchLatestRelease();
+      const current = C.APP_VERSION;
+      screen.latest = release;
+      const diff = C.compareVersions(release.version, current);
+      if (diff > 0) screen.message = `Доступна версия ${release.version}, у вас ${current}.`;
+      else if (diff < 0) screen.message = `У вас версия ${current}, на GitHub опубликована ${release.version}.`;
+      else screen.message = `У вас последняя версия ${current}.`;
+    } catch (err) {
+      screen.error = true;
+      screen.message = err && err.message ? err.message : 'Не удалось проверить обновления';
+    } finally {
+      screen.checking = false;
+      if (screen.open) renderSettings();
+    }
+  }
+
+  /* Ссылки: в APK открываем системным браузером через мост, в браузере — новой вкладкой. */
+  function openExternalLink(url) {
+    if (!/^https?:\/\//i.test(String(url || ''))) return;
+    const bridge = releaseBridge();
+    if (bridge && typeof bridge.openUrl === 'function') {
+      try {
+        bridge.openUrl(url);
+        return;
+      } catch (_) { /* падаем в обычное окно */ }
+    }
+    if (typeof window !== 'undefined' && typeof window.open === 'function') {
+      window.open(url, '_blank', 'noopener');
+    }
+  }
+
+  function applySettingsChange(kind, value) {    if (kind === 'searchLang') {
+      state.settings.searchLang = C.normalizeSearchLang(value);
+      syncLangUI();
+    } else if (kind === 'translationProvider') {
+      state.settings.translationProvider = ['mymemory', 'google'].includes(value) ? value : 'auto';
+    } else {
+      return;
+    }
+    saveState();
+    if (state.settingsScreen && state.settingsScreen.open) renderSettings();
+  }
+
+  /* Системная кнопка «назад» в Android: сначала закрываем слои интерфейса. */
+  function handleAndroidBack() {
+    if (state.tiktokImport.open) { closeTikTokImport(); return true; }
+    if (state.settingsScreen && state.settingsScreen.open) { closeSettings(); return true; }
+    if (state.backup.open) { closeBackup(); return true; }
+    if (state.momentForm.open) { closeMomentForm(); return true; }
+    if (state.customForm.open) { closeCustomForm(); return true; }
+    if (state.exchange.open) { closeExchange(); return true; }
+    if (state.modalId != null) { closeModal(); return true; }
+    if (state.tab !== 'db') { switchTab('db'); return true; }
+    return false;
+  }
+
   Object.assign(App, {
     fetchDB,
     fetchNotifications,
@@ -2145,6 +2356,7 @@
     hydrateCustomImage,
     saveMomentForm,
     receiveSharedTikTok,
+    openTikTokSearch,
     playMoment,
     shareMoment,
     removeMomentAction,
@@ -2169,6 +2381,17 @@
     driveAvailable,
     buildBackupPayload,
     applyBackupData,
+    handleAndroidBack,
+    onReleaseNotificationPermissionResult,
+    syncReleaseNotifications,
+    toggleReleaseNotifications,
+    releaseNotificationsEnabled,
+    checkForUpdates,
+    openSettings,
+    closeSettings,
+    renderSettings,
+    scrollPageBy,
+    openExternalLink,
     init,
   });
 
@@ -2199,6 +2422,7 @@
       translateText,
       translateModalSynopsis,
       receiveSharedTikTok,
+      openTikTokSearch,
       invalidateNotificationEpisodes,
       openExchange,
       closeExchange,

@@ -975,10 +975,37 @@ button { font-family: inherit; }
   cursor: grab;
   transition: transform .18s, border-color .18s, box-shadow .18s;
   animation: fadeUp .25s ease both;
+  /* Долгое нажатие не должно запускать выделение текста и контекстное меню:
+     в Android-WebView они отменяют указатель и обрывают перетаскивание. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.tier-card * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 .tier-card:hover { transform: translateY(-2px); border-color: rgba(255, 77, 141, .45); box-shadow: 0 10px 24px rgba(0, 0, 0, .45); }
 .tier-card:active { cursor: grabbing; }
 .tier-card.dragging { opacity: .35; }
+
+/* «Призрак» карточки под пальцем или курсором. */
+.tier-drag-ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 110;
+  margin: 0;
+  pointer-events: none;
+  transform: translate(-50%, -55%) rotate(-2deg);
+  animation: none;
+  opacity: .96;
+  border-color: rgba(255, 77, 141, .6);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .6);
+  will-change: left, top;
+}
 .tier-card img {
   width: 100%;
   aspect-ratio: 2 / 3;
@@ -1636,6 +1663,28 @@ button { font-family: inherit; }
   color: #ffc2d5;
 }
 .backup-note { margin: 0; }
+.settings-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+.settings-field > span { font-size: 12.5px; color: var(--text); }
+.settings-field select {
+  flex: 0 1 220px;
+  min-width: 0;
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, .04);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+}
+.settings-toggle { width: 100%; justify-content: center; }
+body.mobile-app .settings-field { flex-direction: column; align-items: stretch; gap: 7px; }
+body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
 .file-btn { position: relative; overflow: hidden; }
 .file-btn.is-disabled { opacity: .6; pointer-events: none; }
 
@@ -2151,6 +2200,12 @@ body.mobile-app .section-head {
   margin-bottom: 14px;
 }
 
+body.mobile-app .section-head .head-actions { gap: 8px; }
+body.mobile-app .section-head .head-actions .btn {
+  flex: 1 1 calc(50% - 4px);
+  min-height: 44px;
+}
+
 body.mobile-app .section-title h1 { font-size: 22px; }
 body.mobile-app .section-title .sub { font-size: 12px; }
 
@@ -2229,13 +2284,16 @@ body.mobile-app .db-status {
 
 body.mobile-app .grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 11px;
 }
 
-body.mobile-app .card-body { padding: 8px 9px 10px; }
-body.mobile-app .card-title { font-size: 12px; line-height: 1.28; }
+body.mobile-app .card { border-radius: 16px; }
+body.mobile-app .card .poster { aspect-ratio: 2 / 3; }
+body.mobile-app .card-body { padding: 10px 11px 12px; }
+body.mobile-app .card-title { font-size: 13.5px; line-height: 1.32; }
 body.mobile-app .card-meta,
-body.mobile-app .card-date { font-size: 10px; }
+body.mobile-app .card-date { font-size: 10.5px; }
+body.mobile-app .card-actions .mini-btn { width: 42px; height: 42px; }
 
 body.mobile-app .load-row { margin-top: 18px; }
 body.mobile-app .load-row .btn { min-height: 44px; width: 100%; }
@@ -2430,6 +2488,7 @@ body.mobile-app .offline-banner {
   </a>
 
   <div class="topbar-actions">
+    <button class="icon-btn" data-action="open-settings" title="Настройки" aria-label="Настройки">⚙</button>
     <button class="icon-btn" data-action="open-backup" title="Резервная копия" aria-label="Резервная копия">⇩</button>
     <button class="icon-btn" data-action="refresh" title="Обновить текущую вкладку" aria-label="Обновить">⟳</button>
   </div>
@@ -2565,7 +2624,7 @@ body.mobile-app .offline-banner {
     <div class="section-head">
       <div class="section-title">
         <h1>Просмотрено</h1>
-        <p class="sub">Разложи тайтлы по тирам — от S до F. Карточки перетаскиваются мышью.</p>
+        <p class="sub">Разложи тайтлы по тирам — от S до F. Карточки перетаскиваются мышью или долгим нажатием.</p>
       </div>
       <div class="head-actions">
         <button class="btn btn-ghost" data-action="exchange-export" data-list="watched">Экспорт</button>
@@ -2636,6 +2695,15 @@ body.mobile-app .offline-banner {
   <div class="modal-panel backup-panel" id="backup-panel" role="dialog" aria-modal="true" aria-labelledby="backup-title" tabindex="-1">
     <button class="modal-close" data-action="close-backup" aria-label="Закрыть">✕</button>
     <div class="backup-content" id="backup-content"></div>
+  </div>
+</div>
+
+<!-- ================= НАСТРОЙКИ ================= -->
+<div class="modal" id="settings-modal" hidden>
+  <div class="modal-backdrop" data-action="close-settings"></div>
+  <div class="modal-panel backup-panel" id="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title" tabindex="-1">
+    <button class="modal-close" data-action="close-settings" aria-label="Закрыть">✕</button>
+    <div class="backup-content" id="settings-content"></div>
   </div>
 </div>
 
@@ -3519,6 +3587,153 @@ body.mobile-app .offline-banner {
     return [...keys];
   }
 
+  /* ---------------- напоминания на телефоне ---------------- */
+  const RELEASE_NOTIFICATION_HORIZON_DAYS = 14;
+  const RELEASE_NOTIFICATION_SOON_MS = 60000;
+
+  function releaseTime(value) {
+    if (value == null || value === '') return 0;
+    if (typeof value === 'number') return value < 1e11 ? value * 1000 : value;
+    const parsed = new Date(value).getTime();
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  function localDayBounds(now) {
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+    return { start: start.getTime(), end: end.getTime() };
+  }
+
+  /**
+   * Серии отслеживаемых тайтлов, о которых стоит напомнить на телефоне.
+   * Будущие серии берём как есть, уже вышедшие сегодня — сдвигаем на ближайшую минуту.
+   */
+  function buildReleaseNotificationItems(data, epInfo, options = {}) {
+    const now = Number.isFinite(Number(options.now)) ? Number(options.now) : Date.now();
+    const horizonDays = Number(options.horizonDays) || RELEASE_NOTIFICATION_HORIZON_DAYS;
+    const soonMs = Number(options.soonMs) || RELEASE_NOTIFICATION_SOON_MS;
+    const max = Number(options.max) || 20;
+    const tracked = (data && data.tracked) || {};
+    const info = epInfo || {};
+    const day = localDayBounds(now);
+    const items = [];
+    const seen = new Set();
+
+    const push = (anime, episode, rawDate) => {
+      if (!anime || anime.id == null) return;
+      const n = Number(episode);
+      if (!Number.isInteger(n) || n <= 0) return;
+      let at = releaseTime(rawDate);
+      if (!at) return;
+      if (at <= now) {
+        if (at < day.start || at > day.end) return;
+        at = now + soonMs;
+      }
+      if (at > now + horizonDays * 86400000) return;
+      const key = `${anime.id}:${n}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      items.push({
+        id: anime.id,
+        title: String(anime.title || 'Аниме'),
+        n,
+        date: new Date(at).toISOString(),
+      });
+    };
+
+    for (const group of tracked.episodes || []) {
+      const anime = group && group.anime;
+      if (!anime) continue;
+      const next = info[anime.id] && info[anime.id].next;
+      if (next && next.date) {
+        push(anime, next.n, next.date);
+        continue;
+      }
+      const episodes = Array.isArray(group.episodes) ? group.episodes : [];
+      const latest = episodes[episodes.length - 1];
+      if (latest) push(anime, latest.n, latest.date);
+    }
+
+    for (const item of tracked.seasons || []) {
+      const sequel = item && (item.sequel || item.anime);
+      if (!sequel) continue;
+      const next = (info[sequel.id] && info[sequel.id].next) || sequel.nextEpisode;
+      if (next && next.date) push(sequel, next.n, next.date);
+    }
+
+    return items
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(0, max);
+  }
+
+  /* ---------------- версия, GitHub и обновления ---------------- */
+  const APP_VERSION = '1.8.1';
+  const GITHUB_URL = 'https://github.com/sashasat12/anitier';
+
+  function versionParts(value) {
+    return String(value == null ? '' : value)
+      .replace(/^v/i, '')
+      .split(/[.\-+\s]/)
+      .map(part => {
+        const n = Number.parseInt(part, 10);
+        return Number.isFinite(n) && n > 0 ? n : 0;
+      });
+  }
+
+  /** Сравнение версий: 1 — слева новее, -1 — справа новее, 0 — совпадают. */
+  function compareVersions(left, right) {
+    const a = versionParts(left);
+    const b = versionParts(right);
+    const length = Math.max(a.length, b.length, 3);
+    for (let i = 0; i < length; i += 1) {
+      const diff = (a[i] || 0) - (b[i] || 0);
+      if (diff) return diff > 0 ? 1 : -1;
+    }
+    return 0;
+  }
+
+  /** Разбирает ответ GitHub «latest release» в короткое описание версии. */
+  function parseLatestRelease(payload) {
+    if (!payload || typeof payload !== 'object') return null;
+    const tag = payload.tag_name || payload.name;
+    if (!tag) return null;
+    const version = String(tag).replace(/^v/i, '').trim();
+    if (!version) return null;
+    return {
+      version,
+      name: String(payload.name || tag),
+      url: String(payload.html_url || ''),
+      notes: String(payload.body || '').slice(0, 600),
+    };
+  }
+
+  /* ---------------- автопрокрутка при перетаскивании ---------------- */
+  const DRAG_SCROLL_EDGE_MIN = 56;
+  const DRAG_SCROLL_EDGE_MAX = 120;
+  const DRAG_SCROLL_MAX_STEP = 30;
+
+  /**
+   * Насколько прокрутить страницу за кадр, если палец или курсор у края экрана.
+   * Возвращает 0 в спокойной зоне, положительное число — вниз, отрицательное — вверх.
+   */
+  function dragScrollDelta(pointerY, viewportHeight) {
+    const y = Number(pointerY);
+    const height = Number(viewportHeight);
+    if (!Number.isFinite(y) || !Number.isFinite(height) || height <= 0) return 0;
+    const edge = Math.max(DRAG_SCROLL_EDGE_MIN, Math.min(DRAG_SCROLL_EDGE_MAX, height * .15));
+    if (y > height - edge) {
+      const depth = Math.min(1, (y - (height - edge)) / edge);
+      return Math.max(1, Math.ceil(DRAG_SCROLL_MAX_STEP * depth));
+    }
+    if (y < edge) {
+      const depth = Math.min(1, (edge - y) / edge);
+      return -Math.max(1, Math.ceil(DRAG_SCROLL_MAX_STEP * depth));
+    }
+    return 0;
+  }
+
   function defaultNotificationTab(data) {
     const tracked = data && data.tracked ? data.tracked : {};
     const hasTracked = Boolean((tracked.episodes || []).length || (tracked.seasons || []).length);
@@ -3570,6 +3785,13 @@ body.mobile-app .offline-banner {
     collectSeasons,
     collectNotificationKeys,
     defaultNotificationTab,
+    buildReleaseNotificationItems,
+    RELEASE_NOTIFICATION_HORIZON_DAYS,
+    APP_VERSION,
+    GITHUB_URL,
+    compareVersions,
+    parseLatestRelease,
+    dragScrollDelta,
     GENRES,
     SEARCH_LANGS,
     TYPES,
@@ -4032,6 +4254,7 @@ body.mobile-app .offline-banner {
     momentForm: { open: false, animeId: null, mode: 'tiktok', error: '', busy: false, url: '', title: '' },
     tiktokImport: { open: false, url: '', title: '', thumb: '', query: '', loading: false },
     backup: { open: false, busy: false, message: '', error: false },
+    settingsScreen: { open: false, checking: false, message: '', error: false, latest: null },
     lists: { watched: emptyTiers(), planned: emptyTiers() },
     progress: {},
     epInfo: {},
@@ -5330,6 +5553,25 @@ body.mobile-app .offline-banner {
     }
   }
 
+  /* Последний релиз на GitHub: версия, ссылка и заметки. */
+  async function fetchLatestRelease() {
+    const repo = String(C.GITHUB_URL || '').replace(/\/+$/, '').replace(/^https?:\/\/github\.com\//i, '');
+    if (!repo) throw new Error('Ссылка на GitHub не указана');
+    const url = `https://api.github.com/repos/${repo}/releases/latest`;
+    let payload;
+    try {
+      payload = await fetchWithTimeout(url, {
+        headers: { Accept: 'application/vnd.github+json' },
+      }, 12000);
+    } catch (err) {
+      if (err && /404/.test(err.message)) throw new Error('На GitHub пока нет релизов');
+      throw err;
+    }
+    const release = C.parseLatestRelease(payload);
+    if (!release) throw new Error('Не удалось разобрать ответ GitHub');
+    return release;
+  }
+
   async function fetchAniListPage(query, page) {
     const pageData = await fetchAniList({
       search: query,
@@ -6139,6 +6381,7 @@ body.mobile-app .offline-banner {
     fetchAnimeRelations,
     mapKitsu,
     fetchWithTimeout,
+    fetchLatestRelease,
     fetchTikTokMeta,
     fetchTrackedAnime,
     fetchRecentScheduleEvents,
@@ -6263,9 +6506,13 @@ body.mobile-app .offline-banner {
     </article>`;
   }
 
+  /* Карточки таскаются только своими pointer-событиями: нативный drag-and-drop
+     на телефоне перехватывает долгое нажатие и обрывает жест, а на мыши
+     не даёт управлять прокруткой. */
+
   function tierCardHTML(list, a, tier) {
     const wc = watchedCount(a.id);
-    return `<article class="tier-card" draggable="true" data-action="open" data-id="${a.id}" data-list="${list}" data-tier="${tier}" tabindex="0">
+    return `<article class="tier-card" data-action="open" data-id="${a.id}" data-list="${list}" data-tier="${tier}" tabindex="0">
       <img ${imgAttrs(a)}>
       <button class="tc-remove" data-action="remove" data-id="${a.id}" data-list="${list}" title="Убрать из списка" aria-label="Убрать из списка">✕</button>
       <div class="tc-body">
@@ -7107,6 +7354,102 @@ body.mobile-app .offline-banner {
     syncBodyScroll();
   }
 
+  /* ---------------- настройки ---------------- */
+  function renderSettings() {
+    const box = $('#settings-content');
+    if (!box) return;
+    const screen = state.settingsScreen || {};
+    const version = C.APP_VERSION || '—';
+    const bridge = typeof window !== 'undefined' ? window.AniTierAndroid : null;
+    const remindersSupported = Boolean(bridge && typeof bridge.setReleaseNotificationsEnabled === 'function');
+    const remindersOn = remindersSupported
+      && Boolean(App.releaseNotificationsEnabled && App.releaseNotificationsEnabled());
+    const searchLang = C.normalizeSearchLang(state.settings.searchLang);
+    const provider = state.settings.translationProvider || 'auto';
+    const github = C.GITHUB_URL || '';
+
+    const reminders = remindersSupported
+      ? `<div class="backup-block">
+          <h3>Напоминания о сериях</h3>
+          <p>Телефон пришлёт уведомление, когда выходит новая серия отслеживаемого тайтла. Расписание обновляется при каждом открытии «Событий».</p>
+          <button class="btn ${remindersOn ? 'btn-primary' : 'btn-ghost'} settings-toggle" type="button" data-action="release-notifications" id="release-notif-toggle" aria-pressed="${remindersOn ? 'true' : 'false'}">${remindersOn ? '✓ Напоминания включены' : 'Включить напоминания'}</button>
+        </div>`
+      : `<div class="backup-block">
+          <h3>Напоминания о сериях</h3>
+          <p class="form-note">Работают в приложении для Android. На сайте и в PWA напоминания не приходят.</p>
+        </div>`;
+
+    let updateStatus = '';
+    if (screen.message) {
+      updateStatus = `<p class="backup-status${screen.error ? ' is-error' : ''}" role="status">${esc(screen.message)}</p>`;
+    }
+    const release = screen.latest;
+    const releaseLink = release && release.url && C.compareVersions(release.version, version) > 0
+      ? `<button class="btn btn-ghost" type="button" data-action="open-link" data-url="${esc(release.url)}">Открыть релиз ${esc(release.version)}</button>`
+      : '';
+
+    box.innerHTML = `<h2 id="settings-title">Настройки</h2>
+      <p class="custom-sub">AniTier ${esc(version)} · данные хранятся только на этом устройстве.</p>
+      ${reminders}
+      <div class="backup-block">
+        <h3>Поиск и перевод</h3>
+        <label class="settings-field">
+          <span>Язык поиска</span>
+          <select data-action="settings-search-lang" aria-label="Язык поиска">
+            <option value="auto"${searchLang === 'auto' ? ' selected' : ''}>Авто</option>
+            <option value="ru"${searchLang === 'ru' ? ' selected' : ''}>Русский</option>
+            <option value="en"${searchLang === 'en' ? ' selected' : ''}>English</option>
+            <option value="ja"${searchLang === 'ja' ? ' selected' : ''}>日本語</option>
+          </select>
+        </label>
+        <label class="settings-field">
+          <span>Перевод синопсисов</span>
+          <select data-action="settings-translation" aria-label="Провайдер перевода">
+            <option value="auto"${provider === 'auto' ? ' selected' : ''}>Авто: MyMemory → Google</option>
+            <option value="mymemory"${provider === 'mymemory' ? ' selected' : ''}>MyMemory</option>
+            <option value="google"${provider === 'google' ? ' selected' : ''}>Google Переводчик</option>
+          </select>
+        </label>
+      </div>
+      <div class="backup-block">
+        <h3>Данные</h3>
+        <p>Списки, прогресс, свои карточки, моменты и настройки. Импорт и экспорт — в резервной копии.</p>
+        <div class="form-actions">
+          <button class="btn btn-ghost" type="button" data-action="open-backup">Резервная копия и перенос</button>
+          <button class="btn btn-ghost" type="button" data-action="open-exchange">Обмен тир-листом</button>
+        </div>
+      </div>
+      <div class="backup-block">
+        <h3>О приложении</h3>
+        <p>Версия ${esc(version)}. Исходники и новости — на GitHub.</p>
+        <div class="form-actions">
+          <button class="btn btn-ghost" type="button" data-action="open-link" data-url="${esc(github)}">GitHub</button>
+          <button class="btn btn-primary" type="button" data-action="check-updates"${screen.checking ? ' disabled' : ''}>${screen.checking ? 'Проверяем…' : 'Проверить обновления'}</button>
+          ${releaseLink}
+        </div>
+        ${updateStatus}
+      </div>`;
+  }
+
+  function openSettings() {
+    if (state.modalId != null) closeModal();
+    if (state.backup && state.backup.open) closeBackup();
+    state.settingsScreen = { open: true, checking: false, message: '', error: false, latest: null };
+    renderSettings();
+    const modal = $('#settings-modal');
+    if (modal) modal.hidden = false;
+    syncBodyScroll();
+    const panel = $('#settings-panel');
+    if (panel) { panel.scrollTop = 0; panel.focus({ preventScroll: true }); }
+  }
+
+  function closeSettings() {
+    state.settingsScreen = { open: false, checking: false, message: '', error: false, latest: null };
+    const modal = $('#settings-modal');
+    if (modal) modal.hidden = true;
+    syncBodyScroll();
+  }
+
   function refreshViews() {
     updateCounters();
     renderTierList('watched');
@@ -7724,6 +8067,9 @@ body.mobile-app .offline-banner {
     renderBackup,
     openBackup,
     closeBackup,
+    renderSettings,
+    openSettings,
+    closeSettings,
     refreshViews,
     syncBodyScroll,
     tierShort,
@@ -7863,6 +8209,9 @@ body.mobile-app .offline-banner {
     renderBackup,
     openBackup,
     closeBackup,
+    renderSettings,
+    openSettings,
+    closeSettings,
     openExchange,
     closeExchange,
     setExchangeMode,
@@ -8091,6 +8440,7 @@ body.mobile-app .offline-banner {
 
     if (state.forceDemo) {
       applyDemoNotifications();
+      syncReleaseNotifications();
       return;
     }
 
@@ -8142,6 +8492,7 @@ body.mobile-app .offline-banner {
       if (state.tab === 'notifications') markNotificationsSeen();
       updateBell();
       updateOfflineBanner();
+      syncReleaseNotifications();
       if (n.queued) {
         n.queued = false;
         fetchNotifications(true);
@@ -8265,28 +8616,93 @@ body.mobile-app .offline-banner {
   let dragState = null;
   let dragPointerY = null;
   let dragAutoScrollFrame = 0;
-  let touchDrag = null;
+  let dragGesture = null;
+  let dragGhost = null;
   let suppressTierClickUntil = 0;
+
+  /* Пока тащим карточку, прокрутка должна быть мгновенной: со smooth
+     каждый кадр отменяет предыдущую анимацию и страница почти не едет. */
+  function setInstantScroll(on) {
+    const scroller = document.scrollingElement || document.documentElement;
+    if (!scroller || !scroller.style) return;
+    if (on) {
+      if (scroller.dataset.dragSmooth != null) return;
+      scroller.dataset.dragSmooth = scroller.style.scrollBehavior || '';
+      scroller.style.scrollBehavior = 'auto';
+    } else if (scroller.dataset.dragSmooth != null) {
+      scroller.style.scrollBehavior = scroller.dataset.dragSmooth;
+      delete scroller.dataset.dragSmooth;
+    }
+  }
+
+  function scrollPageBy(delta) {
+    const scroller = document.scrollingElement || document.documentElement;
+    if (!scroller) return;
+    const max = Math.max(0, (scroller.scrollHeight || 0) - (scroller.clientHeight || 0));
+    const next = Math.max(0, Math.min(max, (scroller.scrollTop || 0) + delta));
+    if (next !== scroller.scrollTop) scroller.scrollTop = next;
+  }
+
+  /* «Призрак» карточки, который едет за пальцем или курсором. */
+  function createDragGhost(card) {
+    removeDragGhost();
+    const rect = card.getBoundingClientRect();
+    const ghost = card.cloneNode(true);
+    ghost.classList.add('tier-drag-ghost');
+    ghost.classList.remove('dragging');
+    ghost.removeAttribute('tabindex');
+    ghost.removeAttribute('data-action');
+    ghost.setAttribute('aria-hidden', 'true');
+    ghost.style.width = `${rect.width}px`;
+    document.body.appendChild(ghost);
+    dragGhost = ghost;
+    return ghost;
+  }
+
+  function moveDragGhost(x, y) {
+    if (!dragGhost) return;
+    dragGhost.style.left = `${x}px`;
+    dragGhost.style.top = `${y}px`;
+  }
+
+  function removeDragGhost() {
+    if (dragGhost && dragGhost.parentNode) dragGhost.parentNode.removeChild(dragGhost);
+    dragGhost = null;
+  }
+
+  /* Подсветка тира под пальцем или курсором. */
+  function updateDragTarget(x, y) {
+    if (!dragGesture) return;
+    const hit = document.elementFromPoint(x, y);
+    const drop = hit && hit.closest ? hit.closest('.tier-drop') : null;
+    $$('.tier-drop.is-over').forEach(item => { if (item !== drop) item.classList.remove('is-over'); });
+    if (drop && drop.dataset.list === dragGesture.list) drop.classList.add('is-over');
+    dragGesture.drop = drop;
+  }
+
+  function activateDrag(gesture) {
+    if (dragGesture !== gesture || gesture.active) return;
+    clearTimeout(gesture.timer);
+    gesture.active = true;
+    dragState = { list: gesture.list, id: gesture.id };
+    gesture.card.classList.add('dragging');
+    try { gesture.card.setPointerCapture(gesture.pointerId); } catch { /* старые WebView */ }
+    createDragGhost(gesture.card);
+    moveDragGhost(gesture.clientX, gesture.clientY);
+    if (gesture.pointerType === 'touch' && navigator.vibrate) navigator.vibrate(18);
+  }
 
   function runDragAutoScroll() {
     if (dragAutoScrollFrame || !dragState) return;
+    setInstantScroll(true);
     const step = () => {
       dragAutoScrollFrame = 0;
       if (!dragState || dragPointerY == null) return;
       const height = window.innerHeight || document.documentElement.clientHeight;
-      const edge = Math.max(52, Math.min(110, height * .14));
-      let delta = 0;
-      if (dragPointerY > height - edge) delta = Math.ceil(((dragPointerY - (height - edge)) / edge) * 24);
-      else if (dragPointerY < edge) delta = -Math.ceil(((edge - dragPointerY) / edge) * 24);
+      const delta = C.dragScrollDelta(dragPointerY, height);
       if (!delta) return;
-      window.scrollBy(0, delta);
-      if (touchDrag && touchDrag.active && touchDrag.clientX != null) {
-        const hit = document.elementFromPoint(touchDrag.clientX, touchDrag.clientY);
-        const drop = hit && hit.closest ? hit.closest('.tier-drop') : null;
-        $$('.tier-drop.is-over').forEach(item => { if (item !== drop) item.classList.remove('is-over'); });
-        if (drop && drop.dataset.list === touchDrag.list) drop.classList.add('is-over');
-        touchDrag.drop = drop;
-      }
+      App.scrollPageBy(delta);
+      if (dragGesture && dragGesture.active) updateDragTarget(dragGesture.clientX, dragGesture.clientY);
       dragAutoScrollFrame = window.requestAnimationFrame(step);
     };
     dragAutoScrollFrame = window.requestAnimationFrame(step);
@@ -8295,111 +8711,94 @@ body.mobile-app .offline-banner {
   function cleanupDrag() {
     dragState = null;
     dragPointerY = null;
-    if (touchDrag && touchDrag.timer) clearTimeout(touchDrag.timer);
-    touchDrag = null;
+    if (dragGesture && dragGesture.timer) clearTimeout(dragGesture.timer);
+    dragGesture = null;
     if (dragAutoScrollFrame) window.cancelAnimationFrame(dragAutoScrollFrame);
     dragAutoScrollFrame = 0;
+    removeDragGhost();
+    setInstantScroll(false);
     $$('.tier-card.dragging').forEach(c => c.classList.remove('dragging'));
     $$('.tier-drop.is-over').forEach(d => d.classList.remove('is-over'));
   }
 
   function bindDragEvents() {
-    document.addEventListener('dragstart', e => {
-      const card = e.target.closest && e.target.closest('.tier-card');
-      if (!card) return;
-      dragState = { list: card.dataset.list, id: Number(card.dataset.id) };
-      card.classList.add('dragging');
-      try {
-        e.dataTransfer.setData('text/plain', String(card.dataset.id));
-        e.dataTransfer.effectAllowed = 'move';
-      } catch { /* noop */ }
-    });
-
-    document.addEventListener('dragend', cleanupDrag);
-
-    document.addEventListener('dragover', e => {
-      if (!dragState) return;
-      dragPointerY = e.clientY;
-      runDragAutoScroll();
-      const drop = e.target.closest && e.target.closest('.tier-drop');
-      if (!drop) return;
-      e.preventDefault();
-      try { e.dataTransfer.dropEffect = 'move'; } catch { /* noop */ }
-      if (!drop.classList.contains('is-over')) {
-        $$('.tier-drop.is-over').forEach(d => d.classList.remove('is-over'));
-        drop.classList.add('is-over');
-      }
-    });
-
-    document.addEventListener('dragleave', e => {
-      const drop = e.target.closest && e.target.closest('.tier-drop');
-      if (drop && !drop.contains(e.relatedTarget)) drop.classList.remove('is-over');
-    });
-
-    document.addEventListener('drop', e => {
-      if (!dragState) return;
-      const drop = e.target.closest && e.target.closest('.tier-drop');
-      if (!drop) return;
-      e.preventDefault();
-      const name = drop.dataset.list;
-      const tier = drop.dataset.tier;
-      const { list, id } = dragState;
-      cleanupDrag();
-      if (name !== list) return;
-      moveToTier(name, id, tier);
-    });
-
     document.addEventListener('pointerdown', e => {
-      if (e.pointerType !== 'touch' || !e.isPrimary) return;
+      if (dragGesture || !e.isPrimary) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
       const card = e.target.closest && e.target.closest('.tier-card');
       if (!card || e.target.closest('button')) return;
+      const pointerType = e.pointerType || 'mouse';
       const gesture = {
         card,
         list: card.dataset.list,
         id: Number(card.dataset.id),
+        pointerType,
         startX: e.clientX,
         startY: e.clientY,
+        clientX: e.clientX,
+        clientY: e.clientY,
         pointerId: e.pointerId,
         active: false,
         timer: 0,
+        drop: null,
       };
-      gesture.timer = setTimeout(() => {
-        if (touchDrag !== gesture) return;
-        gesture.active = true;
-        dragState = { list: gesture.list, id: gesture.id };
-        card.classList.add('dragging');
-        try { card.setPointerCapture(gesture.pointerId); } catch { /* старые WebView */ }
-        if (navigator.vibrate) navigator.vibrate(18);
-      }, 360);
-      touchDrag = gesture;
+      /* Пальцем — после долгого нажатия, мышью — сразу после сдвига:
+         обычный клик должен открывать тайтл. */
+      if (pointerType === 'touch') {
+        gesture.timer = setTimeout(() => activateDrag(gesture), 360);
+      }
+      dragGesture = gesture;
     }, { passive: true });
 
+    /* Пока карточка тащится, отдаём прокрутку автопрокрутке:
+       без этого браузер забирает жест себе и присылает pointercancel. */
+    document.addEventListener('touchmove', e => {
+      if (!dragGesture || !dragGesture.active) return;
+      e.preventDefault();
+    }, { passive: false });
+
+    /* Долгое нажатие в Android-WebView тянет за собой выделение текста и
+       contextmenu, а Chrome вместе с ними присылает pointercancel — жест
+       обрывается, и автопрокрутка не запускается. Гасим их, пока палец на карточке. */
+    document.addEventListener('contextmenu', e => {
+      const card = e.target && e.target.closest && e.target.closest('.tier-card');
+      if (card && (dragGesture || dragState)) e.preventDefault();
+    });
+
+    document.addEventListener('selectstart', e => {
+      const card = e.target && e.target.closest && e.target.closest('.tier-card');
+      if (card && (dragGesture || dragState)) e.preventDefault();
+    });
+
     document.addEventListener('pointermove', e => {
-      if (!touchDrag) return;
-      if (!touchDrag.active) {
-        if (Math.hypot(e.clientX - touchDrag.startX, e.clientY - touchDrag.startY) > 12) {
-          clearTimeout(touchDrag.timer);
-          touchDrag = null;
+      const gesture = dragGesture;
+      if (!gesture) return;
+      gesture.clientX = e.clientX;
+      gesture.clientY = e.clientY;
+      if (!gesture.active) {
+        const moved = Math.hypot(e.clientX - gesture.startX, e.clientY - gesture.startY);
+        if (gesture.pointerType === 'touch') {
+          if (moved > 12) {
+            clearTimeout(gesture.timer);
+            dragGesture = null;
+          }
+          return;
         }
-        return;
+        if (moved < 6) return;
+        activateDrag(gesture);
       }
       e.preventDefault();
-      touchDrag.clientX = e.clientX;
-      touchDrag.clientY = e.clientY;
       dragPointerY = e.clientY;
+      moveDragGhost(e.clientX, e.clientY);
+      updateDragTarget(e.clientX, e.clientY);
       runDragAutoScroll();
-      const hit = document.elementFromPoint(e.clientX, e.clientY);
-      const drop = hit && hit.closest ? hit.closest('.tier-drop') : null;
-      $$('.tier-drop.is-over').forEach(item => { if (item !== drop) item.classList.remove('is-over'); });
-      if (drop && drop.dataset.list === touchDrag.list) drop.classList.add('is-over');
-      touchDrag.drop = drop;
     }, { passive: false });
 
     document.addEventListener('pointerup', e => {
-      if (!touchDrag) return;
-      const gesture = touchDrag;
+      const gesture = dragGesture;
+      if (!gesture) return;
       clearTimeout(gesture.timer);
-      touchDrag = null;
+      dragGesture = null;
       if (!gesture.active) return;
       const hit = document.elementFromPoint(e.clientX, e.clientY);
       const drop = hit && hit.closest ? hit.closest('.tier-drop') : gesture.drop;
@@ -8668,6 +9067,20 @@ body.mobile-app .offline-banner {
       window.location.href = target;
       return true;
     }
+  }
+
+  /* Поиск: в APK сначала открываем приложение TikTok, если его нет — браузер. */
+  function openTikTokSearch(query) {
+    const text = String(query == null ? '' : query).trim();
+    if (!text) return false;
+    const bridge = typeof window !== 'undefined' ? window.AniTierAndroid : null;
+    if (bridge && typeof bridge.openTikTokSearch === 'function') {
+      try {
+        return bridge.openTikTokSearch(text);
+      } catch { /* ниже обычный путь через ссылку */ }
+    }
+    const url = C.tiktokSearchUrl(text);
+    return url ? openTikTokUrl(url) : false;
   }
 
   function closeTikTokImport() {
@@ -9311,8 +9724,7 @@ body.mobile-app .offline-banner {
         case 'tiktok-search': {
           const anime = getAnime(id);
           const query = anime ? [anime.title, anime.altTitle].filter(Boolean).join(' ') : '';
-          const url = C.tiktokSearchUrl(query);
-          if (url) openTikTokUrl(url);
+          if (query) openTikTokSearch(query);
           break;
         }
 
@@ -9431,6 +9843,10 @@ body.mobile-app .offline-banner {
           fetchNotifications(true);
           break;
 
+        case 'release-notifications':
+          toggleReleaseNotifications();
+          break;
+
         case 'notif-tab':
           if (C.NOTIF_TABS.includes(el.dataset.notifTab)) {
             state.notifications.tab = el.dataset.notifTab;
@@ -9464,7 +9880,28 @@ body.mobile-app .offline-banner {
           break;
 
         case 'open-backup':
+          closeSettings();
           openBackup();
+          break;
+
+        case 'open-settings':
+          openSettings();
+          break;
+
+        case 'close-settings':
+          closeSettings();
+          break;
+
+        case 'check-updates':
+          checkForUpdates();
+          break;
+
+        case 'open-link':
+          openExternalLink(el.dataset.url);
+          break;
+        case 'open-exchange':
+          closeSettings();
+          openExchange('export', state.tab === 'planned' ? 'planned' : 'watched');
           break;
 
         case 'close-backup':
@@ -9676,6 +10113,10 @@ body.mobile-app .offline-banner {
     });
 
     document.addEventListener('change', e => {
+      const settingsLang = e.target.closest && e.target.closest('select[data-action="settings-search-lang"]');
+      if (settingsLang) applySettingsChange('searchLang', settingsLang.value);
+      const settingsProvider = e.target.closest && e.target.closest('select[data-action="settings-translation"]');
+      if (settingsProvider) applySettingsChange('translationProvider', settingsProvider.value);
       const provider = e.target.closest && e.target.closest('select[data-action="synopsis-provider"]');
       if (provider) {
         state.settings.translationProvider = ['mymemory', 'google'].includes(provider.value) ? provider.value : 'auto';
@@ -9697,6 +10138,10 @@ body.mobile-app .offline-banner {
       if (e.key === 'Escape') {
         if (state.tiktokImport.open) {
           closeTikTokImport();
+          return;
+        }
+        if (state.settingsScreen && state.settingsScreen.open) {
+          closeSettings();
           return;
         }
         if (state.backup.open) {
@@ -9886,6 +10331,118 @@ body.mobile-app .offline-banner {
     return bootstrap();
   }
 
+  /* ---------------- напоминания на телефоне ---------------- */
+  function releaseBridge() {
+    return typeof window !== 'undefined' ? window.AniTierAndroid : null;
+  }
+
+  function releaseNotificationsEnabled() {
+    const bridge = releaseBridge();
+    if (!bridge || typeof bridge.areReleaseNotificationsEnabled !== 'function') return false;
+    try {
+      return Boolean(bridge.areReleaseNotificationsEnabled());
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function syncReleaseNotifications() {
+    const bridge = releaseBridge();
+    if (!bridge || typeof bridge.scheduleReleaseNotifications !== 'function') return;
+    const items = C.buildReleaseNotificationItems(state.notifications, state.epInfo);
+    try {
+      bridge.scheduleReleaseNotifications(JSON.stringify(items));
+    } catch (err) {
+      console.warn('AniTier: не удалось запланировать напоминания', err);
+    }
+  }
+
+  function toggleReleaseNotifications() {
+    const bridge = releaseBridge();
+    if (!bridge || typeof bridge.setReleaseNotificationsEnabled !== 'function') {
+      toast('Напоминания работают только в приложении для Android');
+      return;
+    }
+    bridge.setReleaseNotificationsEnabled(!releaseNotificationsEnabled());
+    if (state.settingsScreen && state.settingsScreen.open) renderSettings();
+  }
+
+  /* Вызывается из MainActivity после ответа на запрос разрешений. */
+  function onReleaseNotificationPermissionResult(enabled) {
+    if (state.tab === 'notifications') renderNotifications();
+    if (state.settingsScreen && state.settingsScreen.open) renderSettings();
+    toast(enabled ? 'Напоминания о сериях включены' : 'Напоминания о сериях выключены');
+    if (enabled) syncReleaseNotifications();
+  }
+
+  /* ---------------- проверка обновлений ---------------- */
+  async function checkForUpdates() {
+    const screen = state.settingsScreen;
+    if (!screen || screen.checking) return;
+    screen.checking = true;
+    screen.message = '';
+    screen.error = false;
+    screen.latest = null;
+    if (screen.open) renderSettings();
+
+    try {
+      if (typeof App.fetchLatestRelease !== 'function') throw new Error('Проверка обновлений недоступна');
+      const release = await App.fetchLatestRelease();
+      const current = C.APP_VERSION;
+      screen.latest = release;
+      const diff = C.compareVersions(release.version, current);
+      if (diff > 0) screen.message = `Доступна версия ${release.version}, у вас ${current}.`;
+      else if (diff < 0) screen.message = `У вас версия ${current}, на GitHub опубликована ${release.version}.`;
+      else screen.message = `У вас последняя версия ${current}.`;
+    } catch (err) {
+      screen.error = true;
+      screen.message = err && err.message ? err.message : 'Не удалось проверить обновления';
+    } finally {
+      screen.checking = false;
+      if (screen.open) renderSettings();
+    }
+  }
+
+  /* Ссылки: в APK открываем системным браузером через мост, в браузере — новой вкладкой. */
+  function openExternalLink(url) {
+    if (!/^https?:\/\//i.test(String(url || ''))) return;
+    const bridge = releaseBridge();
+    if (bridge && typeof bridge.openUrl === 'function') {
+      try {
+        bridge.openUrl(url);
+        return;
+      } catch (_) { /* падаем в обычное окно */ }
+    }
+    if (typeof window !== 'undefined' && typeof window.open === 'function') {
+      window.open(url, '_blank', 'noopener');
+    }
+  }
+
+  function applySettingsChange(kind, value) {    if (kind === 'searchLang') {
+      state.settings.searchLang = C.normalizeSearchLang(value);
+      syncLangUI();
+    } else if (kind === 'translationProvider') {
+      state.settings.translationProvider = ['mymemory', 'google'].includes(value) ? value : 'auto';
+    } else {
+      return;
+    }
+    saveState();
+    if (state.settingsScreen && state.settingsScreen.open) renderSettings();
+  }
+
+  /* Системная кнопка «назад» в Android: сначала закрываем слои интерфейса. */
+  function handleAndroidBack() {
+    if (state.tiktokImport.open) { closeTikTokImport(); return true; }
+    if (state.settingsScreen && state.settingsScreen.open) { closeSettings(); return true; }
+    if (state.backup.open) { closeBackup(); return true; }
+    if (state.momentForm.open) { closeMomentForm(); return true; }
+    if (state.customForm.open) { closeCustomForm(); return true; }
+    if (state.exchange.open) { closeExchange(); return true; }
+    if (state.modalId != null) { closeModal(); return true; }
+    if (state.tab !== 'db') { switchTab('db'); return true; }
+    return false;
+  }
+
   Object.assign(App, {
     fetchDB,
     fetchNotifications,
@@ -9897,6 +10454,7 @@ body.mobile-app .offline-banner {
     hydrateCustomImage,
     saveMomentForm,
     receiveSharedTikTok,
+    openTikTokSearch,
     playMoment,
     shareMoment,
     removeMomentAction,
@@ -9921,6 +10479,17 @@ body.mobile-app .offline-banner {
     driveAvailable,
     buildBackupPayload,
     applyBackupData,
+    handleAndroidBack,
+    onReleaseNotificationPermissionResult,
+    syncReleaseNotifications,
+    toggleReleaseNotifications,
+    releaseNotificationsEnabled,
+    checkForUpdates,
+    openSettings,
+    closeSettings,
+    renderSettings,
+    scrollPageBy,
+    openExternalLink,
     init,
   });
 
@@ -9951,6 +10520,7 @@ body.mobile-app .offline-banner {
       translateText,
       translateModalSynopsis,
       receiveSharedTikTok,
+      openTikTokSearch,
       invalidateNotificationEpisodes,
       openExchange,
       closeExchange,

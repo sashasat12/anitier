@@ -303,4 +303,88 @@
     T.eq(C.formatBytes(5 * 1024 * 1024), '5.0 МБ');
     T.eq(C.formatBytes(40 * 1024 * 1024), '40 МБ');
   });
+
+  T.test('core: напоминания берут ближайшие серии отслеживаемых тайтлов', () => {
+    const C = core();
+    const now = new Date('2026-10-25T12:00:00+03:00').getTime();
+    const iso = ms => new Date(ms).toISOString();
+    const data = {
+      tracked: {
+        episodes: [
+          { anime: { id: 1, title: 'Вышла сегодня' }, episodes: [{ n: 5, date: iso(now - 3600000) }] },
+          { anime: { id: 2, title: 'Следующая серия' }, episodes: [] },
+        ],
+        seasons: [
+          {
+            anime: { id: 9, title: 'База' },
+            sequel: { id: 10, title: 'Сиквел', nextEpisode: { n: 2, date: iso(now + 86400000) } },
+          },
+        ],
+      },
+    };
+    const epInfo = { 2: { next: { n: 7, date: iso(now + 2 * 3600000) } } };
+    const items = C.buildReleaseNotificationItems(data, epInfo, { now });
+
+    T.eq(items.length, 3);
+    T.eq(items[0].title, 'Вышла сегодня', 'Вышедшая сегодня серия идёт первой');
+    T.eq(items[0].n, 5);
+    T.eq(new Date(items[0].date).getTime(), now + 60000, 'Прошедшую серию напоминаем через минуту');
+    T.eq(items[1].title, 'Следующая серия');
+    T.eq(items[1].n, 7);
+    T.eq(items[2].title, 'Сиквел');
+    T.eq(items[2].n, 2);
+  });
+
+  T.test('core: напоминания пропускают старые и далёкие серии', () => {
+    const C = core();
+    const now = new Date('2026-10-25T12:00:00+03:00').getTime();
+    const iso = ms => new Date(ms).toISOString();
+    const data = {
+      tracked: {
+        episodes: [
+          { anime: { id: 1, title: 'Позавчера' }, episodes: [{ n: 3, date: iso(now - 2 * 86400000) }] },
+          { anime: { id: 2, title: 'Через месяц' }, episodes: [] },
+        ],
+        seasons: [],
+      },
+    };
+    const epInfo = { 2: { next: { n: 1, date: iso(now + 30 * 86400000) } } };
+    const items = C.buildReleaseNotificationItems(data, epInfo, { now });
+
+    T.eq(items.length, 0, 'В напоминания попадают только серии на ближайшие две недели');
+  });
+
+  T.test('core: автопрокрутка ускоряется у края и молчит в середине', () => {
+    const C = core();
+    T.eq(C.dragScrollDelta(400, 800), 0, 'В середине экрана прокрутки нет');
+    T.eq(C.dragScrollDelta(10, 800) < 0, true, 'У верхнего края тянем вверх');
+    T.eq(C.dragScrollDelta(790, 800) > 0, true, 'У нижнего края тянем вниз');
+    T.assert(C.dragScrollDelta(795, 800) > C.dragScrollDelta(700, 800), 'Чем ближе к краю, тем быстрее');
+    T.assert(C.dragScrollDelta(795, 800) <= 30, 'Скорость ограничена');
+    T.eq(C.dragScrollDelta(795, 0), 0, 'Без высоты экрана прокрутки нет');
+  });
+
+  T.test('core: версии сравниваются по числам, а не по строкам', () => {
+    const C = core();
+    T.eq(C.compareVersions('1.8.0', '1.7.9'), 1);
+    T.eq(C.compareVersions('v1.8.0', '1.8.0'), 0);
+    T.eq(C.compareVersions('1.8', '1.8.0'), 0);
+    T.eq(C.compareVersions('1.10.0', '1.9.9'), 1, '10 новее 9');
+    T.eq(C.compareVersions('1.7.0', '2.0.0'), -1);
+  });
+
+  T.test('core: ответ GitHub превращается в версию релиза', () => {
+    const C = core();
+    const release = C.parseLatestRelease({
+      tag_name: 'v1.9.0',
+      name: 'AniTier 1.9.0',
+      html_url: 'https://github.com/sashasat12/anitier/releases/tag/v1.9.0',
+      body: 'Что нового',
+    });
+    T.eq(release.version, '1.9.0');
+    T.eq(release.name, 'AniTier 1.9.0');
+    T.includes(release.url, 'releases/tag/v1.9.0');
+    T.eq(C.parseLatestRelease(null), null);
+    T.eq(C.parseLatestRelease({ name: '' }), null);
+  });
 })();

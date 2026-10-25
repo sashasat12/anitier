@@ -476,6 +476,25 @@
     }
   }
 
+  /* Последний релиз на GitHub: версия, ссылка и заметки. */
+  async function fetchLatestRelease() {
+    const repo = String(C.GITHUB_URL || '').replace(/\/+$/, '').replace(/^https?:\/\/github\.com\//i, '');
+    if (!repo) throw new Error('Ссылка на GitHub не указана');
+    const url = `https://api.github.com/repos/${repo}/releases/latest`;
+    let payload;
+    try {
+      payload = await fetchWithTimeout(url, {
+        headers: { Accept: 'application/vnd.github+json' },
+      }, 12000);
+    } catch (err) {
+      if (err && /404/.test(err.message)) throw new Error('На GitHub пока нет релизов');
+      throw err;
+    }
+    const release = C.parseLatestRelease(payload);
+    if (!release) throw new Error('Не удалось разобрать ответ GitHub');
+    return release;
+  }
+
   async function fetchAniListPage(query, page) {
     const pageData = await fetchAniList({
       search: query,
@@ -1285,6 +1304,7 @@
     fetchAnimeRelations,
     mapKitsu,
     fetchWithTimeout,
+    fetchLatestRelease,
     fetchTikTokMeta,
     fetchTrackedAnime,
     fetchRecentScheduleEvents,

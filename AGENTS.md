@@ -48,7 +48,19 @@ powershell -ExecutionPolicy Bypass -File .\build-phone.ps1
 # APK (setup-tools.ps1 — только при первой сборке)
 powershell -ExecutionPolicy Bypass -File .\android\setup-tools.ps1
 powershell -ExecutionPolicy Bypass -File .\android\build-apk.ps1
+
+# граф знаний Graphify (локально, без API-ключей)
+graphify extract . --code-only
+graphify cluster-only . --no-label
+graphify query "вопрос"      # scoped подграф вместо чтения файлов
 ```
+
+## Граф знаний
+
+`graphify-out/` (`graph.json`, `GRAPH_REPORT.md`, `graph.html`) — **генерируемые** файлы, в git не попадают.
+Строится локально из AST, ничего никуда не отправляет; LLM не нужен (`--code-only`).
+`graphify update . --code-only` — инкрементально обновить после правок кода.
+Доступ к графу: MCP-сервер `graphify` (глобальный конфиг OpenCode) и скилл `graphify`.
 
 ## Сборка и артефакты
 

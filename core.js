@@ -857,6 +857,153 @@
     return [...keys];
   }
 
+  /* ---------------- напоминания на телефоне ---------------- */
+  const RELEASE_NOTIFICATION_HORIZON_DAYS = 14;
+  const RELEASE_NOTIFICATION_SOON_MS = 60000;
+
+  function releaseTime(value) {
+    if (value == null || value === '') return 0;
+    if (typeof value === 'number') return value < 1e11 ? value * 1000 : value;
+    const parsed = new Date(value).getTime();
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  function localDayBounds(now) {
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+    return { start: start.getTime(), end: end.getTime() };
+  }
+
+  /**
+   * Серии отслеживаемых тайтлов, о которых стоит напомнить на телефоне.
+   * Будущие серии берём как есть, уже вышедшие сегодня — сдвигаем на ближайшую минуту.
+   */
+  function buildReleaseNotificationItems(data, epInfo, options = {}) {
+    const now = Number.isFinite(Number(options.now)) ? Number(options.now) : Date.now();
+    const horizonDays = Number(options.horizonDays) || RELEASE_NOTIFICATION_HORIZON_DAYS;
+    const soonMs = Number(options.soonMs) || RELEASE_NOTIFICATION_SOON_MS;
+    const max = Number(options.max) || 20;
+    const tracked = (data && data.tracked) || {};
+    const info = epInfo || {};
+    const day = localDayBounds(now);
+    const items = [];
+    const seen = new Set();
+
+    const push = (anime, episode, rawDate) => {
+      if (!anime || anime.id == null) return;
+      const n = Number(episode);
+      if (!Number.isInteger(n) || n <= 0) return;
+      let at = releaseTime(rawDate);
+      if (!at) return;
+      if (at <= now) {
+        if (at < day.start || at > day.end) return;
+        at = now + soonMs;
+      }
+      if (at > now + horizonDays * 86400000) return;
+      const key = `${anime.id}:${n}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      items.push({
+        id: anime.id,
+        title: String(anime.title || 'Аниме'),
+        n,
+        date: new Date(at).toISOString(),
+      });
+    };
+
+    for (const group of tracked.episodes || []) {
+      const anime = group && group.anime;
+      if (!anime) continue;
+      const next = info[anime.id] && info[anime.id].next;
+      if (next && next.date) {
+        push(anime, next.n, next.date);
+        continue;
+      }
+      const episodes = Array.isArray(group.episodes) ? group.episodes : [];
+      const latest = episodes[episodes.length - 1];
+      if (latest) push(anime, latest.n, latest.date);
+    }
+
+    for (const item of tracked.seasons || []) {
+      const sequel = item && (item.sequel || item.anime);
+      if (!sequel) continue;
+      const next = (info[sequel.id] && info[sequel.id].next) || sequel.nextEpisode;
+      if (next && next.date) push(sequel, next.n, next.date);
+    }
+
+    return items
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(0, max);
+  }
+
+  /* ---------------- версия, GitHub и обновления ---------------- */
+  const APP_VERSION = '1.8.1';
+  const GITHUB_URL = 'https://github.com/sashasat12/anitier';
+
+  function versionParts(value) {
+    return String(value == null ? '' : value)
+      .replace(/^v/i, '')
+      .split(/[.\-+\s]/)
+      .map(part => {
+        const n = Number.parseInt(part, 10);
+        return Number.isFinite(n) && n > 0 ? n : 0;
+      });
+  }
+
+  /** Сравнение версий: 1 — слева новее, -1 — справа новее, 0 — совпадают. */
+  function compareVersions(left, right) {
+    const a = versionParts(left);
+    const b = versionParts(right);
+    const length = Math.max(a.length, b.length, 3);
+    for (let i = 0; i < length; i += 1) {
+      const diff = (a[i] || 0) - (b[i] || 0);
+      if (diff) return diff > 0 ? 1 : -1;
+    }
+    return 0;
+  }
+
+  /** Разбирает ответ GitHub «latest release» в короткое описание версии. */
+  function parseLatestRelease(payload) {
+    if (!payload || typeof payload !== 'object') return null;
+    const tag = payload.tag_name || payload.name;
+    if (!tag) return null;
+    const version = String(tag).replace(/^v/i, '').trim();
+    if (!version) return null;
+    return {
+      version,
+      name: String(payload.name || tag),
+      url: String(payload.html_url || ''),
+      notes: String(payload.body || '').slice(0, 600),
+    };
+  }
+
+  /* ---------------- автопрокрутка при перетаскивании ---------------- */
+  const DRAG_SCROLL_EDGE_MIN = 56;
+  const DRAG_SCROLL_EDGE_MAX = 120;
+  const DRAG_SCROLL_MAX_STEP = 30;
+
+  /**
+   * Насколько прокрутить страницу за кадр, если палец или курсор у края экрана.
+   * Возвращает 0 в спокойной зоне, положительное число — вниз, отрицательное — вверх.
+   */
+  function dragScrollDelta(pointerY, viewportHeight) {
+    const y = Number(pointerY);
+    const height = Number(viewportHeight);
+    if (!Number.isFinite(y) || !Number.isFinite(height) || height <= 0) return 0;
+    const edge = Math.max(DRAG_SCROLL_EDGE_MIN, Math.min(DRAG_SCROLL_EDGE_MAX, height * .15));
+    if (y > height - edge) {
+      const depth = Math.min(1, (y - (height - edge)) / edge);
+      return Math.max(1, Math.ceil(DRAG_SCROLL_MAX_STEP * depth));
+    }
+    if (y < edge) {
+      const depth = Math.min(1, (edge - y) / edge);
+      return -Math.max(1, Math.ceil(DRAG_SCROLL_MAX_STEP * depth));
+    }
+    return 0;
+  }
+
   function defaultNotificationTab(data) {
     const tracked = data && data.tracked ? data.tracked : {};
     const hasTracked = Boolean((tracked.episodes || []).length || (tracked.seasons || []).length);
@@ -908,6 +1055,13 @@
     collectSeasons,
     collectNotificationKeys,
     defaultNotificationTab,
+    buildReleaseNotificationItems,
+    RELEASE_NOTIFICATION_HORIZON_DAYS,
+    APP_VERSION,
+    GITHUB_URL,
+    compareVersions,
+    parseLatestRelease,
+    dragScrollDelta,
     GENRES,
     SEARCH_LANGS,
     TYPES,
