@@ -591,18 +591,117 @@
   }
 
   /* ---------------- отрисовка: скоро выйдут ---------------- */
+  function upcomingListed() {
+    return [...allIn('watched'), ...allIn('planned')];
+  }
+
+  function initUpcomingOptions() {
+    const type = $('#upcoming-type');
+    if (type && type.options.length <= 1) {
+      for (const item of C.TYPES) type.appendChild(new Option(item.label, item.value));
+    }
+    const genre = $('#upcoming-genre');
+    if (genre && genre.options.length <= 1) {
+      for (const item of C.GENRES) genre.appendChild(new Option(item.label, String(item.id)));
+    }
+  }
+
+  function upcomingMonthLabel(key) {
+    return monthLabel(`${key}-01T12:00:00`);
+  }
+
+  /* Список месяцев берём из самих премьер, поэтому пустых вариантов нет. */
+  function syncUpcomingControls(items) {
+    const view = state.upcoming.view;
+    const search = $('#upcoming-search');
+    if (search && search.value !== view.query) search.value = view.query;
+    const type = $('#upcoming-type');
+    if (type) type.value = view.filters.type || '';
+    const genre = $('#upcoming-genre');
+    if (genre) genre.value = view.filters.genre || '';
+    const sort = $('#upcoming-sort');
+    if (sort) sort.value = view.sort === 'title' ? 'title' : 'date';
+
+    const month = $('#upcoming-month');
+    if (!month) return;
+    const keys = [...new Set(items.map(a => C.upcomingMonthKey(a.airedFrom)).filter(Boolean))].sort();
+    const current = [...month.options].slice(1).map(option => option.value);
+    const changed = current.length !== keys.length || current.some((value, index) => value !== keys[index]);
+    if (changed) {
+      month.innerHTML = '<option value="">Все месяцы</option>'
+        + keys.map(key => `<option value="${key}">${esc(upcomingMonthLabel(key))}</option>`).join('');
+    }
+    if (!keys.includes(view.month)) view.month = '';
+    month.value = view.month;
+  }
+
+  function updateUpcomingStatus(all, shown) {
+    const el = $('#upcoming-status');
+    if (!el) return;
+    if (!all.length) { el.textContent = ''; return; }
+    const hidden = Math.max(0, state.upcoming.items.length - all.length);
+    const bits = [`Показано ${shown.length} из ${all.length}`];
+    if (hidden) bits.push(`скрыто из ваших списков: ${hidden}`);
+    const view = state.upcoming.view;
+    const active = C.countActiveFilters(view.filters) + (view.month ? 1 : 0) + (view.query.trim() ? 1 : 0);
+    if (active) bits.push(`фильтров: ${active}`);
+    el.textContent = bits.join(' · ');
+  }
+
   function renderUpcoming() {
     const grid = $('#upcoming-grid');
     if (!grid) return;
     const u = state.upcoming;
+    if (!u.view) {
+      u.view = { query: '', filters: { type: '', genre: '', year: '', minScore: '', status: '' }, month: '', sort: 'date' };
+    }
+    initUpcomingOptions();
 
-    if (u.loading && !u.items.length) { grid.innerHTML = skeletonCards(10); return; }
-    if (u.error && !u.items.length) { grid.innerHTML = msgBlock('⚠️', 'Не удалось загрузить премьеры', u.error, 'retry-upcoming'); return; }
-    if (!u.items.length) { grid.innerHTML = msgBlock('🌌', 'Ближайших премьер не нашлось', 'Попробуйте обновить данные позже.'); return; }
+    if (u.loading && !u.items.length) {
+      grid.innerHTML = skeletonCards(10);
+      syncUpcomingControls([]);
+      return;
+    }
+    if (u.error && !u.items.length) {
+      grid.innerHTML = msgBlock('⚠️', 'Не удалось загрузить премьеры', u.error, 'retry-upcoming');
+      return;
+    }
+    if (!u.items.length) {
+      grid.innerHTML = msgBlock('🌌', 'Ближайших премьер не нашлось', 'Попробуйте обновить данные позже.');
+      syncUpcomingControls([]);
+      updateUpcomingStatus([], []);
+      return;
+    }
+
+    /* Своё «Просмотрено» и «Запланировано» в премьерах не показываем:
+       тайтл уже разобран, второй раз он только мешает. */
+    const all = C.excludeListed(u.items, upcomingListed());
+    const shown = C.filterUpcoming(all, u.view);
+    syncUpcomingControls(all);
+    updateUpcomingStatus(all, shown);
+
+    if (!all.length) {
+      grid.innerHTML = `<div class="msg">
+        <span class="emoji">✅</span>
+        <h3>Все премьеры уже в ваших списках</h3>
+        <p>Тайтлы из «Просмотрено» и «Запланировано» здесь не повторяются.</p>
+      </div>`;
+      return;
+    }
+
+    if (!shown.length) {
+      grid.innerHTML = `<div class="msg">
+        <span class="emoji">🔍</span>
+        <h3>Под фильтры ничего не подошло</h3>
+        <p>Измените запрос, месяц или жанр — или сбросьте фильтры.</p>
+        <button class="btn btn-ghost" data-action="reset-upcoming">Сбросить фильтры</button>
+      </div>`;
+      return;
+    }
 
     let html = '';
     let currentMonth = '';
-    for (const a of u.items) {
+    for (const a of shown) {
       const month = monthLabel(a.airedFrom);
       if (month !== currentMonth) {
         currentMonth = month;
@@ -1563,7 +1662,7 @@
       if (tab === 'db') renderDB();
       if (tab === 'watched' || tab === 'planned') renderTierList(tab);
       if (tab === 'notifications') { renderNotifications(); markNotificationsSeen(); fetchNotifications(); ensureNotificationEpisodes(); }
-      if (tab === 'upcoming') fetchUpcoming();
+      if (tab === 'upcoming') { renderUpcoming(); fetchUpcoming(); }
     }
     if (!opts.deferPersistence && App.persistCatalogPreferences) App.persistCatalogPreferences();
     updateOfflineBanner();

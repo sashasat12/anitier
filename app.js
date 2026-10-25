@@ -1773,6 +1773,16 @@
           fetchUpcoming(true);
           break;
 
+        case 'reset-upcoming':
+          state.upcoming.view = {
+            query: '',
+            filters: C.normalizeFilters(C.DEFAULT_FILTERS),
+            month: '',
+            sort: 'date',
+          };
+          App.renderUpcoming();
+          break;
+
         case 'retry-all':
           retryAll();
           break;
@@ -1997,6 +2007,27 @@
         syncModeChips();
         syncFilterUI();
         fetchDB(true);
+      });
+    }
+
+    const upcomingSearch = $('#upcoming-search');
+    if (upcomingSearch) {
+      upcomingSearch.addEventListener('input', () => {
+        state.upcoming.view.query = upcomingSearch.value;
+        App.renderUpcoming();
+      });
+    }
+
+    const upcomingTools = $('#upcoming-tools');
+    if (upcomingTools) {
+      upcomingTools.addEventListener('change', e => {
+        const field = e.target.closest && e.target.closest('[data-upcoming]');
+        if (!field) return;
+        const view = state.upcoming.view;
+        if (field.dataset.upcoming === 'month') view.month = field.value;
+        else if (field.dataset.upcoming === 'sort') view.sort = field.value === 'title' ? 'title' : 'date';
+        else view.filters = C.normalizeFilters({ ...view.filters, [field.dataset.upcoming]: field.value });
+        App.renderUpcoming();
       });
     }
 

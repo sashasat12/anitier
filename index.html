@@ -195,10 +195,42 @@
     <div class="section-head">
       <div class="section-title">
         <h1>Скоро выйдут</h1>
-        <p class="sub">Премьеры с завтрашнего дня до трёх месяцев вперёд.</p>
+        <p class="sub">Премьеры с завтрашнего дня до трёх месяцев вперёд. Тайтлы из «Просмотрено» и «Запланировано» сюда не попадают.</p>
       </div>
       <button class="btn btn-ghost" data-action="refresh-upcoming">Обновить</button>
     </div>
+    <div class="filters upcoming-tools" id="upcoming-tools">
+      <div class="search">
+        <input id="upcoming-search" type="search" placeholder="Поиск премьеры: название, жанр, студия" autocomplete="off" aria-label="Поиск премьеры">
+      </div>
+      <label class="filter-field">
+        <span>Тип</span>
+        <select id="upcoming-type" data-upcoming="type" aria-label="Тип премьеры">
+          <option value="">Любой</option>
+        </select>
+      </label>
+      <label class="filter-field">
+        <span>Жанр</span>
+        <select id="upcoming-genre" data-upcoming="genre" aria-label="Жанр премьеры">
+          <option value="">Любой</option>
+        </select>
+      </label>
+      <label class="filter-field">
+        <span>Месяц</span>
+        <select id="upcoming-month" data-upcoming="month" aria-label="Месяц премьеры">
+          <option value="">Все месяцы</option>
+        </select>
+      </label>
+      <label class="filter-field">
+        <span>Порядок</span>
+        <select id="upcoming-sort" data-upcoming="sort" aria-label="Порядок премьер">
+          <option value="date">По дате</option>
+          <option value="title">По названию</option>
+        </select>
+      </label>
+      <button class="btn btn-ghost filter-reset" data-action="reset-upcoming">Сбросить</button>
+    </div>
+    <div class="db-status" id="upcoming-status" aria-live="polite"></div>
     <div class="grid upcoming-grid" id="upcoming-grid" aria-live="polite"></div>
   </section>
 

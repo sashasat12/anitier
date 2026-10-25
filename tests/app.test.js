@@ -1510,4 +1510,57 @@
       app.close();
     }
   });
+  T.test('app: «Скоро» прячет тайтлы из своих списков и фильтрует премьеры', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      const doc = win.document;
+      await win.__anitierTest.init();
+
+      doc.querySelector('[data-action="tab"][data-tab="upcoming"]').click();
+      await T.waitFor(() => doc.querySelectorAll('#upcoming-grid .card').length > 0, 'Премьеры не отрисовались', 8000);
+
+      const cards = () => [...doc.querySelectorAll('#upcoming-grid .card')];
+      const total = cards().length;
+      T.assert(total > 2, 'В демо-режиме несколько премьер');
+      T.assert(doc.querySelector('#upcoming-month').options.length > 1, 'Месяцы попали в фильтр');
+
+      const watchedId = Number(cards()[0].dataset.id);
+      win.AniTier.addToList('watched', win.AniTier.getAnime(watchedId), 'S');
+      await T.waitFor(() => cards().length === total - 1, 'Просмотренный тайтл остался в «Скоро»', 5000);
+      T.assert(cards().every(card => Number(card.dataset.id) !== watchedId), 'Просмотренного нет в «Скоро»');
+      T.includes(doc.querySelector('#upcoming-status').textContent, 'скрыто', 'Статус сообщает о скрытых тайтлах');
+
+      const plannedId = Number(cards()[0].dataset.id);
+      win.AniTier.addToList('planned', win.AniTier.getAnime(plannedId), 'A');
+      await T.waitFor(() => cards().length === total - 2, 'Запланированный тайтл остался в «Скоро»', 5000);
+
+      const leftId = Number(cards()[0].dataset.id);
+      const title = win.AniTier.getAnime(leftId).title;
+      const search = doc.querySelector('#upcoming-search');
+      search.value = title;
+      search.dispatchEvent(new win.Event('input', { bubbles: true }));
+      await T.waitFor(
+        () => cards().length === 1 && Number(cards()[0].dataset.id) === leftId,
+        'Поиск по названию не сузил премьеры',
+        4000,
+      );
+
+      const type = win.AniTier.getAnime(leftId).type.toLowerCase();
+      const typeSelect = doc.querySelector('#upcoming-type');
+      typeSelect.value = type;
+      typeSelect.dispatchEvent(new win.Event('change', { bubbles: true }));
+      await T.waitFor(
+        () => cards().length > 0 && cards().every(card => win.AniTier.getAnime(Number(card.dataset.id)).type.toLowerCase() === type),
+        'Фильтр по типу не сработал',
+        4000,
+      );
+
+      doc.querySelector('[data-action="reset-upcoming"]').click();
+      await T.waitFor(() => cards().length === total - 2, 'Сброс фильтров не вернул премьеры', 4000);
+      T.eq(doc.querySelector('#upcoming-search').value, '', 'Сброс очистил строку поиска');
+    } finally {
+      app.close();
+    }
+  });
 })();

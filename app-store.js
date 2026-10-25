@@ -466,7 +466,14 @@
       error: null,
       queued: false,
     },
-    upcoming: { items: [], loading: false, loaded: false, error: null, queued: false },
+    upcoming: {
+      items: [],
+      loading: false,
+      loaded: false,
+      error: null,
+      queued: false,
+      view: { query: '', filters: { type: '', genre: '', year: '', minScore: '', status: '' }, month: '', sort: 'date' },
+    },
   };
 
   function emptyTiers() {
@@ -1027,15 +1034,17 @@
     if (custom) return custom;
     if (state.byId.has(id)) return state.byId.get(id);
     const n = state.notifications;
+    /* Пулы — массивы тайтлов. Раньше здесь стоял spread, и .find вызывался
+       у самих тайтлов: getAnime падал, если тайтла не было в byId. */
     const pools = [
-      ...(n.tracked.episodes || []).map(group => group.anime),
-      ...(n.tracked.seasons || []).flatMap(item => [item.anime, item.sequel]),
-      ...(n.recent.episodes || []).map(group => group.anime),
-      ...(n.recent.films || []),
-      ...(n.completed || []),
+      (n.tracked.episodes || []).map(group => group.anime),
+      (n.tracked.seasons || []).flatMap(item => [item.anime, item.sequel]),
+      (n.recent.episodes || []).map(group => group.anime),
+      n.recent.films || [],
+      n.completed || [],
       state.db.items,
       state.upcoming.items,
-    ];
+    ].filter(Array.isArray);
     for (const p of pools) {
       const found = p.find(a => a && a.id === id);
       if (found) return found;

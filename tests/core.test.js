@@ -387,4 +387,60 @@
     T.eq(C.parseLatestRelease(null), null);
     T.eq(C.parseLatestRelease({ name: '' }), null);
   });
+
+  T.test('core: премьеры скрываются, если тайтл уже в своих списках', () => {
+    const C = core();
+    const upcoming = [
+      { id: 1, title: 'Соло-левелинг', year: 2027, airedFrom: '2027-01-10' },
+      { id: 2, malId: 55, title: 'Другой тайтл', year: 2027, airedFrom: '2027-02-10' },
+      { id: 3, title: 'Ремейк', year: 2027, airedFrom: '2027-03-10' },
+      { id: 4, title: 'Свободный тайтл', year: 2027, airedFrom: '2027-04-10' },
+    ];
+    const watched = [{ id: 1, title: 'Соло-левелинг', year: 2027 }];
+    const planned = [{ id: 900, malId: 55, title: 'Совсем другое название', year: 2025 }];
+
+    const left = C.excludeListed(upcoming, [...watched, ...planned]);
+    T.eq(left.map(a => a.id), [3, 4], 'Остаются только тайтлы вне списков');
+
+    /* Ремейк с тем же названием, но другим годом — это другое аниме. */
+    const remake = C.excludeListed(
+      [{ id: 3, title: 'Ремейк', year: 2027 }],
+      [{ id: 5, title: 'Ремейк', year: 2019 }],
+    );
+    T.eq(remake.length, 1, 'Старое аниме с тем же названием не прячет ремейк');
+
+    T.eq(C.excludeListed(upcoming, []).length, upcoming.length, 'Без списков ничего не теряется');
+    T.eq(C.excludeListed([], watched).length, 0);
+  });
+
+  T.test('core: премьеры фильтруются по месяцу, типу, жанру и поиску', () => {
+    const C = core();
+    const items = [
+      {
+        id: 1, title: 'Альфа', altTitle: 'Alpha', type: 'TV', genres: ['Action'],
+        studios: ['Mappa'], airedFrom: '2026-11-05',
+      },
+      {
+        id: 2, title: 'Бета', originalTitle: 'Beta', type: 'Movie', genres: ['Romance'],
+        airedFrom: '2026-12-01',
+      },
+      {
+        id: 3, title: 'Гамма', aliases: ['Gamma'], type: 'TV', genres: ['Drama'],
+        airedFrom: '2027-01-15',
+      },
+    ];
+    const ids = list => list.map(item => item.id);
+
+    T.eq(ids(C.filterUpcoming(items, { query: 'alpha' })), [1], 'Ищет по altTitle');
+    T.eq(ids(C.filterUpcoming(items, { query: 'gamma' })), [3], 'Ищет по алиасу');
+    T.eq(ids(C.filterUpcoming(items, { query: 'романтика' })), [2], 'Ищет по русскому жанру');
+    T.eq(ids(C.filterUpcoming(items, { filters: { type: 'tv' } })), [1, 3], 'Фильтр по типу');
+    T.eq(ids(C.filterUpcoming(items, { filters: { genre: '22' } })), [2], 'Фильтр по жанру');
+    T.eq(ids(C.filterUpcoming(items, { month: '2026-12' })), [2], 'Фильтр по месяцу');
+    T.eq(ids(C.filterUpcoming(items, { sort: 'title' })), [1, 2, 3], 'Сортировка по названию');
+    T.eq(ids(C.filterUpcoming(items, { sort: 'date' })), [1, 2, 3], 'Сортировка по дате');
+    T.eq(ids(C.filterUpcoming(items, { month: '2026-11', filters: { type: 'movie' } })), [], 'Фильтры складываются');
+    T.eq(C.upcomingMonthKey('2026-11-05'), '2026-11');
+    T.eq(C.upcomingMonthKey(''), '');
+  });
 })();

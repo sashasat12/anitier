@@ -387,6 +387,10 @@ button { font-family: inherit; }
 }
 .filter-reset { min-height: 37px; }
 
+/* ---------- фильтры «Скоро выйдут» ---------- */
+.upcoming-tools .search { grid-column: 1 / -1; }
+.upcoming-tools .search input { width: 100%; }
+
 .db-status {
   min-height: 18px;
   margin: -6px 0 12px;

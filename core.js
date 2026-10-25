@@ -234,6 +234,66 @@
     });
   }
 
+  /* ---------------- «Скоро выйдут»: свои списки и фильтры ---------------- */
+
+  /** Ключ месяца премьеры: 'YYYY-MM' или '' для неизвестной даты. */
+  function upcomingMonthKey(value) {
+    const text = String(value == null ? '' : value).trim();
+    const match = text.match(/^(\d{4})-(\d{2})/);
+    return match ? `${match[1]}-${match[2]}` : '';
+  }
+
+  /** Убирает из премьер то, что уже лежит в «Просмотрено» или «Запланировано». */
+  function excludeListed(items, listed) {
+    const seen = new Set();
+    for (const item of Array.isArray(listed) ? listed : []) {
+      for (const key of animeIdentityKeys(item)) seen.add(key);
+    }
+    const list = Array.isArray(items) ? items : [];
+    if (!seen.size) return list.slice();
+    return list.filter(anime => anime && !animeIdentityKeys(anime).some(key => seen.has(key)));
+  }
+
+  /** Строка для поиска по премьере: названия, альтернативы, жанры, студии. */
+  function upcomingHaystack(anime) {
+    if (!anime) return '';
+    const parts = [anime.title, anime.altTitle, anime.originalTitle];
+    if (Array.isArray(anime.aliases)) parts.push(...anime.aliases);
+    if (Array.isArray(anime.genres)) {
+      parts.push(...anime.genres);
+      parts.push(...anime.genres.map(genreRu));
+    }
+    if (Array.isArray(anime.studios)) parts.push(...anime.studios);
+    return normalizeTitleKey(parts.filter(Boolean).join(' '));
+  }
+
+  function upcomingTime(anime) {
+    const date = new Date(anime && anime.airedFrom ? anime.airedFrom : '');
+    return Number.isNaN(date.getTime()) ? Infinity : date.getTime();
+  }
+
+  /** Фильтры и сортировка премьер: месяц, тип, жанр, поиск, порядок. */
+  function filterUpcoming(items, options = {}) {
+    const query = normalizeTitleKey(options.query);
+    const filters = normalizeFilters(options.filters);
+    const month = upcomingMonthKey(options.month);
+    const sort = options.sort === 'title' ? 'title' : 'date';
+
+    const result = (Array.isArray(items) ? items : []).filter(anime => {
+      if (!anime) return false;
+      if (month && upcomingMonthKey(anime.airedFrom) !== month) return false;
+      if (query && !upcomingHaystack(anime).includes(query)) return false;
+      return matchesFilters(anime, filters);
+    });
+
+    if (sort === 'title') {
+      result.sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''), 'ru'));
+    } else {
+      result.sort((a, b) => upcomingTime(a) - upcomingTime(b));
+    }
+    return result;
+  }
+
   const ANILIST_FORMATS = {
     tv: 'TV',
     movie: 'MOVIE',
@@ -939,7 +999,7 @@
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.8.1';
+  const APP_VERSION = '1.9.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   function versionParts(value) {
@@ -1080,6 +1140,9 @@
     detectQueryLang,
     matchesFilters,
     filterItems,
+    upcomingMonthKey,
+    excludeListed,
+    filterUpcoming,
     buildAniListVariables,
     dedupeById,
     normalizeTitleKey,
