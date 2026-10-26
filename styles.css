@@ -2560,8 +2560,8 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
   border: 0;
 }
 .command-modal { align-items: start; padding-top: max(12vh, 24px); }
-.command-panel { width: min(640px, 100%); max-height: min(76vh, 640px); overflow: hidden; }
-.command-content { display: flex; flex-direction: column; min-height: 0; }
+.command-panel { display: flex; flex-direction: column; width: min(640px, 100%); max-height: min(76vh, 640px); overflow: hidden; }
+.command-content { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
 .command-search {
   display: flex;
   align-items: center;

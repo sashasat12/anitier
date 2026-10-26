@@ -141,6 +141,7 @@
     closeCommand,
     setCommandQuery,
     moveCommand,
+    jumpCommand,
     openCommandResult,
     openExchange,
     closeExchange,
@@ -2790,6 +2791,16 @@
           moveCommand(-1);
           return;
         }
+        if (e.key === 'Home') {
+          e.preventDefault();
+          jumpCommand('first');
+          return;
+        }
+        if (e.key === 'End') {
+          e.preventDefault();
+          jumpCommand('last');
+          return;
+        }
         if (e.key === 'Enter') {
           e.preventDefault();
           openCommandResult(state.command.index);
@@ -3251,6 +3262,7 @@
     closeCommand,
     setCommandQuery,
     moveCommand,
+    jumpCommand,
     openCommandResult,
     renderSettings,
     scrollPageBy,

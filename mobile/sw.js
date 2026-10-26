@@ -4,7 +4,7 @@
    ============================================================ */
 'use strict';
 
-const CACHE = 'anitier-mobile-v29';
+const CACHE = 'anitier-mobile-v30';
 const SHELL = [
   './',
   './index.html',

@@ -1581,11 +1581,31 @@
   }
 
   /* ---------------- глобальный поиск ---------------- */
+  let commandReturnFocus = null;
+
   function commandWhereLabel(result) {
     if (result.where === 'watched') return `Просмотрено · ${tierShort(result.tier)}`;
     if (result.where === 'planned') return `Планы · ${tierShort(result.tier)}`;
     if (result.where === 'custom') return 'Своя карточка';
     return 'База';
+  }
+
+  /* Поле остаётся в фокусе, а выбранную строку озвучивает aria-activedescendant.
+     Прокручиваем только список, страница под окном не дёргается. */
+  function syncCommandSelection() {
+    const input = $('#command-input');
+    const box = $('#command-results');
+    if (!input || !box) return;
+    const active = state.command.results.length ? state.command.index : -1;
+    if (active >= 0) input.setAttribute('aria-activedescendant', `command-row-${active}`);
+    else input.removeAttribute('aria-activedescendant');
+
+    const row = box.querySelector('.command-row.is-active');
+    if (!row) return;
+    const boxRect = box.getBoundingClientRect();
+    const rowRect = row.getBoundingClientRect();
+    if (rowRect.top < boxRect.top) box.scrollTop -= boxRect.top - rowRect.top;
+    else if (rowRect.bottom > boxRect.bottom) box.scrollTop += rowRect.bottom - boxRect.bottom;
   }
 
   function renderCommandResults() {
@@ -1596,6 +1616,7 @@
       state.command.results = [];
       state.command.index = 0;
       box.innerHTML = '<div class="command-empty">Начните вводить название — поиск идёт по спискам, своим карточкам и загруженной базе.</div>';
+      syncCommandSelection();
       return;
     }
 
@@ -1610,6 +1631,7 @@
 
     if (!results.length) {
       box.innerHTML = '<div class="command-empty">Ничего не нашлось. Проверьте раскладку или попробуйте English.</div>';
+      syncCommandSelection();
       return;
     }
 
@@ -1619,7 +1641,7 @@
         .filter(Boolean)
         .map(item => esc(item))
         .join(' · ');
-      return `<button type="button" class="command-row ${index === state.command.index ? 'is-active' : ''}" role="option" aria-selected="${index === state.command.index}" data-action="command-open" data-id="${a.id}" data-index="${index}" tabindex="-1">
+      return `<button type="button" class="command-row ${index === state.command.index ? 'is-active' : ''}" id="command-row-${index}" role="option" aria-selected="${index === state.command.index}" data-action="command-open" data-id="${a.id}" data-index="${index}" tabindex="-1">
         <img class="command-poster" ${imgAttrs(a, '')}>
         <span class="command-main">
           <b>${esc(a.title)}</b>
@@ -1628,6 +1650,7 @@
         <span class="command-badge command-badge-${result.where}">${esc(commandWhereLabel(result))}</span>
       </button>`;
     }).join('');
+    syncCommandSelection();
   }
 
   function openCommand(initialQuery = '') {
@@ -1639,6 +1662,8 @@
     if (state.customForm && state.customForm.open) closeCustomForm(false);
     if (state.momentForm && state.momentForm.open) closeMomentForm(false);
     if (state.tiktokImport && state.tiktokImport.open && typeof App.closeTikTokImport === 'function') App.closeTikTokImport();
+    const active = document.activeElement;
+    commandReturnFocus = active && active !== document.body ? active : null;
     state.command = { open: true, query: String(initialQuery || ''), index: 0, results: [] };
     const modal = $('#command-modal');
     if (modal) modal.hidden = false;
@@ -1652,11 +1677,27 @@
     }
   }
 
-  function closeCommand() {
+  /* Возвращаем фокус туда, откуда открыли поиск. Если элемент исчез
+     (например, перерисовался список) или скрыт, ведём на кнопку в шапке. */
+  function canRestoreFocus(el) {
+    if (!el || !el.isConnected || typeof el.focus !== 'function') return false;
+    return typeof el.getClientRects !== 'function' || el.getClientRects().length > 0;
+  }
+
+  function closeCommand(options = {}) {
+    const restoreFocus = options.restoreFocus !== false;
     state.command = { open: false, query: '', index: 0, results: [] };
     const modal = $('#command-modal');
     if (modal) modal.hidden = true;
     syncBodyScroll();
+    if (!restoreFocus) {
+      commandReturnFocus = null;
+      return;
+    }
+    const fallback = document.querySelector('[data-action="open-command"]');
+    const target = canRestoreFocus(commandReturnFocus) ? commandReturnFocus : fallback;
+    commandReturnFocus = null;
+    if (canRestoreFocus(target)) target.focus({ preventScroll: true });
   }
 
   function setCommandQuery(value) {
@@ -1672,10 +1713,18 @@
     renderCommandResults();
   }
 
+  /** Переход к первому или последнему результату для клавиш Home/End. */
+  function jumpCommand(edge) {
+    const total = state.command.results.length;
+    if (!total) return;
+    state.command.index = edge === 'last' ? total - 1 : 0;
+    renderCommandResults();
+  }
+
   function openCommandResult(index) {
     const result = state.command.results[index];
     if (!result) return;
-    closeCommand();
+    closeCommand({ restoreFocus: false });
     openModal(result.anime.id);
   }
 
@@ -2501,6 +2550,7 @@
     closeCommand,
     setCommandQuery,
     moveCommand,
+    jumpCommand,
     openCommandResult,
     layoutTierCards,
     updateCounters,
