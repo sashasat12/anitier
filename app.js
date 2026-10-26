@@ -2136,9 +2136,10 @@
       if (settingsUpdate) {
         state.settings.updateCheck = normalizeUpdateCheck(settingsUpdate.value);
         state.settings.lastUpdateCheck = 0;
+        state.updateCard = null;
         saveState();
+        renderUpdateCard();
         if (state.settings.updateCheck === 'on') autoCheckUpdates({ announce: true });
-        if (state.settings.updateCheck !== 'ask') renderUpdateCard();
         return;
       }
       const provider = e.target.closest && e.target.closest('select[data-action="synopsis-provider"]');

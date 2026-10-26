@@ -1573,6 +1573,26 @@
       await App.autoCheckUpdates();
       T.eq(calls, 0, 'В режиме «Не проверять» запросов нет');
       T.eq(card.hidden, true);
+
+      state.settings.updateCheck = 'off';
+      state.settings.lastUpdateCheck = 123;
+      App.saveState();
+      App.loadState();
+      T.eq(state.settings.updateCheck, 'off', 'Режим проверки переживает перезапуск');
+      T.eq(state.settings.lastUpdateCheck, 123, 'Время последней проверки сохраняется');
+
+      App.openSettings();
+      const picker = doc.querySelector('select[data-action="settings-update-check"]');
+      T.assert(picker, 'В настройках нет выбора режима проверки');
+      T.eq(picker.value, 'off', 'Селект показывает сохранённый режим');
+      state.updateCard = { mode: 'ask' };
+      App.renderUpdateCard();
+      T.eq(card.hidden, false);
+      picker.value = 'off';
+      picker.dispatchEvent(new win.Event('change', { bubbles: true }));
+      T.eq(state.settings.updateCheck, 'off', 'Смена режима из настроек сохраняется');
+      T.eq(card.hidden, true, 'Смена режима убирает карточку');
+      App.closeSettings();
     } finally {
       app.close();
     }

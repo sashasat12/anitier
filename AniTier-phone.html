@@ -2177,15 +2177,12 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
   .tc-title { font-size: 10.5px; }
   .tc-remove { opacity: 1; width: 21px; height: 21px; }
 
-  .notif {
-    grid-template-columns: 44px 48px minmax(0, 1fr);
-    gap: 11px;
-    padding: 10px;
-  }
-  .notif-poster { width: 48px; height: 68px; }
-  .notif-actions { grid-column: 2 / -1; justify-content: flex-start; }
-  .notif-actions .mini-btn { width: 34px; height: 34px; }
-  .notif-title { font-size: 13px; }
+  .notif-list { grid-template-columns: 1fr; }
+  .notif-poster { height: 150px; }
+  .notif-body { padding: 10px 12px 9px; }
+  .notif-title { font-size: 13.5px; }
+  .notif-eps { padding: 0 12px 10px; }
+  .notif-actions .mini-btn { width: 30px; height: 30px; }
 
   .modal { padding: 10px; }
   .modal-panel { max-height: 94vh; border-radius: 18px; }
@@ -5198,6 +5195,8 @@ body.mobile-app .offline-banner {
     state.seenNotifications = new Set(Array.isArray(raw.seenNotifications) ? raw.seenNotifications : []);
     state.settings.searchLang = C.normalizeSearchLang(raw.settings && raw.settings.searchLang);
     state.settings.translationProvider = normalizeTranslationProvider(raw.settings && raw.settings.translationProvider);
+    state.settings.updateCheck = normalizeUpdateCheck(raw.settings && raw.settings.updateCheck);
+    state.settings.lastUpdateCheck = Number(raw.settings && raw.settings.lastUpdateCheck) || 0;
     state.settings.catalog = normalizeCatalogPreferences(raw.settings && raw.settings.catalog);
 
     state.progress = {};
@@ -10970,9 +10969,10 @@ body.mobile-app .offline-banner {
       if (settingsUpdate) {
         state.settings.updateCheck = normalizeUpdateCheck(settingsUpdate.value);
         state.settings.lastUpdateCheck = 0;
+        state.updateCard = null;
         saveState();
+        renderUpdateCard();
         if (state.settings.updateCheck === 'on') autoCheckUpdates({ announce: true });
-        if (state.settings.updateCheck !== 'ask') renderUpdateCard();
         return;
       }
       const provider = e.target.closest && e.target.closest('select[data-action="synopsis-provider"]');

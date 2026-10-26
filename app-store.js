@@ -996,6 +996,8 @@
     state.seenNotifications = new Set(Array.isArray(raw.seenNotifications) ? raw.seenNotifications : []);
     state.settings.searchLang = C.normalizeSearchLang(raw.settings && raw.settings.searchLang);
     state.settings.translationProvider = normalizeTranslationProvider(raw.settings && raw.settings.translationProvider);
+    state.settings.updateCheck = normalizeUpdateCheck(raw.settings && raw.settings.updateCheck);
+    state.settings.lastUpdateCheck = Number(raw.settings && raw.settings.lastUpdateCheck) || 0;
     state.settings.catalog = normalizeCatalogPreferences(raw.settings && raw.settings.catalog);
 
     state.progress = {};
