@@ -130,6 +130,19 @@
     return GENRE_RU[raw.toLowerCase()] || EXTRA_GENRE_RU[raw.toLowerCase()] || raw;
   }
 
+  const DB_SORTS = [
+    { value: 'default', label: 'Как в режиме' },
+    { value: 'popular', label: 'По популярности' },
+    { value: 'score', label: 'По оценке' },
+    { value: 'newest', label: 'Сначала новые' },
+    { value: 'title', label: 'По названию' },
+  ];
+
+  function normalizeDBSort(value) {
+    const sort = String(value == null ? '' : value).trim();
+    return DB_SORTS.some(item => item.value === sort) ? sort : 'default';
+  }
+
   const TYPES = [
     { value: 'tv', label: 'ТВ-сериал' },
     { value: 'movie', label: 'Фильм' },
@@ -487,6 +500,15 @@
     if (mode === 'score') variables.sort = ['SCORE_DESC'];
     else if (!query || active) variables.sort = ['POPULARITY_DESC'];
 
+    const sortKey = normalizeDBSort(options.sort);
+    const sortMap = {
+      popularity: 'POPULARITY_DESC',
+      score: 'SCORE_DESC',
+      newest: 'START_DATE_DESC',
+      title: 'TITLE_ROMAJI',
+    };
+    if (sortKey !== 'default' && sortMap[sortKey]) variables.sort = [sortMap[sortKey]];
+
     return variables;
   }
 
@@ -526,6 +548,24 @@
       else if (key.includes(q)) contains.push(Number(id));
     }
     return [...exact, ...starts, ...contains].slice(0, Math.max(1, Number(limit) || 30));
+  }
+
+  /** Сортирует копию выдачи базы: сервер уже сортирует AniList, но демо,
+      Kitsu и текстовый поиск приходят в своём порядке. */
+  function sortCatalogItems(items, sort) {
+    const key = normalizeDBSort(sort);
+    const list = Array.isArray(items) ? items.slice() : [];
+    if (key === 'default') return list;
+    const score = item => (typeof item.score === 'number' ? item.score : -1);
+    const popularity = item => (typeof item.popularity === 'number' ? item.popularity : 0);
+    const year = item => Number(item.year) || 0;
+    const title = item => String(item.title || '');
+    return list.sort((a, b) => {
+      if (key === 'popular') return popularity(b) - popularity(a) || title(a).localeCompare(title(b), 'ru');
+      if (key === 'score') return score(b) - score(a) || title(a).localeCompare(title(b), 'ru');
+      if (key === 'newest') return year(b) - year(a) || title(a).localeCompare(title(b), 'ru');
+      return title(a).localeCompare(title(b), 'ru');
+    });
   }
 
   function dedupeById(items) {
@@ -1367,7 +1407,7 @@
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.31.0';
+  const APP_VERSION = '1.32.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -1932,6 +1972,9 @@
     dragScrollDelta,
     GENRES,
     TAGS,
+    DB_SORTS,
+    normalizeDBSort,
+    sortCatalogItems,
     SEARCH_LANGS,
     TYPES,
     STATUSES,

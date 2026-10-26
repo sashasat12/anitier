@@ -471,6 +471,15 @@
       grid.innerHTML = s.items.map(a => cardHTML(a, 'db')).join('');
     }
     grid.dataset.cardSignature = signature;
+    const sortMode = C.normalizeDBSort(s.sort);
+    if (sortMode === 'default') {
+      grid.querySelectorAll('.card').forEach(card => card.style.removeProperty('order'));
+    } else {
+      const order = new Map(C.sortCatalogItems(s.items, sortMode).map((anime, index) => [anime.id, index]));
+      grid.querySelectorAll('.card').forEach(card => {
+        card.style.order = String(order.get(Number(card.dataset.id)) ?? 0);
+      });
+    }
     if (more) {
       more.hidden = !s.hasNext;
       more.disabled = s.loading;
@@ -1961,6 +1970,7 @@
 
   function syncBodyScroll() {
     const locked = state.modalId != null
+      || Boolean(state.quickMenu)
       || Boolean(state.command && state.command.open)
       || Boolean(state.exchange && state.exchange.open)
       || Boolean(state.customForm && state.customForm.open)

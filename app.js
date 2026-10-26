@@ -248,6 +248,7 @@
           filters: s.filters,
           page,
           limit: PAGE_LIMIT,
+          sort: s.sort,
         });
         const pageData = await fetchAniList(variables, { timeout: SEARCH_TIMEOUT });
         if (revision !== s.revision) return;
@@ -859,6 +860,7 @@
     state.settings.catalog = {
       tab: state.tab,
       mode: state.db.mode,
+      sort: state.db.sort,
       query: state.db.query,
       filters: state.db.filters,
     };
@@ -869,10 +871,13 @@
     const catalog = state.settings.catalog || {};
     state.tab = catalog.tab || 'db';
     state.db.mode = catalog.mode || 'popular';
+    state.db.sort = C.normalizeDBSort(catalog.sort);
     state.db.query = catalog.query || '';
     state.db.filters = C.normalizeFilters(catalog.filters);
     const input = $('#search-input');
     if (input) input.value = state.db.query;
+    const sortSelect = $('#db-sort');
+    if (sortSelect) sortSelect.value = state.db.sort;
     syncFilterUI();
     syncModeChips();
     switchTab(state.tab, { silent: true, deferActions: true, deferPersistence: true });
@@ -3147,6 +3152,13 @@
           renderModal();
           if (state.synopsisModes.get(animeId) !== 'original') translateModalSynopsis(animeId);
         }
+      }
+      const dbSort = e.target.closest && e.target.closest('select[data-db-sort]');
+      if (dbSort) {
+        state.db.sort = C.normalizeDBSort(dbSort.value);
+        persistCatalogPreferences();
+        fetchDB(true);
+        return;
       }
       const listField = e.target.closest && e.target.closest('select[data-list-filter]');
       if (listField) {

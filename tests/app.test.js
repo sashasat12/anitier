@@ -444,6 +444,36 @@
     }
   });
 
+  T.test('app: сортировка базы меняет запрос и сохраняется', async () => {
+    const calls = [];
+    const app = await T.mountApp({
+      query: '?test=1',
+      setup(win) { win.fetch = baseFetch(calls); },
+    });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const doc = app.win.document;
+
+      const select = doc.querySelector('#db-sort');
+      T.assert(select, 'В базе есть выбор сортировки');
+      select.value = 'score';
+      select.dispatchEvent(new app.win.Event('change', { bubbles: true }));
+      T.eq(api.state.db.sort, 'score');
+
+      await T.waitFor(
+        () => calls.some(call => call.vars && Array.isArray(call.vars.sort) && call.vars.sort[0] === 'SCORE_DESC'),
+        'Запрос с сортировкой по оценке не выполнился',
+        6000,
+      );
+
+      const saved = JSON.parse(app.win.localStorage.getItem('anitier.v1') || '{}');
+      T.eq(saved.settings.catalog.sort, 'score', 'Сортировка сохраняется');
+    } finally {
+      app.close();
+    }
+  });
+
   T.test('app: тема, плотность и размер шрифта применяются и сохраняются', async () => {
     const app = await T.mountApp({ query: '?test=1' });
     try {

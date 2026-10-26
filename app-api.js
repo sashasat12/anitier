@@ -229,6 +229,7 @@
       type: altType(raw.format),
       status: altStatus(raw.status),
       score: Number.isFinite(score) ? Math.round(score) / 10 : null,
+      popularity: Number(raw.popularity) || 0,
       year: raw.seasonYear || null,
       airedFrom: altDate(raw.startDate),
       airedTo: altDate(raw.endDate),

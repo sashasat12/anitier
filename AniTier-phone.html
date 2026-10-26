@@ -2822,6 +2822,37 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
 }
 
+/* ---------- сортировка базы ---------- */
+.db-sort-row {
+  display: flex;
+  justify-content: flex-end;
+  margin: -6px 0 14px;
+}
+.db-sort-field {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.db-sort-field > span {
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.db-sort-field select {
+  width: auto;
+  min-width: 168px;
+  min-height: 34px;
+  padding: 6px 30px 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+}
+
 /* ---------- быстрые жесты ---------- */
 .quick-menu { position: fixed; inset: 0; z-index: 150; }
 .quick-menu[hidden] { display: none; }
@@ -3500,6 +3531,19 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
       <button class="chip" data-action="mode" data-mode="airing">Сейчас выходит</button>
       <button class="chip" data-action="mode" data-mode="movie">Фильмы</button>
       <button class="chip" data-action="mode" data-mode="custom">Мои карточки</button>
+    </div>
+
+    <div class="db-sort-row">
+      <label class="filter-field db-sort-field">
+        <span>Сортировка</span>
+        <select id="db-sort" data-db-sort aria-label="Сортировка базы">
+          <option value="default">Как в режиме</option>
+          <option value="popular">По популярности</option>
+          <option value="score">По оценке</option>
+          <option value="newest">Сначала новые</option>
+          <option value="title">По названию</option>
+        </select>
+      </label>
     </div>
 
     <section class="continue-block" id="continue-block" aria-label="Продолжить просмотр" hidden>
@@ -5548,6 +5592,17 @@ window.AniTierTitlesRu = {
 
 window.AniTierChangelog = [
   {
+    version: '1.32.0',
+    date: '27 октября 2026',
+    title: 'Сортировка базы',
+    items: [
+      'В базе появился выбор сортировки: как в режиме, по популярности, по оценке, сначала новые или по названию.',
+      'Сортировка работает вместе с поиском и фильтрами и сохраняется между запусками.',
+      'Для AniList сортировка уходит в запрос, а демо, Kitsu и текстовый поиск сортируются на клиенте.',
+      'Порядок карточек меняется без перезагрузки страницы.',
+    ],
+  },
+  {
     version: '1.31.0',
     date: '27 октября 2026',
     title: 'Больше русских названий',
@@ -6035,6 +6090,19 @@ window.AniTierChangelog = [
     return GENRE_RU[raw.toLowerCase()] || EXTRA_GENRE_RU[raw.toLowerCase()] || raw;
   }
 
+  const DB_SORTS = [
+    { value: 'default', label: 'Как в режиме' },
+    { value: 'popular', label: 'По популярности' },
+    { value: 'score', label: 'По оценке' },
+    { value: 'newest', label: 'Сначала новые' },
+    { value: 'title', label: 'По названию' },
+  ];
+
+  function normalizeDBSort(value) {
+    const sort = String(value == null ? '' : value).trim();
+    return DB_SORTS.some(item => item.value === sort) ? sort : 'default';
+  }
+
   const TYPES = [
     { value: 'tv', label: 'ТВ-сериал' },
     { value: 'movie', label: 'Фильм' },
@@ -6392,6 +6460,15 @@ window.AniTierChangelog = [
     if (mode === 'score') variables.sort = ['SCORE_DESC'];
     else if (!query || active) variables.sort = ['POPULARITY_DESC'];
 
+    const sortKey = normalizeDBSort(options.sort);
+    const sortMap = {
+      popularity: 'POPULARITY_DESC',
+      score: 'SCORE_DESC',
+      newest: 'START_DATE_DESC',
+      title: 'TITLE_ROMAJI',
+    };
+    if (sortKey !== 'default' && sortMap[sortKey]) variables.sort = [sortMap[sortKey]];
+
     return variables;
   }
 
@@ -6431,6 +6508,24 @@ window.AniTierChangelog = [
       else if (key.includes(q)) contains.push(Number(id));
     }
     return [...exact, ...starts, ...contains].slice(0, Math.max(1, Number(limit) || 30));
+  }
+
+  /** Сортирует копию выдачи базы: сервер уже сортирует AniList, но демо,
+      Kitsu и текстовый поиск приходят в своём порядке. */
+  function sortCatalogItems(items, sort) {
+    const key = normalizeDBSort(sort);
+    const list = Array.isArray(items) ? items.slice() : [];
+    if (key === 'default') return list;
+    const score = item => (typeof item.score === 'number' ? item.score : -1);
+    const popularity = item => (typeof item.popularity === 'number' ? item.popularity : 0);
+    const year = item => Number(item.year) || 0;
+    const title = item => String(item.title || '');
+    return list.sort((a, b) => {
+      if (key === 'popular') return popularity(b) - popularity(a) || title(a).localeCompare(title(b), 'ru');
+      if (key === 'score') return score(b) - score(a) || title(a).localeCompare(title(b), 'ru');
+      if (key === 'newest') return year(b) - year(a) || title(a).localeCompare(title(b), 'ru');
+      return title(a).localeCompare(title(b), 'ru');
+    });
   }
 
   function dedupeById(items) {
@@ -7272,7 +7367,7 @@ window.AniTierChangelog = [
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.31.0';
+  const APP_VERSION = '1.32.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -7837,6 +7932,9 @@ window.AniTierChangelog = [
     dragScrollDelta,
     GENRES,
     TAGS,
+    DB_SORTS,
+    normalizeDBSort,
+    sortCatalogItems,
     SEARCH_LANGS,
     TYPES,
     STATUSES,
@@ -8122,6 +8220,7 @@ window.AniTierChangelog = [
     return {
       tab: VIEW_TABS.includes(value.tab) ? value.tab : 'db',
       mode: DB_MODES.includes(value.mode) ? value.mode : 'popular',
+      sort: C.normalizeDBSort(value.sort),
       query: String(value.query == null ? '' : value.query).trim().slice(0, 160),
       filters: C.normalizeFilters(value.filters),
     };
@@ -8413,6 +8512,7 @@ window.AniTierChangelog = [
     bootstrapDone: false,
     db: {
       mode: 'popular',
+      sort: 'default',
       query: '',
       filters: C.normalizeFilters(C.DEFAULT_FILTERS),
       page: 1,
@@ -9561,6 +9661,7 @@ window.AniTierChangelog = [
       type: altType(raw.format),
       status: altStatus(raw.status),
       score: Number.isFinite(score) ? Math.round(score) / 10 : null,
+      popularity: Number(raw.popularity) || 0,
       year: raw.seasonYear || null,
       airedFrom: altDate(raw.startDate),
       airedTo: altDate(raw.endDate),
@@ -11245,6 +11346,15 @@ window.AniTierChangelog = [
       grid.innerHTML = s.items.map(a => cardHTML(a, 'db')).join('');
     }
     grid.dataset.cardSignature = signature;
+    const sortMode = C.normalizeDBSort(s.sort);
+    if (sortMode === 'default') {
+      grid.querySelectorAll('.card').forEach(card => card.style.removeProperty('order'));
+    } else {
+      const order = new Map(C.sortCatalogItems(s.items, sortMode).map((anime, index) => [anime.id, index]));
+      grid.querySelectorAll('.card').forEach(card => {
+        card.style.order = String(order.get(Number(card.dataset.id)) ?? 0);
+      });
+    }
     if (more) {
       more.hidden = !s.hasNext;
       more.disabled = s.loading;
@@ -13833,6 +13943,7 @@ window.AniTierChangelog = [
           filters: s.filters,
           page,
           limit: PAGE_LIMIT,
+          sort: s.sort,
         });
         const pageData = await fetchAniList(variables, { timeout: SEARCH_TIMEOUT });
         if (revision !== s.revision) return;
@@ -14444,6 +14555,7 @@ window.AniTierChangelog = [
     state.settings.catalog = {
       tab: state.tab,
       mode: state.db.mode,
+      sort: state.db.sort,
       query: state.db.query,
       filters: state.db.filters,
     };
@@ -14454,10 +14566,13 @@ window.AniTierChangelog = [
     const catalog = state.settings.catalog || {};
     state.tab = catalog.tab || 'db';
     state.db.mode = catalog.mode || 'popular';
+    state.db.sort = C.normalizeDBSort(catalog.sort);
     state.db.query = catalog.query || '';
     state.db.filters = C.normalizeFilters(catalog.filters);
     const input = $('#search-input');
     if (input) input.value = state.db.query;
+    const sortSelect = $('#db-sort');
+    if (sortSelect) sortSelect.value = state.db.sort;
     syncFilterUI();
     syncModeChips();
     switchTab(state.tab, { silent: true, deferActions: true, deferPersistence: true });
@@ -16732,6 +16847,13 @@ window.AniTierChangelog = [
           renderModal();
           if (state.synopsisModes.get(animeId) !== 'original') translateModalSynopsis(animeId);
         }
+      }
+      const dbSort = e.target.closest && e.target.closest('select[data-db-sort]');
+      if (dbSort) {
+        state.db.sort = C.normalizeDBSort(dbSort.value);
+        persistCatalogPreferences();
+        fetchDB(true);
+        return;
       }
       const listField = e.target.closest && e.target.closest('select[data-list-filter]');
       if (listField) {

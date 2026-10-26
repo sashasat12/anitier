@@ -247,6 +247,7 @@
     return {
       tab: VIEW_TABS.includes(value.tab) ? value.tab : 'db',
       mode: DB_MODES.includes(value.mode) ? value.mode : 'popular',
+      sort: C.normalizeDBSort(value.sort),
       query: String(value.query == null ? '' : value.query).trim().slice(0, 160),
       filters: C.normalizeFilters(value.filters),
     };
@@ -538,6 +539,7 @@
     bootstrapDone: false,
     db: {
       mode: 'popular',
+      sort: 'default',
       query: '',
       filters: C.normalizeFilters(C.DEFAULT_FILTERS),
       page: 1,

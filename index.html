@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=1.31.0">
+<link rel="stylesheet" href="styles.css?v=1.32.0">
 </head>
 <body>
 
@@ -140,6 +140,19 @@
       <button class="chip" data-action="mode" data-mode="airing">Сейчас выходит</button>
       <button class="chip" data-action="mode" data-mode="movie">Фильмы</button>
       <button class="chip" data-action="mode" data-mode="custom">Мои карточки</button>
+    </div>
+
+    <div class="db-sort-row">
+      <label class="filter-field db-sort-field">
+        <span>Сортировка</span>
+        <select id="db-sort" data-db-sort aria-label="Сортировка базы">
+          <option value="default">Как в режиме</option>
+          <option value="popular">По популярности</option>
+          <option value="score">По оценке</option>
+          <option value="newest">Сначала новые</option>
+          <option value="title">По названию</option>
+        </select>
+      </label>
     </div>
 
     <section class="continue-block" id="continue-block" aria-label="Продолжить просмотр" hidden>
@@ -350,14 +363,14 @@
 <div class="update-card" id="update-card" role="status" aria-live="polite" hidden></div>
 <div id="toasts" role="status" aria-live="polite" aria-atomic="false"></div>
 
-<script src="tags.js?v=1.31.0" defer></script>
-<script src="titles-ru-anilist.js?v=1.31.0" defer></script>
-<script src="titles-ru.js?v=1.31.0" defer></script>
-<script src="changelog.js?v=1.31.0" defer></script>
-<script src="core.js?v=1.31.0" defer></script>
-<script src="app-store.js?v=1.31.0" defer></script>
-<script src="app-api.js?v=1.31.0" defer></script>
-<script src="app-render.js?v=1.31.0" defer></script>
-<script src="app.js?v=1.31.0" defer></script>
+<script src="tags.js?v=1.32.0" defer></script>
+<script src="titles-ru-anilist.js?v=1.32.0" defer></script>
+<script src="titles-ru.js?v=1.32.0" defer></script>
+<script src="changelog.js?v=1.32.0" defer></script>
+<script src="core.js?v=1.32.0" defer></script>
+<script src="app-store.js?v=1.32.0" defer></script>
+<script src="app-api.js?v=1.32.0" defer></script>
+<script src="app-render.js?v=1.32.0" defer></script>
+<script src="app.js?v=1.32.0" defer></script>
 </body>
 </html>

@@ -2808,6 +2808,37 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
 }
 
+/* ---------- сортировка базы ---------- */
+.db-sort-row {
+  display: flex;
+  justify-content: flex-end;
+  margin: -6px 0 14px;
+}
+.db-sort-field {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.db-sort-field > span {
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.db-sort-field select {
+  width: auto;
+  min-width: 168px;
+  min-height: 34px;
+  padding: 6px 30px 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+}
+
 /* ---------- быстрые жесты ---------- */
 .quick-menu { position: fixed; inset: 0; z-index: 150; }
 .quick-menu[hidden] { display: none; }

@@ -198,6 +198,23 @@
     T.eq(ids(C.filterItems(items, { filters: { tags: ['Shounen'], minScore: '9' } })), []);
   });
 
+  T.test('core: сортировка базы по оценке, году, популярности и названию', () => {
+    const C = core();
+    const items = [
+      { id: 1, title: 'Бета', score: 8, year: 2020, popularity: 5 },
+      { id: 2, title: 'Альфа', score: 9, year: 2018, popularity: 9 },
+      { id: 3, title: 'Гамма', score: null, year: 2024, popularity: 1 },
+    ];
+    const ids = list => list.map(item => item.id);
+    T.eq(ids(C.sortCatalogItems(items, 'score')), [2, 1, 3]);
+    T.eq(ids(C.sortCatalogItems(items, 'newest')), [3, 1, 2]);
+    T.eq(ids(C.sortCatalogItems(items, 'popular')), [2, 1, 3]);
+    T.eq(ids(C.sortCatalogItems(items, 'title')), [2, 1, 3]);
+    T.eq(ids(C.sortCatalogItems(items, 'default')), [1, 2, 3]);
+    T.eq(C.normalizeDBSort('score'), 'score');
+    T.eq(C.normalizeDBSort('что-то'), 'default');
+  });
+
   T.test('core: русский словарь находит MAL ID по названию', () => {
     const C = core();
     T.assert(C.russianTitleIds('Атака титанов').includes(16498), 'Точное название');
