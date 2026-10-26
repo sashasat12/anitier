@@ -18,15 +18,16 @@
     });
   }
 
-  T.test('poster: база медиа обновлена до версии 2 с хранилищем постеров', async () => {
+  T.test('poster: база медиа обновлена до версии 3 с хранилищами постеров и названий', async () => {
     const app = await T.mountApp({ query: '?test=1' });
     try {
       const db = await app.win.AniTier.openMediaDB();
       T.assert(db, 'IndexedDB должна быть доступна');
-      T.eq(db.version, 2);
+      T.eq(db.version, 3);
       T.assert(db.objectStoreNames.contains('images'));
       T.assert(db.objectStoreNames.contains('media'));
       T.assert(db.objectStoreNames.contains('posters'));
+      T.assert(db.objectStoreNames.contains('titles'));
 
       const A = app.win.AniTier;
       T.eq(A.POSTER_CACHE_LIMIT, 600);

@@ -717,6 +717,101 @@
     return text;
   }
 
+  /* ---------------- русские названия: Wikidata + кэш ---------------- */
+  const RU_TITLE_TTL = 30 * 24 * 60 * 60 * 1000;
+  const RU_TITLE_MISS_TTL = 7 * 24 * 60 * 60 * 1000;
+  const ruTitleSession = new Map();
+
+  function cleanRuTitle(value) {
+    let label = String(value || '').trim();
+    label = label.replace(/\s*\([^)]*\)\s*$/, '').trim();
+    if (label.length < 2 || label.length > 90) return '';
+    let hasCyrillic = false;
+    for (const ch of label) {
+      const code = ch.codePointAt(0);
+      if (code >= 0x0400 && code <= 0x04ff) { hasCyrillic = true; break; }
+    }
+    return hasCyrillic ? label : '';
+  }
+
+  async function cachedRussianTitle(id) {
+    if (ruTitleSession.has(id)) {
+      const title = ruTitleSession.get(id);
+      if (title) return title;
+      const savedAt = Number(ruTitleSession.get(`${id}:at`)) || 0;
+      return Date.now() - savedAt < RU_TITLE_MISS_TTL ? '' : null;
+    }
+    const cached = await App.mediaGet('titles', String(id));
+    if (!cached || typeof cached !== 'object') return null;
+    const title = cleanRuTitle(cached.title);
+    const savedAt = Number(cached.savedAt) || 0;
+    const ttl = title ? RU_TITLE_TTL : RU_TITLE_MISS_TTL;
+    if (!savedAt || Date.now() - savedAt > ttl) return null;
+    ruTitleSession.set(id, title);
+    if (!title) ruTitleSession.set(`${id}:at`, savedAt);
+    return title;
+  }
+
+  /**
+   * Догружает русские названия из Wikidata по MAL ID и кладёт их в IndexedDB.
+   * Возвращает объект MAL ID → название; пустая строка означает «не нашлось».
+   */
+  async function fetchRussianTitles(ids) {
+    const list = [...new Set((Array.isArray(ids) ? ids : []).map(Number)
+      .filter(id => Number.isFinite(id) && id > 0))];
+    const out = {};
+    const need = [];
+
+    for (const id of list) {
+      if (RU_TITLES[id]) { out[id] = RU_TITLES[id]; continue; }
+      const cached = await cachedRussianTitle(id);
+      if (cached === null) need.push(id);
+      else if (cached) out[id] = cached;
+    }
+
+    for (let start = 0; start < need.length; start += 40) {
+      const chunk = need.slice(start, start + 40);
+      const values = chunk.map(id => `"${id}"`).join(' ');
+      const query = `SELECT ?mal ?label WHERE { VALUES ?mal { ${values} } ?item wdt:P4086 ?mal . ?item rdfs:label ?label . FILTER(LANG(?label) = "ru") }`;
+      let rows = [];
+      try {
+        const controller = typeof AbortController === 'function' ? new AbortController() : null;
+        const timer = controller ? setTimeout(() => controller.abort(), 8000) : 0;
+        const response = await fetch(`https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(query)}`, {
+          headers: { Accept: 'application/sparql-results+json' },
+          signal: controller ? controller.signal : undefined,
+        });
+        if (timer) clearTimeout(timer);
+        if (response && response.ok) {
+          const json = await response.json();
+          rows = Array.isArray(json?.results?.bindings) ? json.results.bindings : [];
+        }
+      } catch {
+        rows = [];
+      }
+
+      const found = new Map();
+      for (const row of rows) {
+        const id = Number(row.mal?.value);
+        const title = cleanRuTitle(row.label?.value);
+        if (!Number.isFinite(id) || !title) continue;
+        if (!found.has(id) || title.length < found.get(id).length) found.set(id, title);
+      }
+
+      for (const id of chunk) {
+        const title = found.get(id) || '';
+        if (title) out[id] = title;
+        ruTitleSession.set(id, title);
+        if (!title) ruTitleSession.set(`${id}:at`, Date.now());
+        if (App.mediaPut) {
+          App.mediaPut('titles', String(id), { title, savedAt: Date.now() }).catch(() => {});
+        }
+      }
+    }
+
+    return out;
+  }
+
   async function resolveSearchQuery(query, lang) {
     const raw = String(query || '').trim();
     const requested = C.normalizeSearchLang(lang);
@@ -1296,6 +1391,8 @@
   Object.assign(App, {
     anilistCacheKey,
     fetchAniList,
+    fetchRussianTitles,
+    cleanRuTitle,
     altType,
     altStatus,
     stripHtml,

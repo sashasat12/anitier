@@ -4313,6 +4313,16 @@ window.AniTierTitlesRu = {
 
 window.AniTierChangelog = [
   {
+    version: '1.23.1',
+    date: '27 октября 2026',
+    title: 'Названия пополняются сами',
+    items: [
+      'Если русского названия нет в словаре, приложение догружает его из Wikidata партиями и сохраняет на устройстве.',
+      'Найденные названия сразу появляются в карточках, списках и поиске; повторно сеть не запрашивается.',
+      'Ненайденные названия запоминаются на неделю, чтобы не тормозить загрузку списков.',
+    ],
+  },
+  {
     version: '1.23.0',
     date: '27 октября 2026',
     title: 'Русские названия и поиск',
@@ -5909,7 +5919,7 @@ window.AniTierChangelog = [
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.23.0';
+  const APP_VERSION = '1.23.1';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -6533,7 +6543,7 @@ window.AniTierChangelog = [
   const MOMENT_VIDEO_MAX = 40 * 1024 * 1024;
   const MOMENT_GIF_MAX = 12 * 1024 * 1024;
   const MEDIA_DB = 'anitier-media';
-  const MEDIA_DB_VERSION = 2;
+  const MEDIA_DB_VERSION = 3;
   const POSTER_CACHE_LIMIT = 600;
   const POSTER_CACHE_WIDTH = 240;
   const POSTER_CACHE_HEIGHT = 360;
@@ -7456,6 +7466,7 @@ window.AniTierChangelog = [
         if (!db.objectStoreNames.contains('images')) db.createObjectStore('images');
         if (!db.objectStoreNames.contains('media')) db.createObjectStore('media');
         if (!db.objectStoreNames.contains('posters')) db.createObjectStore('posters');
+        if (!db.objectStoreNames.contains('titles')) db.createObjectStore('titles');
       };
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => resolve(null);
@@ -8653,6 +8664,101 @@ window.AniTierChangelog = [
     return text;
   }
 
+  /* ---------------- русские названия: Wikidata + кэш ---------------- */
+  const RU_TITLE_TTL = 30 * 24 * 60 * 60 * 1000;
+  const RU_TITLE_MISS_TTL = 7 * 24 * 60 * 60 * 1000;
+  const ruTitleSession = new Map();
+
+  function cleanRuTitle(value) {
+    let label = String(value || '').trim();
+    label = label.replace(/\s*\([^)]*\)\s*$/, '').trim();
+    if (label.length < 2 || label.length > 90) return '';
+    let hasCyrillic = false;
+    for (const ch of label) {
+      const code = ch.codePointAt(0);
+      if (code >= 0x0400 && code <= 0x04ff) { hasCyrillic = true; break; }
+    }
+    return hasCyrillic ? label : '';
+  }
+
+  async function cachedRussianTitle(id) {
+    if (ruTitleSession.has(id)) {
+      const title = ruTitleSession.get(id);
+      if (title) return title;
+      const savedAt = Number(ruTitleSession.get(`${id}:at`)) || 0;
+      return Date.now() - savedAt < RU_TITLE_MISS_TTL ? '' : null;
+    }
+    const cached = await App.mediaGet('titles', String(id));
+    if (!cached || typeof cached !== 'object') return null;
+    const title = cleanRuTitle(cached.title);
+    const savedAt = Number(cached.savedAt) || 0;
+    const ttl = title ? RU_TITLE_TTL : RU_TITLE_MISS_TTL;
+    if (!savedAt || Date.now() - savedAt > ttl) return null;
+    ruTitleSession.set(id, title);
+    if (!title) ruTitleSession.set(`${id}:at`, savedAt);
+    return title;
+  }
+
+  /**
+   * Догружает русские названия из Wikidata по MAL ID и кладёт их в IndexedDB.
+   * Возвращает объект MAL ID → название; пустая строка означает «не нашлось».
+   */
+  async function fetchRussianTitles(ids) {
+    const list = [...new Set((Array.isArray(ids) ? ids : []).map(Number)
+      .filter(id => Number.isFinite(id) && id > 0))];
+    const out = {};
+    const need = [];
+
+    for (const id of list) {
+      if (RU_TITLES[id]) { out[id] = RU_TITLES[id]; continue; }
+      const cached = await cachedRussianTitle(id);
+      if (cached === null) need.push(id);
+      else if (cached) out[id] = cached;
+    }
+
+    for (let start = 0; start < need.length; start += 40) {
+      const chunk = need.slice(start, start + 40);
+      const values = chunk.map(id => `"${id}"`).join(' ');
+      const query = `SELECT ?mal ?label WHERE { VALUES ?mal { ${values} } ?item wdt:P4086 ?mal . ?item rdfs:label ?label . FILTER(LANG(?label) = "ru") }`;
+      let rows = [];
+      try {
+        const controller = typeof AbortController === 'function' ? new AbortController() : null;
+        const timer = controller ? setTimeout(() => controller.abort(), 8000) : 0;
+        const response = await fetch(`https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(query)}`, {
+          headers: { Accept: 'application/sparql-results+json' },
+          signal: controller ? controller.signal : undefined,
+        });
+        if (timer) clearTimeout(timer);
+        if (response && response.ok) {
+          const json = await response.json();
+          rows = Array.isArray(json?.results?.bindings) ? json.results.bindings : [];
+        }
+      } catch {
+        rows = [];
+      }
+
+      const found = new Map();
+      for (const row of rows) {
+        const id = Number(row.mal?.value);
+        const title = cleanRuTitle(row.label?.value);
+        if (!Number.isFinite(id) || !title) continue;
+        if (!found.has(id) || title.length < found.get(id).length) found.set(id, title);
+      }
+
+      for (const id of chunk) {
+        const title = found.get(id) || '';
+        if (title) out[id] = title;
+        ruTitleSession.set(id, title);
+        if (!title) ruTitleSession.set(`${id}:at`, Date.now());
+        if (App.mediaPut) {
+          App.mediaPut('titles', String(id), { title, savedAt: Date.now() }).catch(() => {});
+        }
+      }
+    }
+
+    return out;
+  }
+
   async function resolveSearchQuery(query, lang) {
     const raw = String(query || '').trim();
     const requested = C.normalizeSearchLang(lang);
@@ -9232,6 +9338,8 @@ window.AniTierChangelog = [
   Object.assign(App, {
     anilistCacheKey,
     fetchAniList,
+    fetchRussianTitles,
+    cleanRuTitle,
     altType,
     altStatus,
     stripHtml,
@@ -12291,6 +12399,74 @@ window.AniTierChangelog = [
         s.loading = false;
         fetchDB();
       }
+      enrichRussianTitles();
+    }
+  }
+
+  /* ---------------- русские названия: догрузка и кэш ---------------- */
+  const ruEnrichAttempted = new Set();
+  let ruEnrichBusy = false;
+
+  function collectKnownAnime() {
+    const out = [];
+    const push = value => { if (value && typeof value === 'object') out.push(value); };
+    const addPool = pool => { if (Array.isArray(pool)) pool.forEach(push); };
+    addPool(allIn('watched'));
+    addPool(allIn('planned'));
+    addPool(state.db.items);
+    addPool(state.upcoming.items);
+    const n = state.notifications;
+    addPool((n.tracked.episodes || []).map(group => group.anime));
+    addPool((n.tracked.seasons || []).flatMap(item => [item.anime, item.sequel]));
+    addPool((n.recent.episodes || []).map(group => group.anime));
+    addPool(n.recent.films);
+    addPool(n.completed);
+    if (state.byId) for (const anime of state.byId.values()) push(anime);
+    return out;
+  }
+
+  async function enrichRussianTitles() {
+    if (ruEnrichBusy || typeof App.fetchRussianTitles !== 'function') return;
+    const targets = collectKnownAnime().filter(anime => (
+      anime
+      && anime.malId
+      && !anime.titleRu
+      && !ruEnrichAttempted.has(Number(anime.malId))
+    ));
+    const ids = [...new Set(targets.map(anime => Number(anime.malId)))].slice(0, 120);
+    if (!ids.length) return;
+
+    ids.forEach(id => ruEnrichAttempted.add(id));
+    ruEnrichBusy = true;
+    try {
+      const titles = await App.fetchRussianTitles(ids);
+      const byMal = new Map();
+      for (const [id, title] of Object.entries(titles)) {
+        if (title) byMal.set(Number(id), title);
+      }
+      if (!byMal.size) return;
+      let changed = false;
+      for (const anime of collectKnownAnime()) {
+        if (!anime || !anime.malId || anime.titleRu) continue;
+        const title = byMal.get(Number(anime.malId));
+        if (!title) continue;
+        anime.titleRu = title;
+        changed = true;
+      }
+      if (changed) {
+        saveState();
+        /* Сетка базы кэширует сигнатуру и иначе не заметит новые названия. */
+        const grid = document.getElementById('db-grid');
+        if (grid) grid.dataset.cardSignature = '';
+        if (state.tab === 'db' || state.tab === 'watched' || state.tab === 'planned'
+          || state.tab === 'notifications' || state.tab === 'upcoming') {
+          App.refreshViews();
+        }
+      }
+    } catch {
+      /* названия не критичны: молча ждём следующего раза */
+    } finally {
+      ruEnrichBusy = false;
     }
   }
 
@@ -15091,6 +15267,7 @@ window.AniTierChangelog = [
 
     applyLocationHash();
 
+    enrichRussianTitles();
     return bootstrap();
   }
 
@@ -15351,6 +15528,8 @@ window.AniTierChangelog = [
       state,
       init,
       fetchAniList,
+      fetchRussianTitles: App.fetchRussianTitles,
+      enrichRussianTitles,
       fetchAnimeRelations: App.fetchAnimeRelations,
       clearPersistentApiCache,
       clearMemoryApiCache: clearAniListCache,

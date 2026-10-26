@@ -123,4 +123,63 @@
       app.close();
     }
   });
+  T.test('titles: догрузка из Wikidata кэшируется и не повторяется', async () => {
+    const app = await T.mountApp({ query: '?test=1' });
+    const win = app.win;
+    let calls = 0;
+    win.fetch = async url => {
+      if (!String(url).includes('query.wikidata.org')) {
+        return new win.Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      calls += 1;
+      return new win.Response(JSON.stringify({
+        results: { bindings: [{ mal: { value: '999901' }, label: { value: 'Тестовое русское имя' } }] },
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    };
+    try {
+      const first = await win.AniTier.fetchRussianTitles([999901]);
+      T.eq(first[999901], 'Тестовое русское имя');
+      T.eq(calls, 1);
+
+      const second = await win.AniTier.fetchRussianTitles([999901]);
+      T.eq(second[999901], 'Тестовое русское имя');
+      T.eq(calls, 1, 'Второй раз сеть не дёргается');
+
+      const cached = await win.AniTier.mediaGet('titles', '999901');
+      T.assert(cached && cached.title === 'Тестовое русское имя', 'Название сохранено в IndexedDB');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('titles: догруженное название применяется к карточкам', async () => {
+    const app = await T.mountApp({ query: '?test=1' });
+    const win = app.win;
+    win.fetch = async url => {
+      if (!String(url).includes('query.wikidata.org')) {
+        return new win.Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      return new win.Response(JSON.stringify({
+        results: { bindings: [{ mal: { value: '999902' }, label: { value: 'Русское имя' } }] },
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    };
+    try {
+      const api = win.__anitierTest;
+      await api.init();
+      const doc = win.document;
+      api.state.db.loading = false;
+      api.state.db.error = null;
+      api.state.db.items = [{
+        id: 999902, malId: 999902, title: 'Original title', titleRu: '', originalTitle: 'Original title',
+        altTitle: '', image: '', episodes: 12, type: 'TV', status: 'Завершено', score: 8, year: 2020, genres: [],
+      }];
+      win.AniTier.renderDB();
+
+      await api.enrichRussianTitles();
+      await T.waitFor(() => api.state.db.items[0].titleRu === 'Русское имя', 'Название не применилось', 6000);
+      T.includes(doc.querySelector('#db-grid .card-title').textContent, 'Русское имя');
+    } finally {
+      app.close();
+    }
+  });
 })();

@@ -303,6 +303,74 @@
         s.loading = false;
         fetchDB();
       }
+      enrichRussianTitles();
+    }
+  }
+
+  /* ---------------- русские названия: догрузка и кэш ---------------- */
+  const ruEnrichAttempted = new Set();
+  let ruEnrichBusy = false;
+
+  function collectKnownAnime() {
+    const out = [];
+    const push = value => { if (value && typeof value === 'object') out.push(value); };
+    const addPool = pool => { if (Array.isArray(pool)) pool.forEach(push); };
+    addPool(allIn('watched'));
+    addPool(allIn('planned'));
+    addPool(state.db.items);
+    addPool(state.upcoming.items);
+    const n = state.notifications;
+    addPool((n.tracked.episodes || []).map(group => group.anime));
+    addPool((n.tracked.seasons || []).flatMap(item => [item.anime, item.sequel]));
+    addPool((n.recent.episodes || []).map(group => group.anime));
+    addPool(n.recent.films);
+    addPool(n.completed);
+    if (state.byId) for (const anime of state.byId.values()) push(anime);
+    return out;
+  }
+
+  async function enrichRussianTitles() {
+    if (ruEnrichBusy || typeof App.fetchRussianTitles !== 'function') return;
+    const targets = collectKnownAnime().filter(anime => (
+      anime
+      && anime.malId
+      && !anime.titleRu
+      && !ruEnrichAttempted.has(Number(anime.malId))
+    ));
+    const ids = [...new Set(targets.map(anime => Number(anime.malId)))].slice(0, 120);
+    if (!ids.length) return;
+
+    ids.forEach(id => ruEnrichAttempted.add(id));
+    ruEnrichBusy = true;
+    try {
+      const titles = await App.fetchRussianTitles(ids);
+      const byMal = new Map();
+      for (const [id, title] of Object.entries(titles)) {
+        if (title) byMal.set(Number(id), title);
+      }
+      if (!byMal.size) return;
+      let changed = false;
+      for (const anime of collectKnownAnime()) {
+        if (!anime || !anime.malId || anime.titleRu) continue;
+        const title = byMal.get(Number(anime.malId));
+        if (!title) continue;
+        anime.titleRu = title;
+        changed = true;
+      }
+      if (changed) {
+        saveState();
+        /* Сетка базы кэширует сигнатуру и иначе не заметит новые названия. */
+        const grid = document.getElementById('db-grid');
+        if (grid) grid.dataset.cardSignature = '';
+        if (state.tab === 'db' || state.tab === 'watched' || state.tab === 'planned'
+          || state.tab === 'notifications' || state.tab === 'upcoming') {
+          App.refreshViews();
+        }
+      }
+    } catch {
+      /* названия не критичны: молча ждём следующего раза */
+    } finally {
+      ruEnrichBusy = false;
     }
   }
 
@@ -3103,6 +3171,7 @@
 
     applyLocationHash();
 
+    enrichRussianTitles();
     return bootstrap();
   }
 
@@ -3363,6 +3432,8 @@
       state,
       init,
       fetchAniList,
+      fetchRussianTitles: App.fetchRussianTitles,
+      enrichRussianTitles,
       fetchAnimeRelations: App.fetchAnimeRelations,
       clearPersistentApiCache,
       clearMemoryApiCache: clearAniListCache,

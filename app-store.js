@@ -23,7 +23,7 @@
   const MOMENT_VIDEO_MAX = 40 * 1024 * 1024;
   const MOMENT_GIF_MAX = 12 * 1024 * 1024;
   const MEDIA_DB = 'anitier-media';
-  const MEDIA_DB_VERSION = 2;
+  const MEDIA_DB_VERSION = 3;
   const POSTER_CACHE_LIMIT = 600;
   const POSTER_CACHE_WIDTH = 240;
   const POSTER_CACHE_HEIGHT = 360;
@@ -946,6 +946,7 @@
         if (!db.objectStoreNames.contains('images')) db.createObjectStore('images');
         if (!db.objectStoreNames.contains('media')) db.createObjectStore('media');
         if (!db.objectStoreNames.contains('posters')) db.createObjectStore('posters');
+        if (!db.objectStoreNames.contains('titles')) db.createObjectStore('titles');
       };
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => resolve(null);
