@@ -23,7 +23,10 @@
   const MOMENT_VIDEO_MAX = 40 * 1024 * 1024;
   const MOMENT_GIF_MAX = 12 * 1024 * 1024;
   const MEDIA_DB = 'anitier-media';
-  const MEDIA_DB_VERSION = 1;
+  const MEDIA_DB_VERSION = 2;
+  const POSTER_CACHE_LIMIT = 600;
+  const POSTER_CACHE_WIDTH = 240;
+  const POSTER_CACHE_HEIGHT = 360;
   const PAGE_LIMIT = C.PAGE_LIMIT;
   const LONG_TITLE_EPS = 60;
   const ANILIST_TIMEOUT = 9000;
@@ -403,8 +406,81 @@
 
   window.posterFallback = function (img) {
     img.onerror = null;
-    img.src = makePoster(img.dataset.title || 'Anime', img.dataset.id || '0');
+    const remote = img.dataset ? img.dataset.posterSrc : '';
+    if (!remote) {
+      img.src = makePoster(img.dataset.title || 'Anime', img.dataset.id || '0');
+      return;
+    }
+    posterCachedUrl(remote).then(url => {
+      if (url) {
+        img.src = url;
+        return;
+      }
+      img.src = makePoster(img.dataset.title || 'Anime', img.dataset.id || '0');
+    });
   };
+
+  /* Кэш постеров: уменьшенные копии лежат в IndexedDB, чтобы карточки
+     открывались без сети. В памяти держим object URL, иначе каждая
+     ошибка загрузки создавала бы новый URL на тот же blob. */
+  const posterObjectUrls = new Map();
+  const posterMisses = new Set();
+
+  function isBlobLike(value) {
+    return Boolean(value) && typeof value.size === 'number' && typeof value.type === 'string';
+  }
+
+  async function posterCachedUrl(url) {
+    const src = String(url || '');
+    if (!/^https?:/i.test(src)) return null;
+    if (posterObjectUrls.has(src)) return posterObjectUrls.get(src);
+    if (posterMisses.has(src)) return null;
+    const blob = await mediaGet('posters', src);
+    if (!isBlobLike(blob) || !blob.size) {
+      posterMisses.add(src);
+      return null;
+    }
+    const objectUrl = URL.createObjectURL(blob);
+    posterObjectUrls.set(src, objectUrl);
+    return objectUrl;
+  }
+
+  /** После записи в кэш убираем отметку «не найдено», иначе fallback её не увидит. */
+  function markPosterCached(url) {
+    const src = String(url || '');
+    posterMisses.delete(src);
+  }
+
+  /** Удаляет самые старые записи кэша, когда их больше лимита. */
+  async function prunePosters(limit = POSTER_CACHE_LIMIT) {
+    const db = await openMediaDB();
+    if (!db) return 0;
+    const max = Math.max(0, Math.trunc(Number(limit) || 0));
+    return new Promise(resolve => {
+      let removed = 0;
+      try {
+        const tx = db.transaction('posters', 'readwrite');
+        const store = tx.objectStore('posters');
+        const countRequest = store.count();
+        countRequest.onsuccess = () => {
+          const extra = Math.max(0, countRequest.result - max);
+          if (!extra) return;
+          const cursorRequest = store.openCursor();
+          cursorRequest.onsuccess = () => {
+            const cursor = cursorRequest.result;
+            if (!cursor || removed >= extra) return;
+            cursor.delete();
+            removed += 1;
+            cursor.continue();
+          };
+        };
+        tx.oncomplete = () => resolve(removed);
+        tx.onerror = tx.onabort = () => resolve(removed);
+      } catch {
+        resolve(removed);
+      }
+    });
+  }
 
   /* ---------------- состояние ---------------- */
   const state = {
@@ -887,6 +963,7 @@
         const db = request.result;
         if (!db.objectStoreNames.contains('images')) db.createObjectStore('images');
         if (!db.objectStoreNames.contains('media')) db.createObjectStore('media');
+        if (!db.objectStoreNames.contains('posters')) db.createObjectStore('posters');
       };
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => resolve(null);
@@ -1265,6 +1342,9 @@
     MOMENT_GIF_MAX,
     MEDIA_DB,
     MEDIA_DB_VERSION,
+    POSTER_CACHE_LIMIT,
+    POSTER_CACHE_WIDTH,
+    POSTER_CACHE_HEIGHT,
     PAGE_LIMIT,
     LONG_TITLE_EPS,
     ANILIST_TIMEOUT,
@@ -1333,6 +1413,9 @@
     mediaDelete,
     mediaEntries,
     mediaPutMany,
+    posterCachedUrl,
+    markPosterCached,
+    prunePosters,
     loadState,
     saveState,
     normalizeUpdateCheck,

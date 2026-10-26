@@ -60,7 +60,12 @@
   const fetchUpcoming = (...args) => App.fetchUpcoming(...args);
 
   function imgAttrs(a, alt) {
-    return `src="${esc(a.image || makePoster(a.title, a.id))}" alt="${esc(alt !== undefined ? alt : a.title)}" loading="lazy" data-title="${esc(a.title)}" data-id="${a.id}" onerror="posterFallback(this)"`;
+    const image = String(a.image || '');
+    const src = image || makePoster(a.title, a.id);
+    const remote = /^https?:\/\//i.test(image)
+      ? ` data-poster-src="${esc(image)}" onload="cachePoster(this)"`
+      : '';
+    return `src="${esc(src)}" alt="${esc(alt !== undefined ? alt : a.title)}" loading="lazy" data-title="${esc(a.title)}" data-id="${a.id}"${remote} onerror="posterFallback(this)"`;
   }
 
   function cardHTML(a, ctx) {
@@ -2218,7 +2223,7 @@
       <div class="modal-grid">
         <div class="modal-poster">
           <div class="modal-poster-wrap">
-            <img src="${esc(poster)}" alt="${esc(a.title)}" data-title="${esc(a.title)}" data-id="${a.id}" onerror="posterFallback(this)">
+            <img src="${esc(poster)}" alt="${esc(a.title)}" data-title="${esc(a.title)}" data-id="${a.id}"${/^https?:\/\//i.test(poster) ? ` data-poster-src="${esc(poster)}" onload="cachePoster(this)"` : ''} onerror="posterFallback(this)">
             <div class="modal-side-score">${a.score ? `★ ${a.score.toFixed(2)}` : '★ —'}<small>рейтинг</small></div>
           </div>
         </div>
