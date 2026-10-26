@@ -130,36 +130,71 @@
   }
 
   /* ---------------- фильтры и отрисовка базы ---------------- */
-  function initFilterOptions() {
-    const yearSelect = $('#filter-year');
-    if (yearSelect && yearSelect.options.length <= 1) {
-      const maxYear = new Date().getFullYear() + 1;
-      for (let year = maxYear; year >= 1990; year -= 1) {
-        yearSelect.appendChild(new Option(String(year), String(year)));
-      }
-    }
+  const FILTER_MENU_KEYS = ['type', 'status', 'year', 'genre'];
 
-    const genreSelect = $('#filter-genre');
-    if (genreSelect && genreSelect.options.length <= 1) {
-      for (const genre of C.GENRES) {
-        genreSelect.appendChild(new Option(genre.label, String(genre.id)));
+  function filterFieldOptions(key) {
+    if (key === 'type') return C.TYPES.map(item => ({ value: item.value, label: item.label }));
+    if (key === 'status') return C.STATUSES.map(item => ({ value: item.value, label: item.label }));
+    if (key === 'year') {
+      const maxYear = new Date().getFullYear() + 1;
+      const years = [];
+      for (let year = maxYear; year >= 1990; year -= 1) {
+        years.push({ value: String(year), label: String(year) });
       }
+      return years;
     }
+    if (key === 'genre') return C.GENRES.map(genre => ({ value: String(genre.id), label: genre.label }));
+    return [];
+  }
+
+  function renderFilterMenu(key) {
+    const panel = document.querySelector(`[data-filter-panel="${key}"]`);
+    if (!panel || panel.childElementCount) return;
+    panel.innerHTML = filterFieldOptions(key).map(option => (
+      `<label class="filter-option"><input type="checkbox" data-filter="${key}" value="${esc(option.value)}"><span>${esc(option.label)}</span></label>`
+    )).join('');
+  }
+
+  function initFilterOptions() {
+    FILTER_MENU_KEYS.forEach(renderFilterMenu);
+  }
+
+  function closeFilterMenus() {
+    $$('#db-filters [data-filter-panel]').forEach(panel => { panel.hidden = true; });
+    $$('#db-filters [data-filter-menu]').forEach(button => button.setAttribute('aria-expanded', 'false'));
+  }
+
+  function filterMenuLabel(key, values) {
+    const labels = values.map(value => {
+      const option = filterFieldOptions(key).find(item => item.value === value);
+      return option ? option.label : value;
+    });
+    if (!labels.length) return 'Любой';
+    if (labels.length <= 2) return labels.join(', ');
+    return `${labels.length} выбрано`;
   }
 
   function syncFilterUI() {
-    const filters = state.db.filters;
-    const fieldIds = {
-      type: '#filter-type',
-      status: '#filter-status',
-      year: '#filter-year',
-      genre: '#filter-genre',
-      minScore: '#filter-score',
-    };
-    for (const [key, selector] of Object.entries(fieldIds)) {
-      const field = $(selector);
-      if (field) field.value = filters[key] || '';
+    const filters = C.normalizeFilters(state.db.filters);
+
+    for (const key of FILTER_MENU_KEYS) {
+      const values = filters[key];
+      $$(`#db-filters input[type="checkbox"][data-filter="${key}"]`).forEach(box => {
+        box.checked = values.includes(box.value);
+      });
+      const label = document.querySelector(`[data-filter-value="${key}"]`);
+      if (label) {
+        label.textContent = filterMenuLabel(key, values);
+        label.title = filterMenuLabel(key, values);
+      }
+      const button = document.querySelector(`[data-filter-menu="${key}"]`);
+      if (button) button.classList.toggle('has-value', values.length > 0);
     }
+
+    const score = $('#filter-score');
+    if (score) score.value = filters.minScore || '0';
+    const scoreValue = $('#filter-score-value');
+    if (scoreValue) scoreValue.textContent = filters.minScore ? `от ${filters.minScore}` : 'Любой';
 
     const count = C.countActiveFilters(filters);
     const badge = $('#filter-count');
@@ -191,16 +226,21 @@
   }
 
   function readFiltersFromUI() {
-    const raw = {};
-    $$('#db-filters [data-filter]').forEach(field => {
-      raw[field.dataset.filter] = field.value;
+    const raw = { type: [], status: [], year: [], genre: [], minScore: '' };
+    $$('#db-filters input[type="checkbox"][data-filter]').forEach(field => {
+      if (!field.checked) return;
+      const key = field.dataset.filter;
+      if (Array.isArray(raw[key])) raw[key].push(field.value);
     });
+    const score = $('#filter-score');
+    if (score) raw.minScore = String(score.value || '0');
     return C.normalizeFilters(raw);
   }
 
   function resetDBFilters() {
     state.db.filters = C.normalizeFilters(C.DEFAULT_FILTERS);
     syncFilterUI();
+    closeFilterMenus();
     if (App.persistCatalogPreferences) App.persistCatalogPreferences();
   }
 
@@ -913,7 +953,7 @@
       search.value = view.query;
     }
     const type = tools.querySelector(`#${name}-type`);
-    if (type) type.value = view.filters.type || '';
+    if (type) type.value = view.filters.type[0] || '';
     const score = tools.querySelector(`#${name}-score`);
     if (score) score.value = view.filters.minScore || '';
     const sort = tools.querySelector(`#${name}-sort`);
@@ -929,8 +969,9 @@
         year.innerHTML = '<option value="">Любой</option>'
           + keys.map(key => `<option value="${key}">${key}</option>`).join('');
       }
-      if (!keys.includes(view.filters.year)) view.filters.year = '';
-      year.value = view.filters.year;
+      const value = view.filters.year[0] || '';
+      if (!keys.includes(value)) view.filters.year = [];
+      year.value = keys.includes(value) ? value : '';
     }
 
     const genre = tools.querySelector(`#${name}-genre`);
@@ -941,8 +982,9 @@
         genre.innerHTML = '<option value="">Любой</option>'
           + options.genres.map(item => `<option value="${item.id}">${esc(item.label)}</option>`).join('');
       }
-      if (!keys.includes(view.filters.genre)) view.filters.genre = '';
-      genre.value = view.filters.genre;
+      const value = view.filters.genre[0] || '';
+      if (!keys.includes(value)) view.filters.genre = [];
+      genre.value = keys.includes(value) ? value : '';
     }
   }
 
@@ -2555,6 +2597,7 @@
     msgBlock,
     initFilterOptions,
     syncFilterUI,
+    closeFilterMenus,
     syncModeChips,
     syncLangUI,
     readFiltersFromUI,

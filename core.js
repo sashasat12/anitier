@@ -221,36 +221,80 @@
   };
 
   const DEFAULT_FILTERS = Object.freeze({
-    type: '',
-    status: '',
-    year: '',
-    genre: '',
+    type: Object.freeze([]),
+    status: Object.freeze([]),
+    year: Object.freeze([]),
+    genre: Object.freeze([]),
     minScore: '',
   });
+
+  /**
+   * Приводит значение фильтра к массиву. Старые сохранения хранили одну
+   * строку, поэтому читаем и её: одна и та же схема работает после обновления.
+   */
+  function filterList(value) {
+    if (Array.isArray(value)) return value;
+    if (value == null || value === '') return [];
+    return [value];
+  }
+
+  function uniqueList(list, normalize) {
+    const seen = new Set();
+    const out = [];
+    for (const item of list) {
+      const value = normalize(item);
+      if (!value || seen.has(value)) continue;
+      seen.add(value);
+      out.push(value);
+    }
+    return out;
+  }
 
   function normalizeFilters(raw) {
     const source = raw && typeof raw === 'object' ? raw : {};
     const string = value => String(value == null ? '' : value).trim();
-    const year = string(source.year);
     const minScore = string(source.minScore);
 
+    const typeValues = TYPES.map(item => item.value);
+    const statusValues = STATUSES.map(item => item.value);
+    const genreValues = GENRES.map(item => String(item.id));
+
     return {
-      type: TYPES.some(item => item.value === string(source.type)) ? string(source.type) : '',
-      status: STATUSES.some(item => item.value === string(source.status)) ? string(source.status) : '',
-      year: /^\d{4}$/.test(year) ? year : '',
-      genre: GENRES.some(item => String(item.id) === string(source.genre)) ? string(source.genre) : '',
-      minScore: SCORES.some(item => item.value === minScore) ? minScore : '',
+      type: uniqueList(filterList(source.type), value => {
+        const item = string(value);
+        return typeValues.includes(item) ? item : '';
+      }),
+      status: uniqueList(filterList(source.status), value => {
+        const item = string(value);
+        return statusValues.includes(item) ? item : '';
+      }),
+      year: uniqueList(filterList(source.year), value => {
+        const item = string(value);
+        return /^\d{4}$/.test(item) ? item : '';
+      }),
+      genre: uniqueList(filterList(source.genre), value => {
+        const item = string(value);
+        return genreValues.includes(item) ? item : '';
+      }),
+      minScore: /^(?:[1-9]|10)$/.test(minScore) ? minScore : '',
     };
   }
 
   function hasActiveFilters(filters) {
     const normalized = normalizeFilters(filters);
-    return Boolean(normalized.type || normalized.status || normalized.year || normalized.genre || normalized.minScore);
+    return Boolean(
+      normalized.type.length
+      || normalized.status.length
+      || normalized.year.length
+      || normalized.genre.length
+      || normalized.minScore,
+    );
   }
 
   function countActiveFilters(filters) {
     const normalized = normalizeFilters(filters);
-    return ['type', 'status', 'year', 'genre', 'minScore'].filter(key => normalized[key]).length;
+    return ['type', 'status', 'year', 'genre'].filter(key => normalized[key].length).length
+      + (normalized.minScore ? 1 : 0);
   }
 
   function genreById(id) {
@@ -260,17 +304,22 @@
   function matchesFilters(anime, filters) {
     const normalized = normalizeFilters(filters);
 
-    if (normalized.type && String(anime.type || '').toLowerCase() !== normalized.type) return false;
-    if (normalized.status && String(anime.status || '') !== STATUS_NAMES[normalized.status]) return false;
-    if (normalized.year && Number(anime.year) !== Number(normalized.year)) return false;
+    if (normalized.type.length && !normalized.type.includes(String(anime.type || '').toLowerCase())) return false;
+    if (normalized.status.length) {
+      const names = normalized.status.map(value => STATUS_NAMES[value]);
+      if (!names.includes(String(anime.status || ''))) return false;
+    }
+    if (normalized.year.length && !normalized.year.map(Number).includes(Number(anime.year))) return false;
     if (normalized.minScore) {
       if (typeof anime.score !== 'number' || anime.score < Number(normalized.minScore)) return false;
     }
-    if (normalized.genre) {
-      const genre = genreById(normalized.genre);
-      if (!genre) return false;
+    if (normalized.genre.length) {
       const names = Array.isArray(anime.genres) ? anime.genres : [];
-      if (!names.some(name => genre.names.includes(name))) return false;
+      const hit = normalized.genre.some(value => {
+        const genre = genreById(value);
+        return genre ? names.some(name => genre.names.includes(name)) : false;
+      });
+      if (!hit) return false;
     }
 
     return true;
@@ -403,14 +452,27 @@
     if (mode === 'airing') variables.status = 'RELEASING';
     if (mode === 'movie') variables.format = 'MOVIE';
     if (query) variables.search = query;
-    if (filters.type) variables.format = ANILIST_FORMATS[filters.type];
-    if (filters.status) variables.status = ANILIST_STATUSES[filters.status];
-    if (filters.year) variables.seasonYear = Number(filters.year);
-    if (filters.genre) {
-      const genre = aniListGenre(filters.genre);
-      if (genre) variables.genre = genre;
+    if (filters.type.length) {
+      delete variables.format;
+      variables.format_in = filters.type.map(value => ANILIST_FORMATS[value]).filter(Boolean);
     }
-    if (filters.minScore) variables.averageScoreGreater = Number(filters.minScore) * 10 - 1;
+    if (filters.status.length) {
+      delete variables.status;
+      variables.status_in = filters.status.map(value => ANILIST_STATUSES[value]).filter(Boolean);
+    }
+    if (filters.year.length === 1) {
+      variables.seasonYear = Number(filters.year[0]);
+    } else if (filters.year.length > 1) {
+      /* AniList не умеет список лет: берём общий диапазон, а точные годы
+         отсекаем на клиенте вместе с остальными фильтрами. */
+      const years = filters.year.map(Number).sort((a, b) => a - b);
+      variables.startDateGreater = years[0] * 10000 + 101;
+      variables.startDateLesser = years[years.length - 1] * 10000 + 1231;
+    }
+    if (filters.genre.length) {
+      variables.genre_in = filters.genre.map(value => aniListGenre(value)).filter(Boolean);
+    }
+    if (filters.minScore) variables.averageScoreGreater = Number(filters.minScore) * 10;
 
     if (mode === 'score') variables.sort = ['SCORE_DESC'];
     else if (!query || active) variables.sort = ['POPULARITY_DESC'];
@@ -1257,12 +1319,24 @@
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.21.2';
+  const APP_VERSION = '1.22.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* История изменений для экрана «Что нового». Новые версии — сверху.
      Пункты пишем для пользователя: что теперь можно сделать, а не как это сделано. */
   const CHANGELOG = [
+    {
+      version: '1.22.0',
+      date: '26 октября 2026',
+      title: 'Фильтры без ограничений',
+      items: [
+        'В фильтрах базы теперь можно выбрать несколько типов, статусов, годов и жанров сразу.',
+        'Значения одного фильтра складываются по «или»: например, 2019 и 2024 годы, а разные фильтры — по «и».',
+        'Рейтинг задаётся ползунком от 0 до 10: ноль означает «Любой», остальные — минимальную оценку.',
+        'В кнопках фильтров видно, что выбрано, а в меню можно отметить несколько пунктов подряд, не закрывая его.',
+        'Фильтры закрываются по Esc или клику вне меню и по-прежнему сохраняются между запусками.',
+      ],
+    },
     {
       version: '1.21.2',
       date: '26 октября 2026',

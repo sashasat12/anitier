@@ -13,8 +13,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="../styles.css?v=1.21.2">
-<link rel="stylesheet" href="mobile.css?v=1.21.2">
+<link rel="stylesheet" href="../styles.css?v=1.22.0">
+<link rel="stylesheet" href="mobile.css?v=1.22.0">
 </head>
 <body class="mobile-app">
 
@@ -91,47 +91,42 @@
     </div>
 
     <div class="filters" id="db-filters" hidden>
-      <label class="filter-field">
-        <span>Тип</span>
-        <select id="filter-type" data-filter="type">
-          <option value="">Любой</option>
-          <option value="tv">ТВ-сериал</option>
-          <option value="movie">Фильм</option>
-          <option value="ova">OVA</option>
-          <option value="ona">ONA</option>
-          <option value="special">Спешл</option>
-        </select>
-      </label>
-      <label class="filter-field">
-        <span>Статус</span>
-        <select id="filter-status" data-filter="status">
-          <option value="">Любой</option>
-          <option value="airing">В эфире</option>
-          <option value="complete">Завершено</option>
-          <option value="upcoming">Анонс</option>
-        </select>
-      </label>
-      <label class="filter-field">
-        <span>Год</span>
-        <select id="filter-year" data-filter="year">
-          <option value="">Любой</option>
-        </select>
-      </label>
-      <label class="filter-field">
-        <span>Жанр</span>
-        <select id="filter-genre" data-filter="genre">
-          <option value="">Любой</option>
-        </select>
-      </label>
-      <label class="filter-field">
-        <span>Рейтинг</span>
-        <select id="filter-score" data-filter="minScore">
-          <option value="">Любой</option>
-          <option value="6">от 6</option>
-          <option value="7">от 7</option>
-          <option value="8">от 8</option>
-          <option value="9">от 9</option>
-        </select>
+      <div class="filter-field filter-multi">
+        <span id="filter-type-label">Тип</span>
+        <button type="button" class="filter-multi-btn" data-action="filter-menu" data-filter-menu="type" aria-haspopup="true" aria-expanded="false" aria-labelledby="filter-type-label">
+          <span class="filter-multi-value" data-filter-value="type">Любой</span>
+          <span class="filter-multi-caret" aria-hidden="true">▾</span>
+        </button>
+        <div class="filter-menu" data-filter-panel="type" role="group" aria-labelledby="filter-type-label" hidden></div>
+      </div>
+      <div class="filter-field filter-multi">
+        <span id="filter-status-label">Статус</span>
+        <button type="button" class="filter-multi-btn" data-action="filter-menu" data-filter-menu="status" aria-haspopup="true" aria-expanded="false" aria-labelledby="filter-status-label">
+          <span class="filter-multi-value" data-filter-value="status">Любой</span>
+          <span class="filter-multi-caret" aria-hidden="true">▾</span>
+        </button>
+        <div class="filter-menu" data-filter-panel="status" role="group" aria-labelledby="filter-status-label" hidden></div>
+      </div>
+      <div class="filter-field filter-multi">
+        <span id="filter-year-label">Год</span>
+        <button type="button" class="filter-multi-btn" data-action="filter-menu" data-filter-menu="year" aria-haspopup="true" aria-expanded="false" aria-labelledby="filter-year-label">
+          <span class="filter-multi-value" data-filter-value="year">Любой</span>
+          <span class="filter-multi-caret" aria-hidden="true">▾</span>
+        </button>
+        <div class="filter-menu" data-filter-panel="year" role="group" aria-labelledby="filter-year-label" hidden></div>
+      </div>
+      <div class="filter-field filter-multi">
+        <span id="filter-genre-label">Жанр</span>
+        <button type="button" class="filter-multi-btn" data-action="filter-menu" data-filter-menu="genre" aria-haspopup="true" aria-expanded="false" aria-labelledby="filter-genre-label">
+          <span class="filter-multi-value" data-filter-value="genre">Любой</span>
+          <span class="filter-multi-caret" aria-hidden="true">▾</span>
+        </button>
+        <div class="filter-menu" data-filter-panel="genre" role="group" aria-labelledby="filter-genre-label" hidden></div>
+      </div>
+      <label class="filter-field filter-score-field">
+        <span>Рейтинг <b class="filter-score-value" id="filter-score-value">Любой</b></span>
+        <input id="filter-score" data-filter="minScore" type="range" min="0" max="10" step="1" value="0" aria-label="Минимальный рейтинг">
+        <span class="filter-score-scale" aria-hidden="true"><span>0</span><span>5</span><span>10</span></span>
       </label>
       <button class="btn btn-ghost filter-reset" data-action="reset-filters">Сбросить</button>
     </div>
@@ -346,11 +341,11 @@
 <div class="update-card" id="update-card" role="status" aria-live="polite" hidden></div>
 <div id="toasts" role="status" aria-live="polite" aria-atomic="false"></div>
 
-<script src="../core.js?v=1.21.2" defer></script>
-<script src="../app-store.js?v=1.21.2" defer></script>
-<script src="../app-api.js?v=1.21.2" defer></script>
-<script src="../app-render.js?v=1.21.2" defer></script>
-<script src="../app.js?v=1.21.2" defer></script>
-<script src="mobile.js?v=1.21.2" defer></script>
+<script src="../core.js?v=1.22.0" defer></script>
+<script src="../app-store.js?v=1.22.0" defer></script>
+<script src="../app-api.js?v=1.22.0" defer></script>
+<script src="../app-render.js?v=1.22.0" defer></script>
+<script src="../app.js?v=1.22.0" defer></script>
+<script src="mobile.js?v=1.22.0" defer></script>
 </body>
 </html>

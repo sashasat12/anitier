@@ -163,7 +163,9 @@
           ] : [], false);
         }
 
-        if (vars.format === 'MOVIE') {
+        const wantsMovie = vars.format === 'MOVIE'
+          || (Array.isArray(vars.format_in) && vars.format_in.includes('MOVIE'));
+        if (wantsMovie) {
           return anilistResponse([
             rawAniList(201, 'Фильм 1', { format: 'MOVIE' }),
             rawAniList(202, 'Фильм 2', { format: 'MOVIE' }),
@@ -347,18 +349,21 @@
       await T.waitFor(() => app.win.__anitierTest.state.db.mode === 'score' && !app.win.__anitierTest.state.db.loading,
         'Режим рейтинга не включился');
 
-      const type = doc.querySelector('#filter-type');
-      T.assert(type, 'Фильтр типа должен существовать');
-      type.value = 'movie';
-      type.dispatchEvent(new app.win.Event('change', { bubbles: true }));
+      const typeButton = doc.querySelector('[data-filter-menu="type"]');
+      T.assert(typeButton, 'Фильтр типа должен существовать');
+      typeButton.click();
+      const typeBox = doc.querySelector('[data-filter-panel="type"] input[value="movie"]');
+      T.assert(typeBox, 'В фильтре типа есть фильм');
+      typeBox.checked = true;
+      typeBox.dispatchEvent(new app.win.Event('change', { bubbles: true }));
 
       await T.waitFor(
         () => !app.win.__anitierTest.state.db.loading
-          && calls.some(call => call.vars && call.vars.format === 'MOVIE'),
-        'Запрос с фильтром format=MOVIE не выполнился',
+          && calls.some(call => call.vars && Array.isArray(call.vars.format_in) && call.vars.format_in.includes('MOVIE')),
+        'Запрос с фильтром format_in=MOVIE не выполнился',
       );
 
-      const filteredCall = [...calls].reverse().find(call => call.vars && call.vars.format === 'MOVIE');
+      const filteredCall = [...calls].reverse().find(call => call.vars && Array.isArray(call.vars.format_in) && call.vars.format_in.includes('MOVIE'));
       T.eq(filteredCall.vars.perPage, 20);
       T.eq(filteredCall.vars.sort, ['SCORE_DESC'], 'Фильтр применяется вместе с сортировкой по рейтингу');
       T.eq(app.win.__anitierTest.state.db.mode, 'score', 'Фильтр не должен сбрасывать режим сортировки');
@@ -682,26 +687,30 @@
       await app.win.__anitierTest.init();
       const state = app.win.__anitierTest.state;
       const doc = app.win.document;
+      const toggle = (key, value, checked = true) => {
+        doc.querySelector(`[data-filter-menu="${key}"]`).click();
+        const box = doc.querySelector(`[data-filter-panel="${key}"] input[value="${value}"]`);
+        T.assert(box, `Нет варианта ${key}:${value}`);
+        box.checked = checked;
+        box.dispatchEvent(new app.win.Event('change', { bubbles: true }));
+      };
       T.eq(state.tab, 'watched');
       T.eq(state.db.mode, 'score');
       T.eq(state.db.query, 'Frieren');
-      T.eq(state.db.filters, { type: 'movie', status: '', year: '2024', genre: '', minScore: '8' });
+      T.eq(state.db.filters, { type: ['movie'], status: [], year: ['2024'], genre: [], minScore: '8' });
       T.eq(doc.querySelector('#search-input').value, 'Frieren');
-      T.eq(doc.querySelector('#filter-type').value, 'movie');
-      T.eq(doc.querySelector('#filter-year').value, '2024');
+      T.eq(doc.querySelector('[data-filter-panel="type"] input[value="movie"]').checked, true);
+      T.eq(doc.querySelector('[data-filter-panel="year"] input[value="2024"]').checked, true);
       T.eq(doc.querySelector('#filter-score').value, '8');
       T.eq(doc.querySelector('#view-watched').hidden, false);
       T.eq(doc.querySelector('#view-db').hidden, true);
 
       doc.querySelector('[data-action="mode"][data-mode="airing"]').click();
-      const type = doc.querySelector('#filter-type');
-      type.value = 'tv';
-      type.dispatchEvent(new app.win.Event('change', { bubbles: true }));
-      const status = doc.querySelector('#filter-status');
-      status.value = 'complete';
-      status.dispatchEvent(new app.win.Event('change', { bubbles: true }));
-      doc.querySelector('#filter-year').value = '';
-      doc.querySelector('#filter-score').value = '';
+      toggle('type', 'movie', false);
+      toggle('type', 'tv');
+      toggle('status', 'complete');
+      toggle('year', '2024', false);
+      doc.querySelector('#filter-score').value = '0';
       doc.querySelector('#filter-score').dispatchEvent(new app.win.Event('change', { bubbles: true }));
       const input = doc.querySelector('#search-input');
       input.value = 'Доктор Стоун';
@@ -714,7 +723,7 @@
       const stored = JSON.parse(app.win.localStorage.getItem('anitier.v1'));
       T.eq(stored.settings.catalog.tab, 'upcoming');
       T.eq(stored.settings.catalog.mode, 'airing');
-      T.eq(stored.settings.catalog.filters, { type: 'tv', status: 'complete', year: '', genre: '', minScore: '' });
+      T.eq(stored.settings.catalog.filters, { type: ['tv'], status: ['complete'], year: [], genre: [], minScore: '' });
     } finally { app.close(); }
   });
 
@@ -956,8 +965,10 @@
       T.eq(doc.querySelector('#db-more').hidden, true);
 
       doc.querySelector('[data-action="toggle-filters"]').click();
-      const type = doc.querySelector('#filter-type');
-      type.value = 'movie';
+      doc.querySelector('[data-filter-menu="type"]').click();
+      const type = doc.querySelector('[data-filter-panel="type"] input[value="movie"]');
+      T.assert(type, 'В фильтре типа есть фильм');
+      type.checked = true;
       type.dispatchEvent(new app.win.Event('change', { bubbles: true }));
 
       await T.waitFor(

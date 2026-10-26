@@ -18,16 +18,16 @@
     const variables = C.buildAniListVariables({
       mode: 'popular',
       query: '  naruto  ',
-      filters: { type: 'tv', status: 'airing', year: '2024', genre: '1', minScore: '8' },
+      filters: { type: ['tv'], status: ['airing'], year: ['2024'], genre: ['1'], minScore: '8' },
       page: 2,
       limit: 20,
     });
 
     T.eq(variables.search, 'naruto');
-    T.eq(variables.format, 'TV');
-    T.eq(variables.status, 'RELEASING');
-    T.eq(variables.genre, 'Action');
-    T.eq(variables.averageScoreGreater, 79);
+    T.eq(variables.format_in, ['TV']);
+    T.eq(variables.status_in, ['RELEASING']);
+    T.eq(variables.genre_in, ['Action']);
+    T.eq(variables.averageScoreGreater, 80);
     T.eq(variables.seasonYear, 2024);
     T.eq(variables.page, 2);
     T.eq(variables.perPage, 20);
@@ -36,17 +36,41 @@
     T.eq(variables.sort, ['POPULARITY_DESC']);
   });
 
+  T.test('core: несколько лет и жанров уходят в AniList диапазоном и списком', () => {
+    const C = core();
+    const variables = C.buildAniListVariables({
+      mode: 'popular',
+      filters: { year: ['2019', '2024'], genre: ['1', '4'] },
+    });
+
+    T.eq(variables.startDateGreater, 20190101, 'Нижняя граница диапазона лет');
+    T.eq(variables.startDateLesser, 20241231, 'Верхняя граница диапазона лет');
+    T.eq(variables.seasonYear, undefined, 'Для нескольких лет seasonYear не задаётся');
+    T.eq(variables.genre_in, ['Action', 'Comedy'], 'Жанры уходят списком');
+  });
+
+  T.test('core: старые одиночные фильтры читаются как списки', () => {
+    const C = core();
+    const filters = C.normalizeFilters({ type: 'movie', status: 'complete', year: '2024', genre: '1', minScore: '8' });
+
+    T.eq(filters.type, ['movie']);
+    T.eq(filters.status, ['complete']);
+    T.eq(filters.year, ['2024']);
+    T.eq(filters.genre, ['1']);
+    T.eq(filters.minScore, '8');
+  });
+
   T.test('core: фильтры без текста применяются к базе AniList', () => {
     const C = core();
     const variables = C.buildAniListVariables({
       mode: 'score',
       query: '',
-      filters: { type: 'movie', status: 'complete', year: '', genre: '', minScore: '' },
+      filters: { type: ['movie'], status: ['complete'], year: [], genre: [], minScore: '' },
       page: 1,
     });
 
-    T.eq(variables.format, 'MOVIE');
-    T.eq(variables.status, 'FINISHED');
+    T.eq(variables.format_in, ['MOVIE']);
+    T.eq(variables.status_in, ['FINISHED']);
     T.eq(variables.perPage, 20);
     T.eq(variables.sort, ['SCORE_DESC']);
     T.eq(variables.search, undefined);
@@ -73,21 +97,21 @@
   T.test('core: фильтры уточняют режимы до сортировки', () => {
     const C = core();
     const rankedMovies = C.buildAniListVariables({
-      mode: 'score', filters: { type: 'movie', status: 'complete', year: '2024', genre: '1', minScore: '8' },
+      mode: 'score', filters: { type: ['movie'], status: ['complete'], year: ['2024'], genre: ['1'], minScore: '8' },
     });
-    T.eq(rankedMovies.format, 'MOVIE');
-    T.eq(rankedMovies.status, 'FINISHED');
+    T.eq(rankedMovies.format_in, ['MOVIE']);
+    T.eq(rankedMovies.status_in, ['FINISHED']);
     T.eq(rankedMovies.seasonYear, 2024);
-    T.eq(rankedMovies.genre, 'Action');
-    T.eq(rankedMovies.averageScoreGreater, 79);
+    T.eq(rankedMovies.genre_in, ['Action']);
+    T.eq(rankedMovies.averageScoreGreater, 80);
     T.eq(rankedMovies.sort, ['SCORE_DESC']);
 
-    const airing = C.buildAniListVariables({ mode: 'airing', filters: { type: 'tv' } });
+    const airing = C.buildAniListVariables({ mode: 'airing', filters: { type: ['tv'] } });
     T.eq(airing.status, 'RELEASING');
-    T.eq(airing.format, 'TV');
+    T.eq(airing.format_in, ['TV']);
     T.eq(airing.sort, ['POPULARITY_DESC']);
 
-    const movies = C.buildAniListVariables({ mode: 'movie', filters: { year: '2025' } });
+    const movies = C.buildAniListVariables({ mode: 'movie', filters: { year: ['2025'] } });
     T.eq(movies.format, 'MOVIE');
     T.eq(movies.seasonYear, 2025);
     T.eq(movies.sort, ['POPULARITY_DESC']);
@@ -140,13 +164,35 @@
 
   T.test('core: активные фильтры считаются и нормализуются', () => {
     const C = core();
-    const filters = C.normalizeFilters({ type: ' tv ', status: '', year: '2016', genre: '1', minScore: '8' });
+    const filters = C.normalizeFilters({ type: ' tv ', status: [], year: '2016', genre: ['1', '4'], minScore: '8' });
 
-    T.eq(filters.type, 'tv');
-    T.eq(filters.year, '2016');
+    T.eq(filters.type, ['tv']);
+    T.eq(filters.year, ['2016']);
+    T.eq(filters.genre, ['1', '4']);
     T.eq(C.countActiveFilters(filters), 4);
     T.assert(C.hasActiveFilters(filters));
     T.assert(!C.hasActiveFilters(C.normalizeFilters({})));
+
+    const multi = C.normalizeFilters({ type: ['tv', 'movie', 'tv'], year: ['2016', '2016', '2015'] });
+    T.eq(multi.type, ['tv', 'movie'], 'Повторы и мусор отбрасываются');
+    T.eq(multi.year, ['2016', '2015']);
+  });
+
+  T.test('core: несколько годов и жанров фильтруют по И внутри поля', () => {
+    const C = core();
+    const items = [
+      { id: 1, title: 'A', type: 'TV', status: 'Завершено', year: 2018, score: 8.2, genres: ['Боевик'] },
+      { id: 2, title: 'B', type: 'TV', status: 'Завершено', year: 2020, score: 7.9, genres: ['Комедия'] },
+      { id: 3, title: 'C', type: 'TV', status: 'Завершено', year: 2022, score: 9.1, genres: ['Драма'] },
+      { id: 4, title: 'D', type: 'Movie', status: 'Завершено', year: 2020, score: 8.5, genres: ['Боевик', 'Комедия'] },
+    ];
+
+    const ids = list => list.map(item => item.id);
+    T.eq(ids(C.filterItems(items, { filters: { year: ['2018', '2022'] } })), [1, 3], 'Любой из выбранных годов');
+    T.eq(ids(C.filterItems(items, { filters: { genre: ['1', '4'] } })), [1, 2, 4], 'Любой из выбранных жанров');
+    T.eq(ids(C.filterItems(items, { filters: { year: ['2020'], genre: ['1'] } })), [4], 'Поля складываются по И');
+    T.eq(ids(C.filterItems(items, { filters: { type: ['tv'], year: ['2020', '2022'] } })), [2, 3]);
+    T.eq(ids(C.filterItems(items, { filters: { minScore: '9' } })), [3], 'Рейтинг от 9');
   });
 
   T.test('core: страница отдаёт по 20 и знает, есть ли следующая', () => {

@@ -392,7 +392,7 @@ button { font-family: inherit; }
   background: rgba(255, 255, 255, .025);
 }
 .filters[hidden] { display: none; }
-.filter-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.filter-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; position: relative; }
 .filter-field > span {
   color: var(--muted);
   font-size: 10.5px;
@@ -418,6 +418,87 @@ button { font-family: inherit; }
   box-shadow: 0 0 0 3px rgba(255, 77, 141, .10);
 }
 .filter-reset { min-height: 37px; }
+
+/* ---------- фильтры: несколько значений ---------- */
+.filter-multi-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 37px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.filter-multi-btn:hover { border-color: var(--line-strong); }
+.filter-multi-btn.has-value { border-color: rgba(255, 77, 141, .45); }
+.filter-multi-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.filter-multi-caret { flex: none; color: var(--muted); font-size: 9px; }
+.filter-menu {
+  position: absolute;
+  z-index: 45;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 180px;
+  max-height: 260px;
+  overflow: auto;
+  padding: 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: #11151f;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .55);
+}
+.filter-menu[hidden] { display: none; }
+.filter-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.filter-option:hover { background: rgba(255, 255, 255, .06); }
+.filter-option input {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+.filter-score-field { min-width: 0; }
+.filter-score-value {
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.filter-score-field input[type="range"] {
+  width: 100%;
+  margin: 9px 0 1px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.filter-score-scale {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 9.5px;
+}
 
 /* ---------- фильтры «Скоро выйдут» ---------- */
 .upcoming-tools .search { grid-column: 1 / -1; }
@@ -3222,47 +3303,42 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     </div>
 
     <div class="filters" id="db-filters" hidden>
-      <label class="filter-field">
-        <span>Тип</span>
-        <select id="filter-type" data-filter="type">
-          <option value="">Любой</option>
-          <option value="tv">ТВ-сериал</option>
-          <option value="movie">Фильм</option>
-          <option value="ova">OVA</option>
-          <option value="ona">ONA</option>
-          <option value="special">Спешл</option>
-        </select>
-      </label>
-      <label class="filter-field">
-        <span>Статус</span>
-        <select id="filter-status" data-filter="status">
-          <option value="">Любой</option>
-          <option value="airing">В эфире</option>
-          <option value="complete">Завершено</option>
-          <option value="upcoming">Анонс</option>
-        </select>
-      </label>
-      <label class="filter-field">
-        <span>Год</span>
-        <select id="filter-year" data-filter="year">
-          <option value="">Любой</option>
-        </select>
-      </label>
-      <label class="filter-field">
-        <span>Жанр</span>
-        <select id="filter-genre" data-filter="genre">
-          <option value="">Любой</option>
-        </select>
-      </label>
-      <label class="filter-field">
-        <span>Рейтинг</span>
-        <select id="filter-score" data-filter="minScore">
-          <option value="">Любой</option>
-          <option value="6">от 6</option>
-          <option value="7">от 7</option>
-          <option value="8">от 8</option>
-          <option value="9">от 9</option>
-        </select>
+      <div class="filter-field filter-multi">
+        <span id="filter-type-label">Тип</span>
+        <button type="button" class="filter-multi-btn" data-action="filter-menu" data-filter-menu="type" aria-haspopup="true" aria-expanded="false" aria-labelledby="filter-type-label">
+          <span class="filter-multi-value" data-filter-value="type">Любой</span>
+          <span class="filter-multi-caret" aria-hidden="true">▾</span>
+        </button>
+        <div class="filter-menu" data-filter-panel="type" role="group" aria-labelledby="filter-type-label" hidden></div>
+      </div>
+      <div class="filter-field filter-multi">
+        <span id="filter-status-label">Статус</span>
+        <button type="button" class="filter-multi-btn" data-action="filter-menu" data-filter-menu="status" aria-haspopup="true" aria-expanded="false" aria-labelledby="filter-status-label">
+          <span class="filter-multi-value" data-filter-value="status">Любой</span>
+          <span class="filter-multi-caret" aria-hidden="true">▾</span>
+        </button>
+        <div class="filter-menu" data-filter-panel="status" role="group" aria-labelledby="filter-status-label" hidden></div>
+      </div>
+      <div class="filter-field filter-multi">
+        <span id="filter-year-label">Год</span>
+        <button type="button" class="filter-multi-btn" data-action="filter-menu" data-filter-menu="year" aria-haspopup="true" aria-expanded="false" aria-labelledby="filter-year-label">
+          <span class="filter-multi-value" data-filter-value="year">Любой</span>
+          <span class="filter-multi-caret" aria-hidden="true">▾</span>
+        </button>
+        <div class="filter-menu" data-filter-panel="year" role="group" aria-labelledby="filter-year-label" hidden></div>
+      </div>
+      <div class="filter-field filter-multi">
+        <span id="filter-genre-label">Жанр</span>
+        <button type="button" class="filter-multi-btn" data-action="filter-menu" data-filter-menu="genre" aria-haspopup="true" aria-expanded="false" aria-labelledby="filter-genre-label">
+          <span class="filter-multi-value" data-filter-value="genre">Любой</span>
+          <span class="filter-multi-caret" aria-hidden="true">▾</span>
+        </button>
+        <div class="filter-menu" data-filter-panel="genre" role="group" aria-labelledby="filter-genre-label" hidden></div>
+      </div>
+      <label class="filter-field filter-score-field">
+        <span>Рейтинг <b class="filter-score-value" id="filter-score-value">Любой</b></span>
+        <input id="filter-score" data-filter="minScore" type="range" min="0" max="10" step="1" value="0" aria-label="Минимальный рейтинг">
+        <span class="filter-score-scale" aria-hidden="true"><span>0</span><span>5</span><span>10</span></span>
       </label>
       <button class="btn btn-ghost filter-reset" data-action="reset-filters">Сбросить</button>
     </div>
@@ -3701,36 +3777,80 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
   };
 
   const DEFAULT_FILTERS = Object.freeze({
-    type: '',
-    status: '',
-    year: '',
-    genre: '',
+    type: Object.freeze([]),
+    status: Object.freeze([]),
+    year: Object.freeze([]),
+    genre: Object.freeze([]),
     minScore: '',
   });
+
+  /**
+   * Приводит значение фильтра к массиву. Старые сохранения хранили одну
+   * строку, поэтому читаем и её: одна и та же схема работает после обновления.
+   */
+  function filterList(value) {
+    if (Array.isArray(value)) return value;
+    if (value == null || value === '') return [];
+    return [value];
+  }
+
+  function uniqueList(list, normalize) {
+    const seen = new Set();
+    const out = [];
+    for (const item of list) {
+      const value = normalize(item);
+      if (!value || seen.has(value)) continue;
+      seen.add(value);
+      out.push(value);
+    }
+    return out;
+  }
 
   function normalizeFilters(raw) {
     const source = raw && typeof raw === 'object' ? raw : {};
     const string = value => String(value == null ? '' : value).trim();
-    const year = string(source.year);
     const minScore = string(source.minScore);
 
+    const typeValues = TYPES.map(item => item.value);
+    const statusValues = STATUSES.map(item => item.value);
+    const genreValues = GENRES.map(item => String(item.id));
+
     return {
-      type: TYPES.some(item => item.value === string(source.type)) ? string(source.type) : '',
-      status: STATUSES.some(item => item.value === string(source.status)) ? string(source.status) : '',
-      year: /^\d{4}$/.test(year) ? year : '',
-      genre: GENRES.some(item => String(item.id) === string(source.genre)) ? string(source.genre) : '',
-      minScore: SCORES.some(item => item.value === minScore) ? minScore : '',
+      type: uniqueList(filterList(source.type), value => {
+        const item = string(value);
+        return typeValues.includes(item) ? item : '';
+      }),
+      status: uniqueList(filterList(source.status), value => {
+        const item = string(value);
+        return statusValues.includes(item) ? item : '';
+      }),
+      year: uniqueList(filterList(source.year), value => {
+        const item = string(value);
+        return /^\d{4}$/.test(item) ? item : '';
+      }),
+      genre: uniqueList(filterList(source.genre), value => {
+        const item = string(value);
+        return genreValues.includes(item) ? item : '';
+      }),
+      minScore: /^(?:[1-9]|10)$/.test(minScore) ? minScore : '',
     };
   }
 
   function hasActiveFilters(filters) {
     const normalized = normalizeFilters(filters);
-    return Boolean(normalized.type || normalized.status || normalized.year || normalized.genre || normalized.minScore);
+    return Boolean(
+      normalized.type.length
+      || normalized.status.length
+      || normalized.year.length
+      || normalized.genre.length
+      || normalized.minScore,
+    );
   }
 
   function countActiveFilters(filters) {
     const normalized = normalizeFilters(filters);
-    return ['type', 'status', 'year', 'genre', 'minScore'].filter(key => normalized[key]).length;
+    return ['type', 'status', 'year', 'genre'].filter(key => normalized[key].length).length
+      + (normalized.minScore ? 1 : 0);
   }
 
   function genreById(id) {
@@ -3740,17 +3860,22 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
   function matchesFilters(anime, filters) {
     const normalized = normalizeFilters(filters);
 
-    if (normalized.type && String(anime.type || '').toLowerCase() !== normalized.type) return false;
-    if (normalized.status && String(anime.status || '') !== STATUS_NAMES[normalized.status]) return false;
-    if (normalized.year && Number(anime.year) !== Number(normalized.year)) return false;
+    if (normalized.type.length && !normalized.type.includes(String(anime.type || '').toLowerCase())) return false;
+    if (normalized.status.length) {
+      const names = normalized.status.map(value => STATUS_NAMES[value]);
+      if (!names.includes(String(anime.status || ''))) return false;
+    }
+    if (normalized.year.length && !normalized.year.map(Number).includes(Number(anime.year))) return false;
     if (normalized.minScore) {
       if (typeof anime.score !== 'number' || anime.score < Number(normalized.minScore)) return false;
     }
-    if (normalized.genre) {
-      const genre = genreById(normalized.genre);
-      if (!genre) return false;
+    if (normalized.genre.length) {
       const names = Array.isArray(anime.genres) ? anime.genres : [];
-      if (!names.some(name => genre.names.includes(name))) return false;
+      const hit = normalized.genre.some(value => {
+        const genre = genreById(value);
+        return genre ? names.some(name => genre.names.includes(name)) : false;
+      });
+      if (!hit) return false;
     }
 
     return true;
@@ -3883,14 +4008,27 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     if (mode === 'airing') variables.status = 'RELEASING';
     if (mode === 'movie') variables.format = 'MOVIE';
     if (query) variables.search = query;
-    if (filters.type) variables.format = ANILIST_FORMATS[filters.type];
-    if (filters.status) variables.status = ANILIST_STATUSES[filters.status];
-    if (filters.year) variables.seasonYear = Number(filters.year);
-    if (filters.genre) {
-      const genre = aniListGenre(filters.genre);
-      if (genre) variables.genre = genre;
+    if (filters.type.length) {
+      delete variables.format;
+      variables.format_in = filters.type.map(value => ANILIST_FORMATS[value]).filter(Boolean);
     }
-    if (filters.minScore) variables.averageScoreGreater = Number(filters.minScore) * 10 - 1;
+    if (filters.status.length) {
+      delete variables.status;
+      variables.status_in = filters.status.map(value => ANILIST_STATUSES[value]).filter(Boolean);
+    }
+    if (filters.year.length === 1) {
+      variables.seasonYear = Number(filters.year[0]);
+    } else if (filters.year.length > 1) {
+      /* AniList не умеет список лет: берём общий диапазон, а точные годы
+         отсекаем на клиенте вместе с остальными фильтрами. */
+      const years = filters.year.map(Number).sort((a, b) => a - b);
+      variables.startDateGreater = years[0] * 10000 + 101;
+      variables.startDateLesser = years[years.length - 1] * 10000 + 1231;
+    }
+    if (filters.genre.length) {
+      variables.genre_in = filters.genre.map(value => aniListGenre(value)).filter(Boolean);
+    }
+    if (filters.minScore) variables.averageScoreGreater = Number(filters.minScore) * 10;
 
     if (mode === 'score') variables.sort = ['SCORE_DESC'];
     else if (!query || active) variables.sort = ['POPULARITY_DESC'];
@@ -4737,12 +4875,24 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.21.2';
+  const APP_VERSION = '1.22.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* История изменений для экрана «Что нового». Новые версии — сверху.
      Пункты пишем для пользователя: что теперь можно сделать, а не как это сделано. */
   const CHANGELOG = [
+    {
+      version: '1.22.0',
+      date: '26 октября 2026',
+      title: 'Фильтры без ограничений',
+      items: [
+        'В фильтрах базы теперь можно выбрать несколько типов, статусов, годов и жанров сразу.',
+        'Значения одного фильтра складываются по «или»: например, 2019 и 2024 годы, а разные фильтры — по «и».',
+        'Рейтинг задаётся ползунком от 0 до 10: ноль означает «Любой», остальные — минимальную оценку.',
+        'В кнопках фильтров видно, что выбрано, а в меню можно отметить несколько пунктов подряд, не закрывая его.',
+        'Фильтры закрываются по Esc или клику вне меню и по-прежнему сохраняются между запусками.',
+      ],
+    },
     {
       version: '1.21.2',
       date: '26 октября 2026',
@@ -5598,9 +5748,12 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     $sort: [MediaSort],
     $type: MediaType,
     $status: MediaStatus,
+    $status_in: [MediaStatus],
     $format: MediaFormat,
+    $format_in: [MediaFormat],
     $seasonYear: Int,
     $genre: String,
+    $genre_in: [String],
     $averageScoreGreater: Int,
     $startDateGreater: FuzzyDateInt,
     $startDateLesser: FuzzyDateInt,
@@ -5613,9 +5766,12 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
         search: $search,
         type: $type,
         status: $status,
+        status_in: $status_in,
         format: $format,
+        format_in: $format_in,
         seasonYear: $seasonYear,
         genre: $genre,
+        genre_in: $genre_in,
         sort: $sort,
         averageScore_greater: $averageScoreGreater,
         startDate_greater: $startDateGreater,
@@ -8470,36 +8626,71 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
   }
 
   /* ---------------- фильтры и отрисовка базы ---------------- */
-  function initFilterOptions() {
-    const yearSelect = $('#filter-year');
-    if (yearSelect && yearSelect.options.length <= 1) {
-      const maxYear = new Date().getFullYear() + 1;
-      for (let year = maxYear; year >= 1990; year -= 1) {
-        yearSelect.appendChild(new Option(String(year), String(year)));
-      }
-    }
+  const FILTER_MENU_KEYS = ['type', 'status', 'year', 'genre'];
 
-    const genreSelect = $('#filter-genre');
-    if (genreSelect && genreSelect.options.length <= 1) {
-      for (const genre of C.GENRES) {
-        genreSelect.appendChild(new Option(genre.label, String(genre.id)));
+  function filterFieldOptions(key) {
+    if (key === 'type') return C.TYPES.map(item => ({ value: item.value, label: item.label }));
+    if (key === 'status') return C.STATUSES.map(item => ({ value: item.value, label: item.label }));
+    if (key === 'year') {
+      const maxYear = new Date().getFullYear() + 1;
+      const years = [];
+      for (let year = maxYear; year >= 1990; year -= 1) {
+        years.push({ value: String(year), label: String(year) });
       }
+      return years;
     }
+    if (key === 'genre') return C.GENRES.map(genre => ({ value: String(genre.id), label: genre.label }));
+    return [];
+  }
+
+  function renderFilterMenu(key) {
+    const panel = document.querySelector(`[data-filter-panel="${key}"]`);
+    if (!panel || panel.childElementCount) return;
+    panel.innerHTML = filterFieldOptions(key).map(option => (
+      `<label class="filter-option"><input type="checkbox" data-filter="${key}" value="${esc(option.value)}"><span>${esc(option.label)}</span></label>`
+    )).join('');
+  }
+
+  function initFilterOptions() {
+    FILTER_MENU_KEYS.forEach(renderFilterMenu);
+  }
+
+  function closeFilterMenus() {
+    $$('#db-filters [data-filter-panel]').forEach(panel => { panel.hidden = true; });
+    $$('#db-filters [data-filter-menu]').forEach(button => button.setAttribute('aria-expanded', 'false'));
+  }
+
+  function filterMenuLabel(key, values) {
+    const labels = values.map(value => {
+      const option = filterFieldOptions(key).find(item => item.value === value);
+      return option ? option.label : value;
+    });
+    if (!labels.length) return 'Любой';
+    if (labels.length <= 2) return labels.join(', ');
+    return `${labels.length} выбрано`;
   }
 
   function syncFilterUI() {
-    const filters = state.db.filters;
-    const fieldIds = {
-      type: '#filter-type',
-      status: '#filter-status',
-      year: '#filter-year',
-      genre: '#filter-genre',
-      minScore: '#filter-score',
-    };
-    for (const [key, selector] of Object.entries(fieldIds)) {
-      const field = $(selector);
-      if (field) field.value = filters[key] || '';
+    const filters = C.normalizeFilters(state.db.filters);
+
+    for (const key of FILTER_MENU_KEYS) {
+      const values = filters[key];
+      $$(`#db-filters input[type="checkbox"][data-filter="${key}"]`).forEach(box => {
+        box.checked = values.includes(box.value);
+      });
+      const label = document.querySelector(`[data-filter-value="${key}"]`);
+      if (label) {
+        label.textContent = filterMenuLabel(key, values);
+        label.title = filterMenuLabel(key, values);
+      }
+      const button = document.querySelector(`[data-filter-menu="${key}"]`);
+      if (button) button.classList.toggle('has-value', values.length > 0);
     }
+
+    const score = $('#filter-score');
+    if (score) score.value = filters.minScore || '0';
+    const scoreValue = $('#filter-score-value');
+    if (scoreValue) scoreValue.textContent = filters.minScore ? `от ${filters.minScore}` : 'Любой';
 
     const count = C.countActiveFilters(filters);
     const badge = $('#filter-count');
@@ -8531,16 +8722,21 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
   }
 
   function readFiltersFromUI() {
-    const raw = {};
-    $$('#db-filters [data-filter]').forEach(field => {
-      raw[field.dataset.filter] = field.value;
+    const raw = { type: [], status: [], year: [], genre: [], minScore: '' };
+    $$('#db-filters input[type="checkbox"][data-filter]').forEach(field => {
+      if (!field.checked) return;
+      const key = field.dataset.filter;
+      if (Array.isArray(raw[key])) raw[key].push(field.value);
     });
+    const score = $('#filter-score');
+    if (score) raw.minScore = String(score.value || '0');
     return C.normalizeFilters(raw);
   }
 
   function resetDBFilters() {
     state.db.filters = C.normalizeFilters(C.DEFAULT_FILTERS);
     syncFilterUI();
+    closeFilterMenus();
     if (App.persistCatalogPreferences) App.persistCatalogPreferences();
   }
 
@@ -9253,7 +9449,7 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
       search.value = view.query;
     }
     const type = tools.querySelector(`#${name}-type`);
-    if (type) type.value = view.filters.type || '';
+    if (type) type.value = view.filters.type[0] || '';
     const score = tools.querySelector(`#${name}-score`);
     if (score) score.value = view.filters.minScore || '';
     const sort = tools.querySelector(`#${name}-sort`);
@@ -9269,8 +9465,9 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
         year.innerHTML = '<option value="">Любой</option>'
           + keys.map(key => `<option value="${key}">${key}</option>`).join('');
       }
-      if (!keys.includes(view.filters.year)) view.filters.year = '';
-      year.value = view.filters.year;
+      const value = view.filters.year[0] || '';
+      if (!keys.includes(value)) view.filters.year = [];
+      year.value = keys.includes(value) ? value : '';
     }
 
     const genre = tools.querySelector(`#${name}-genre`);
@@ -9281,8 +9478,9 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
         genre.innerHTML = '<option value="">Любой</option>'
           + options.genres.map(item => `<option value="${item.id}">${esc(item.label)}</option>`).join('');
       }
-      if (!keys.includes(view.filters.genre)) view.filters.genre = '';
-      genre.value = view.filters.genre;
+      const value = view.filters.genre[0] || '';
+      if (!keys.includes(value)) view.filters.genre = [];
+      genre.value = keys.includes(value) ? value : '';
     }
   }
 
@@ -10895,6 +11093,7 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     msgBlock,
     initFilterOptions,
     syncFilterUI,
+    closeFilterMenus,
     syncModeChips,
     syncLangUI,
     readFiltersFromUI,
@@ -11140,6 +11339,7 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     syncLangUI,
     readFiltersFromUI,
     resetDBFilters,
+    closeFilterMenus,
     previewEpisodeSlider,
     switchTab,
     ensureNotificationEpisodes,
@@ -11220,12 +11420,15 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
         const pageData = await fetchAniList(variables, { timeout: SEARCH_TIMEOUT });
         if (revision !== s.revision) return;
 
-        const data = pageData.media.map(mapAniList);
+        const media = pageData.media.map(mapAniList);
+        /* Сервер получает диапазон лет и списки, но точные годы (когда их
+           несколько) и прочие условия проверяем повторно на клиенте. */
+        const data = media.filter(anime => C.matchesFilters(anime, s.filters));
         s.items = C.dedupeById([...s.items, ...data]);
         s.sources = ['AniList'];
-        s.hasNext = Boolean(pageData.pageInfo?.hasNextPage) && data.length > 0;
+        s.hasNext = Boolean(pageData.pageInfo?.hasNextPage) && media.length > 0;
         s.page = page + 1;
-        if (!data.length) s.hasNext = false;
+        if (!media.length) s.hasNext = false;
       }
     } catch (err) {
       if (revision !== s.revision) return;
@@ -13236,6 +13439,21 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
           if (!panel) break;
           panel.hidden = !panel.hidden;
           el.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
+          if (panel.hidden) closeFilterMenus();
+          break;
+        }
+
+        case 'filter-menu': {
+          const key = el.dataset.filterMenu;
+          const menu = document.querySelector(`[data-filter-panel="${key}"]`);
+          const willOpen = menu ? menu.hidden : false;
+          closeFilterMenus();
+          if (menu && willOpen) {
+            menu.hidden = false;
+            el.setAttribute('aria-expanded', 'true');
+            const first = menu.querySelector('input');
+            if (first) first.focus({ preventScroll: true });
+          }
           break;
         }
 
@@ -13639,15 +13857,28 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
 
     const filters = $('#db-filters');
     if (filters) {
+      let filterTimer = 0;
       filters.addEventListener('change', () => {
         state.db.filters = readFiltersFromUI();
         state.db.touched = true;
         persistCatalogPreferences();
         syncModeChips();
         syncFilterUI();
-        fetchDB(true);
+        clearTimeout(filterTimer);
+        filterTimer = setTimeout(() => fetchDB(true), 260);
+      });
+      filters.addEventListener('input', event => {
+        if (!event.target || event.target.id !== 'filter-score') return;
+        const label = $('#filter-score-value');
+        if (label) label.textContent = Number(event.target.value) > 0 ? `от ${event.target.value}` : 'Любой';
       });
     }
+
+    document.addEventListener('click', event => {
+      if (!event.target || !event.target.closest) return;
+      if (event.target.closest('.filter-multi')) return;
+      closeFilterMenus();
+    });
 
     const upcomingSearch = $('#upcoming-search');
     if (upcomingSearch) {
@@ -13810,6 +14041,10 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
         }
       }
       if (e.key === 'Escape') {
+        if (document.querySelector('#db-filters [data-filter-panel]:not([hidden])')) {
+          closeFilterMenus();
+          return;
+        }
         if (state.command.open) {
           closeCommand();
           return;

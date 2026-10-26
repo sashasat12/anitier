@@ -157,6 +157,7 @@
     syncLangUI,
     readFiltersFromUI,
     resetDBFilters,
+    closeFilterMenus,
     previewEpisodeSlider,
     switchTab,
     ensureNotificationEpisodes,
@@ -237,12 +238,15 @@
         const pageData = await fetchAniList(variables, { timeout: SEARCH_TIMEOUT });
         if (revision !== s.revision) return;
 
-        const data = pageData.media.map(mapAniList);
+        const media = pageData.media.map(mapAniList);
+        /* Сервер получает диапазон лет и списки, но точные годы (когда их
+           несколько) и прочие условия проверяем повторно на клиенте. */
+        const data = media.filter(anime => C.matchesFilters(anime, s.filters));
         s.items = C.dedupeById([...s.items, ...data]);
         s.sources = ['AniList'];
-        s.hasNext = Boolean(pageData.pageInfo?.hasNextPage) && data.length > 0;
+        s.hasNext = Boolean(pageData.pageInfo?.hasNextPage) && media.length > 0;
         s.page = page + 1;
-        if (!data.length) s.hasNext = false;
+        if (!media.length) s.hasNext = false;
       }
     } catch (err) {
       if (revision !== s.revision) return;
@@ -2253,6 +2257,21 @@
           if (!panel) break;
           panel.hidden = !panel.hidden;
           el.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
+          if (panel.hidden) closeFilterMenus();
+          break;
+        }
+
+        case 'filter-menu': {
+          const key = el.dataset.filterMenu;
+          const menu = document.querySelector(`[data-filter-panel="${key}"]`);
+          const willOpen = menu ? menu.hidden : false;
+          closeFilterMenus();
+          if (menu && willOpen) {
+            menu.hidden = false;
+            el.setAttribute('aria-expanded', 'true');
+            const first = menu.querySelector('input');
+            if (first) first.focus({ preventScroll: true });
+          }
           break;
         }
 
@@ -2656,15 +2675,28 @@
 
     const filters = $('#db-filters');
     if (filters) {
+      let filterTimer = 0;
       filters.addEventListener('change', () => {
         state.db.filters = readFiltersFromUI();
         state.db.touched = true;
         persistCatalogPreferences();
         syncModeChips();
         syncFilterUI();
-        fetchDB(true);
+        clearTimeout(filterTimer);
+        filterTimer = setTimeout(() => fetchDB(true), 260);
+      });
+      filters.addEventListener('input', event => {
+        if (!event.target || event.target.id !== 'filter-score') return;
+        const label = $('#filter-score-value');
+        if (label) label.textContent = Number(event.target.value) > 0 ? `от ${event.target.value}` : 'Любой';
       });
     }
+
+    document.addEventListener('click', event => {
+      if (!event.target || !event.target.closest) return;
+      if (event.target.closest('.filter-multi')) return;
+      closeFilterMenus();
+    });
 
     const upcomingSearch = $('#upcoming-search');
     if (upcomingSearch) {
@@ -2827,6 +2859,10 @@
         }
       }
       if (e.key === 'Escape') {
+        if (document.querySelector('#db-filters [data-filter-panel]:not([hidden])')) {
+          closeFilterMenus();
+          return;
+        }
         if (state.command.open) {
           closeCommand();
           return;
