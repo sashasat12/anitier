@@ -2059,6 +2059,24 @@ button { font-family: inherit; }
 .changelog-screen-head h2 { margin: 0; font-size: clamp(20px, 3vw, 24px); }
 .changelog-screen-head .btn { min-height: 36px; }
 .changelog { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
+.changelog-search { margin: 14px 0 0; }
+.changelog-search input {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+.changelog-search input:focus {
+  outline: none;
+  border-color: rgba(255, 77, 141, .5);
+  box-shadow: 0 0 0 3px rgba(255, 77, 141, .1);
+}
+.changelog-release[hidden] { display: none; }
 .changelog-release {
   padding: 14px 16px;
   border: 1px solid var(--line);
@@ -3458,7 +3476,8 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
       </div>
       <div class="db-tools">
         <div class="search">
-          <input id="search-input" type="search" placeholder="Поиск: «Фрирен», «Jujutsu Kaisen»…" autocomplete="off" aria-label="Поиск аниме">
+          <input id="search-input" type="search" placeholder="Поиск: «Фрирен», «Jujutsu Kaisen»…" autocomplete="off" list="search-history" aria-label="Поиск аниме">
+          <datalist id="search-history"></datalist>
         </div>
         <label class="lang-field" title="Язык поискового запроса">
           <span>Язык</span>
@@ -5592,6 +5611,17 @@ window.AniTierTitlesRu = {
 
 window.AniTierChangelog = [
   {
+    version: '1.33.0',
+    date: '27 октября 2026',
+    title: 'История поиска и поиск по истории',
+    items: [
+      'Поле поиска запоминает последние 8 запросов и подсказывает их при следующем вводе.',
+      'История хранится на устройстве, повторяющиеся запросы не дублируются.',
+      'В экране «История изменений» появился поиск по версиям и пунктам: можно быстро найти, когда появилась функция.',
+      'Очистка поля возвращает полный список версий.',
+    ],
+  },
+  {
     version: '1.32.0',
     date: '27 октября 2026',
     title: 'Сортировка базы',
@@ -7367,7 +7397,7 @@ window.AniTierChangelog = [
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.32.0';
+  const APP_VERSION = '1.33.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -8465,6 +8495,7 @@ window.AniTierChangelog = [
       theme: 'dark',
       density: 'comfortable',
       fontSize: 'normal',
+      searchHistory: [],
       catalog: normalizeCatalogPreferences(),
     },
     modalId: null,
@@ -9111,6 +9142,9 @@ window.AniTierChangelog = [
           theme: state.settings.theme === 'amoled' ? 'amoled' : 'dark',
           density: state.settings.density === 'compact' ? 'compact' : 'comfortable',
           fontSize: ['small', 'large'].includes(state.settings.fontSize) ? state.settings.fontSize : 'normal',
+          searchHistory: Array.isArray(state.settings.searchHistory)
+            ? state.settings.searchHistory.map(value => String(value || '').trim()).filter(Boolean).slice(0, 8)
+            : [],
           catalog: normalizeCatalogPreferences(state.settings.catalog),
         },
       }));
@@ -12389,7 +12423,7 @@ window.AniTierChangelog = [
     const list = Array.isArray(C.CHANGELOG) ? C.CHANGELOG : [];
     if (!list.length) return '<p class="custom-sub">История изменений пока пуста.</p>';
     return `<div class="changelog">${list.map(entry => `
-      <article class="changelog-release">
+      <article class="changelog-release" data-search="${esc([entry.version, entry.title, ...(entry.items || [])].join(' ').toLowerCase())}">
         <header class="changelog-head">
           <h3>${esc(entry.version)}${entry.version === current ? '<span class="changelog-badge">текущая</span>' : ''}</h3>
           ${entry.date ? `<span class="changelog-date">${esc(entry.date)}</span>` : ''}
@@ -12426,6 +12460,9 @@ window.AniTierChangelog = [
           <h2 id="settings-title">История изменений</h2>
         </div>
         <p class="custom-sub">Версия ${esc(version)} · что появилось в приложении.</p>
+        <div class="changelog-search">
+          <input id="changelog-search" type="search" placeholder="Найти версию или изменение" autocomplete="off" aria-label="Поиск по истории изменений">
+        </div>
         ${changelogHTML(version)}`;
       return;
     }
@@ -14550,6 +14587,25 @@ window.AniTierChangelog = [
 
   /* ---------------- события ---------------- */
   let searchTimer = null;
+
+  /* ---------------- история поиска ---------------- */
+  function renderSearchHistory() {
+    const list = document.getElementById('search-history');
+    if (!list) return;
+    const history = Array.isArray(state.settings.searchHistory) ? state.settings.searchHistory : [];
+    list.innerHTML = history.map(query => `<option value="${App.esc(query)}"></option>`).join('');
+  }
+
+  function rememberSearch(query) {
+    const value = String(query || '').trim();
+    if (value.length < 2) return;
+    const history = (Array.isArray(state.settings.searchHistory) ? state.settings.searchHistory : [])
+      .filter(item => item.toLowerCase() !== value.toLowerCase());
+    history.unshift(value);
+    state.settings.searchHistory = history.slice(0, 8);
+    saveState();
+    renderSearchHistory();
+  }
 
   function persistCatalogPreferences() {
     state.settings.catalog = {
@@ -16701,6 +16757,7 @@ window.AniTierChangelog = [
         searchTimer = setTimeout(() => {
           state.db.query = val;
           state.db.touched = true;
+          rememberSearch(val);
           persistCatalogPreferences();
           syncModeChips();
           fetchDB(true);
@@ -16779,6 +16836,13 @@ window.AniTierChangelog = [
     document.addEventListener('input', e => {
       if (e.target && e.target.id === 'command-input' && state.command.open) {
         setCommandQuery(e.target.value);
+        return;
+      }
+      if (e.target && e.target.id === 'changelog-search') {
+        const query = e.target.value.trim().toLowerCase();
+        document.querySelectorAll('.changelog-release').forEach(release => {
+          release.hidden = Boolean(query) && !(release.dataset.search || '').includes(query);
+        });
         return;
       }
       const listSearch = e.target.closest && e.target.closest('[data-list-search]');
@@ -17127,6 +17191,7 @@ window.AniTierChangelog = [
     }
     loadState();
     loadMoments();
+    renderSearchHistory();
     if (typeof App.applyAppearance === 'function') App.applyAppearance();
     initFilterOptions();
     restoreCatalogPreferences();

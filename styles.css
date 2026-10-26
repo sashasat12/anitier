@@ -2045,6 +2045,24 @@ button { font-family: inherit; }
 .changelog-screen-head h2 { margin: 0; font-size: clamp(20px, 3vw, 24px); }
 .changelog-screen-head .btn { min-height: 36px; }
 .changelog { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
+.changelog-search { margin: 14px 0 0; }
+.changelog-search input {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+.changelog-search input:focus {
+  outline: none;
+  border-color: rgba(255, 77, 141, .5);
+  box-shadow: 0 0 0 3px rgba(255, 77, 141, .1);
+}
+.changelog-release[hidden] { display: none; }
 .changelog-release {
   padding: 14px 16px;
   border: 1px solid var(--line);

@@ -1514,7 +1514,7 @@
     const list = Array.isArray(C.CHANGELOG) ? C.CHANGELOG : [];
     if (!list.length) return '<p class="custom-sub">История изменений пока пуста.</p>';
     return `<div class="changelog">${list.map(entry => `
-      <article class="changelog-release">
+      <article class="changelog-release" data-search="${esc([entry.version, entry.title, ...(entry.items || [])].join(' ').toLowerCase())}">
         <header class="changelog-head">
           <h3>${esc(entry.version)}${entry.version === current ? '<span class="changelog-badge">текущая</span>' : ''}</h3>
           ${entry.date ? `<span class="changelog-date">${esc(entry.date)}</span>` : ''}
@@ -1551,6 +1551,9 @@
           <h2 id="settings-title">История изменений</h2>
         </div>
         <p class="custom-sub">Версия ${esc(version)} · что появилось в приложении.</p>
+        <div class="changelog-search">
+          <input id="changelog-search" type="search" placeholder="Найти версию или изменение" autocomplete="off" aria-label="Поиск по истории изменений">
+        </div>
         ${changelogHTML(version)}`;
       return;
     }

@@ -856,6 +856,25 @@
   /* ---------------- события ---------------- */
   let searchTimer = null;
 
+  /* ---------------- история поиска ---------------- */
+  function renderSearchHistory() {
+    const list = document.getElementById('search-history');
+    if (!list) return;
+    const history = Array.isArray(state.settings.searchHistory) ? state.settings.searchHistory : [];
+    list.innerHTML = history.map(query => `<option value="${App.esc(query)}"></option>`).join('');
+  }
+
+  function rememberSearch(query) {
+    const value = String(query || '').trim();
+    if (value.length < 2) return;
+    const history = (Array.isArray(state.settings.searchHistory) ? state.settings.searchHistory : [])
+      .filter(item => item.toLowerCase() !== value.toLowerCase());
+    history.unshift(value);
+    state.settings.searchHistory = history.slice(0, 8);
+    saveState();
+    renderSearchHistory();
+  }
+
   function persistCatalogPreferences() {
     state.settings.catalog = {
       tab: state.tab,
@@ -3006,6 +3025,7 @@
         searchTimer = setTimeout(() => {
           state.db.query = val;
           state.db.touched = true;
+          rememberSearch(val);
           persistCatalogPreferences();
           syncModeChips();
           fetchDB(true);
@@ -3084,6 +3104,13 @@
     document.addEventListener('input', e => {
       if (e.target && e.target.id === 'command-input' && state.command.open) {
         setCommandQuery(e.target.value);
+        return;
+      }
+      if (e.target && e.target.id === 'changelog-search') {
+        const query = e.target.value.trim().toLowerCase();
+        document.querySelectorAll('.changelog-release').forEach(release => {
+          release.hidden = Boolean(query) && !(release.dataset.search || '').includes(query);
+        });
         return;
       }
       const listSearch = e.target.closest && e.target.closest('[data-list-search]');
@@ -3432,6 +3459,7 @@
     }
     loadState();
     loadMoments();
+    renderSearchHistory();
     if (typeof App.applyAppearance === 'function') App.applyAppearance();
     initFilterOptions();
     restoreCatalogPreferences();

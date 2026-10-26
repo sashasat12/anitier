@@ -444,6 +444,57 @@
     }
   });
 
+  T.test('app: история поиска подсказывается и сохраняется', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const doc = app.win.document;
+      const input = doc.querySelector('#search-input');
+      input.value = 'Фрирен';
+      input.dispatchEvent(new app.win.Event('input', { bubbles: true }));
+
+      await T.waitFor(() => api.state.db.query === 'Фрирен', 'Запрос не применился', 4000);
+      await T.waitFor(() => {
+        const options = [...doc.querySelectorAll('#search-history option')].map(o => o.value);
+        return options.includes('Фрирен');
+      }, 'Подсказка истории не появилась', 3000);
+
+      const saved = JSON.parse(app.win.localStorage.getItem('anitier.v1') || '{}');
+      T.assert(Array.isArray(saved.settings.searchHistory) && saved.settings.searchHistory.includes('Фрирен'), 'История сохранена');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: история изменений фильтруется поиском', async () => {
+    const app = await T.mountApp({ query: '?test=1' });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const doc = app.win.document;
+      doc.querySelector('[data-action="open-settings"]').click();
+      doc.querySelector('[data-action="open-changelog"]').click();
+
+      const search = doc.getElementById('changelog-search');
+      T.assert(search, 'В истории есть поиск');
+      const releases = [...doc.querySelectorAll('.changelog-release')];
+      T.assert(releases.length > 2, 'История не пустая');
+
+      search.value = 'сортировк';
+      search.dispatchEvent(new app.win.Event('input', { bubbles: true }));
+      const visible = releases.filter(release => !release.hidden);
+      T.assert(visible.length >= 1 && visible.length < releases.length, 'Поиск сузил историю');
+      T.assert(visible.some(release => release.textContent.includes('Сортировка')), 'Нашлась нужная версия');
+
+      search.value = '';
+      search.dispatchEvent(new app.win.Event('input', { bubbles: true }));
+      T.eq(releases.filter(release => !release.hidden).length, releases.length, 'Очистка вернула все версии');
+    } finally {
+      app.close();
+    }
+  });
+
   T.test('app: сортировка базы меняет запрос и сохраняется', async () => {
     const calls = [];
     const app = await T.mountApp({

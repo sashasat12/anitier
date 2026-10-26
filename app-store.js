@@ -492,6 +492,7 @@
       theme: 'dark',
       density: 'comfortable',
       fontSize: 'normal',
+      searchHistory: [],
       catalog: normalizeCatalogPreferences(),
     },
     modalId: null,
@@ -1138,6 +1139,9 @@
           theme: state.settings.theme === 'amoled' ? 'amoled' : 'dark',
           density: state.settings.density === 'compact' ? 'compact' : 'comfortable',
           fontSize: ['small', 'large'].includes(state.settings.fontSize) ? state.settings.fontSize : 'normal',
+          searchHistory: Array.isArray(state.settings.searchHistory)
+            ? state.settings.searchHistory.map(value => String(value || '').trim()).filter(Boolean).slice(0, 8)
+            : [],
           catalog: normalizeCatalogPreferences(state.settings.catalog),
         },
       }));
