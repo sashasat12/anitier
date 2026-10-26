@@ -1580,6 +1580,105 @@
     syncBodyScroll();
   }
 
+  /* ---------------- глобальный поиск ---------------- */
+  function commandWhereLabel(result) {
+    if (result.where === 'watched') return `Просмотрено · ${tierShort(result.tier)}`;
+    if (result.where === 'planned') return `Планы · ${tierShort(result.tier)}`;
+    if (result.where === 'custom') return 'Своя карточка';
+    return 'База';
+  }
+
+  function renderCommandResults() {
+    const box = $('#command-results');
+    if (!box) return;
+    const query = state.command.query.trim();
+    if (!query) {
+      state.command.results = [];
+      state.command.index = 0;
+      box.innerHTML = '<div class="command-empty">Начните вводить название — поиск идёт по спискам, своим карточкам и загруженной базе.</div>';
+      return;
+    }
+
+    const results = C.searchGlobal({
+      lists: state.lists,
+      customCards: state.customCards,
+      dbItems: state.db.items,
+    }, query, { limit: 8 });
+
+    state.command.results = results;
+    state.command.index = Math.max(0, Math.min(state.command.index, Math.max(0, results.length - 1)));
+
+    if (!results.length) {
+      box.innerHTML = '<div class="command-empty">Ничего не нашлось. Проверьте раскладку или попробуйте English.</div>';
+      return;
+    }
+
+    box.innerHTML = results.map((result, index) => {
+      const a = result.anime;
+      const meta = [a.year, typeRu(a.type), a.score ? `★ ${a.score.toFixed(1)}` : '']
+        .filter(Boolean)
+        .map(item => esc(item))
+        .join(' · ');
+      return `<button type="button" class="command-row ${index === state.command.index ? 'is-active' : ''}" role="option" aria-selected="${index === state.command.index}" data-action="command-open" data-id="${a.id}" data-index="${index}" tabindex="-1">
+        <img class="command-poster" ${imgAttrs(a, '')}>
+        <span class="command-main">
+          <b>${esc(a.title)}</b>
+          <small>${meta || 'Без года'}</small>
+        </span>
+        <span class="command-badge command-badge-${result.where}">${esc(commandWhereLabel(result))}</span>
+      </button>`;
+    }).join('');
+  }
+
+  function openCommand(initialQuery = '') {
+    if (state.modalId != null) closeModal();
+    if (state.statsScreen && state.statsScreen.open) closeStats();
+    if (state.settingsScreen && state.settingsScreen.open) closeSettings();
+    if (state.backup && state.backup.open) closeBackup();
+    if (state.exchange && state.exchange.open) closeExchange();
+    if (state.customForm && state.customForm.open) closeCustomForm(false);
+    if (state.momentForm && state.momentForm.open) closeMomentForm(false);
+    if (state.tiktokImport && state.tiktokImport.open && typeof App.closeTikTokImport === 'function') App.closeTikTokImport();
+    state.command = { open: true, query: String(initialQuery || ''), index: 0, results: [] };
+    const modal = $('#command-modal');
+    if (modal) modal.hidden = false;
+    const input = $('#command-input');
+    if (input) input.value = state.command.query;
+    renderCommandResults();
+    syncBodyScroll();
+    if (input) {
+      input.focus({ preventScroll: true });
+      input.select();
+    }
+  }
+
+  function closeCommand() {
+    state.command = { open: false, query: '', index: 0, results: [] };
+    const modal = $('#command-modal');
+    if (modal) modal.hidden = true;
+    syncBodyScroll();
+  }
+
+  function setCommandQuery(value) {
+    state.command.query = String(value || '');
+    state.command.index = 0;
+    renderCommandResults();
+  }
+
+  function moveCommand(delta) {
+    const total = state.command.results.length;
+    if (!total) return;
+    state.command.index = (state.command.index + delta + total) % total;
+    renderCommandResults();
+  }
+
+  function openCommandResult(index) {
+    const result = state.command.results[index];
+    if (!result) return;
+    closeCommand();
+    openModal(result.anime.id);
+  }
+
   function openSettings() {
     if (state.modalId != null) closeModal();
     if (state.statsScreen && state.statsScreen.open) closeStats();
@@ -1609,10 +1708,12 @@
     else if (state.tab === 'upcoming') renderUpcoming();
     if (state.modalId != null) renderModal();
     if (state.statsScreen && state.statsScreen.open) renderStatsScreen();
+    if (state.command && state.command.open) renderCommandResults();
   }
 
   function syncBodyScroll() {
     const locked = state.modalId != null
+      || Boolean(state.command && state.command.open)
       || Boolean(state.exchange && state.exchange.open)
       || Boolean(state.customForm && state.customForm.open)
       || Boolean(state.momentForm && state.momentForm.open)
@@ -2395,6 +2496,12 @@
     renderStatsScreen,
     openStats,
     closeStats,
+    renderCommandResults,
+    openCommand,
+    closeCommand,
+    setCommandQuery,
+    moveCommand,
+    openCommandResult,
     layoutTierCards,
     updateCounters,
     openCustomForm,

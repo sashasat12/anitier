@@ -495,6 +495,7 @@
       catalog: normalizeCatalogPreferences(),
     },
     modalId: null,
+    command: { open: false, query: '', index: 0, results: [] },
     exchange: {
       open: false,
       mode: 'export',

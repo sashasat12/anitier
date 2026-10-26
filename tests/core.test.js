@@ -596,4 +596,47 @@
     T.eq(none.omitted, 12);
     T.eq(none.height > 0, true, 'Даже пустой холст имеет высоту');
   });
+
+  T.test('core: глобальный поиск ищет по спискам, своим карточкам и базе', () => {
+    const C = core();
+    const sources = {
+      lists: {
+        watched: {
+          S: [{ id: 1, title: 'Фрирен', altTitle: 'Sousou no Frieren', year: 2023 }],
+          A: [], B: [], C: [], D: [], F: [], N: [],
+        },
+        planned: {
+          S: [], A: [], B: [{ id: 2, title: 'Фрирен: Продолжение', year: 2026 }],
+          C: [], D: [], F: [], N: [],
+        },
+      },
+      customCards: [{ id: -5, title: 'Мой тайтл', custom: true }],
+      dbItems: [
+        { id: 1, title: 'Фрирен', year: 2023 },
+        { id: 3, title: 'Совсем другое', year: 2020 },
+      ],
+    };
+
+    const results = C.searchGlobal(sources, 'фрирен');
+    T.eq(results.length, 2, 'Дубль из базы не должен повторяться');
+    T.eq(results[0].anime.id, 1);
+    T.eq(results[0].where, 'watched');
+    T.eq(results[0].tier, 'S');
+    T.eq(results[1].anime.id, 2);
+    T.eq(results[1].where, 'planned');
+    T.eq(results[1].tier, 'B');
+
+    T.eq(C.searchGlobal(sources, 'sousou').length, 1, 'Альтернативное название тоже ищется');
+    T.eq(C.searchGlobal(sources, 'shingeki').length, 0);
+    T.eq(C.searchGlobal(sources, '  ').length, 0, 'Пустой запрос ничего не возвращает');
+    T.eq(C.searchGlobal(sources, 'фрирен', { limit: 1 }).length, 1, 'Лимит соблюдается');
+
+    const custom = C.searchGlobal(sources, 'мой тайтл');
+    T.eq(custom.length, 1);
+    T.eq(custom[0].where, 'custom');
+
+    const dbOnly = C.searchGlobal(sources, 'другое');
+    T.eq(dbOnly.length, 1);
+    T.eq(dbOnly[0].where, 'db');
+  });
 })();

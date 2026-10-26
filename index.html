@@ -42,6 +42,9 @@
   </nav>
 
   <div class="topbar-actions">
+    <button class="icon-btn" data-action="open-command" title="Поиск по всему (Ctrl+K)" aria-label="Глобальный поиск">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2"/></svg>
+    </button>
     <button class="icon-btn" data-action="open-settings" title="Настройки" aria-label="Настройки">⚙</button>
     <button class="icon-btn" data-action="open-backup" title="Резервная копия" aria-label="Резервная копия">⇩</button>
     <button class="icon-btn" data-action="refresh" title="Обновить текущую вкладку" aria-label="Обновить">⟳</button>
@@ -289,6 +292,28 @@
   <div class="modal-panel backup-panel" id="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title" tabindex="-1">
     <button class="modal-close" data-action="close-settings" aria-label="Закрыть">✕</button>
     <div class="backup-content" id="settings-content"></div>
+  </div>
+</div>
+
+<!-- ================= ГЛОБАЛЬНЫЙ ПОИСК ================= -->
+<div class="modal command-modal" id="command-modal" hidden>
+  <div class="modal-backdrop" data-action="close-command"></div>
+  <div class="modal-panel command-panel" id="command-panel" role="dialog" aria-modal="true" aria-labelledby="command-title" tabindex="-1">
+    <button class="modal-close" data-action="close-command" aria-label="Закрыть">✕</button>
+    <div class="command-content">
+      <h2 class="visually-hidden" id="command-title">Поиск по AniTier</h2>
+      <div class="command-search">
+        <span class="command-search-icon" aria-hidden="true">⌕</span>
+        <input id="command-input" type="search" placeholder="Тайтл, список или база…" autocomplete="off" aria-label="Поиск по всему" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="command-results">
+        <kbd class="command-key">Esc</kbd>
+      </div>
+      <div class="command-results" id="command-results" role="listbox" aria-label="Результаты поиска"></div>
+      <div class="command-hint">
+        <span><kbd>↑</kbd><kbd>↓</kbd> выбрать</span>
+        <span><kbd>Enter</kbd> открыть</span>
+        <span><kbd>Ctrl</kbd>+<kbd>K</kbd> закрыть</span>
+      </div>
+    </div>
   </div>
 </div>
 

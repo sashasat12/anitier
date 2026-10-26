@@ -438,6 +438,69 @@
       .replace(/\s+/g, ' ');
   }
 
+  /**
+   * Ищет тайтлы по названию во всех списках, своих карточках и загруженной
+   * базе. Одинаковые записи не дублируются: список важнее базы.
+   */
+  function searchGlobal(sources, query, options = {}) {
+    const limit = Math.max(1, Math.trunc(Number(options.limit) || 8));
+    const q = normalizeTitleKey(query);
+    if (!q) return [];
+    const words = q.split(' ').filter(Boolean);
+    const input = sources && typeof sources === 'object' ? sources : {};
+    const lists = input.lists && typeof input.lists === 'object' ? input.lists : {};
+    const customCards = Array.isArray(input.customCards) ? input.customCards : [];
+    const dbItems = Array.isArray(input.dbItems) ? input.dbItems : [];
+    const order = { watched: 0, planned: 1, custom: 2, db: 3 };
+    const seen = new Set();
+    const results = [];
+
+    const add = (item, where, tier) => {
+      if (!item || typeof item !== 'object') return;
+      const key = item.id != null
+        ? `id:${item.id}`
+        : `t:${normalizeTitleKey(item.title)}:${item.year || ''}`;
+      if (seen.has(key)) return;
+      const titles = [item.title, item.altTitle, item.originalTitle]
+        .map(normalizeTitleKey)
+        .filter(Boolean);
+      if (!titles.length) return;
+      const haystack = titles.join(' ');
+      if (!words.every(word => haystack.includes(word))) return;
+
+      let rank = 3;
+      for (const title of titles) {
+        if (title === q) { rank = 0; break; }
+        if (title.startsWith(q)) rank = Math.min(rank, 1);
+        else if (title.split(' ').some(word => word.startsWith(q))) rank = Math.min(rank, 2);
+      }
+      seen.add(key);
+      results.push({
+        anime: item,
+        where,
+        tier: tier || null,
+        rank,
+        order: order[where] ?? 9,
+      });
+    };
+
+    for (const listName of ['watched', 'planned']) {
+      const tiers = lists[listName] && typeof lists[listName] === 'object' ? lists[listName] : {};
+      for (const tier of TIER_IDS) {
+        const items = Array.isArray(tiers[tier]) ? tiers[tier] : [];
+        for (const item of items) add(item, listName, tier);
+      }
+    }
+    for (const item of customCards) add(item, 'custom');
+    for (const item of dbItems) add(item, 'db');
+
+    return results
+      .sort((a, b) => a.rank - b.rank
+        || a.order - b.order
+        || String(a.anime.title || '').localeCompare(String(b.anime.title || ''), 'ru'))
+      .slice(0, limit);
+  }
+
   function animeIdentityKeys(item) {
     if (!item || typeof item !== 'object') return [];
     const keys = [];
@@ -1194,12 +1257,23 @@
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.18.0';
+  const APP_VERSION = '1.19.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* История изменений для экрана «Что нового». Новые версии — сверху.
      Пункты пишем для пользователя: что теперь можно сделать, а не как это сделано. */
   const CHANGELOG = [
+    {
+      version: '1.19.0',
+      date: '26 октября 2026',
+      title: 'Поиск по всему',
+      items: [
+        'Нажмите Ctrl+K (на Mac — ⌘+K) или лупу в шапке, чтобы найти тайтл из любого экрана.',
+        'Поиск идёт по «Просмотрено», «Запланировано», своим карточкам и уже загруженной базе.',
+        'В результатах видно, где лежит тайтл и в каком он тире.',
+        'Стрелки выбирают строку, Enter открывает карточку, Esc закрывает поиск.',
+      ],
+    },
     {
       version: '1.18.0',
       date: '26 октября 2026',
@@ -1948,6 +2022,7 @@
     dedupeById,
     normalizeTitleKey,
     animeIdentityKeys,
+    searchGlobal,
     mergeUniqueAnime,
     slicePage,
   };

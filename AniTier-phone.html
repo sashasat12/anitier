@@ -2561,6 +2561,135 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
   .tier-drop { grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); }
 }
 
+/* ---------- глобальный поиск ---------- */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.command-modal { align-items: start; padding-top: max(12vh, 24px); }
+.command-panel { width: min(640px, 100%); max-height: min(76vh, 640px); overflow: hidden; }
+.command-content { display: flex; flex-direction: column; min-height: 0; }
+.command-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 64px 14px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.command-search-icon { color: #ff9dbc; font-size: 24px; line-height: 1; }
+.command-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  outline: none;
+}
+.command-search input::placeholder { color: var(--muted); font-weight: 500; }
+.command-search input::-webkit-search-cancel-button { filter: invert(.7); }
+.command-key {
+  flex: none;
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, .05);
+  color: var(--muted);
+  font: inherit;
+  font-size: 10px;
+}
+.command-results {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px;
+  overscroll-behavior: contain;
+}
+.command-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.command-row:hover,
+.command-row.is-active { background: rgba(255, 77, 141, .1); border-color: rgba(255, 77, 141, .32); }
+.command-poster {
+  flex: none;
+  width: 38px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, .06);
+}
+.command-main { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.command-main b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+  letter-spacing: -.01em;
+}
+.command-main small { color: var(--muted); font-size: 11px; }
+.command-badge {
+  flex: none;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .06);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.command-badge-watched { background: rgba(60, 220, 150, .12); color: #9df0c7; }
+.command-badge-planned { background: rgba(110, 160, 255, .14); color: #a9c4ff; }
+.command-badge-custom { background: rgba(255, 209, 102, .12); color: #ffd166; }
+.command-empty { padding: 26px 14px; color: var(--muted); font-size: 12.5px; text-align: center; }
+.command-hint {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 10.5px;
+}
+.command-hint kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, .05);
+  font: inherit;
+  font-size: 10px;
+}
+@media (max-width: 560px) {
+  .command-modal { padding-top: 12px; }
+  .command-panel { max-height: calc(100vh - 24px); }
+  .command-search { padding: 16px 52px 12px 14px; }
+  .command-search input { font-size: 15px; }
+  .command-main b { font-size: 13px; }
+  .command-badge { font-size: 9px; padding: 3px 6px; }
+  .command-hint { gap: 10px; }
+}
+
 @media (hover: none) {
   .card-actions { transform: none; opacity: 1; }
   .tc-remove { opacity: 1; }
@@ -3007,6 +3136,9 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
   </a>
 
   <div class="topbar-actions">
+    <button class="icon-btn" data-action="open-command" title="Поиск по всему (Ctrl+K)" aria-label="Глобальный поиск">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2"/></svg>
+    </button>
     <button class="icon-btn" data-action="open-settings" title="Настройки" aria-label="Настройки">⚙</button>
     <button class="icon-btn" data-action="open-backup" title="Резервная копия" aria-label="Резервная копия">⇩</button>
     <button class="icon-btn" data-action="refresh" title="Обновить текущую вкладку" aria-label="Обновить">⟳</button>
@@ -3265,6 +3397,28 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
   <div class="modal-panel backup-panel" id="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title" tabindex="-1">
     <button class="modal-close" data-action="close-settings" aria-label="Закрыть">✕</button>
     <div class="backup-content" id="settings-content"></div>
+  </div>
+</div>
+
+<!-- ================= ГЛОБАЛЬНЫЙ ПОИСК ================= -->
+<div class="modal command-modal" id="command-modal" hidden>
+  <div class="modal-backdrop" data-action="close-command"></div>
+  <div class="modal-panel command-panel" id="command-panel" role="dialog" aria-modal="true" aria-labelledby="command-title" tabindex="-1">
+    <button class="modal-close" data-action="close-command" aria-label="Закрыть">✕</button>
+    <div class="command-content">
+      <h2 class="visually-hidden" id="command-title">Поиск по AniTier</h2>
+      <div class="command-search">
+        <span class="command-search-icon" aria-hidden="true">⌕</span>
+        <input id="command-input" type="search" placeholder="Тайтл, список или база…" autocomplete="off" aria-label="Поиск по всему" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="command-results">
+        <kbd class="command-key">Esc</kbd>
+      </div>
+      <div class="command-results" id="command-results" role="listbox" aria-label="Результаты поиска"></div>
+      <div class="command-hint">
+        <span><kbd>↑</kbd><kbd>↓</kbd> выбрать</span>
+        <span><kbd>Enter</kbd> открыть</span>
+        <span><kbd>Ctrl</kbd>+<kbd>K</kbd> закрыть</span>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -3737,6 +3891,69 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
       .replace(/[^a-z0-9\u0400-\u04ff]+/g, ' ')
       .trim()
       .replace(/\s+/g, ' ');
+  }
+
+  /**
+   * Ищет тайтлы по названию во всех списках, своих карточках и загруженной
+   * базе. Одинаковые записи не дублируются: список важнее базы.
+   */
+  function searchGlobal(sources, query, options = {}) {
+    const limit = Math.max(1, Math.trunc(Number(options.limit) || 8));
+    const q = normalizeTitleKey(query);
+    if (!q) return [];
+    const words = q.split(' ').filter(Boolean);
+    const input = sources && typeof sources === 'object' ? sources : {};
+    const lists = input.lists && typeof input.lists === 'object' ? input.lists : {};
+    const customCards = Array.isArray(input.customCards) ? input.customCards : [];
+    const dbItems = Array.isArray(input.dbItems) ? input.dbItems : [];
+    const order = { watched: 0, planned: 1, custom: 2, db: 3 };
+    const seen = new Set();
+    const results = [];
+
+    const add = (item, where, tier) => {
+      if (!item || typeof item !== 'object') return;
+      const key = item.id != null
+        ? `id:${item.id}`
+        : `t:${normalizeTitleKey(item.title)}:${item.year || ''}`;
+      if (seen.has(key)) return;
+      const titles = [item.title, item.altTitle, item.originalTitle]
+        .map(normalizeTitleKey)
+        .filter(Boolean);
+      if (!titles.length) return;
+      const haystack = titles.join(' ');
+      if (!words.every(word => haystack.includes(word))) return;
+
+      let rank = 3;
+      for (const title of titles) {
+        if (title === q) { rank = 0; break; }
+        if (title.startsWith(q)) rank = Math.min(rank, 1);
+        else if (title.split(' ').some(word => word.startsWith(q))) rank = Math.min(rank, 2);
+      }
+      seen.add(key);
+      results.push({
+        anime: item,
+        where,
+        tier: tier || null,
+        rank,
+        order: order[where] ?? 9,
+      });
+    };
+
+    for (const listName of ['watched', 'planned']) {
+      const tiers = lists[listName] && typeof lists[listName] === 'object' ? lists[listName] : {};
+      for (const tier of TIER_IDS) {
+        const items = Array.isArray(tiers[tier]) ? tiers[tier] : [];
+        for (const item of items) add(item, listName, tier);
+      }
+    }
+    for (const item of customCards) add(item, 'custom');
+    for (const item of dbItems) add(item, 'db');
+
+    return results
+      .sort((a, b) => a.rank - b.rank
+        || a.order - b.order
+        || String(a.anime.title || '').localeCompare(String(b.anime.title || ''), 'ru'))
+      .slice(0, limit);
   }
 
   function animeIdentityKeys(item) {
@@ -4495,12 +4712,23 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.18.0';
+  const APP_VERSION = '1.19.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* История изменений для экрана «Что нового». Новые версии — сверху.
      Пункты пишем для пользователя: что теперь можно сделать, а не как это сделано. */
   const CHANGELOG = [
+    {
+      version: '1.19.0',
+      date: '26 октября 2026',
+      title: 'Поиск по всему',
+      items: [
+        'Нажмите Ctrl+K (на Mac — ⌘+K) или лупу в шапке, чтобы найти тайтл из любого экрана.',
+        'Поиск идёт по «Просмотрено», «Запланировано», своим карточкам и уже загруженной базе.',
+        'В результатах видно, где лежит тайтл и в каком он тире.',
+        'Стрелки выбирают строку, Enter открывает карточку, Esc закрывает поиск.',
+      ],
+    },
     {
       version: '1.18.0',
       date: '26 октября 2026',
@@ -5249,6 +5477,7 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     dedupeById,
     normalizeTitleKey,
     animeIdentityKeys,
+    searchGlobal,
     mergeUniqueAnime,
     slicePage,
   };
@@ -5753,6 +5982,7 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
       catalog: normalizeCatalogPreferences(),
     },
     modalId: null,
+    command: { open: false, query: '', index: 0, results: [] },
     exchange: {
       open: false,
       mode: 'export',
@@ -9619,6 +9849,105 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     syncBodyScroll();
   }
 
+  /* ---------------- глобальный поиск ---------------- */
+  function commandWhereLabel(result) {
+    if (result.where === 'watched') return `Просмотрено · ${tierShort(result.tier)}`;
+    if (result.where === 'planned') return `Планы · ${tierShort(result.tier)}`;
+    if (result.where === 'custom') return 'Своя карточка';
+    return 'База';
+  }
+
+  function renderCommandResults() {
+    const box = $('#command-results');
+    if (!box) return;
+    const query = state.command.query.trim();
+    if (!query) {
+      state.command.results = [];
+      state.command.index = 0;
+      box.innerHTML = '<div class="command-empty">Начните вводить название — поиск идёт по спискам, своим карточкам и загруженной базе.</div>';
+      return;
+    }
+
+    const results = C.searchGlobal({
+      lists: state.lists,
+      customCards: state.customCards,
+      dbItems: state.db.items,
+    }, query, { limit: 8 });
+
+    state.command.results = results;
+    state.command.index = Math.max(0, Math.min(state.command.index, Math.max(0, results.length - 1)));
+
+    if (!results.length) {
+      box.innerHTML = '<div class="command-empty">Ничего не нашлось. Проверьте раскладку или попробуйте English.</div>';
+      return;
+    }
+
+    box.innerHTML = results.map((result, index) => {
+      const a = result.anime;
+      const meta = [a.year, typeRu(a.type), a.score ? `★ ${a.score.toFixed(1)}` : '']
+        .filter(Boolean)
+        .map(item => esc(item))
+        .join(' · ');
+      return `<button type="button" class="command-row ${index === state.command.index ? 'is-active' : ''}" role="option" aria-selected="${index === state.command.index}" data-action="command-open" data-id="${a.id}" data-index="${index}" tabindex="-1">
+        <img class="command-poster" ${imgAttrs(a, '')}>
+        <span class="command-main">
+          <b>${esc(a.title)}</b>
+          <small>${meta || 'Без года'}</small>
+        </span>
+        <span class="command-badge command-badge-${result.where}">${esc(commandWhereLabel(result))}</span>
+      </button>`;
+    }).join('');
+  }
+
+  function openCommand(initialQuery = '') {
+    if (state.modalId != null) closeModal();
+    if (state.statsScreen && state.statsScreen.open) closeStats();
+    if (state.settingsScreen && state.settingsScreen.open) closeSettings();
+    if (state.backup && state.backup.open) closeBackup();
+    if (state.exchange && state.exchange.open) closeExchange();
+    if (state.customForm && state.customForm.open) closeCustomForm(false);
+    if (state.momentForm && state.momentForm.open) closeMomentForm(false);
+    if (state.tiktokImport && state.tiktokImport.open && typeof App.closeTikTokImport === 'function') App.closeTikTokImport();
+    state.command = { open: true, query: String(initialQuery || ''), index: 0, results: [] };
+    const modal = $('#command-modal');
+    if (modal) modal.hidden = false;
+    const input = $('#command-input');
+    if (input) input.value = state.command.query;
+    renderCommandResults();
+    syncBodyScroll();
+    if (input) {
+      input.focus({ preventScroll: true });
+      input.select();
+    }
+  }
+
+  function closeCommand() {
+    state.command = { open: false, query: '', index: 0, results: [] };
+    const modal = $('#command-modal');
+    if (modal) modal.hidden = true;
+    syncBodyScroll();
+  }
+
+  function setCommandQuery(value) {
+    state.command.query = String(value || '');
+    state.command.index = 0;
+    renderCommandResults();
+  }
+
+  function moveCommand(delta) {
+    const total = state.command.results.length;
+    if (!total) return;
+    state.command.index = (state.command.index + delta + total) % total;
+    renderCommandResults();
+  }
+
+  function openCommandResult(index) {
+    const result = state.command.results[index];
+    if (!result) return;
+    closeCommand();
+    openModal(result.anime.id);
+  }
+
   function openSettings() {
     if (state.modalId != null) closeModal();
     if (state.statsScreen && state.statsScreen.open) closeStats();
@@ -9648,10 +9977,12 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     else if (state.tab === 'upcoming') renderUpcoming();
     if (state.modalId != null) renderModal();
     if (state.statsScreen && state.statsScreen.open) renderStatsScreen();
+    if (state.command && state.command.open) renderCommandResults();
   }
 
   function syncBodyScroll() {
     const locked = state.modalId != null
+      || Boolean(state.command && state.command.open)
       || Boolean(state.exchange && state.exchange.open)
       || Boolean(state.customForm && state.customForm.open)
       || Boolean(state.momentForm && state.momentForm.open)
@@ -10434,6 +10765,12 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     renderStatsScreen,
     openStats,
     closeStats,
+    renderCommandResults,
+    openCommand,
+    closeCommand,
+    setCommandQuery,
+    moveCommand,
+    openCommandResult,
     layoutTierCards,
     updateCounters,
     openCustomForm,
@@ -10618,6 +10955,11 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     closeSettings,
     openStats,
     closeStats,
+    openCommand,
+    closeCommand,
+    setCommandQuery,
+    moveCommand,
+    openCommandResult,
     openExchange,
     closeExchange,
     setExchangeMode,
@@ -12844,6 +13186,18 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
           closeStats();
           break;
 
+        case 'open-command':
+          openCommand();
+          break;
+
+        case 'close-command':
+          closeCommand();
+          break;
+
+        case 'command-open':
+          openCommandResult(Number(el.dataset.index));
+          break;
+
         case 'close-settings':
           closeSettings();
           break;
@@ -13151,6 +13505,10 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     }
 
     document.addEventListener('input', e => {
+      if (e.target && e.target.id === 'command-input' && state.command.open) {
+        setCommandQuery(e.target.value);
+        return;
+      }
       const listSearch = e.target.closest && e.target.closest('[data-list-search]');
       if (listSearch) {
         const name = listSearch.dataset.listSearch === 'planned' ? 'planned' : 'watched';
@@ -13233,7 +13591,34 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     });
 
     document.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        if (state.command.open) closeCommand();
+        else openCommand();
+        return;
+      }
+      if (state.command.open) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          moveCommand(1);
+          return;
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          moveCommand(-1);
+          return;
+        }
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          openCommandResult(state.command.index);
+          return;
+        }
+      }
       if (e.key === 'Escape') {
+        if (state.command.open) {
+          closeCommand();
+          return;
+        }
         if (state.tiktokImport.open) {
           closeTikTokImport();
           return;
@@ -13435,6 +13820,8 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     if (momentModal) momentModal.hidden = true;
     const backupModal = $('#backup-modal');
     if (backupModal) backupModal.hidden = true;
+    const commandModal = $('#command-modal');
+    if (commandModal) commandModal.hidden = true;
 
     applyLocationHash();
 
@@ -13588,6 +13975,7 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
 
   /* Системная кнопка «назад» в Android: сначала закрываем слои интерфейса. */
   function handleAndroidBack() {
+    if (state.command.open) { closeCommand(); return true; }
     if (state.tiktokImport.open) { closeTikTokImport(); return true; }
     if (state.statsScreen && state.statsScreen.open) { closeStats(); return true; }
     if (state.settingsScreen && state.settingsScreen.open) {
@@ -13677,6 +14065,11 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     closeSettings,
     openStats,
     closeStats,
+    openCommand,
+    closeCommand,
+    setCommandQuery,
+    moveCommand,
+    openCommandResult,
     renderSettings,
     scrollPageBy,
     openExternalLink,
@@ -13714,6 +14107,11 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
       invalidateNotificationEpisodes,
       openStats,
       closeStats,
+      openCommand,
+      closeCommand,
+      setCommandQuery,
+      moveCommand,
+      openCommandResult,
       openExchange,
       closeExchange,
       setExchangeMode,

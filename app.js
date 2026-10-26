@@ -137,6 +137,11 @@
     closeSettings,
     openStats,
     closeStats,
+    openCommand,
+    closeCommand,
+    setCommandQuery,
+    moveCommand,
+    openCommandResult,
     openExchange,
     closeExchange,
     setExchangeMode,
@@ -2363,6 +2368,18 @@
           closeStats();
           break;
 
+        case 'open-command':
+          openCommand();
+          break;
+
+        case 'close-command':
+          closeCommand();
+          break;
+
+        case 'command-open':
+          openCommandResult(Number(el.dataset.index));
+          break;
+
         case 'close-settings':
           closeSettings();
           break;
@@ -2670,6 +2687,10 @@
     }
 
     document.addEventListener('input', e => {
+      if (e.target && e.target.id === 'command-input' && state.command.open) {
+        setCommandQuery(e.target.value);
+        return;
+      }
       const listSearch = e.target.closest && e.target.closest('[data-list-search]');
       if (listSearch) {
         const name = listSearch.dataset.listSearch === 'planned' ? 'planned' : 'watched';
@@ -2752,7 +2773,34 @@
     });
 
     document.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        if (state.command.open) closeCommand();
+        else openCommand();
+        return;
+      }
+      if (state.command.open) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          moveCommand(1);
+          return;
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          moveCommand(-1);
+          return;
+        }
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          openCommandResult(state.command.index);
+          return;
+        }
+      }
       if (e.key === 'Escape') {
+        if (state.command.open) {
+          closeCommand();
+          return;
+        }
         if (state.tiktokImport.open) {
           closeTikTokImport();
           return;
@@ -2954,6 +3002,8 @@
     if (momentModal) momentModal.hidden = true;
     const backupModal = $('#backup-modal');
     if (backupModal) backupModal.hidden = true;
+    const commandModal = $('#command-modal');
+    if (commandModal) commandModal.hidden = true;
 
     applyLocationHash();
 
@@ -3107,6 +3157,7 @@
 
   /* Системная кнопка «назад» в Android: сначала закрываем слои интерфейса. */
   function handleAndroidBack() {
+    if (state.command.open) { closeCommand(); return true; }
     if (state.tiktokImport.open) { closeTikTokImport(); return true; }
     if (state.statsScreen && state.statsScreen.open) { closeStats(); return true; }
     if (state.settingsScreen && state.settingsScreen.open) {
@@ -3196,6 +3247,11 @@
     closeSettings,
     openStats,
     closeStats,
+    openCommand,
+    closeCommand,
+    setCommandQuery,
+    moveCommand,
+    openCommandResult,
     renderSettings,
     scrollPageBy,
     openExternalLink,
@@ -3233,6 +3289,11 @@
       invalidateNotificationEpisodes,
       openStats,
       closeStats,
+      openCommand,
+      closeCommand,
+      setCommandQuery,
+      moveCommand,
+      openCommandResult,
       openExchange,
       closeExchange,
       setExchangeMode,
