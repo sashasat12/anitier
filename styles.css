@@ -2223,6 +2223,56 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
 }
 .exchange-stats b { color: #fff; font-size: 11.5px; }
 
+.exchange-taste {
+  display: flex;
+  align-items: center;
+  gap: 10px 16px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, .025);
+}
+.exchange-taste-score { display: flex; align-items: baseline; gap: 8px; }
+.exchange-taste-score b {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -.03em;
+  background: linear-gradient(135deg, #ff9dbc, #b79bff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.exchange-taste-score span,
+.exchange-taste-details { color: var(--muted); font-size: 11px; font-weight: 600; }
+.exchange-taste-details { display: flex; gap: 10px; flex-wrap: wrap; }
+.exchange-taste-details b { color: #fff; }
+.exchange-moves {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.exchange-moves-label {
+  color: var(--muted);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.exchange-move {
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(255, 209, 102, .1);
+  color: #ffd166;
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.exchange-move b { margin-left: 5px; color: #fff; }
+
 .exchange-filters { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0; }
 .exchange-chip {
   display: inline-flex;

@@ -1840,6 +1840,20 @@
         ? 'Расхождений по тирам нет.'
         : 'В этом тир-листе нет тайтлов.';
 
+    const moves = Array.isArray(summary.tierMoves)
+      ? summary.tierMoves.map(item => `<span class="exchange-move">${esc(tierShort(item.friend))} → ${esc(tierShort(item.yours))}<b>${item.count}</b></span>`).join('')
+      : '';
+    const taste = summary.common
+      ? `<div class="exchange-taste">
+          <div class="exchange-taste-score"><b>${summary.tasteMatch}%</b><span>Совпадение тиров</span></div>
+          <div class="exchange-taste-details">
+            <span>Тот же тир: <b>${summary.sameTier}</b></span>
+            <span>Разный тир: <b>${summary.differentTier}</b></span>
+          </div>
+          ${moves ? `<div class="exchange-moves"><span class="exchange-moves-label">Расхождения:</span>${moves}</div>` : ''}
+        </div>`
+      : '';
+
     return `<div class="exchange-compare">
       <div class="exchange-summary">
         <div class="exchange-summary-main">
@@ -1853,6 +1867,7 @@
           <span><b>${summary.yoursOnly}</b> только у вас</span>
         </div>
       </div>
+      ${taste}
       <div class="exchange-filters" role="group" aria-label="Фильтр сравнения">${filters}</div>
       ${groups || `<div class="exchange-empty">${esc(emptyText)}</div>`}
     </div>`;

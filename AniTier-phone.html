@@ -2237,6 +2237,56 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
 }
 .exchange-stats b { color: #fff; font-size: 11.5px; }
 
+.exchange-taste {
+  display: flex;
+  align-items: center;
+  gap: 10px 16px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, .025);
+}
+.exchange-taste-score { display: flex; align-items: baseline; gap: 8px; }
+.exchange-taste-score b {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -.03em;
+  background: linear-gradient(135deg, #ff9dbc, #b79bff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.exchange-taste-score span,
+.exchange-taste-details { color: var(--muted); font-size: 11px; font-weight: 600; }
+.exchange-taste-details { display: flex; gap: 10px; flex-wrap: wrap; }
+.exchange-taste-details b { color: #fff; }
+.exchange-moves {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.exchange-moves-label {
+  color: var(--muted);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.exchange-move {
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(255, 209, 102, .1);
+  color: #ffd166;
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.exchange-move b { margin-left: 5px; color: #fff; }
+
 .exchange-filters { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0; }
 .exchange-chip {
   display: inline-flex;
@@ -4000,6 +4050,19 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
 
     const common = rows.filter(row => row.match);
     const sameTier = common.filter(row => row.sameTier).length;
+    const moves = new Map();
+    for (const row of common) {
+      if (row.sameTier) continue;
+      const key = `${row.tier}|${row.match.tier}`;
+      moves.set(key, (moves.get(key) || 0) + 1);
+    }
+    const tierMoves = [...moves.entries()]
+      .map(([key, count]) => {
+        const [friend, yours] = key.split('|');
+        return { friend, yours, count };
+      })
+      .sort((a, b) => b.count - a.count || a.friend.localeCompare(b.friend) || a.yours.localeCompare(b.yours))
+      .slice(0, 4);
     return {
       rows,
       summary: {
@@ -4011,6 +4074,8 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
         sameTier,
         differentTier: common.length - sameTier,
         yoursOnly,
+        tasteMatch: common.length ? Math.round((sameTier / common.length) * 100) : 0,
+        tierMoves,
       },
     };
   }
@@ -4430,12 +4495,22 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.16.0';
+  const APP_VERSION = '1.17.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* История изменений для экрана «Что нового». Новые версии — сверху.
      Пункты пишем для пользователя: что теперь можно сделать, а не как это сделано. */
   const CHANGELOG = [
+    {
+      version: '1.17.0',
+      date: '26 октября 2026',
+      title: 'Сравнение вкусов',
+      items: [
+        'В сравнении с тир-листом друга появился процент совпадения тиров.',
+        'Видно, сколько тайтлов в том же тире и сколько расходятся.',
+        'Подсказка показывает частые расхождения: например, «S → A» — сколько тайтлов вы оценили иначе.',
+      ],
+    },
     {
       version: '1.16.0',
       date: '26 октября 2026',
@@ -9710,6 +9785,20 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
         ? 'Расхождений по тирам нет.'
         : 'В этом тир-листе нет тайтлов.';
 
+    const moves = Array.isArray(summary.tierMoves)
+      ? summary.tierMoves.map(item => `<span class="exchange-move">${esc(tierShort(item.friend))} → ${esc(tierShort(item.yours))}<b>${item.count}</b></span>`).join('')
+      : '';
+    const taste = summary.common
+      ? `<div class="exchange-taste">
+          <div class="exchange-taste-score"><b>${summary.tasteMatch}%</b><span>Совпадение тиров</span></div>
+          <div class="exchange-taste-details">
+            <span>Тот же тир: <b>${summary.sameTier}</b></span>
+            <span>Разный тир: <b>${summary.differentTier}</b></span>
+          </div>
+          ${moves ? `<div class="exchange-moves"><span class="exchange-moves-label">Расхождения:</span>${moves}</div>` : ''}
+        </div>`
+      : '';
+
     return `<div class="exchange-compare">
       <div class="exchange-summary">
         <div class="exchange-summary-main">
@@ -9723,6 +9812,7 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
           <span><b>${summary.yoursOnly}</b> только у вас</span>
         </div>
       </div>
+      ${taste}
       <div class="exchange-filters" role="group" aria-label="Фильтр сравнения">${filters}</div>
       ${groups || `<div class="exchange-empty">${esc(emptyText)}</div>`}
     </div>`;

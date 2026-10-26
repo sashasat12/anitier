@@ -148,6 +148,8 @@
     T.eq(comparison.summary.sameTier, 1);
     T.eq(comparison.summary.differentTier, 1);
     T.eq(comparison.summary.yoursOnly, 1);
+    T.eq(comparison.summary.tasteMatch, 50, 'Один общий тир из двух');
+    T.eq(comparison.summary.tierMoves, [{ friend: 'A', yours: 'B', count: 1 }]);
 
     const common = comparison.rows.find(row => row.anime.id === 99);
     T.eq(common.match.list, 'watched');
@@ -249,6 +251,9 @@
 
       const content = doc.getElementById('exchange-content');
       T.includes(content.textContent, 'Ничего не добавлять');
+      T.includes(content.textContent, 'Совпадение тиров');
+      T.includes(content.textContent, 'Расхождения');
+      T.assert(content.textContent.includes('50%'), 'Должно быть видно совпадение тиров');
       T.assert(!content.textContent.includes('Добавить все'), 'Не должно быть массового добавления');
       T.eq(doc.querySelectorAll('[data-action="exchange-add"]').length, 1, 'Кнопка добавления должна быть только у нового тайтла');
       T.eq(state.lists.planned.N.length, 0, 'Импорт не должен добавлять тайтлы автоматически');

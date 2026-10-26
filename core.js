@@ -749,6 +749,19 @@
 
     const common = rows.filter(row => row.match);
     const sameTier = common.filter(row => row.sameTier).length;
+    const moves = new Map();
+    for (const row of common) {
+      if (row.sameTier) continue;
+      const key = `${row.tier}|${row.match.tier}`;
+      moves.set(key, (moves.get(key) || 0) + 1);
+    }
+    const tierMoves = [...moves.entries()]
+      .map(([key, count]) => {
+        const [friend, yours] = key.split('|');
+        return { friend, yours, count };
+      })
+      .sort((a, b) => b.count - a.count || a.friend.localeCompare(b.friend) || a.yours.localeCompare(b.yours))
+      .slice(0, 4);
     return {
       rows,
       summary: {
@@ -760,6 +773,8 @@
         sameTier,
         differentTier: common.length - sameTier,
         yoursOnly,
+        tasteMatch: common.length ? Math.round((sameTier / common.length) * 100) : 0,
+        tierMoves,
       },
     };
   }
@@ -1179,12 +1194,22 @@
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.16.0';
+  const APP_VERSION = '1.17.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* История изменений для экрана «Что нового». Новые версии — сверху.
      Пункты пишем для пользователя: что теперь можно сделать, а не как это сделано. */
   const CHANGELOG = [
+    {
+      version: '1.17.0',
+      date: '26 октября 2026',
+      title: 'Сравнение вкусов',
+      items: [
+        'В сравнении с тир-листом друга появился процент совпадения тиров.',
+        'Видно, сколько тайтлов в том же тире и сколько расходятся.',
+        'Подсказка показывает частые расхождения: например, «S → A» — сколько тайтлов вы оценили иначе.',
+      ],
+    },
     {
       version: '1.16.0',
       date: '26 октября 2026',
