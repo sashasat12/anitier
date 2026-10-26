@@ -2808,6 +2808,42 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
 }
 
+/* ---------- темы, плотность и размер шрифта ---------- */
+:root { --text-scale: 1; --base-font: 15px; }
+html[data-font="small"] { --text-scale: .9; --base-font: 13.5px; }
+html[data-font="large"] { --text-scale: 1.12; --base-font: 16.5px; }
+body { font-size: var(--base-font); }
+
+.card-title { font-size: calc(13.5px * var(--text-scale)); }
+.card-meta { font-size: calc(11.5px * var(--text-scale)); }
+.notif-title { font-size: calc(14.5px * var(--text-scale)); }
+.tc-title { font-size: calc(11.5px * var(--text-scale)); }
+.continue-title { font-size: calc(12.5px * var(--text-scale)); }
+.command-main b { font-size: calc(13.5px * var(--text-scale)); }
+.modal-info h2 { font-size: calc(clamp(22px, 3vw, 30px) * var(--text-scale)); }
+.modal-synopsis { font-size: calc(13.5px * var(--text-scale)); }
+
+html[data-theme="amoled"] {
+  --bg: #000000;
+  --panel: rgba(9, 9, 11, .92);
+  --panel-solid: #070708;
+  --panel-2: #0b0b0d;
+  --line: rgba(255, 255, 255, .1);
+  --line-strong: rgba(255, 255, 255, .18);
+}
+html[data-theme="amoled"] body { background: #000; }
+html[data-theme="amoled"] .bg-orbs { opacity: .42; }
+
+html[data-density="compact"] .grid {
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+html[data-density="compact"] .card-body { padding: 8px 9px 9px; }
+html[data-density="compact"] .card-meta { margin-top: 4px; font-size: calc(10.5px * var(--text-scale)); }
+html[data-density="compact"] .card-title { line-height: 1.2; }
+html[data-density="compact"] .tier-drop { gap: 7px; }
+html[data-density="compact"] .upcoming-grid { gap: 12px; }
+
 /* ---------- доступность: видимый клавиатурный фокус ---------- */
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
   outline: 2px solid var(--accent);

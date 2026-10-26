@@ -444,6 +444,41 @@
     }
   });
 
+  T.test('app: тема, плотность и размер шрифта применяются и сохраняются', async () => {
+    const app = await T.mountApp({ query: '?test=1' });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const doc = app.win.document;
+      const html = doc.documentElement;
+      T.eq(html.dataset.theme, 'dark');
+      T.eq(html.dataset.density, 'comfortable');
+      T.eq(html.dataset.font, 'normal');
+
+      doc.querySelector('[data-action="open-settings"]').click();
+      const choose = (action, value) => {
+        const select = doc.querySelector(`select[data-action="${action}"]`);
+        T.assert(select, `Нет настройки ${action}`);
+        select.value = value;
+        select.dispatchEvent(new app.win.Event('change', { bubbles: true }));
+      };
+
+      choose('settings-theme', 'amoled');
+      T.eq(html.dataset.theme, 'amoled');
+      choose('settings-density', 'compact');
+      T.eq(html.dataset.density, 'compact');
+      choose('settings-font', 'large');
+      T.eq(html.dataset.font, 'large');
+
+      const saved = JSON.parse(app.win.localStorage.getItem('anitier.v1') || '{}');
+      T.eq(saved.settings.theme, 'amoled');
+      T.eq(saved.settings.density, 'compact');
+      T.eq(saved.settings.fontSize, 'large');
+    } finally {
+      app.close();
+    }
+  });
+
   T.test('app: авто-бэкап включается и не частит чаще суток', async () => {
     const app = await T.mountApp({ query: '?test=1' });
     try {

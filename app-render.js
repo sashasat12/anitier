@@ -68,6 +68,17 @@
     return a.titleRu || a.title || a.originalTitle || '';
   }
 
+  /** Тема, плотность и размер шрифта: классы на <html>, стили — в styles.css. */
+  function applyAppearance() {
+    const root = document.documentElement;
+    const theme = state.settings.theme === 'amoled' ? 'amoled' : 'dark';
+    const density = state.settings.density === 'compact' ? 'compact' : 'comfortable';
+    const font = ['small', 'large'].includes(state.settings.fontSize) ? state.settings.fontSize : 'normal';
+    root.dataset.theme = theme;
+    root.dataset.density = density;
+    root.dataset.font = font;
+  }
+
   function imgAttrs(a, alt) {
     const image = String(a.image || '');
     const src = image || makePoster(a.title, a.id);
@@ -1110,8 +1121,9 @@
     if (!root) return;
     const narrow = (typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 720px)').matches)
       || document.body.classList.contains('mobile-app');
-    const minWidth = narrow ? 92 : 126;
-    const maxWidth = narrow ? 160 : 240;
+    const compact = document.documentElement.dataset.density === 'compact';
+    const minWidth = narrow ? (compact ? 78 : 92) : (compact ? 110 : 126);
+    const maxWidth = narrow ? (compact ? 140 : 160) : (compact ? 210 : 240);
 
     for (const drop of root.querySelectorAll('.tier-drop')) {
       const cards = drop.querySelectorAll('.tier-card');
@@ -1519,6 +1531,9 @@
     const synopsisLang = state.settings.synopsisLang === 'original' ? 'original' : 'translated';
     const provider = state.settings.translationProvider || 'auto';
     const updateCheck = normalizeUpdateCheck(state.settings.updateCheck);
+    const theme = state.settings.theme === 'amoled' ? 'amoled' : 'dark';
+    const density = state.settings.density === 'compact' ? 'compact' : 'comfortable';
+    const fontSize = ['small', 'large'].includes(state.settings.fontSize) ? state.settings.fontSize : 'normal';
     const github = C.GITHUB_URL || '';
 
     if (screen.view === 'changelog') {
@@ -1585,6 +1600,31 @@
             <option value="auto"${provider === 'auto' ? ' selected' : ''}>Авто: MyMemory → Google</option>
             <option value="mymemory"${provider === 'mymemory' ? ' selected' : ''}>MyMemory</option>
             <option value="google"${provider === 'google' ? ' selected' : ''}>Google Переводчик</option>
+          </select>
+        </label>
+      </div>
+      <div class="backup-block">
+        <h3>Оформление</h3>
+        <label class="settings-field">
+          <span>Тема</span>
+          <select data-action="settings-theme" aria-label="Тема">
+            <option value="dark"${theme === 'dark' ? ' selected' : ''}>Тёмная</option>
+            <option value="amoled"${theme === 'amoled' ? ' selected' : ''}>AMOLED — чёрная</option>
+          </select>
+        </label>
+        <label class="settings-field">
+          <span>Плотность</span>
+          <select data-action="settings-density" aria-label="Плотность карточек">
+            <option value="comfortable"${density === 'comfortable' ? ' selected' : ''}>Обычная</option>
+            <option value="compact"${density === 'compact' ? ' selected' : ''}>Компактная</option>
+          </select>
+        </label>
+        <label class="settings-field">
+          <span>Размер шрифта</span>
+          <select data-action="settings-font" aria-label="Размер шрифта">
+            <option value="small"${fontSize === 'small' ? ' selected' : ''}>Мелкий</option>
+            <option value="normal"${fontSize === 'normal' ? ' selected' : ''}>Обычный</option>
+            <option value="large"${fontSize === 'large' ? ' selected' : ''}>Крупный</option>
           </select>
         </label>
       </div>
@@ -2672,6 +2712,7 @@
 
   Object.assign(App, {
     displayTitle,
+    applyAppearance,
     imgAttrs,
     cardHTML,
     tierCardHTML,

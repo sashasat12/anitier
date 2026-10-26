@@ -2925,6 +2925,12 @@
       if (settingsSynopsisLang) applySettingsChange('synopsisLang', settingsSynopsisLang.value);
       const settingsProvider = e.target.closest && e.target.closest('select[data-action="settings-translation"]');
       if (settingsProvider) applySettingsChange('translationProvider', settingsProvider.value);
+      const settingsTheme = e.target.closest && e.target.closest('select[data-action="settings-theme"]');
+      if (settingsTheme) applySettingsChange('theme', settingsTheme.value);
+      const settingsDensity = e.target.closest && e.target.closest('select[data-action="settings-density"]');
+      if (settingsDensity) applySettingsChange('density', settingsDensity.value);
+      const settingsFont = e.target.closest && e.target.closest('select[data-action="settings-font"]');
+      if (settingsFont) applySettingsChange('fontSize', settingsFont.value);
       const driveAuto = e.target.closest && e.target.closest('select[data-action="settings-drive-auto"]');
       if (driveAuto) {
         state.settings.driveAutoBackup = driveAuto.value === 'on';
@@ -3222,6 +3228,7 @@
     }
     loadState();
     loadMoments();
+    if (typeof App.applyAppearance === 'function') App.applyAppearance();
     initFilterOptions();
     restoreCatalogPreferences();
     syncLangUI();
@@ -3404,6 +3411,16 @@
     } else if (kind === 'synopsisLang') {
       state.settings.synopsisLang = value === 'original' ? 'original' : 'translated';
       if (state.modalId != null) renderModal();
+    } else if (kind === 'theme') {
+      state.settings.theme = value === 'amoled' ? 'amoled' : 'dark';
+      if (typeof App.applyAppearance === 'function') App.applyAppearance();
+    } else if (kind === 'density') {
+      state.settings.density = value === 'compact' ? 'compact' : 'comfortable';
+      if (typeof App.applyAppearance === 'function') App.applyAppearance();
+      if (typeof App.refreshViews === 'function') App.refreshViews();
+    } else if (kind === 'fontSize') {
+      state.settings.fontSize = ['small', 'large'].includes(value) ? value : 'normal';
+      if (typeof App.applyAppearance === 'function') App.applyAppearance();
     } else if (kind === 'translationProvider') {
       state.settings.translationProvider = ['mymemory', 'google'].includes(value) ? value : 'auto';
     } else {
