@@ -56,7 +56,7 @@ body.no-scroll { overflow: hidden; }
 a { color: inherit; text-decoration: none; }
 a:hover { color: #fff; }
 
-img { max-width: 100%; }
+img { max-width: 100%; color: transparent; background-color: #0b0e16; }
 button { font-family: inherit; }
 
 ::selection { background: rgba(255, 77, 141, .35); }
@@ -104,10 +104,8 @@ button { font-family: inherit; }
   align-items: center;
   gap: 20px;
   padding: 12px clamp(14px, 3.4vw, 38px);
-  background: rgba(7, 8, 14, .74);
+  background: rgba(7, 8, 14, .97);
   border-bottom: 1px solid var(--line);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
 }
 
 .brand {
@@ -475,7 +473,6 @@ button { font-family: inherit; }
   overflow: hidden;
   cursor: pointer;
   transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
-  animation: fadeUp .3s ease both;
 }
 .card:hover, .card:focus-visible {
   transform: translateY(-4px);
@@ -512,8 +509,7 @@ button { font-family: inherit; }
   font-size: 11px;
   font-weight: 800;
   line-height: 1.2;
-  backdrop-filter: blur(8px);
-  background: rgba(6, 8, 14, .72);
+  background: rgba(6, 8, 14, .88);
   border: 1px solid rgba(255, 255, 255, .12);
 }
 .badge-score { left: 8px; color: #ffd166; }
@@ -549,7 +545,6 @@ button { font-family: inherit; }
   display: grid;
   place-items: center;
   cursor: pointer;
-  backdrop-filter: blur(10px);
   transition: .18s;
 }
 .mini-btn:hover { background: var(--accent); border-color: var(--accent); transform: translateY(-2px); }
@@ -686,7 +681,6 @@ button { font-family: inherit; }
   background: var(--panel);
   cursor: pointer;
   transition: .2s;
-  animation: fadeUp .3s ease both;
 }
 .notif:hover {
   border-color: rgba(255, 77, 141, .34);
@@ -709,8 +703,6 @@ button { font-family: inherit; }
   border-radius: 8px;
   background: rgba(8, 10, 18, .8);
   border: 1px solid rgba(255, 255, 255, .16);
-  backdrop-filter: blur(7px);
-  -webkit-backdrop-filter: blur(7px);
   color: #cdd3e6;
   font-size: 10px;
   line-height: 1.1;
@@ -787,8 +779,6 @@ button { font-family: inherit; }
   border-radius: 10px;
   background: rgba(8, 10, 18, .74);
   border-color: rgba(255, 255, 255, .2);
-  backdrop-filter: blur(7px);
-  -webkit-backdrop-filter: blur(7px);
 }
 .notif-actions .mini-btn:hover { background: var(--accent); border-color: var(--accent); }
 
@@ -1187,7 +1177,6 @@ button { font-family: inherit; }
   overflow: hidden;
   cursor: grab;
   transition: transform .18s, border-color .18s, box-shadow .18s;
-  animation: fadeUp .25s ease both;
   /* Долгое нажатие не должно запускать выделение текста и контекстное меню:
      в Android-WebView они отменяют указатель и обрывают перетаскивание. */
   -webkit-user-select: none;
@@ -1255,7 +1244,6 @@ button { font-family: inherit; }
   cursor: pointer;
   opacity: 0;
   transition: .18s;
-  backdrop-filter: blur(6px);
 }
 .tier-card:hover .tc-remove, .tier-card:focus-within .tc-remove { opacity: 1; }
 .tc-remove:hover { background: #ff2d6f; border-color: #ff2d6f; }
@@ -2695,6 +2683,10 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
 @media (hover: none) {
   .card-actions { transform: none; opacity: 1; }
   .tc-remove { opacity: 1; }
+  /* На сенсорном экране «залипший» hover во время прокрутки дёргает карточки. */
+  .card:hover, .notif:hover, .tier-card:hover { transform: none; }
+  .card:hover { border-color: var(--line); box-shadow: none; }
+  .card:hover .poster img { transform: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2802,11 +2794,9 @@ body.mobile-app .tabs {
   order: 0;
   overflow: visible;
   padding: 5px 4px calc(5px + env(safe-area-inset-bottom));
-  background: rgba(12, 13, 20, .96);
+  background: rgba(12, 13, 20, .98);
   border-top: 1px solid var(--line);
   border-bottom: 0;
-  backdrop-filter: blur(20px) saturate(140%);
-  -webkit-backdrop-filter: blur(20px) saturate(140%);
   box-shadow: 0 -12px 30px rgba(0, 0, 0, .35);
 }
 
@@ -4744,12 +4734,24 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.21.0';
+  const APP_VERSION = '1.21.1';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* История изменений для экрана «Что нового». Новые версии — сверху.
      Пункты пишем для пользователя: что теперь можно сделать, а не как это сделано. */
   const CHANGELOG = [
+    {
+      version: '1.21.1',
+      date: '26 октября 2026',
+      title: 'Без вспышек при прокрутке',
+      items: [
+        'Закреплённая шапка, нижняя панель и мелкие плашки больше не размывают фон — при прокрутке они не пересвечиваются.',
+        'Карточки, уведомления и карточки тиров не переигрывают анимацию появления при перерисовке списка.',
+        'Под постерами теперь тёмная подложка, а подпись битой картинки скрыта: пока постер грузится, нет белой вспышки.',
+        'На сенсорных экранах «залипший» hover не дёргает карточки во время прокрутки.',
+        'Постеры декодируются асинхронно и не подтормаживают прокрутку.',
+      ],
+    },
     {
       version: '1.21.0',
       date: '26 октября 2026',
@@ -8391,7 +8393,7 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     const remote = /^https?:\/\//i.test(image)
       ? ` data-poster-src="${esc(image)}" onload="cachePoster(this)"`
       : '';
-    return `src="${esc(src)}" alt="${esc(alt !== undefined ? alt : a.title)}" loading="lazy" data-title="${esc(a.title)}" data-id="${a.id}"${remote} onerror="posterFallback(this)"`;
+    return `src="${esc(src)}" alt="${esc(alt !== undefined ? alt : a.title)}" loading="lazy" decoding="async" data-title="${esc(a.title)}" data-id="${a.id}"${remote} onerror="posterFallback(this)"`;
   }
 
   function cardHTML(a, ctx) {

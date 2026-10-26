@@ -65,7 +65,7 @@
     const remote = /^https?:\/\//i.test(image)
       ? ` data-poster-src="${esc(image)}" onload="cachePoster(this)"`
       : '';
-    return `src="${esc(src)}" alt="${esc(alt !== undefined ? alt : a.title)}" loading="lazy" data-title="${esc(a.title)}" data-id="${a.id}"${remote} onerror="posterFallback(this)"`;
+    return `src="${esc(src)}" alt="${esc(alt !== undefined ? alt : a.title)}" loading="lazy" decoding="async" data-title="${esc(a.title)}" data-id="${a.id}"${remote} onerror="posterFallback(this)"`;
   }
 
   function cardHTML(a, ctx) {

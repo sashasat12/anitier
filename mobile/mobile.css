@@ -69,11 +69,9 @@ body.mobile-app .tabs {
   order: 0;
   overflow: visible;
   padding: 5px 4px calc(5px + env(safe-area-inset-bottom));
-  background: rgba(12, 13, 20, .96);
+  background: rgba(12, 13, 20, .98);
   border-top: 1px solid var(--line);
   border-bottom: 0;
-  backdrop-filter: blur(20px) saturate(140%);
-  -webkit-backdrop-filter: blur(20px) saturate(140%);
   box-shadow: 0 -12px 30px rgba(0, 0, 0, .35);
 }
 

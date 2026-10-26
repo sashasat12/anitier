@@ -87,4 +87,33 @@
       app.close();
     }
   });
+  T.test('scroll: у карточек нет анимации появления, а пустые постеры не мигают белым', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const win = app.win;
+      const doc = win.document;
+      const db = api.state.db;
+
+      db.loading = false;
+      db.error = null;
+      db.items = [anime(1, 'Первый')];
+      win.AniTier.renderDB();
+
+      const topbar = doc.querySelector('.topbar');
+      T.eq(win.getComputedStyle(topbar).backdropFilter, 'none', 'Шапка не размывает фон при прокрутке');
+
+      const card = doc.querySelector('#db-grid .card');
+      T.eq(win.getComputedStyle(card).animationName, 'none', 'Карточка не переигрывает появление');
+
+      const img = card.querySelector('.poster img');
+      const imgStyle = win.getComputedStyle(img);
+      T.eq(imgStyle.color, 'rgba(0, 0, 0, 0)', 'Битая картинка не показывает белый alt');
+      T.assert(imgStyle.backgroundColor !== 'rgba(0, 0, 0, 0)', 'Под постером тёмная подложка');
+      T.eq(img.getAttribute('decoding'), 'async', 'Постер декодируется асинхронно');
+    } finally {
+      app.close();
+    }
+  });
 })();
