@@ -139,7 +139,21 @@
   }
 
   /* ---------------- фильтры и отрисовка базы ---------------- */
-  const FILTER_MENU_KEYS = ['type', 'status', 'year', 'genre'];
+  const FILTER_MENU_KEYS = ['type', 'status', 'year', 'genre', 'tags'];
+
+  const TAG_CATEGORY_RU = {
+    'Cast-Main Cast': 'Главные герои',
+    'Cast-Supporting Cast': 'Второстепенные герои',
+    'Character': 'Персонажи',
+    'Content': 'Содержание',
+    'Demographic': 'Аудитория',
+    'Narrative': 'Повествование',
+    'Setting': 'Сеттинг',
+    'Style': 'Стиль',
+    'Technical': 'Техническое',
+    'Theme': 'Темы',
+    'Time': 'Время',
+  };
 
   function filterFieldOptions(key) {
     if (key === 'type') return C.TYPES.map(item => ({ value: item.value, label: item.label }));
@@ -153,12 +167,38 @@
       return years;
     }
     if (key === 'genre') return C.GENRES.map(genre => ({ value: String(genre.id), label: genre.label }));
+    if (key === 'tags') {
+      return C.TAGS.map(tag => ({
+        value: tag.name,
+        label: tag.ru && tag.ru !== tag.name ? tag.ru : tag.name,
+        category: tag.category || '',
+      }));
+    }
     return [];
   }
 
   function renderFilterMenu(key) {
     const panel = document.querySelector(`[data-filter-panel="${key}"]`);
     if (!panel || panel.childElementCount) return;
+
+    if (key === 'tags') {
+      const groups = new Map();
+      for (const option of filterFieldOptions('tags')) {
+        const category = TAG_CATEGORY_RU[option.category] || option.category || 'Теги';
+        if (!groups.has(category)) groups.set(category, []);
+        groups.get(category).push(option);
+      }
+      const sections = [...groups.entries()].map(([category, options]) => (
+        `<div class="filter-menu-group">${esc(category)}</div>${
+          options.map(option => (
+            `<label class="filter-option" data-search="${esc((option.value + ' ' + option.label).toLowerCase())}"><input type="checkbox" data-filter="tags" value="${esc(option.value)}"><span>${esc(option.label)}</span></label>`
+          )).join('')
+        }`
+      )).join('');
+      panel.innerHTML = `<div class="filter-menu-search"><input type="search" placeholder="Найти тег" aria-label="Поиск тега" autocomplete="off"></div><div class="filter-menu-scroll">${sections}</div>`;
+      return;
+    }
+
     panel.innerHTML = filterFieldOptions(key).map(option => (
       `<label class="filter-option"><input type="checkbox" data-filter="${key}" value="${esc(option.value)}"><span>${esc(option.label)}</span></label>`
     )).join('');
@@ -235,7 +275,7 @@
   }
 
   function readFiltersFromUI() {
-    const raw = { type: [], status: [], year: [], genre: [], minScore: '' };
+    const raw = { type: [], status: [], year: [], genre: [], tags: [], minScore: '' };
     $$('#db-filters input[type="checkbox"][data-filter]').forEach(field => {
       if (!field.checked) return;
       const key = field.dataset.filter;

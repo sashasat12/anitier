@@ -2365,6 +2365,17 @@
           if (menu && willOpen) {
             menu.hidden = false;
             el.setAttribute('aria-expanded', 'true');
+            if (key === 'tags') {
+              const field = el.closest('.filter-field');
+              if (field) {
+                const rect = field.getBoundingClientRect();
+                const width = Math.min(320, window.innerWidth - 24);
+                const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12));
+                menu.style.width = `${width}px`;
+                menu.style.left = `${left - rect.left}px`;
+                menu.style.right = 'auto';
+              }
+            }
             const first = menu.querySelector('input');
             if (first) first.focus({ preventScroll: true });
           }
@@ -2782,6 +2793,16 @@
         filterTimer = setTimeout(() => fetchDB(true), 260);
       });
       filters.addEventListener('input', event => {
+        if (event.target && event.target.matches && event.target.matches('.filter-menu-search input')) {
+          const query = event.target.value.trim().toLowerCase();
+          const panel = event.target.closest('[data-filter-panel]');
+          if (!panel) return;
+          panel.querySelectorAll('.filter-option').forEach(option => {
+            const haystack = option.dataset.search || option.textContent.toLowerCase();
+            option.hidden = Boolean(query) && !haystack.includes(query);
+          });
+          return;
+        }
         if (!event.target || event.target.id !== 'filter-score') return;
         const label = $('#filter-score-value');
         if (label) label.textContent = Number(event.target.value) > 0 ? `от ${event.target.value}` : 'Любой';
@@ -2793,6 +2814,8 @@
       if (event.target.closest('.filter-multi')) return;
       closeFilterMenus();
     });
+
+    window.addEventListener('resize', closeFilterMenus, { passive: true });
 
     const upcomingSearch = $('#upcoming-search');
     if (upcomingSearch) {

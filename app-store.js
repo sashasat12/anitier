@@ -47,6 +47,7 @@
     $seasonYear: Int,
     $genre: String,
     $genre_in: [String],
+    $tag_in: [String],
     $averageScoreGreater: Int,
     $startDateGreater: FuzzyDateInt,
     $startDateLesser: FuzzyDateInt,
@@ -66,6 +67,7 @@
         seasonYear: $seasonYear,
         genre: $genre,
         genre_in: $genre_in,
+        tag_in: $tag_in,
         sort: $sort,
         averageScore_greater: $averageScoreGreater,
         startDate_greater: $startDateGreater,
@@ -87,6 +89,7 @@
         averageScore
         description(asHtml: false)
         genres
+        tags { name rank isMediaSpoiler }
         studios(isMain: true) { nodes { name } }
         coverImage { extraLarge large }
         siteUrl
@@ -115,6 +118,7 @@
         averageScore
         description(asHtml: false)
         genres
+        tags { name rank isMediaSpoiler }
         studios(isMain: true) { nodes { name } }
         coverImage { extraLarge large }
         siteUrl
@@ -136,6 +140,7 @@
               averageScore
               description(asHtml: false)
               genres
+              tags { name rank isMediaSpoiler }
               studios(isMain: true) { nodes { name } }
               coverImage { extraLarge large }
               siteUrl
@@ -176,6 +181,7 @@
           averageScore
           description(asHtml: false)
           genres
+          tags { name rank isMediaSpoiler }
           studios(isMain: true) { nodes { name } }
           coverImage { extraLarge large }
           siteUrl
@@ -599,6 +605,7 @@
       id: a.id,
       malId: a.malId ?? null,
       title: a.title,
+      titleRu: a.titleRu || '',
       altTitle: a.altTitle || '',
       originalTitle: a.originalTitle || '',
       image: a.image || '',
@@ -613,6 +620,7 @@
       airedTo: a.airedTo || null,
       synopsis: a.synopsis ? String(a.synopsis).slice(0, 700) : '',
       genres: Array.isArray(a.genres) ? a.genres.slice(0, 12) : [],
+      tags: Array.isArray(a.tags) ? a.tags.slice(0, 24) : [],
       studios: Array.isArray(a.studios) ? a.studios.slice(0, 6) : [],
       url: a.url || '',
       source: a.source || '',
@@ -677,6 +685,7 @@
       airedTo: null,
       synopsis: String(raw.synopsis == null ? '' : raw.synopsis).trim().slice(0, 2000),
       genres,
+      tags: [],
       studios: [],
       url: '',
       source: 'custom',

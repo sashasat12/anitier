@@ -4,7 +4,7 @@
    ============================================================ */
 'use strict';
 
-const CACHE = 'anitier-mobile-v37';
+const CACHE = 'anitier-mobile-v38';
 const SHELL = [
   './',
   './index.html',
@@ -14,6 +14,7 @@ const SHELL = [
   './icons/icon-192.png',
   './icons/icon-512.png',
   '../styles.css',
+  '../tags.js',
   '../titles-ru.js',
   '../changelog.js',
   '../core.js',

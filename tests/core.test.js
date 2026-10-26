@@ -178,6 +178,26 @@
     T.eq(multi.year, ['2016', '2015']);
   });
 
+  T.test('core: теги ищутся через tag_in и фильтруют по «или»', () => {
+    const C = core();
+    const variables = C.buildAniListVariables({
+      mode: 'popular',
+      filters: { tags: ['Shounen', 'Isekai'] },
+    });
+    T.eq(variables.tag_in, ['Shounen', 'Isekai']);
+    T.assert(!C.GENRES.some(genre => genre.label === 'Сёнен'), 'Демография больше не жанр');
+
+    const items = [
+      { id: 1, title: 'A', tags: ['Shounen', 'Action'] },
+      { id: 2, title: 'B', tags: ['Isekai', 'Fantasy'] },
+      { id: 3, title: 'C', tags: ['Seinen'] },
+    ];
+    const ids = list => list.map(item => item.id);
+    T.eq(ids(C.filterItems(items, { filters: { tags: ['Shounen'] } })), [1]);
+    T.eq(ids(C.filterItems(items, { filters: { tags: ['Shounen', 'Isekai'] } })), [1, 2]);
+    T.eq(ids(C.filterItems(items, { filters: { tags: ['Shounen'], minScore: '9' } })), []);
+  });
+
   T.test('core: русский словарь находит MAL ID по названию', () => {
     const C = core();
     T.assert(C.russianTitleIds('Атака титанов').includes(16498), 'Точное название');

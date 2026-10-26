@@ -486,6 +486,51 @@ button { font-family: inherit; }
   font-size: 9.5px;
 }
 
+/* Теги: широкое меню с поиском и группами */
+.filter-menu-wide {
+  width: min(320px, calc(100vw - 40px));
+  right: auto;
+  max-height: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.filter-menu-wide[hidden] { display: none; }
+.filter-menu-search {
+  flex: none;
+  padding: 2px 2px 7px;
+  background: #11151f;
+}
+.filter-menu-search input {
+  width: 100%;
+  min-height: 33px;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .05);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+}
+.filter-menu-search input:focus {
+  outline: none;
+  border-color: rgba(255, 77, 141, .5);
+}
+.filter-menu-scroll {
+  min-height: 0;
+  max-height: 228px;
+  overflow: auto;
+}
+.filter-menu-group {
+  padding: 9px 8px 4px;
+  color: var(--muted);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.filter-option[hidden] { display: none; }
+
 /* ---------- фильтры «Скоро выйдут» ---------- */
 .upcoming-tools .search { grid-column: 1 / -1; }
 .upcoming-tools .search input { width: 100%; }

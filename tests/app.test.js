@@ -138,6 +138,12 @@
           )), false);
         }
 
+        if (Array.isArray(vars.tag_in) && vars.tag_in.length) {
+          return anilistResponse([
+            rawAniList(602, 'Тайтл по тегу', { seasonYear: 2024 }),
+          ], false);
+        }
+
         if (vars.status === 'RELEASING') {
           return anilistResponse([
             rawAniList(101, 'В эфире 1', {
@@ -387,6 +393,52 @@
       );
       T.eq(doc.querySelector('#filter-count').hidden, true);
       T.eq(app.win.__anitierTest.state.db.mode, 'score', 'Сброс фильтров должен сохранить выбранный режим');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: тег ищется внутри меню и уходит в AniList через tag_in', async () => {
+    const calls = [];
+    const app = await T.mountApp({
+      query: '?test=1',
+      setup(win) { win.fetch = baseFetch(calls); },
+    });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const doc = app.win.document;
+
+      doc.querySelector('[data-action="toggle-filters"]').click();
+      doc.querySelector('[data-filter-menu="tags"]').click();
+      const panel = doc.querySelector('[data-filter-panel="tags"]');
+      T.eq(panel.hidden, false);
+      T.assert(panel.querySelectorAll('.filter-option').length > 300, 'В меню все теги');
+
+      const search = panel.querySelector('.filter-menu-search input');
+      T.assert(search, 'У тегов есть строка поиска');
+      search.value = 'сён';
+      search.dispatchEvent(new app.win.Event('input', { bubbles: true }));
+
+      const visible = [...panel.querySelectorAll('.filter-option')].filter(option => !option.hidden);
+      T.assert(visible.length >= 1 && visible.length < 20, 'Поиск сузил список');
+      const shounen = visible.find(option => option.querySelector('input').value === 'Shounen');
+      T.assert(shounen, 'Нашёлся тег Shounen');
+      T.includes(shounen.textContent, 'Сёнэн');
+
+      const box = shounen.querySelector('input');
+      box.checked = true;
+      box.dispatchEvent(new app.win.Event('change', { bubbles: true }));
+
+      T.eq(api.state.db.filters.tags, ['Shounen']);
+      T.eq(doc.querySelector('[data-filter-value="tags"]').textContent, 'Сёнэн');
+      T.eq(doc.querySelector('#filter-count').textContent, '1');
+
+      await T.waitFor(
+        () => calls.some(call => call.vars && Array.isArray(call.vars.tag_in) && call.vars.tag_in.includes('Shounen')),
+        'Запрос с tag_in=Shounen не выполнился',
+        6000,
+      );
     } finally {
       app.close();
     }
@@ -705,7 +757,7 @@
       T.eq(state.tab, 'watched');
       T.eq(state.db.mode, 'score');
       T.eq(state.db.query, 'Frieren');
-      T.eq(state.db.filters, { type: ['movie'], status: [], year: ['2024'], genre: [], minScore: '8' });
+      T.eq(state.db.filters, { type: ['movie'], status: [], year: ['2024'], genre: [], tags: [], minScore: '8' });
       T.eq(doc.querySelector('#search-input').value, 'Frieren');
       T.eq(doc.querySelector('[data-filter-panel="type"] input[value="movie"]').checked, true);
       T.eq(doc.querySelector('[data-filter-panel="year"] input[value="2024"]').checked, true);
@@ -731,7 +783,7 @@
       const stored = JSON.parse(app.win.localStorage.getItem('anitier.v1'));
       T.eq(stored.settings.catalog.tab, 'upcoming');
       T.eq(stored.settings.catalog.mode, 'airing');
-      T.eq(stored.settings.catalog.filters, { type: ['tv'], status: ['complete'], year: [], genre: [], minScore: '' });
+      T.eq(stored.settings.catalog.filters, { type: ['tv'], status: ['complete'], year: [], genre: [], tags: [], minScore: '' });
     } finally { app.close(); }
   });
 

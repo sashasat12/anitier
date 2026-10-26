@@ -73,7 +73,7 @@
       T.eq(doc.querySelector('#filter-count').textContent, '2');
 
       doc.querySelector('[data-action="reset-filters"]').click();
-      T.eq(api.state.db.filters, { type: [], status: [], year: [], genre: [], minScore: '' });
+      T.eq(api.state.db.filters, { type: [], status: [], year: [], genre: [], tags: [], minScore: '' });
       T.eq(doc.querySelector('#filter-score').value, '0');
       T.eq(doc.querySelector('#filter-score-value').textContent, 'Любой');
       T.eq(doc.querySelector('#filter-count').hidden, true);

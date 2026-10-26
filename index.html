@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=1.23.1">
+<link rel="stylesheet" href="styles.css?v=1.24.0">
 </head>
 <body>
 
@@ -117,6 +117,14 @@
           <span class="filter-multi-caret" aria-hidden="true">▾</span>
         </button>
         <div class="filter-menu" data-filter-panel="genre" role="group" aria-labelledby="filter-genre-label" hidden></div>
+      </div>
+      <div class="filter-field filter-multi filter-tags">
+        <span id="filter-tags-label">Теги</span>
+        <button type="button" class="filter-multi-btn" data-action="filter-menu" data-filter-menu="tags" aria-haspopup="true" aria-expanded="false" aria-labelledby="filter-tags-label">
+          <span class="filter-multi-value" data-filter-value="tags">Любой</span>
+          <span class="filter-multi-caret" aria-hidden="true">▾</span>
+        </button>
+        <div class="filter-menu filter-menu-wide" data-filter-panel="tags" role="group" aria-labelledby="filter-tags-label" hidden></div>
       </div>
       <label class="filter-field filter-score-field">
         <span>Рейтинг <b class="filter-score-value" id="filter-score-value">Любой</b></span>
@@ -342,12 +350,13 @@
 <div class="update-card" id="update-card" role="status" aria-live="polite" hidden></div>
 <div id="toasts" role="status" aria-live="polite" aria-atomic="false"></div>
 
-<script src="titles-ru.js?v=1.23.1" defer></script>
-<script src="changelog.js?v=1.23.1" defer></script>
-<script src="core.js?v=1.23.1" defer></script>
-<script src="app-store.js?v=1.23.1" defer></script>
-<script src="app-api.js?v=1.23.1" defer></script>
-<script src="app-render.js?v=1.23.1" defer></script>
-<script src="app.js?v=1.23.1" defer></script>
+<script src="tags.js?v=1.24.0" defer></script>
+<script src="titles-ru.js?v=1.24.0" defer></script>
+<script src="changelog.js?v=1.24.0" defer></script>
+<script src="core.js?v=1.24.0" defer></script>
+<script src="app-store.js?v=1.24.0" defer></script>
+<script src="app-api.js?v=1.24.0" defer></script>
+<script src="app-render.js?v=1.24.0" defer></script>
+<script src="app.js?v=1.24.0" defer></script>
 </body>
 </html>

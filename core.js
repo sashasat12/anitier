@@ -20,33 +20,23 @@
     { id: 4, label: 'Комедия', names: ['Комедия', 'Comedy'] },
     { id: 7, label: 'Детектив', names: ['Детектив', 'Mystery'] },
     { id: 8, label: 'Драма', names: ['Драма', 'Drama'] },
+    { id: 9, label: 'Этти', names: ['Этти', 'Ecchi'] },
     { id: 10, label: 'Фэнтези', names: ['Фэнтези', 'Fantasy'] },
-    { id: 13, label: 'Историческое', names: ['Историческое', 'Historical'] },
     { id: 14, label: 'Ужасы', names: ['Ужасы', 'Horror'] },
     { id: 16, label: 'Махо-сёдзё', names: ['Махо-сёдзё', 'Mahou Shoujo'] },
     { id: 18, label: 'Меха', names: ['Меха', 'Mecha'] },
     { id: 19, label: 'Музыка', names: ['Музыка', 'Music'] },
-    { id: 20, label: 'Пародия', names: ['Пародия', 'Parody'] },
-    { id: 21, label: 'Самураи', names: ['Самураи', 'Samurai'] },
     { id: 22, label: 'Романтика', names: ['Романтика', 'Romance'] },
-    { id: 23, label: 'Школа', names: ['Школа', 'School'] },
     { id: 24, label: 'Фантастика', names: ['Фантастика', 'Sci-Fi'] },
-    { id: 27, label: 'Сёнен', names: ['Сёнен', 'Shounen'] },
-    { id: 29, label: 'Космос', names: ['Космос', 'Space'] },
     { id: 30, label: 'Спорт', names: ['Спорт', 'Sports'] },
-    { id: 31, label: 'Суперсила', names: ['Супергерои', 'Super Power'] },
-    { id: 32, label: 'Вампиры', names: ['Вампиры', 'Vampire'] },
-    { id: 35, label: 'Гарем', names: ['Гарем', 'Harem'] },
     { id: 36, label: 'Повседневность', names: ['Повседневность', 'Slice of Life'] },
     { id: 37, label: 'Сверхъестественное', names: ['Сверхъестественное', 'Supernatural'] },
-    { id: 38, label: 'Военное', names: ['Военное', 'Military'] },
-    { id: 39, label: 'Детектив', names: ['Детектив', 'Detective'] },
     { id: 40, label: 'Психологическое', names: ['Психологическое', 'Psychological'] },
     { id: 41, label: 'Триллер', names: ['Триллер', 'Thriller'] },
-    { id: 42, label: 'Сэйнэн', names: ['Сэйнэн', 'Seinen'] },
-    { id: 43, label: 'Дзёсэй', names: ['Дзёсэй', 'Josei'] },
-    { id: 62, label: 'Исекай', names: ['Исекай', 'Isekai'] },
   ];
+
+  /* Теги (демография, сеттинг, темы) лежат отдельно в tags.js. */
+  const TAGS = (typeof window !== 'undefined' && Array.isArray(window.AniTierTags)) ? window.AniTierTags : [];
 
   const SEARCH_LANGS = [
     { value: 'auto', label: 'Авто' },
@@ -135,6 +125,8 @@
   function genreRu(name) {
     const raw = String(name == null ? '' : name).trim();
     if (!raw || hasCyrillic(raw)) return raw;
+    const tag = TAGS.find(item => String(item.name).toLowerCase() === raw.toLowerCase());
+    if (tag && tag.ru && tag.ru !== tag.name) return tag.ru;
     return GENRE_RU[raw.toLowerCase()] || EXTRA_GENRE_RU[raw.toLowerCase()] || raw;
   }
 
@@ -225,6 +217,7 @@
     status: Object.freeze([]),
     year: Object.freeze([]),
     genre: Object.freeze([]),
+    tags: Object.freeze([]),
     minScore: '',
   });
 
@@ -258,6 +251,7 @@
     const typeValues = TYPES.map(item => item.value);
     const statusValues = STATUSES.map(item => item.value);
     const genreValues = GENRES.map(item => String(item.id));
+    const tagNames = new Set(TAGS.map(item => item.name));
 
     return {
       type: uniqueList(filterList(source.type), value => {
@@ -276,6 +270,10 @@
         const item = string(value);
         return genreValues.includes(item) ? item : '';
       }),
+      tags: uniqueList(filterList(source.tags), value => {
+        const item = string(value);
+        return tagNames.has(item) ? item : '';
+      }),
       minScore: /^(?:[1-9]|10)$/.test(minScore) ? minScore : '',
     };
   }
@@ -287,13 +285,14 @@
       || normalized.status.length
       || normalized.year.length
       || normalized.genre.length
+      || normalized.tags.length
       || normalized.minScore,
     );
   }
 
   function countActiveFilters(filters) {
     const normalized = normalizeFilters(filters);
-    return ['type', 'status', 'year', 'genre'].filter(key => normalized[key].length).length
+    return ['type', 'status', 'year', 'genre', 'tags'].filter(key => normalized[key].length).length
       + (normalized.minScore ? 1 : 0);
   }
 
@@ -320,6 +319,10 @@
         return genre ? names.some(name => genre.names.includes(name)) : false;
       });
       if (!hit) return false;
+    }
+    if (normalized.tags.length) {
+      const tags = Array.isArray(anime.tags) ? anime.tags : [];
+      if (!normalized.tags.some(name => tags.includes(name))) return false;
     }
 
     return true;
@@ -389,6 +392,10 @@
     if (Array.isArray(anime.genres)) {
       parts.push(...anime.genres);
       parts.push(...anime.genres.map(genreRu));
+    }
+    if (Array.isArray(anime.tags)) {
+      parts.push(...anime.tags);
+      parts.push(...anime.tags.map(genreRu));
     }
     if (Array.isArray(anime.studios)) parts.push(...anime.studios);
     return normalizeTitleKey(parts.filter(Boolean).join(' '));
@@ -471,6 +478,9 @@
     }
     if (filters.genre.length) {
       variables.genre_in = filters.genre.map(value => aniListGenre(value)).filter(Boolean);
+    }
+    if (filters.tags.length) {
+      variables.tag_in = filters.tags.slice();
     }
     if (filters.minScore) variables.averageScoreGreater = Number(filters.minScore) * 10;
 
@@ -1338,7 +1348,7 @@
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.23.1';
+  const APP_VERSION = '1.24.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -1902,6 +1912,7 @@
     parseLatestRelease,
     dragScrollDelta,
     GENRES,
+    TAGS,
     SEARCH_LANGS,
     TYPES,
     STATUSES,

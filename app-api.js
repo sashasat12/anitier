@@ -233,6 +233,9 @@
       airedTo: altDate(raw.endDate),
       synopsis: stripHtml(raw.description),
       genres: Array.isArray(raw.genres) ? raw.genres : [],
+      tags: (Array.isArray(raw.tags) ? raw.tags : [])
+        .filter(tag => tag && tag.name && !tag.isMediaSpoiler)
+        .map(tag => tag.name),
       studios: (raw.studios?.nodes || []).map(node => node.name).filter(Boolean),
       url: raw.siteUrl || `https://anilist.co/anime/${raw.id}`,
       source: 'AniList',
@@ -453,6 +456,7 @@
       airedTo: attrs.endDate || null,
       synopsis: stripHtml(attrs.synopsis),
       genres,
+      tags: genres.slice(),
       studios: [],
       url: `https://kitsu.io/anime/${attrs.slug || raw.id}`,
       source: 'Kitsu',
