@@ -159,6 +159,61 @@
     { value: '9', label: 'от 9' },
   ];
 
+  /* Порядок карточек внутри тира. «Как в тирах» — ручной порядок перетаскивания. */
+  const LIST_SORTS = [
+    { value: 'default', label: 'Как в тирах' },
+    { value: 'title', label: 'По названию' },
+    { value: 'score', label: 'По оценке' },
+    { value: 'added', label: 'По дате добавления' },
+    { value: 'progress', label: 'По прогрессу' },
+  ];
+
+  function normalizeListSort(value) {
+    const key = String(value == null ? '' : value).trim().toLowerCase();
+    return LIST_SORTS.some(item => item.value === key) ? key : 'default';
+  }
+
+  function progressWatchedCount(progress, id) {
+    const entry = progress && progress[id];
+    return entry && Array.isArray(entry.watched) ? entry.watched.length : 0;
+  }
+
+  /* Сортирует копию массива, чтобы не менять ручной порядок тира. */
+  function sortListItems(items, sort, progress) {
+    const key = normalizeListSort(sort);
+    const list = (Array.isArray(items) ? items : []).filter(Boolean).slice();
+    if (key === 'default') return list;
+
+    const byTitle = (a, b) => String(a.title || '').localeCompare(String(b.title || ''), 'ru');
+    if (key === 'title') {
+      list.sort(byTitle);
+    } else if (key === 'score') {
+      list.sort((a, b) => {
+        const sa = typeof a.score === 'number' ? a.score : -Infinity;
+        const sb = typeof b.score === 'number' ? b.score : -Infinity;
+        return (sb - sa) || byTitle(a, b);
+      });
+    } else if (key === 'added') {
+      list.sort((a, b) => (Number(b.addedAt) || 0) - (Number(a.addedAt) || 0) || byTitle(a, b));
+    } else if (key === 'progress') {
+      list.sort((a, b) => {
+        const pa = progressWatchedCount(progress, a.id);
+        const pb = progressWatchedCount(progress, b.id);
+        return (pb - pa) || byTitle(a, b);
+      });
+    }
+    return list;
+  }
+
+  /* Случайный элемент для кнопки «Что посмотреть». */
+  function randomItem(items, rng = Math.random) {
+    const list = Array.isArray(items) ? items.filter(Boolean) : [];
+    if (!list.length) return null;
+    const value = typeof rng === 'function' ? Number(rng()) : Math.random();
+    const safe = Number.isFinite(value) ? Math.min(Math.max(value, 0), 0.999999999) : 0;
+    return list[Math.floor(safe * list.length)] || null;
+  }
+
   const STATUS_NAMES = {
     airing: 'В эфире',
     complete: 'Завершено',
@@ -1021,13 +1076,128 @@
       .slice(0, max);
   }
 
+  /* ---------------- «Мои серии»: календарь и .ics ---------------- */
+
+  /**
+   * Будущие серии отслеживаемых тайтлов для календаря.
+   * Учитывает следующую серию из epInfo и уже известные даты серий.
+   */
+  function buildCalendarItems(data, epInfo, options = {}) {
+    const now = Number.isFinite(Number(options.now)) ? Number(options.now) : Date.now();
+    const from = Number.isFinite(Number(options.from)) ? Number(options.from) : localDayBounds(now).start;
+    const max = Number(options.max) || 500;
+    const tracked = (data && data.tracked) || {};
+    const info = epInfo || {};
+    const items = [];
+    const seen = new Set();
+
+    const push = (anime, episode, rawDate) => {
+      if (!anime || anime.id == null) return;
+      const n = Number(episode);
+      if (!Number.isInteger(n) || n <= 0) return;
+      const at = releaseTime(rawDate);
+      if (!at || at < from) return;
+      const key = `${anime.id}:${n}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      items.push({
+        id: anime.id,
+        title: String(anime.title || 'Аниме'),
+        n,
+        date: new Date(at).toISOString(),
+      });
+    };
+
+    for (const group of tracked.episodes || []) {
+      const anime = group && group.anime;
+      if (!anime) continue;
+      const next = info[anime.id] && info[anime.id].next;
+      if (next && next.date) push(anime, next.n, next.date);
+      for (const episode of group.episodes || []) {
+        if (episode && episode.date) push(anime, episode.n, episode.date);
+      }
+    }
+
+    for (const item of tracked.seasons || []) {
+      const sequel = item && (item.sequel || item.anime);
+      if (!sequel) continue;
+      const next = (info[sequel.id] && info[sequel.id].next) || sequel.nextEpisode;
+      if (next && next.date) push(sequel, next.n || 1, next.date);
+    }
+
+    return items
+      .sort((a, b) => releaseTime(a.date) - releaseTime(b.date))
+      .slice(0, max);
+  }
+
+  function icsDate(value) {
+    const time = releaseTime(value);
+    if (!time) return '';
+    return new Date(time).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+  }
+
+  function icsEscape(value) {
+    return String(value == null ? '' : value)
+      .replace(/\\/g, '\\\\')
+      .replace(/\r?\n/g, '\\n')
+      .replace(/,/g, '\\,')
+      .replace(/;/g, '\\;');
+  }
+
+  /** Возвращает текст календаря RFC 5545: по событию на каждую серию. */
+  function buildIcs(items, options = {}) {
+    const now = icsDate(Number.isFinite(Number(options.now)) ? Number(options.now) : Date.now());
+    const calendarName = String(options.calendarName || 'AniTier — мои серии');
+    const lines = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//AniTier//Episodes//RU',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      `X-WR-CALNAME:${icsEscape(calendarName)}`,
+    ];
+
+    for (const item of Array.isArray(items) ? items : []) {
+      if (!item) continue;
+      const start = icsDate(item.date);
+      if (!start) continue;
+      const n = Number(item.n) || 0;
+      const title = n > 0 ? `${item.title || 'Аниме'} — серия ${n}` : String(item.title || 'Аниме');
+      lines.push(
+        'BEGIN:VEVENT',
+        `UID:anitier-${item.id}-${n}@anitier`,
+        `DTSTAMP:${now}`,
+        `DTSTART:${start}`,
+        `SUMMARY:${icsEscape(title)}`,
+        `DESCRIPTION:${icsEscape('Напоминание из AniTier')}`,
+        'END:VEVENT',
+      );
+    }
+
+    lines.push('END:VCALENDAR');
+    return `${lines.join('\r\n')}\r\n`;
+  }
+
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.12.0';
+  const APP_VERSION = '1.13.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* История изменений для экрана «Что нового». Новые версии — сверху.
      Пункты пишем для пользователя: что теперь можно сделать, а не как это сделано. */
   const CHANGELOG = [
+    {
+      version: '1.13.0',
+      date: '26 октября 2026',
+      title: 'Продолжить просмотр, порядок и календарь серий',
+      items: [
+        'На главной появился блок «Продолжить просмотр»: начатые тайтлы и кнопка «+1 серия».',
+        'Действия с прогрессом и удаление из тир-листа можно отменить кнопкой в уведомлении.',
+        'В тир-листах можно выбрать порядок карточек: по названию, оценке, дате добавления или прогрессу.',
+        'Кнопка «Что посмотреть?» выбирает случайный тайтл из «Запланировано» с учётом фильтров.',
+        'У вкладок и карточек появились ссылки: #watched, #planned и #anime/123 открывают нужное место.',
+        'В «Скоро выйдут» есть режим «Только мои серии» и экспорт календаря в .ics для Google Календаря.',
+      ],
+    },
     {
       version: '1.12.0',
       date: '26 октября 2026',
@@ -1244,6 +1414,12 @@
     defaultNotificationTab,
     buildReleaseNotificationItems,
     RELEASE_NOTIFICATION_HORIZON_DAYS,
+    buildCalendarItems,
+    buildIcs,
+    LIST_SORTS,
+    normalizeListSort,
+    sortListItems,
+    randomItem,
     APP_VERSION,
     GITHUB_URL,
     CHANGELOG,

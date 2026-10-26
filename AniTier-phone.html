@@ -1123,6 +1123,75 @@ button { font-family: inherit; }
 }
 .upcoming-grid .month-head:first-child { margin-top: 0; }
 
+/* ---------- продолжить просмотр ---------- */
+.continue-block {
+  margin: 0 0 18px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .025);
+}
+.continue-block[hidden] { display: none; }
+.continue-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 11px;
+}
+.continue-head h2 { margin: 0; font-size: 15px; }
+.continue-head .sub { color: var(--muted); font-size: 11.5px; }
+.continue-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 10px;
+}
+.continue-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  cursor: pointer;
+  transition: border-color .18s, transform .18s;
+}
+.continue-card:hover { border-color: rgba(255, 77, 141, .45); transform: translateY(-1px); }
+.continue-card img { width: 44px; height: 62px; flex: none; object-fit: cover; border-radius: 8px; }
+.continue-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.continue-title { overflow: hidden; font-size: 12.5px; white-space: nowrap; text-overflow: ellipsis; }
+.continue-meta { color: var(--muted); font-size: 11px; }
+.continue-next { color: #ff8fb8; font-size: 11px; }
+.continue-bar { height: 4px; margin-top: 4px; border-radius: 4px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+.continue-bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #ff4d8d, #8a5cff); }
+.continue-btn { flex: none; min-height: 0; padding: 6px 9px; font-size: 11px; }
+
+/* ---------- «Мои серии» ---------- */
+.calendar-row {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  cursor: pointer;
+  transition: border-color .18s;
+}
+.calendar-row:hover { border-color: rgba(255, 77, 141, .45); }
+.calendar-date { display: flex; flex-direction: column; gap: 1px; min-width: 74px; }
+.calendar-date b { font-size: 12.5px; }
+.calendar-date small { color: var(--muted); font-size: 10.5px; }
+.calendar-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.calendar-main b { overflow: hidden; font-size: 13px; white-space: nowrap; text-overflow: ellipsis; }
+.calendar-main small { color: var(--muted); font-size: 11px; }
+.calendar-arrow { color: var(--muted); font-size: 18px; }
+
+.random-btn { min-height: 37px; }
+
 .note-line {
   grid-column: 1 / -1;
   margin: 0 0 4px;
@@ -2122,6 +2191,9 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
   max-width: min(360px, calc(100vw - 36px));
 }
 .toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   padding: 12px 15px;
   border-radius: 12px;
   border: 1px solid var(--line);
@@ -2133,6 +2205,20 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
   box-shadow: 0 18px 40px rgba(0, 0, 0, .55);
   animation: toastIn .24s ease both;
 }
+.toast-text { flex: 1; min-width: 0; }
+.toast-action {
+  flex: none;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 7px;
+  background: rgba(255, 77, 141, .12);
+  color: #ff8fb8;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.toast-action:hover { background: rgba(255, 77, 141, .22); }
 .toast.is-out { animation: toastOut .22s ease both; }
 @keyframes toastIn { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
 @keyframes toastOut { to { opacity: 0; transform: translateX(20px); } }
@@ -2610,6 +2696,21 @@ body.mobile-app .offline-banner {
 
 .mobile-hint[hidden] { display: none !important; }
 
+/* ---------- продолжить просмотр и «Мои серии» ---------- */
+body.mobile-app .continue-row { grid-template-columns: 1fr; }
+body.mobile-app .continue-btn { min-height: 38px; font-size: 12px; }
+body.mobile-app .calendar-row { padding: 12px; }
+body.mobile-app .random-btn { grid-column: 1 / -1; min-height: 44px; }
+
+body.mobile-app #toasts {
+  right: 12px;
+  left: 12px;
+  bottom: calc(74px + env(safe-area-inset-bottom));
+  max-width: none;
+}
+body.mobile-app .toast { font-size: 13px; }
+body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 13px; }
+
 @media (max-width: 360px) {
   body.mobile-app .brand-name { display: none; }
   body.mobile-app .tab { font-size: 9.5px; }
@@ -2750,6 +2851,14 @@ body.mobile-app .offline-banner {
       <button class="chip" data-action="mode" data-mode="custom">Мои карточки</button>
     </div>
 
+    <section class="continue-block" id="continue-block" aria-label="Продолжить просмотр" hidden>
+      <div class="continue-head">
+        <h2>Продолжить просмотр</h2>
+        <span class="sub">Начатые тайтлы из «Просмотрено»</span>
+      </div>
+      <div class="continue-row" id="continue-row"></div>
+    </section>
+
     <div class="db-status" id="db-status" aria-live="polite"></div>
     <div class="grid" id="db-grid" aria-live="polite"></div>
     <div class="load-row">
@@ -2846,6 +2955,8 @@ body.mobile-app .offline-banner {
           <option value="title">По названию</option>
         </select>
       </label>
+      <button class="btn btn-ghost" type="button" id="upcoming-mine" data-action="toggle-upcoming-mine" aria-pressed="false">Только мои серии</button>
+      <button class="btn btn-ghost" type="button" data-action="export-ics">Экспорт .ics</button>
       <button class="btn btn-ghost filter-reset" data-action="reset-upcoming">Сбросить</button>
     </div>
     <div class="db-status" id="upcoming-status" aria-live="polite"></div>
@@ -3071,6 +3182,61 @@ body.mobile-app .offline-banner {
     { value: '8', label: 'от 8' },
     { value: '9', label: 'от 9' },
   ];
+
+  /* Порядок карточек внутри тира. «Как в тирах» — ручной порядок перетаскивания. */
+  const LIST_SORTS = [
+    { value: 'default', label: 'Как в тирах' },
+    { value: 'title', label: 'По названию' },
+    { value: 'score', label: 'По оценке' },
+    { value: 'added', label: 'По дате добавления' },
+    { value: 'progress', label: 'По прогрессу' },
+  ];
+
+  function normalizeListSort(value) {
+    const key = String(value == null ? '' : value).trim().toLowerCase();
+    return LIST_SORTS.some(item => item.value === key) ? key : 'default';
+  }
+
+  function progressWatchedCount(progress, id) {
+    const entry = progress && progress[id];
+    return entry && Array.isArray(entry.watched) ? entry.watched.length : 0;
+  }
+
+  /* Сортирует копию массива, чтобы не менять ручной порядок тира. */
+  function sortListItems(items, sort, progress) {
+    const key = normalizeListSort(sort);
+    const list = (Array.isArray(items) ? items : []).filter(Boolean).slice();
+    if (key === 'default') return list;
+
+    const byTitle = (a, b) => String(a.title || '').localeCompare(String(b.title || ''), 'ru');
+    if (key === 'title') {
+      list.sort(byTitle);
+    } else if (key === 'score') {
+      list.sort((a, b) => {
+        const sa = typeof a.score === 'number' ? a.score : -Infinity;
+        const sb = typeof b.score === 'number' ? b.score : -Infinity;
+        return (sb - sa) || byTitle(a, b);
+      });
+    } else if (key === 'added') {
+      list.sort((a, b) => (Number(b.addedAt) || 0) - (Number(a.addedAt) || 0) || byTitle(a, b));
+    } else if (key === 'progress') {
+      list.sort((a, b) => {
+        const pa = progressWatchedCount(progress, a.id);
+        const pb = progressWatchedCount(progress, b.id);
+        return (pb - pa) || byTitle(a, b);
+      });
+    }
+    return list;
+  }
+
+  /* Случайный элемент для кнопки «Что посмотреть». */
+  function randomItem(items, rng = Math.random) {
+    const list = Array.isArray(items) ? items.filter(Boolean) : [];
+    if (!list.length) return null;
+    const value = typeof rng === 'function' ? Number(rng()) : Math.random();
+    const safe = Number.isFinite(value) ? Math.min(Math.max(value, 0), 0.999999999) : 0;
+    return list[Math.floor(safe * list.length)] || null;
+  }
 
   const STATUS_NAMES = {
     airing: 'В эфире',
@@ -3934,13 +4100,128 @@ body.mobile-app .offline-banner {
       .slice(0, max);
   }
 
+  /* ---------------- «Мои серии»: календарь и .ics ---------------- */
+
+  /**
+   * Будущие серии отслеживаемых тайтлов для календаря.
+   * Учитывает следующую серию из epInfo и уже известные даты серий.
+   */
+  function buildCalendarItems(data, epInfo, options = {}) {
+    const now = Number.isFinite(Number(options.now)) ? Number(options.now) : Date.now();
+    const from = Number.isFinite(Number(options.from)) ? Number(options.from) : localDayBounds(now).start;
+    const max = Number(options.max) || 500;
+    const tracked = (data && data.tracked) || {};
+    const info = epInfo || {};
+    const items = [];
+    const seen = new Set();
+
+    const push = (anime, episode, rawDate) => {
+      if (!anime || anime.id == null) return;
+      const n = Number(episode);
+      if (!Number.isInteger(n) || n <= 0) return;
+      const at = releaseTime(rawDate);
+      if (!at || at < from) return;
+      const key = `${anime.id}:${n}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      items.push({
+        id: anime.id,
+        title: String(anime.title || 'Аниме'),
+        n,
+        date: new Date(at).toISOString(),
+      });
+    };
+
+    for (const group of tracked.episodes || []) {
+      const anime = group && group.anime;
+      if (!anime) continue;
+      const next = info[anime.id] && info[anime.id].next;
+      if (next && next.date) push(anime, next.n, next.date);
+      for (const episode of group.episodes || []) {
+        if (episode && episode.date) push(anime, episode.n, episode.date);
+      }
+    }
+
+    for (const item of tracked.seasons || []) {
+      const sequel = item && (item.sequel || item.anime);
+      if (!sequel) continue;
+      const next = (info[sequel.id] && info[sequel.id].next) || sequel.nextEpisode;
+      if (next && next.date) push(sequel, next.n || 1, next.date);
+    }
+
+    return items
+      .sort((a, b) => releaseTime(a.date) - releaseTime(b.date))
+      .slice(0, max);
+  }
+
+  function icsDate(value) {
+    const time = releaseTime(value);
+    if (!time) return '';
+    return new Date(time).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+  }
+
+  function icsEscape(value) {
+    return String(value == null ? '' : value)
+      .replace(/\\/g, '\\\\')
+      .replace(/\r?\n/g, '\\n')
+      .replace(/,/g, '\\,')
+      .replace(/;/g, '\\;');
+  }
+
+  /** Возвращает текст календаря RFC 5545: по событию на каждую серию. */
+  function buildIcs(items, options = {}) {
+    const now = icsDate(Number.isFinite(Number(options.now)) ? Number(options.now) : Date.now());
+    const calendarName = String(options.calendarName || 'AniTier — мои серии');
+    const lines = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//AniTier//Episodes//RU',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      `X-WR-CALNAME:${icsEscape(calendarName)}`,
+    ];
+
+    for (const item of Array.isArray(items) ? items : []) {
+      if (!item) continue;
+      const start = icsDate(item.date);
+      if (!start) continue;
+      const n = Number(item.n) || 0;
+      const title = n > 0 ? `${item.title || 'Аниме'} — серия ${n}` : String(item.title || 'Аниме');
+      lines.push(
+        'BEGIN:VEVENT',
+        `UID:anitier-${item.id}-${n}@anitier`,
+        `DTSTAMP:${now}`,
+        `DTSTART:${start}`,
+        `SUMMARY:${icsEscape(title)}`,
+        `DESCRIPTION:${icsEscape('Напоминание из AniTier')}`,
+        'END:VEVENT',
+      );
+    }
+
+    lines.push('END:VCALENDAR');
+    return `${lines.join('\r\n')}\r\n`;
+  }
+
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.12.0';
+  const APP_VERSION = '1.13.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* История изменений для экрана «Что нового». Новые версии — сверху.
      Пункты пишем для пользователя: что теперь можно сделать, а не как это сделано. */
   const CHANGELOG = [
+    {
+      version: '1.13.0',
+      date: '26 октября 2026',
+      title: 'Продолжить просмотр, порядок и календарь серий',
+      items: [
+        'На главной появился блок «Продолжить просмотр»: начатые тайтлы и кнопка «+1 серия».',
+        'Действия с прогрессом и удаление из тир-листа можно отменить кнопкой в уведомлении.',
+        'В тир-листах можно выбрать порядок карточек: по названию, оценке, дате добавления или прогрессу.',
+        'Кнопка «Что посмотреть?» выбирает случайный тайтл из «Запланировано» с учётом фильтров.',
+        'У вкладок и карточек появились ссылки: #watched, #planned и #anime/123 открывают нужное место.',
+        'В «Скоро выйдут» есть режим «Только мои серии» и экспорт календаря в .ics для Google Календаря.',
+      ],
+    },
     {
       version: '1.12.0',
       date: '26 октября 2026',
@@ -4157,6 +4438,12 @@ body.mobile-app .offline-banner {
     defaultNotificationTab,
     buildReleaseNotificationItems,
     RELEASE_NOTIFICATION_HORIZON_DAYS,
+    buildCalendarItems,
+    buildIcs,
+    LIST_SORTS,
+    normalizeListSort,
+    sortListItems,
+    randomItem,
     APP_VERSION,
     GITHUB_URL,
     CHANGELOG,
@@ -4685,7 +4972,7 @@ body.mobile-app .offline-banner {
       loaded: false,
       error: null,
       queued: false,
-      view: { query: '', filters: { type: '', genre: '', year: '', minScore: '', status: '' }, month: '', sort: 'date' },
+      view: { query: '', filters: { type: '', genre: '', year: '', minScore: '', status: '' }, month: '', sort: 'date', mine: false },
     },
   };
 
@@ -4696,7 +4983,7 @@ body.mobile-app .offline-banner {
   }
 
   function emptyListView() {
-    return { query: '', filters: C.normalizeFilters(C.DEFAULT_FILTERS) };
+    return { query: '', filters: C.normalizeFilters(C.DEFAULT_FILTERS), sort: 'default' };
   }
 
   function createAltSearchState() {
@@ -4752,6 +5039,7 @@ body.mobile-app .offline-banner {
       source: a.source || '',
       sourceId: a.sourceId ?? null,
       demo: Boolean(a.demo),
+      addedAt: Number(a.addedAt) || 0,
     };
   }
 
@@ -5322,6 +5610,18 @@ body.mobile-app .offline-banner {
     updateEpisodeUI(id);
   }
 
+  /* Возврат прогресса для отмены действия из тоста. */
+  function restoreProgress(id, watched) {
+    const list = (Array.isArray(watched) ? watched : [])
+      .map(Number)
+      .filter(n => Number.isInteger(n) && n > 0)
+      .sort((a, b) => a - b);
+    if (list.length) state.progress[id] = { watched: [...new Set(list)], updated: Date.now() };
+    else delete state.progress[id];
+    saveState();
+    updateEpisodeUI(id);
+  }
+
   function episodeStats(a) {
     const info = state.epInfo[a.id] || null;
     const planned = Number(a.episodes) || Number(info?.total) || null;
@@ -5340,7 +5640,9 @@ body.mobile-app .offline-banner {
     const other = name === 'watched' ? 'planned' : 'watched';
     removeFromList(other, anime.id, true);
     for (const k of TIER_IDS) state.lists[name][k] = state.lists[name][k].filter(x => x.id !== anime.id);
-    state.lists[name][t].unshift(snapshotAnime(anime));
+    const entry = snapshotAnime(anime);
+    entry.addedAt = Date.now();
+    state.lists[name][t].unshift(entry);
     state.byId.set(anime.id, anime);
     saveState();
     refreshViews();
@@ -5383,8 +5685,16 @@ body.mobile-app .offline-banner {
   function toggleList(name, anime) {
     if (!anime) return;
     if (hasIn(name, anime.id)) {
-      removeFromList(name, anime.id);
-      toast(`«${anime.title}» убрано из списка «${name === 'watched' ? 'Просмотрено' : 'Запланировано'}»`);
+      const tier = findTier(name, anime.id) || 'N';
+      const snapshot = snapshotAnime(anime);
+      const label = name === 'watched' ? 'Просмотрено' : 'Запланировано';
+      if (removeFromList(name, anime.id)) {
+        toast(`«${anime.title}» убрано из списка «${label}»`, {
+          actionLabel: 'Отменить',
+          duration: 5000,
+          onAction: () => addToList(name, snapshot, tier, true),
+        });
+      }
     } else {
       addToList(name, anime);
     }
@@ -5486,6 +5796,7 @@ body.mobile-app .offline-banner {
     toggleEpisode,
     setWatchedUpTo,
     clearProgress,
+    restoreProgress,
     episodeStats,
   });
 })(window.AniTier = window.AniTier || {});
@@ -7062,7 +7373,63 @@ body.mobile-app .offline-banner {
     }
   }
 
+  /* ---------------- «Продолжить просмотр» ---------------- */
+  const CONTINUE_LIMIT = 6;
+
+  /* Начатые тайтлы из «Просмотрено» с незакрытым прогрессом. */
+  function continueItems() {
+    const items = [];
+    for (const anime of allIn('watched')) {
+      const count = watchedCount(anime.id);
+      if (count <= 0) continue;
+      const stats = episodeStats(anime);
+      const total = stats.total || stats.available || 0;
+      const max = stats.available || stats.total || 0;
+      if (!max || (total && count >= total)) continue;
+      const entry = state.progress[anime.id];
+      items.push({
+        anime,
+        count,
+        total,
+        max,
+        updated: Number(entry && entry.updated) || 0,
+        next: stats.info && stats.info.next ? stats.info.next : null,
+      });
+    }
+    items.sort((a, b) => (b.updated - a.updated)
+      || String(a.anime.title || '').localeCompare(String(b.anime.title || ''), 'ru'));
+    return items.slice(0, CONTINUE_LIMIT);
+  }
+
+  function continueCardHTML(item) {
+    const anime = item.anime;
+    const pct = item.total ? Math.min(100, Math.round((item.count / item.total) * 100)) : 0;
+    const nextLine = item.next && item.next.date
+      ? `Следующая: ${item.next.n}-я · ${esc(dateShort(item.next.date))}`
+      : 'Следующая серия';
+    return `<article class="continue-card" data-action="open" data-id="${anime.id}" tabindex="0" aria-label="Продолжить: ${esc(anime.title)}">
+      <img ${imgAttrs(anime)}>
+      <div class="continue-body">
+        <b class="continue-title" title="${esc(anime.title)}">${esc(anime.title)}</b>
+        <span class="continue-meta">Просмотрено ${item.count}${item.total ? ` из ${item.total}` : ''}</span>
+        <span class="continue-next">${nextLine}</span>
+        <span class="continue-bar"><i style="width:${pct}%"></i></span>
+      </div>
+      <button class="btn btn-primary continue-btn" type="button" data-action="quick-watch" data-id="${anime.id}" aria-label="Отметить следующую серию: ${esc(anime.title)}">+1 серия</button>
+    </article>`;
+  }
+
+  function renderContinue() {
+    const block = $('#continue-block');
+    const row = $('#continue-row');
+    if (!block || !row) return;
+    const items = continueItems();
+    block.hidden = !items.length;
+    row.innerHTML = items.length ? items.map(continueCardHTML).join('') : '';
+  }
+
   function renderDB() {
+    renderContinue();
     const s = state.db;
     const grid = $('#db-grid');
     const more = $('#db-more');
@@ -7454,6 +7821,13 @@ body.mobile-app .offline-banner {
     if (genre) genre.value = view.filters.genre || '';
     const sort = $('#upcoming-sort');
     if (sort) sort.value = view.sort === 'title' ? 'title' : 'date';
+    const mine = $('#upcoming-mine');
+    if (mine) {
+      const on = Boolean(view.mine);
+      mine.classList.toggle('btn-primary', on);
+      mine.classList.toggle('btn-ghost', !on);
+      mine.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
 
     const month = $('#upcoming-month');
     if (!month) return;
@@ -7481,14 +7855,69 @@ body.mobile-app .offline-banner {
     el.textContent = bits.join(' · ');
   }
 
+  function renderMyCalendar() {
+    const grid = $('#upcoming-grid');
+    if (!grid) return;
+    const u = state.upcoming;
+    syncUpcomingControls(u.items || []);
+
+    if (state.notifications.loading && !state.notifications.loaded) {
+      grid.innerHTML = skeletonRows(6);
+      const loadingStatus = $('#upcoming-status');
+      if (loadingStatus) loadingStatus.textContent = 'Собираем ваши серии…';
+      return;
+    }
+
+    const all = C.buildCalendarItems(state.notifications, state.epInfo);
+    const query = C.normalizeTitleKey(u.view.query);
+    const shown = query ? all.filter(item => C.normalizeTitleKey(item.title).includes(query)) : all;
+    const status = $('#upcoming-status');
+    if (status) status.textContent = all.length ? `Мои серии: ${shown.length} из ${all.length}` : '';
+
+    if (!all.length) {
+      grid.innerHTML = msgBlock('📅', 'Ближайших серий нет', 'Добавьте тайтлы в «Просмотрено» или «Запланировано» и обновите события.');
+      return;
+    }
+    if (!shown.length) {
+      grid.innerHTML = `<div class="msg">
+        <span class="emoji">🔍</span>
+        <h3>Под фильтры ничего не подошло</h3>
+        <p>Измените запрос или сбросьте фильтры.</p>
+        <button class="btn btn-ghost" data-action="reset-upcoming">Сбросить фильтры</button>
+      </div>`;
+      return;
+    }
+
+    let html = '';
+    let day = '';
+    for (const item of shown) {
+      const label = dateShort(item.date);
+      if (label !== day) {
+        day = label;
+        html += `<h2 class="month-head">${esc(label)}</h2>`;
+      }
+      html += `<article class="calendar-row" data-action="open" data-id="${item.id}" tabindex="0" aria-label="Открыть: ${esc(item.title)}">
+        <span class="calendar-date"><b>${esc(label)}</b><small>${esc(countdownLabel(item.date))}</small></span>
+        <span class="calendar-main"><b>${esc(item.title)}</b><small>Серия ${item.n}</small></span>
+        <span class="calendar-arrow" aria-hidden="true">›</span>
+      </article>`;
+    }
+    grid.innerHTML = html;
+  }
+
   function renderUpcoming() {
     const grid = $('#upcoming-grid');
     if (!grid) return;
     const u = state.upcoming;
     if (!u.view) {
-      u.view = { query: '', filters: { type: '', genre: '', year: '', minScore: '', status: '' }, month: '', sort: 'date' };
+      u.view = { query: '', filters: { type: '', genre: '', year: '', minScore: '', status: '' }, month: '', sort: 'date', mine: false };
     }
     initUpcomingOptions();
+
+    if (u.view.mine) {
+      renderMyCalendar();
+      return;
+    }
 
     if (u.loading && !u.items.length) {
       grid.innerHTML = skeletonCards(10);
@@ -7552,6 +7981,7 @@ body.mobile-app .offline-banner {
     if (!view || typeof view !== 'object') view = { query: '', filters: C.DEFAULT_FILTERS };
     view.query = String(view.query || '');
     view.filters = C.normalizeFilters(view.filters);
+    view.sort = C.normalizeListSort(view.sort);
     state.listViews[name] = view;
     return view;
   }
@@ -7560,6 +7990,8 @@ body.mobile-app .offline-banner {
     const typeOptions = C.TYPES
       .map(item => `<option value="${esc(item.value)}">${esc(item.label)}</option>`).join('');
     const scoreOptions = C.SCORES
+      .map(item => `<option value="${esc(item.value)}">${esc(item.label)}</option>`).join('');
+    const sortOptions = C.LIST_SORTS
       .map(item => `<option value="${esc(item.value)}">${esc(item.label)}</option>`).join('');
     return `<div class="search">
         <input id="${name}-search" type="search" data-list-search="${name}" placeholder="Поиск: название, жанр, студия" autocomplete="off" aria-label="Поиск в списке">
@@ -7580,6 +8012,11 @@ body.mobile-app .offline-banner {
         <span>Рейтинг</span>
         <select id="${name}-score" data-list-filter="minScore" aria-label="Рейтинг"><option value="">Любой</option>${scoreOptions}</select>
       </label>
+      <label class="filter-field">
+        <span>Порядок</span>
+        <select id="${name}-sort" data-list-sort="${name}" aria-label="Порядок карточек">${sortOptions}</select>
+      </label>
+      ${name === 'planned' ? '<button class="btn btn-primary random-btn" type="button" data-action="random-planned" data-list="planned">Что посмотреть?</button>' : ''}
       <button class="btn btn-ghost filter-reset" type="button" data-action="reset-list" data-list="${name}">Сбросить</button>`;
   }
 
@@ -7601,6 +8038,8 @@ body.mobile-app .offline-banner {
     if (type) type.value = view.filters.type || '';
     const score = tools.querySelector(`#${name}-score`);
     if (score) score.value = view.filters.minScore || '';
+    const sort = tools.querySelector(`#${name}-sort`);
+    if (sort) sort.value = view.sort;
 
     const options = C.listFilterOptions(items);
 
@@ -7638,17 +8077,23 @@ body.mobile-app .offline-banner {
     el.textContent = `Показано ${shown.length} из ${all.length} · фильтров: ${active}`;
   }
 
+  function listVisibleItems(name) {
+    const list = name === 'planned' ? 'planned' : 'watched';
+    return C.filterItems(allIn(list), listView(list));
+  }
+
   function renderTierList(name) {
     const root = document.getElementById(name === 'watched' ? 'tiers-watched' : 'tiers-planned');
     if (!root) return;
     const list = state.lists[name];
     const all = allIn(name);
-    const shown = new Set(C.filterItems(all, listView(name)));
+    const view = listView(name);
+    const shown = new Set(C.filterItems(all, view));
     syncListControls(name, all);
 
     root.innerHTML = TIERS.map(t => {
       const tierItems = list[t.id] || [];
-      const items = tierItems.filter(a => shown.has(a));
+      const items = C.sortListItems(tierItems.filter(a => shown.has(a)), view.sort, state.progress);
       const hidden = tierItems.length > 0 && items.length === 0;
       return `<div class="tier-row">
         <div class="tier-label tier-${t.id}" title="${esc(t.name)}${items.length !== tierItems.length ? ` — показано ${items.length} из ${tierItems.length}` : ''}">
@@ -8499,7 +8944,53 @@ body.mobile-app .offline-banner {
   }
 
   /* ---------------- модалка ---------------- */
-  function openModal(id) {
+  const HASH_TABS = ['db', 'notifications', 'watched', 'planned', 'upcoming'];
+  let hashSyncing = false;
+  let pendingHashModal = null;
+
+  function parseLocationHash() {
+    const raw = String(typeof location !== 'undefined' ? location.hash : '').replace(/^#/, '');
+    if (!raw) return { tab: '', modalId: null };
+    const anime = raw.match(/^anime\/(\d+)$/);
+    if (anime) return { tab: '', modalId: Number(anime[1]) };
+    const tab = raw.replace(/\/+$/, '');
+    return { tab: HASH_TABS.includes(tab) ? tab : '', modalId: null };
+  }
+
+  /* Пишем только осмысленное состояние: вкладку или открытую карточку. */
+  function writeLocationHash() {
+    if (typeof location === 'undefined' || hashSyncing) return;
+    const value = state.modalId != null ? `anime/${state.modalId}` : (state.tab || 'db');
+    if (location.hash === `#${value}`) return;
+    hashSyncing = true;
+    try { location.hash = value; }
+    finally { hashSyncing = false; }
+  }
+
+  function applyLocationHash() {
+    const parsed = parseLocationHash();
+    if (parsed.modalId != null) {
+      if (!getAnime(parsed.modalId)) { pendingHashModal = parsed.modalId; return; }
+      pendingHashModal = null;
+      if (state.modalId !== parsed.modalId) openModal(parsed.modalId, { fromHash: true });
+      return;
+    }
+    pendingHashModal = null;
+    if (!parsed.tab) return;
+    if (state.modalId != null) closeModal({ fromHash: true });
+    if (parsed.tab !== state.tab) switchTab(parsed.tab, { fromHash: true });
+  }
+
+  /* Ссылка на карточку может прийти раньше загрузки базы: ждём данные. */
+  function applyPendingHashModal() {
+    if (pendingHashModal == null) return;
+    const id = pendingHashModal;
+    if (!getAnime(id)) return;
+    pendingHashModal = null;
+    openModal(id, { fromHash: true });
+  }
+
+  function openModal(id, opts = {}) {
     const a = getAnime(id);
     if (!a) { toast('Не удалось открыть карточку'); return; }
     state.modalId = id;
@@ -8510,6 +9001,7 @@ body.mobile-app .offline-banner {
     const panel = $('.modal-panel');
     if (panel) { panel.scrollTop = 0; panel.focus({ preventScroll: true }); }
     if (a.custom && App.hydrateCustomImage) App.hydrateCustomImage(id);
+    if (!opts.fromHash) writeLocationHash();
   }
 
   function franchiseRelationLabel(type) {
@@ -8577,7 +9069,7 @@ body.mobile-app .offline-banner {
     });
   }
 
-  function closeModal() {
+  function closeModal(opts = {}) {
     state.modalId = null;
     const modal = $('#modal');
     if (modal) modal.hidden = true;
@@ -8585,6 +9077,7 @@ body.mobile-app .offline-banner {
     syncBodyScroll();
     if (state.tab === 'db') renderDB();
     else if (state.tab === 'watched' || state.tab === 'planned') renderTierList(state.tab);
+    if (!opts.fromHash) writeLocationHash();
   }
 
   function renderModal() {
@@ -8717,6 +9210,7 @@ body.mobile-app .offline-banner {
     updateOfflineBanner();
 
     if (!opts.silent) window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (!opts.fromHash && !state.booting) writeLocationHash();
   }
 
   /* ---------------- обновление / офлайн ---------------- */
@@ -8739,18 +9233,41 @@ body.mobile-app .offline-banner {
   }
 
   /* ---------------- тосты ---------------- */
-  function toast(message) {
+  function toast(message, options = {}) {
     const box = $('#toasts');
     if (!box) return;
     while (box.children.length >= 4) box.firstElementChild.remove();
     const el = document.createElement('div');
     el.className = 'toast';
-    el.textContent = message;
-    box.appendChild(el);
-    setTimeout(() => {
+    const text = document.createElement('span');
+    text.className = 'toast-text';
+    text.textContent = message;
+    el.appendChild(text);
+
+    let timer = 0;
+    const close = () => {
+      clearTimeout(timer);
       el.classList.add('is-out');
       setTimeout(() => el.remove(), 240);
-    }, 3200);
+    };
+
+    if (options.actionLabel && typeof options.onAction === 'function') {
+      el.classList.add('has-action');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'toast-action';
+      button.textContent = options.actionLabel;
+      button.addEventListener('click', () => {
+        close();
+        try { options.onAction(); }
+        catch (err) { console.warn('AniTier: действие из уведомления не выполнилось', err); }
+      });
+      el.appendChild(button);
+    }
+
+    box.appendChild(el);
+    const duration = Number(options.duration) > 0 ? Number(options.duration) : 3200;
+    timer = setTimeout(close, duration);
   }
 
   Object.assign(App, {
@@ -8768,6 +9285,13 @@ body.mobile-app .offline-banner {
     resetDBFilters,
     updateDBStatus,
     renderDB,
+    continueItems,
+    renderContinue,
+    renderMyCalendar,
+    listVisibleItems,
+    applyLocationHash,
+    applyPendingHashModal,
+    parseLocationHash,
     releaseLine,
     episodeProgressText,
     chipsHTML,
@@ -8859,8 +9383,12 @@ body.mobile-app .offline-banner {
     removeFromList,
     moveToTier,
     toggleList,
+    findTier,
     getAnime,
     watchedSet,
+    watchedCount,
+    episodeStats,
+    restoreProgress,
     allIn,
     getCustomCard,
     nextCustomId,
@@ -8882,6 +9410,7 @@ body.mobile-app .offline-banner {
     setWatchedUpTo,
     clearProgress,
     epWord,
+    plural,
     $,
     $$,
     startOfToday,
@@ -8925,6 +9454,9 @@ body.mobile-app .offline-banner {
     renderNotifications,
     renderUpcoming,
     renderTierList,
+    listVisibleItems,
+    applyLocationHash,
+    applyPendingHashModal,
     layoutTierCards,
     updateCounters,
     updateBell,
@@ -10164,6 +10696,30 @@ body.mobile-app .offline-banner {
     renderBackup();
   }
 
+  function watchedList(id) {
+    const p = state.progress[id];
+    return p && Array.isArray(p.watched) ? p.watched.slice() : [];
+  }
+
+  function downloadText(text, fileName, mime) {
+    const type = mime || 'text/plain';
+    if (window.AniTierAndroid && typeof window.AniTierAndroid.saveBackup === 'function') {
+      try {
+        window.AniTierAndroid.saveBackup(text, fileName);
+        return;
+      } catch { /* ниже обычное скачивание */ }
+    }
+    const blob = new Blob([text], { type });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+
   function saveBackupFile() {
     if (state.backup.busy) return;
     let text = '';
@@ -10510,7 +11066,15 @@ body.mobile-app .offline-banner {
 
         case 'remove': {
           const list = el.dataset.list || (hasIn('planned', id) ? 'planned' : 'watched');
-          if (removeFromList(list, id)) toast('Тайтл убран из тир-листа');
+          const anime = getAnime(id);
+          const tier = findTier(list, id) || 'N';
+          if (removeFromList(list, id)) {
+            toast('Тайтл убран из тир-листа', {
+              actionLabel: 'Отменить',
+              duration: 5000,
+              onAction: () => { if (anime) addToList(list, anime, tier, true); },
+            });
+          }
           break;
         }
 
@@ -10542,18 +11106,57 @@ body.mobile-app .offline-banner {
         case 'ep-all': {
           const max = Number(el.dataset.max) || 0;
           if (id != null && max > 0) {
+            const before = watchedList(id);
             setWatchedUpTo(id, max, max);
-            toast(`Отмечены все ${max} ${epWord(max)}`);
+            toast(`Отмечены все ${max} ${epWord(max)}`, {
+              actionLabel: 'Отменить',
+              duration: 5000,
+              onAction: () => { restoreProgress(id, before); App.renderContinue(); },
+            });
           }
           break;
         }
 
         case 'ep-reset':
           if (id != null) {
+            const before = watchedList(id);
             clearProgress(id);
-            toast('Прогресс серий сброшен');
+            toast('Прогресс серий сброшен', {
+              actionLabel: 'Отменить',
+              duration: 5000,
+              onAction: () => { restoreProgress(id, before); App.renderContinue(); },
+            });
           }
           break;
+
+        case 'quick-watch': {
+          if (id == null) break;
+          const anime = getAnime(id);
+          if (!anime) break;
+          const before = watchedList(id);
+          const stats = episodeStats(anime);
+          const max = stats.available || stats.total || 0;
+          const count = watchedCount(id);
+          if (!max) { toast('Не знаем, сколько серий у этого тайтла'); break; }
+          if (count >= max) { toast('Все известные серии уже отмечены'); break; }
+          setWatchedUpTo(id, count + 1, max);
+          App.renderContinue();
+          toast(`Отмечена ${count + 1}-я серия`, {
+            actionLabel: 'Отменить',
+            duration: 5000,
+            onAction: () => { restoreProgress(id, before); App.renderContinue(); },
+          });
+          break;
+        }
+
+        case 'random-planned': {
+          const items = listVisibleItems('planned');
+          const pick = C.randomItem(items);
+          if (!pick) { toast('В «Запланировано» нет тайтлов под текущие фильтры'); break; }
+          toast(`Выпало: «${pick.title}»`);
+          openModal(pick.id);
+          break;
+        }
 
         case 'mode': {
           const mode = el.dataset.mode;
@@ -10625,19 +11228,42 @@ body.mobile-app .offline-banner {
           fetchUpcoming(true);
           break;
 
-        case 'reset-upcoming':
+        case 'reset-upcoming': {
+          const mine = Boolean(state.upcoming.view && state.upcoming.view.mine);
           state.upcoming.view = {
             query: '',
             filters: C.normalizeFilters(C.DEFAULT_FILTERS),
             month: '',
             sort: 'date',
+            mine,
           };
           App.renderUpcoming();
           break;
+        }
+
+        case 'toggle-upcoming-mine':
+          if (!state.upcoming.view) state.upcoming.view = {};
+          state.upcoming.view.mine = !state.upcoming.view.mine;
+          App.renderUpcoming();
+          break;
+
+        case 'export-ics': {
+          const items = C.buildCalendarItems(state.notifications, state.epInfo);
+          if (!items.length) { toast('Ближайших серий нет — нечего сохранять'); break; }
+          const text = C.buildIcs(items);
+          downloadText(text, 'anitier-episodes.ics', 'text/calendar');
+          toast(`Календарь сохранён: ${items.length} ${plural(items.length, 'серия', 'серии', 'серий')}`);
+          break;
+        }
 
         case 'reset-list': {
           const name = el.dataset.list === 'planned' ? 'planned' : 'watched';
-          state.listViews[name] = { query: '', filters: C.normalizeFilters(C.DEFAULT_FILTERS) };
+          const previous = state.listViews[name] || {};
+          state.listViews[name] = {
+            query: '',
+            filters: C.normalizeFilters(C.DEFAULT_FILTERS),
+            sort: C.normalizeListSort(previous.sort),
+          };
           renderTierList(name);
           break;
         }
@@ -10990,13 +11616,24 @@ body.mobile-app .offline-banner {
         const tools = listField.closest('[data-list-tools]');
         const name = tools && tools.dataset.listTools === 'planned' ? 'planned' : 'watched';
         if (!state.listViews[name]) {
-          state.listViews[name] = { query: '', filters: C.normalizeFilters(C.DEFAULT_FILTERS) };
+          state.listViews[name] = { query: '', filters: C.normalizeFilters(C.DEFAULT_FILTERS), sort: 'default' };
         }
         const view = state.listViews[name];
         view.filters = C.normalizeFilters({
           ...view.filters,
           [listField.dataset.listFilter]: listField.value,
         });
+        renderTierList(name);
+        return;
+      }
+      const listSort = e.target.closest && e.target.closest('select[data-list-sort]');
+      if (listSort) {
+        const tools = listSort.closest('[data-list-tools]');
+        const name = tools && tools.dataset.listTools === 'planned' ? 'planned' : 'watched';
+        if (!state.listViews[name]) {
+          state.listViews[name] = { query: '', filters: C.normalizeFilters(C.DEFAULT_FILTERS), sort: 'default' };
+        }
+        state.listViews[name].sort = C.normalizeListSort(listSort.value);
         renderTierList(name);
         return;
       }
@@ -11073,6 +11710,10 @@ body.mobile-app .offline-banner {
         }
         renderExchange();
       }
+    });
+
+    window.addEventListener('hashchange', () => {
+      applyLocationHash();
     });
 
     bindDragEvents();
@@ -11157,6 +11798,7 @@ body.mobile-app .offline-banner {
       state.booting = false;
       state.bootstrapDone = true;
       renderDB();
+      applyPendingHashModal();
       scheduleDailySync();
       if (dailySyncIsDue()) runDailySync();
       if (!TEST_MODE) setTimeout(() => { autoCheckUpdates(); }, 1500);
@@ -11201,6 +11843,8 @@ body.mobile-app .offline-banner {
     if (momentModal) momentModal.hidden = true;
     const backupModal = $('#backup-modal');
     if (backupModal) backupModal.hidden = true;
+
+    applyLocationHash();
 
     return bootstrap();
   }

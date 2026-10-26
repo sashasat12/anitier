@@ -391,6 +391,21 @@ body.mobile-app .offline-banner {
 
 .mobile-hint[hidden] { display: none !important; }
 
+/* ---------- продолжить просмотр и «Мои серии» ---------- */
+body.mobile-app .continue-row { grid-template-columns: 1fr; }
+body.mobile-app .continue-btn { min-height: 38px; font-size: 12px; }
+body.mobile-app .calendar-row { padding: 12px; }
+body.mobile-app .random-btn { grid-column: 1 / -1; min-height: 44px; }
+
+body.mobile-app #toasts {
+  right: 12px;
+  left: 12px;
+  bottom: calc(74px + env(safe-area-inset-bottom));
+  max-width: none;
+}
+body.mobile-app .toast { font-size: 13px; }
+body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 13px; }
+
 @media (max-width: 360px) {
   body.mobile-app .brand-name { display: none; }
   body.mobile-app .tab { font-size: 9.5px; }

@@ -26,8 +26,12 @@
     removeFromList,
     moveToTier,
     toggleList,
+    findTier,
     getAnime,
     watchedSet,
+    watchedCount,
+    episodeStats,
+    restoreProgress,
     allIn,
     getCustomCard,
     nextCustomId,
@@ -49,6 +53,7 @@
     setWatchedUpTo,
     clearProgress,
     epWord,
+    plural,
     $,
     $$,
     startOfToday,
@@ -92,6 +97,9 @@
     renderNotifications,
     renderUpcoming,
     renderTierList,
+    listVisibleItems,
+    applyLocationHash,
+    applyPendingHashModal,
     layoutTierCards,
     updateCounters,
     updateBell,
@@ -1331,6 +1339,30 @@
     renderBackup();
   }
 
+  function watchedList(id) {
+    const p = state.progress[id];
+    return p && Array.isArray(p.watched) ? p.watched.slice() : [];
+  }
+
+  function downloadText(text, fileName, mime) {
+    const type = mime || 'text/plain';
+    if (window.AniTierAndroid && typeof window.AniTierAndroid.saveBackup === 'function') {
+      try {
+        window.AniTierAndroid.saveBackup(text, fileName);
+        return;
+      } catch { /* ниже обычное скачивание */ }
+    }
+    const blob = new Blob([text], { type });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+
   function saveBackupFile() {
     if (state.backup.busy) return;
     let text = '';
@@ -1677,7 +1709,15 @@
 
         case 'remove': {
           const list = el.dataset.list || (hasIn('planned', id) ? 'planned' : 'watched');
-          if (removeFromList(list, id)) toast('Тайтл убран из тир-листа');
+          const anime = getAnime(id);
+          const tier = findTier(list, id) || 'N';
+          if (removeFromList(list, id)) {
+            toast('Тайтл убран из тир-листа', {
+              actionLabel: 'Отменить',
+              duration: 5000,
+              onAction: () => { if (anime) addToList(list, anime, tier, true); },
+            });
+          }
           break;
         }
 
@@ -1709,18 +1749,57 @@
         case 'ep-all': {
           const max = Number(el.dataset.max) || 0;
           if (id != null && max > 0) {
+            const before = watchedList(id);
             setWatchedUpTo(id, max, max);
-            toast(`Отмечены все ${max} ${epWord(max)}`);
+            toast(`Отмечены все ${max} ${epWord(max)}`, {
+              actionLabel: 'Отменить',
+              duration: 5000,
+              onAction: () => { restoreProgress(id, before); App.renderContinue(); },
+            });
           }
           break;
         }
 
         case 'ep-reset':
           if (id != null) {
+            const before = watchedList(id);
             clearProgress(id);
-            toast('Прогресс серий сброшен');
+            toast('Прогресс серий сброшен', {
+              actionLabel: 'Отменить',
+              duration: 5000,
+              onAction: () => { restoreProgress(id, before); App.renderContinue(); },
+            });
           }
           break;
+
+        case 'quick-watch': {
+          if (id == null) break;
+          const anime = getAnime(id);
+          if (!anime) break;
+          const before = watchedList(id);
+          const stats = episodeStats(anime);
+          const max = stats.available || stats.total || 0;
+          const count = watchedCount(id);
+          if (!max) { toast('Не знаем, сколько серий у этого тайтла'); break; }
+          if (count >= max) { toast('Все известные серии уже отмечены'); break; }
+          setWatchedUpTo(id, count + 1, max);
+          App.renderContinue();
+          toast(`Отмечена ${count + 1}-я серия`, {
+            actionLabel: 'Отменить',
+            duration: 5000,
+            onAction: () => { restoreProgress(id, before); App.renderContinue(); },
+          });
+          break;
+        }
+
+        case 'random-planned': {
+          const items = listVisibleItems('planned');
+          const pick = C.randomItem(items);
+          if (!pick) { toast('В «Запланировано» нет тайтлов под текущие фильтры'); break; }
+          toast(`Выпало: «${pick.title}»`);
+          openModal(pick.id);
+          break;
+        }
 
         case 'mode': {
           const mode = el.dataset.mode;
@@ -1792,19 +1871,42 @@
           fetchUpcoming(true);
           break;
 
-        case 'reset-upcoming':
+        case 'reset-upcoming': {
+          const mine = Boolean(state.upcoming.view && state.upcoming.view.mine);
           state.upcoming.view = {
             query: '',
             filters: C.normalizeFilters(C.DEFAULT_FILTERS),
             month: '',
             sort: 'date',
+            mine,
           };
           App.renderUpcoming();
           break;
+        }
+
+        case 'toggle-upcoming-mine':
+          if (!state.upcoming.view) state.upcoming.view = {};
+          state.upcoming.view.mine = !state.upcoming.view.mine;
+          App.renderUpcoming();
+          break;
+
+        case 'export-ics': {
+          const items = C.buildCalendarItems(state.notifications, state.epInfo);
+          if (!items.length) { toast('Ближайших серий нет — нечего сохранять'); break; }
+          const text = C.buildIcs(items);
+          downloadText(text, 'anitier-episodes.ics', 'text/calendar');
+          toast(`Календарь сохранён: ${items.length} ${plural(items.length, 'серия', 'серии', 'серий')}`);
+          break;
+        }
 
         case 'reset-list': {
           const name = el.dataset.list === 'planned' ? 'planned' : 'watched';
-          state.listViews[name] = { query: '', filters: C.normalizeFilters(C.DEFAULT_FILTERS) };
+          const previous = state.listViews[name] || {};
+          state.listViews[name] = {
+            query: '',
+            filters: C.normalizeFilters(C.DEFAULT_FILTERS),
+            sort: C.normalizeListSort(previous.sort),
+          };
           renderTierList(name);
           break;
         }
@@ -2157,13 +2259,24 @@
         const tools = listField.closest('[data-list-tools]');
         const name = tools && tools.dataset.listTools === 'planned' ? 'planned' : 'watched';
         if (!state.listViews[name]) {
-          state.listViews[name] = { query: '', filters: C.normalizeFilters(C.DEFAULT_FILTERS) };
+          state.listViews[name] = { query: '', filters: C.normalizeFilters(C.DEFAULT_FILTERS), sort: 'default' };
         }
         const view = state.listViews[name];
         view.filters = C.normalizeFilters({
           ...view.filters,
           [listField.dataset.listFilter]: listField.value,
         });
+        renderTierList(name);
+        return;
+      }
+      const listSort = e.target.closest && e.target.closest('select[data-list-sort]');
+      if (listSort) {
+        const tools = listSort.closest('[data-list-tools]');
+        const name = tools && tools.dataset.listTools === 'planned' ? 'planned' : 'watched';
+        if (!state.listViews[name]) {
+          state.listViews[name] = { query: '', filters: C.normalizeFilters(C.DEFAULT_FILTERS), sort: 'default' };
+        }
+        state.listViews[name].sort = C.normalizeListSort(listSort.value);
         renderTierList(name);
         return;
       }
@@ -2240,6 +2353,10 @@
         }
         renderExchange();
       }
+    });
+
+    window.addEventListener('hashchange', () => {
+      applyLocationHash();
     });
 
     bindDragEvents();
@@ -2324,6 +2441,7 @@
       state.booting = false;
       state.bootstrapDone = true;
       renderDB();
+      applyPendingHashModal();
       scheduleDailySync();
       if (dailySyncIsDue()) runDailySync();
       if (!TEST_MODE) setTimeout(() => { autoCheckUpdates(); }, 1500);
@@ -2368,6 +2486,8 @@
     if (momentModal) momentModal.hidden = true;
     const backupModal = $('#backup-modal');
     if (backupModal) backupModal.hidden = true;
+
+    applyLocationHash();
 
     return bootstrap();
   }

@@ -1109,6 +1109,75 @@ button { font-family: inherit; }
 }
 .upcoming-grid .month-head:first-child { margin-top: 0; }
 
+/* ---------- продолжить просмотр ---------- */
+.continue-block {
+  margin: 0 0 18px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .025);
+}
+.continue-block[hidden] { display: none; }
+.continue-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 11px;
+}
+.continue-head h2 { margin: 0; font-size: 15px; }
+.continue-head .sub { color: var(--muted); font-size: 11.5px; }
+.continue-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 10px;
+}
+.continue-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  cursor: pointer;
+  transition: border-color .18s, transform .18s;
+}
+.continue-card:hover { border-color: rgba(255, 77, 141, .45); transform: translateY(-1px); }
+.continue-card img { width: 44px; height: 62px; flex: none; object-fit: cover; border-radius: 8px; }
+.continue-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.continue-title { overflow: hidden; font-size: 12.5px; white-space: nowrap; text-overflow: ellipsis; }
+.continue-meta { color: var(--muted); font-size: 11px; }
+.continue-next { color: #ff8fb8; font-size: 11px; }
+.continue-bar { height: 4px; margin-top: 4px; border-radius: 4px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+.continue-bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #ff4d8d, #8a5cff); }
+.continue-btn { flex: none; min-height: 0; padding: 6px 9px; font-size: 11px; }
+
+/* ---------- «Мои серии» ---------- */
+.calendar-row {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  cursor: pointer;
+  transition: border-color .18s;
+}
+.calendar-row:hover { border-color: rgba(255, 77, 141, .45); }
+.calendar-date { display: flex; flex-direction: column; gap: 1px; min-width: 74px; }
+.calendar-date b { font-size: 12.5px; }
+.calendar-date small { color: var(--muted); font-size: 10.5px; }
+.calendar-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.calendar-main b { overflow: hidden; font-size: 13px; white-space: nowrap; text-overflow: ellipsis; }
+.calendar-main small { color: var(--muted); font-size: 11px; }
+.calendar-arrow { color: var(--muted); font-size: 18px; }
+
+.random-btn { min-height: 37px; }
+
 .note-line {
   grid-column: 1 / -1;
   margin: 0 0 4px;
@@ -2108,6 +2177,9 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
   max-width: min(360px, calc(100vw - 36px));
 }
 .toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   padding: 12px 15px;
   border-radius: 12px;
   border: 1px solid var(--line);
@@ -2119,6 +2191,20 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
   box-shadow: 0 18px 40px rgba(0, 0, 0, .55);
   animation: toastIn .24s ease both;
 }
+.toast-text { flex: 1; min-width: 0; }
+.toast-action {
+  flex: none;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 7px;
+  background: rgba(255, 77, 141, .12);
+  color: #ff8fb8;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.toast-action:hover { background: rgba(255, 77, 141, .22); }
 .toast.is-out { animation: toastOut .22s ease both; }
 @keyframes toastIn { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
 @keyframes toastOut { to { opacity: 0; transform: translateX(20px); } }

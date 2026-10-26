@@ -464,6 +464,89 @@
     T.eq(C.upcomingMonthKey(''), '');
   });
 
+  T.test('core: сортировка тир-листа не меняет ручной порядок', () => {
+    const C = core();
+    const items = [
+      { id: 1, title: 'Бета', score: 9, addedAt: 100 },
+      { id: 2, title: 'Альфа', score: 7, addedAt: 300 },
+      { id: 3, title: 'Гамма', score: null, addedAt: 200 },
+    ];
+    const ids = list => list.map(a => a.id);
+
+    T.eq(ids(C.sortListItems(items, 'default')), [1, 2, 3], 'По умолчанию ручной порядок');
+    T.eq(ids(C.sortListItems(items, 'title')), [2, 1, 3], 'По названию');
+    T.eq(ids(C.sortListItems(items, 'score')), [1, 2, 3], 'По оценке, без оценки в конце');
+    T.eq(ids(C.sortListItems(items, 'added')), [2, 3, 1], 'Сначала недавно добавленные');
+    T.eq(
+      ids(C.sortListItems(items, 'progress', { 1: { watched: [1, 2, 3] }, 2: { watched: [1] } })),
+      [1, 2, 3],
+      'По числу просмотренных серий',
+    );
+    T.eq(ids(items), [1, 2, 3], 'Исходный массив остался нетронутым');
+    T.eq(C.normalizeListSort('странное'), 'default', 'Неизвестный порядок — ручной');
+    T.eq(C.normalizeListSort('TITLE'), 'title', 'Порядок не зависит от регистра');
+  });
+
+  T.test('core: случайный тайтл не выходит за границы и не падает на пустом списке', () => {
+    const C = core();
+    T.eq(C.randomItem([]), null, 'Пустой список — null');
+    T.eq(C.randomItem(null), null, 'Без массива — null');
+    const items = [{ id: 1 }, { id: 2 }, { id: 3 }];
+    T.eq(C.randomItem(items, () => 0).id, 1, 'Ноль — первый элемент');
+    T.eq(C.randomItem(items, () => 0.99).id, 3, 'Почти единица — последний элемент');
+    T.eq(C.randomItem(items, () => 1).id, 3, 'Единица не выходит за границу');
+    T.eq(C.randomItem(items, () => -1).id, 1, 'Отрицательное значение безопасно');
+  });
+
+  T.test('core: «Мои серии» берут будущие серии отслеживаемых тайтлов', () => {
+    const C = core();
+    const now = Date.parse('2026-10-26T12:00:00Z');
+    const data = {
+      tracked: {
+        episodes: [
+          {
+            anime: { id: 1, title: 'Альфа' },
+            episodes: [
+              { n: 1, date: '2026-10-20T10:00:00Z' },
+              { n: 4, date: '2026-11-01T10:00:00Z' },
+            ],
+          },
+        ],
+        seasons: [
+          { anime: { id: 2, title: 'Сезон' }, sequel: { id: 3, title: 'Сезон 2' } },
+        ],
+      },
+    };
+    const epInfo = {
+      1: { next: { n: 5, date: '2026-11-08T10:00:00Z' } },
+      3: { next: { n: 1, date: '2026-10-30T10:00:00Z' } },
+    };
+
+    const items = C.buildCalendarItems(data, epInfo, { now, from: now });
+    T.eq(items.map(item => `${item.id}:${item.n}`), ['3:1', '1:4', '1:5'], 'Прошедшие серии отброшены, порядок по дате');
+    T.eq(items[0].title, 'Сезон 2', 'Название берётся из продолжения');
+    T.eq(C.buildCalendarItems(data, epInfo, { now, from: now, max: 1 }).length, 1, 'Лимит соблюдается');
+    T.eq(C.buildCalendarItems({ tracked: {} }, {}, { now }), [], 'Без отслеживания список пуст');
+  });
+
+  T.test('core: .ics содержит события и экранирует спецсимволы', () => {
+    const C = core();
+    const now = Date.parse('2026-10-26T12:00:00Z');
+    const text = C.buildIcs([
+      { id: 7, title: 'Альфа, бета; гамма', n: 5, date: '2026-11-08T10:00:00Z' },
+    ], { now });
+
+    T.includes(text, 'BEGIN:VCALENDAR');
+    T.includes(text, 'END:VCALENDAR');
+    T.includes(text, 'DTSTART:20261108T100000Z');
+    T.includes(text, 'DTSTAMP:20261026T120000Z');
+    T.includes(text, 'UID:anitier-7-5@anitier');
+    T.includes(text, 'SUMMARY:Альфа\\, бета\\; гамма — серия 5', 'Запятая и точка с запятой экранированы');
+    T.eq(text.includes('\r\n'), true, 'Строки разделены CRLF');
+    T.eq((text.match(/BEGIN:VEVENT/g) || []).length, 1, 'Одно событие на серию');
+    T.eq((C.buildIcs([], { now }).match(/BEGIN:VEVENT/g) || []).length, 0, 'Без серий событий нет');
+  });
+
   T.test('core: история изменений начинается с текущей версии и идёт по убыванию', () => {
     const C = core();
     const list = C.CHANGELOG;

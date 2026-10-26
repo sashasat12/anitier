@@ -1827,4 +1827,194 @@
       app.close();
     }
   });
+  T.test('app: начатые тайтлы продолжаются одной кнопкой, отмена возвращает прогресс', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      const doc = win.document;
+      await win.__anitierTest.init();
+
+      const anime = {
+        id: 8801, malId: 8801, title: 'Длинный сериал', altTitle: '', originalTitle: '',
+        type: 'TV', status: 'Завершено', year: 2024, score: 8, genres: ['Action'],
+        studios: ['Mappa'], episodes: 12, image: '',
+      };
+      App.addToList('watched', anime, 'S', true);
+      App.setWatchedUpTo(anime.id, 3, 12);
+      App.switchTab('db');
+
+      const block = doc.querySelector('#continue-block');
+      const row = doc.querySelector('#continue-row');
+      T.eq(block.hidden, false, 'Блок «Продолжить просмотр» показан');
+      T.includes(row.textContent, 'Длинный сериал');
+      T.includes(row.textContent, 'Просмотрено 3 из 12');
+      T.assert(row.querySelector('[data-action="quick-watch"]'), 'У карточки есть кнопка следующей серии');
+
+      row.querySelector('[data-action="quick-watch"]').click();
+      T.eq(App.state.progress[anime.id].watched.length, 4, 'Кнопка отметила следующую серию');
+      T.includes(row.textContent, 'Просмотрено 4 из 12', 'Блок обновился сразу');
+      const toasts = () => [...doc.querySelectorAll('#toasts .toast')];
+      T.assert(toasts().length > 0, 'Появился тост с отменой');
+      const undo = [...doc.querySelectorAll('#toasts .toast-action')].pop();
+      T.assert(undo, 'В тосте есть кнопка «Отменить»');
+      undo.click();
+      T.eq(App.state.progress[anime.id].watched.length, 3, 'Отмена вернула прежний прогресс');
+      T.includes(row.textContent, 'Просмотрено 3 из 12', 'Отмена обновила блок');
+
+      App.switchTab('watched');
+      const card = doc.querySelector(`#tiers-watched .tier-card[data-id="${anime.id}"]`);
+      T.assert(card, 'Тайтл есть в тир-листе');
+      card.querySelector('[data-action="remove"]').click();
+      T.eq(App.state.lists.watched.S.length, 0, 'Карточка убрана из тира');
+      const removeUndo = [...doc.querySelectorAll('#toasts .toast-action')].pop();
+      T.assert(removeUndo, 'Удаление предлагает отмену');
+      removeUndo.click();
+      T.eq(App.findTier('watched', anime.id), 'S', 'Отмена вернула тайтл в тот же тир');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: порядок карточек меняется, ручной порядок тира сохраняется', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      const doc = win.document;
+      await win.__anitierTest.init();
+
+      const make = (id, title, score) => ({
+        id, malId: id, title, altTitle: '', originalTitle: '',
+        type: 'TV', status: 'Завершено', year: 2024, score, genres: ['Action'],
+        studios: ['Mappa'], episodes: 12, image: '',
+      });
+      App.addToList('watched', make(8811, 'Альфа', 6), 'S', true);
+      App.addToList('watched', make(8812, 'Бета', 9), 'S', true);
+      App.switchTab('watched');
+
+      const order = () => [...doc.querySelectorAll('#tiers-watched .tier-card')].map(card => Number(card.dataset.id));
+      T.eq(order(), [8812, 8811], 'По умолчанию — ручной порядок, последний сверху');
+
+      const sort = doc.querySelector('#watched-sort');
+      T.assert(sort, 'В панели есть выбор порядка');
+      sort.value = 'title';
+      sort.dispatchEvent(new win.Event('change', { bubbles: true }));
+      T.eq(order(), [8811, 8812], 'По названию');
+      T.eq(sort.value, 'title', 'Выбор порядка сохраняется после перерисовки');
+
+      sort.value = 'score';
+      sort.dispatchEvent(new win.Event('change', { bubbles: true }));
+      T.eq(order(), [8812, 8811], 'По оценке');
+
+      sort.value = 'default';
+      sort.dispatchEvent(new win.Event('change', { bubbles: true }));
+      T.eq(order(), [8812, 8811], 'Возврат к ручному порядку');
+      T.eq(App.state.lists.watched.S.map(item => item.id), [8812, 8811], 'Сортировка не переставила данные тира');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: случайный тайтл выбирается из отфильтрованного плана', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      const doc = win.document;
+      await win.__anitierTest.init();
+
+      const make = (id, title) => ({
+        id, malId: id, title, altTitle: '', originalTitle: '',
+        type: 'TV', status: 'Завершено', year: 2024, score: 8, genres: ['Action'],
+        studios: ['Mappa'], episodes: 12, image: '',
+      });
+      App.addToList('planned', make(8821, 'Первый кандидат'), 'S', true);
+      App.addToList('planned', make(8822, 'Второй кандидат'), 'A', true);
+      App.switchTab('planned');
+
+      const search = doc.querySelector('#planned-search');
+      search.value = 'Первый';
+      search.dispatchEvent(new win.Event('input', { bubbles: true }));
+
+      const button = doc.querySelector('[data-action="random-planned"]');
+      T.assert(button, 'В плане есть кнопка «Что посмотреть?»');
+      button.click();
+      T.eq(App.state.modalId, 8821, 'Открылась карточка единственного подходящего тайтла');
+      T.includes(doc.querySelector('#modal-content').textContent, 'Первый кандидат');
+      App.closeModal();
+
+      search.value = 'ничего не найдётся';
+      search.dispatchEvent(new win.Event('input', { bubbles: true }));
+      button.click();
+      const toast = [...doc.querySelectorAll('#toasts .toast')].pop();
+      T.includes(toast.textContent, 'нет тайтлов', 'Пустой результат объясняется');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: ссылки открывают вкладку и карточку, адрес обновляется', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1#watched' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      await win.__anitierTest.init();
+
+      T.eq(App.state.tab, 'watched', 'Ссылка #watched открыла «Просмотрено»');
+
+      const anime = App.state.notifications.tracked.episodes[0].anime;
+      App.openModal(anime.id);
+      T.eq(win.location.hash, `#anime/${anime.id}`, 'Открытая карточка попала в адрес');
+      T.eq(App.state.modalId, anime.id);
+      App.closeModal();
+      T.eq(win.location.hash, '#watched', 'Закрытие вернуло ссылку вкладки');
+
+      win.location.hash = '#planned';
+      await T.waitFor(() => App.state.tab === 'planned', 'Смена адреса не переключила вкладку', 3000);
+      T.eq(App.state.tab, 'planned', 'Вкладка «Запланировано» открылась по ссылке');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: «Мои серии» показывают серии и экспортируются в .ics', async () => {
+    const app = await T.mountApp({
+      query: '?demo=1&test=1',
+      setup(win) {
+        win.__savedFiles = [];
+        win.AniTierAndroid = {
+          saveBackup(text, fileName) { win.__savedFiles.push({ text, fileName }); },
+        };
+      },
+    });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      const doc = win.document;
+      await win.__anitierTest.init();
+
+      App.switchTab('upcoming');
+      const mine = doc.querySelector('#upcoming-mine');
+      T.assert(mine, 'Есть кнопка «Только мои серии»');
+      mine.click();
+      T.eq(App.state.upcoming.view.mine, true, 'Режим «Мои серии» включён');
+      T.includes(doc.querySelector('#upcoming-grid').textContent, 'Серия', 'В календаре есть ближайшие серии');
+      T.assert(doc.querySelectorAll('#upcoming-grid .calendar-row').length > 0, 'Календарь отрисован строками');
+      T.includes(doc.querySelector('#upcoming-status').textContent, 'Мои серии');
+
+      doc.querySelector('[data-action="export-ics"]').click();
+      const saved = win.__savedFiles[0];
+      T.assert(saved, 'Файл передан в Android-мост');
+      T.eq(saved.fileName, 'anitier-episodes.ics');
+      T.includes(saved.text, 'BEGIN:VCALENDAR');
+      T.includes(saved.text, 'BEGIN:VEVENT');
+      T.includes(saved.text, 'SUMMARY:');
+
+      mine.click();
+      T.eq(App.state.upcoming.view.mine, false, 'Режим «Мои серии» выключается');
+    } finally {
+      app.close();
+    }
+  });
 })();

@@ -486,7 +486,7 @@
       loaded: false,
       error: null,
       queued: false,
-      view: { query: '', filters: { type: '', genre: '', year: '', minScore: '', status: '' }, month: '', sort: 'date' },
+      view: { query: '', filters: { type: '', genre: '', year: '', minScore: '', status: '' }, month: '', sort: 'date', mine: false },
     },
   };
 
@@ -497,7 +497,7 @@
   }
 
   function emptyListView() {
-    return { query: '', filters: C.normalizeFilters(C.DEFAULT_FILTERS) };
+    return { query: '', filters: C.normalizeFilters(C.DEFAULT_FILTERS), sort: 'default' };
   }
 
   function createAltSearchState() {
@@ -553,6 +553,7 @@
       source: a.source || '',
       sourceId: a.sourceId ?? null,
       demo: Boolean(a.demo),
+      addedAt: Number(a.addedAt) || 0,
     };
   }
 
@@ -1123,6 +1124,18 @@
     updateEpisodeUI(id);
   }
 
+  /* Возврат прогресса для отмены действия из тоста. */
+  function restoreProgress(id, watched) {
+    const list = (Array.isArray(watched) ? watched : [])
+      .map(Number)
+      .filter(n => Number.isInteger(n) && n > 0)
+      .sort((a, b) => a - b);
+    if (list.length) state.progress[id] = { watched: [...new Set(list)], updated: Date.now() };
+    else delete state.progress[id];
+    saveState();
+    updateEpisodeUI(id);
+  }
+
   function episodeStats(a) {
     const info = state.epInfo[a.id] || null;
     const planned = Number(a.episodes) || Number(info?.total) || null;
@@ -1141,7 +1154,9 @@
     const other = name === 'watched' ? 'planned' : 'watched';
     removeFromList(other, anime.id, true);
     for (const k of TIER_IDS) state.lists[name][k] = state.lists[name][k].filter(x => x.id !== anime.id);
-    state.lists[name][t].unshift(snapshotAnime(anime));
+    const entry = snapshotAnime(anime);
+    entry.addedAt = Date.now();
+    state.lists[name][t].unshift(entry);
     state.byId.set(anime.id, anime);
     saveState();
     refreshViews();
@@ -1184,8 +1199,16 @@
   function toggleList(name, anime) {
     if (!anime) return;
     if (hasIn(name, anime.id)) {
-      removeFromList(name, anime.id);
-      toast(`«${anime.title}» убрано из списка «${name === 'watched' ? 'Просмотрено' : 'Запланировано'}»`);
+      const tier = findTier(name, anime.id) || 'N';
+      const snapshot = snapshotAnime(anime);
+      const label = name === 'watched' ? 'Просмотрено' : 'Запланировано';
+      if (removeFromList(name, anime.id)) {
+        toast(`«${anime.title}» убрано из списка «${label}»`, {
+          actionLabel: 'Отменить',
+          duration: 5000,
+          onAction: () => addToList(name, snapshot, tier, true),
+        });
+      }
     } else {
       addToList(name, anime);
     }
@@ -1287,6 +1310,7 @@
     toggleEpisode,
     setWatchedUpTo,
     clearProgress,
+    restoreProgress,
     episodeStats,
   });
 })(window.AniTier = window.AniTier || {});

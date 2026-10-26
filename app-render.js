@@ -230,7 +230,63 @@
     }
   }
 
+  /* ---------------- «Продолжить просмотр» ---------------- */
+  const CONTINUE_LIMIT = 6;
+
+  /* Начатые тайтлы из «Просмотрено» с незакрытым прогрессом. */
+  function continueItems() {
+    const items = [];
+    for (const anime of allIn('watched')) {
+      const count = watchedCount(anime.id);
+      if (count <= 0) continue;
+      const stats = episodeStats(anime);
+      const total = stats.total || stats.available || 0;
+      const max = stats.available || stats.total || 0;
+      if (!max || (total && count >= total)) continue;
+      const entry = state.progress[anime.id];
+      items.push({
+        anime,
+        count,
+        total,
+        max,
+        updated: Number(entry && entry.updated) || 0,
+        next: stats.info && stats.info.next ? stats.info.next : null,
+      });
+    }
+    items.sort((a, b) => (b.updated - a.updated)
+      || String(a.anime.title || '').localeCompare(String(b.anime.title || ''), 'ru'));
+    return items.slice(0, CONTINUE_LIMIT);
+  }
+
+  function continueCardHTML(item) {
+    const anime = item.anime;
+    const pct = item.total ? Math.min(100, Math.round((item.count / item.total) * 100)) : 0;
+    const nextLine = item.next && item.next.date
+      ? `Следующая: ${item.next.n}-я · ${esc(dateShort(item.next.date))}`
+      : 'Следующая серия';
+    return `<article class="continue-card" data-action="open" data-id="${anime.id}" tabindex="0" aria-label="Продолжить: ${esc(anime.title)}">
+      <img ${imgAttrs(anime)}>
+      <div class="continue-body">
+        <b class="continue-title" title="${esc(anime.title)}">${esc(anime.title)}</b>
+        <span class="continue-meta">Просмотрено ${item.count}${item.total ? ` из ${item.total}` : ''}</span>
+        <span class="continue-next">${nextLine}</span>
+        <span class="continue-bar"><i style="width:${pct}%"></i></span>
+      </div>
+      <button class="btn btn-primary continue-btn" type="button" data-action="quick-watch" data-id="${anime.id}" aria-label="Отметить следующую серию: ${esc(anime.title)}">+1 серия</button>
+    </article>`;
+  }
+
+  function renderContinue() {
+    const block = $('#continue-block');
+    const row = $('#continue-row');
+    if (!block || !row) return;
+    const items = continueItems();
+    block.hidden = !items.length;
+    row.innerHTML = items.length ? items.map(continueCardHTML).join('') : '';
+  }
+
   function renderDB() {
+    renderContinue();
     const s = state.db;
     const grid = $('#db-grid');
     const more = $('#db-more');
@@ -622,6 +678,13 @@
     if (genre) genre.value = view.filters.genre || '';
     const sort = $('#upcoming-sort');
     if (sort) sort.value = view.sort === 'title' ? 'title' : 'date';
+    const mine = $('#upcoming-mine');
+    if (mine) {
+      const on = Boolean(view.mine);
+      mine.classList.toggle('btn-primary', on);
+      mine.classList.toggle('btn-ghost', !on);
+      mine.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
 
     const month = $('#upcoming-month');
     if (!month) return;
@@ -649,14 +712,69 @@
     el.textContent = bits.join(' · ');
   }
 
+  function renderMyCalendar() {
+    const grid = $('#upcoming-grid');
+    if (!grid) return;
+    const u = state.upcoming;
+    syncUpcomingControls(u.items || []);
+
+    if (state.notifications.loading && !state.notifications.loaded) {
+      grid.innerHTML = skeletonRows(6);
+      const loadingStatus = $('#upcoming-status');
+      if (loadingStatus) loadingStatus.textContent = 'Собираем ваши серии…';
+      return;
+    }
+
+    const all = C.buildCalendarItems(state.notifications, state.epInfo);
+    const query = C.normalizeTitleKey(u.view.query);
+    const shown = query ? all.filter(item => C.normalizeTitleKey(item.title).includes(query)) : all;
+    const status = $('#upcoming-status');
+    if (status) status.textContent = all.length ? `Мои серии: ${shown.length} из ${all.length}` : '';
+
+    if (!all.length) {
+      grid.innerHTML = msgBlock('📅', 'Ближайших серий нет', 'Добавьте тайтлы в «Просмотрено» или «Запланировано» и обновите события.');
+      return;
+    }
+    if (!shown.length) {
+      grid.innerHTML = `<div class="msg">
+        <span class="emoji">🔍</span>
+        <h3>Под фильтры ничего не подошло</h3>
+        <p>Измените запрос или сбросьте фильтры.</p>
+        <button class="btn btn-ghost" data-action="reset-upcoming">Сбросить фильтры</button>
+      </div>`;
+      return;
+    }
+
+    let html = '';
+    let day = '';
+    for (const item of shown) {
+      const label = dateShort(item.date);
+      if (label !== day) {
+        day = label;
+        html += `<h2 class="month-head">${esc(label)}</h2>`;
+      }
+      html += `<article class="calendar-row" data-action="open" data-id="${item.id}" tabindex="0" aria-label="Открыть: ${esc(item.title)}">
+        <span class="calendar-date"><b>${esc(label)}</b><small>${esc(countdownLabel(item.date))}</small></span>
+        <span class="calendar-main"><b>${esc(item.title)}</b><small>Серия ${item.n}</small></span>
+        <span class="calendar-arrow" aria-hidden="true">›</span>
+      </article>`;
+    }
+    grid.innerHTML = html;
+  }
+
   function renderUpcoming() {
     const grid = $('#upcoming-grid');
     if (!grid) return;
     const u = state.upcoming;
     if (!u.view) {
-      u.view = { query: '', filters: { type: '', genre: '', year: '', minScore: '', status: '' }, month: '', sort: 'date' };
+      u.view = { query: '', filters: { type: '', genre: '', year: '', minScore: '', status: '' }, month: '', sort: 'date', mine: false };
     }
     initUpcomingOptions();
+
+    if (u.view.mine) {
+      renderMyCalendar();
+      return;
+    }
 
     if (u.loading && !u.items.length) {
       grid.innerHTML = skeletonCards(10);
@@ -720,6 +838,7 @@
     if (!view || typeof view !== 'object') view = { query: '', filters: C.DEFAULT_FILTERS };
     view.query = String(view.query || '');
     view.filters = C.normalizeFilters(view.filters);
+    view.sort = C.normalizeListSort(view.sort);
     state.listViews[name] = view;
     return view;
   }
@@ -728,6 +847,8 @@
     const typeOptions = C.TYPES
       .map(item => `<option value="${esc(item.value)}">${esc(item.label)}</option>`).join('');
     const scoreOptions = C.SCORES
+      .map(item => `<option value="${esc(item.value)}">${esc(item.label)}</option>`).join('');
+    const sortOptions = C.LIST_SORTS
       .map(item => `<option value="${esc(item.value)}">${esc(item.label)}</option>`).join('');
     return `<div class="search">
         <input id="${name}-search" type="search" data-list-search="${name}" placeholder="Поиск: название, жанр, студия" autocomplete="off" aria-label="Поиск в списке">
@@ -748,6 +869,11 @@
         <span>Рейтинг</span>
         <select id="${name}-score" data-list-filter="minScore" aria-label="Рейтинг"><option value="">Любой</option>${scoreOptions}</select>
       </label>
+      <label class="filter-field">
+        <span>Порядок</span>
+        <select id="${name}-sort" data-list-sort="${name}" aria-label="Порядок карточек">${sortOptions}</select>
+      </label>
+      ${name === 'planned' ? '<button class="btn btn-primary random-btn" type="button" data-action="random-planned" data-list="planned">Что посмотреть?</button>' : ''}
       <button class="btn btn-ghost filter-reset" type="button" data-action="reset-list" data-list="${name}">Сбросить</button>`;
   }
 
@@ -769,6 +895,8 @@
     if (type) type.value = view.filters.type || '';
     const score = tools.querySelector(`#${name}-score`);
     if (score) score.value = view.filters.minScore || '';
+    const sort = tools.querySelector(`#${name}-sort`);
+    if (sort) sort.value = view.sort;
 
     const options = C.listFilterOptions(items);
 
@@ -806,17 +934,23 @@
     el.textContent = `Показано ${shown.length} из ${all.length} · фильтров: ${active}`;
   }
 
+  function listVisibleItems(name) {
+    const list = name === 'planned' ? 'planned' : 'watched';
+    return C.filterItems(allIn(list), listView(list));
+  }
+
   function renderTierList(name) {
     const root = document.getElementById(name === 'watched' ? 'tiers-watched' : 'tiers-planned');
     if (!root) return;
     const list = state.lists[name];
     const all = allIn(name);
-    const shown = new Set(C.filterItems(all, listView(name)));
+    const view = listView(name);
+    const shown = new Set(C.filterItems(all, view));
     syncListControls(name, all);
 
     root.innerHTML = TIERS.map(t => {
       const tierItems = list[t.id] || [];
-      const items = tierItems.filter(a => shown.has(a));
+      const items = C.sortListItems(tierItems.filter(a => shown.has(a)), view.sort, state.progress);
       const hidden = tierItems.length > 0 && items.length === 0;
       return `<div class="tier-row">
         <div class="tier-label tier-${t.id}" title="${esc(t.name)}${items.length !== tierItems.length ? ` — показано ${items.length} из ${tierItems.length}` : ''}">
@@ -1667,7 +1801,53 @@
   }
 
   /* ---------------- модалка ---------------- */
-  function openModal(id) {
+  const HASH_TABS = ['db', 'notifications', 'watched', 'planned', 'upcoming'];
+  let hashSyncing = false;
+  let pendingHashModal = null;
+
+  function parseLocationHash() {
+    const raw = String(typeof location !== 'undefined' ? location.hash : '').replace(/^#/, '');
+    if (!raw) return { tab: '', modalId: null };
+    const anime = raw.match(/^anime\/(\d+)$/);
+    if (anime) return { tab: '', modalId: Number(anime[1]) };
+    const tab = raw.replace(/\/+$/, '');
+    return { tab: HASH_TABS.includes(tab) ? tab : '', modalId: null };
+  }
+
+  /* Пишем только осмысленное состояние: вкладку или открытую карточку. */
+  function writeLocationHash() {
+    if (typeof location === 'undefined' || hashSyncing) return;
+    const value = state.modalId != null ? `anime/${state.modalId}` : (state.tab || 'db');
+    if (location.hash === `#${value}`) return;
+    hashSyncing = true;
+    try { location.hash = value; }
+    finally { hashSyncing = false; }
+  }
+
+  function applyLocationHash() {
+    const parsed = parseLocationHash();
+    if (parsed.modalId != null) {
+      if (!getAnime(parsed.modalId)) { pendingHashModal = parsed.modalId; return; }
+      pendingHashModal = null;
+      if (state.modalId !== parsed.modalId) openModal(parsed.modalId, { fromHash: true });
+      return;
+    }
+    pendingHashModal = null;
+    if (!parsed.tab) return;
+    if (state.modalId != null) closeModal({ fromHash: true });
+    if (parsed.tab !== state.tab) switchTab(parsed.tab, { fromHash: true });
+  }
+
+  /* Ссылка на карточку может прийти раньше загрузки базы: ждём данные. */
+  function applyPendingHashModal() {
+    if (pendingHashModal == null) return;
+    const id = pendingHashModal;
+    if (!getAnime(id)) return;
+    pendingHashModal = null;
+    openModal(id, { fromHash: true });
+  }
+
+  function openModal(id, opts = {}) {
     const a = getAnime(id);
     if (!a) { toast('Не удалось открыть карточку'); return; }
     state.modalId = id;
@@ -1678,6 +1858,7 @@
     const panel = $('.modal-panel');
     if (panel) { panel.scrollTop = 0; panel.focus({ preventScroll: true }); }
     if (a.custom && App.hydrateCustomImage) App.hydrateCustomImage(id);
+    if (!opts.fromHash) writeLocationHash();
   }
 
   function franchiseRelationLabel(type) {
@@ -1745,7 +1926,7 @@
     });
   }
 
-  function closeModal() {
+  function closeModal(opts = {}) {
     state.modalId = null;
     const modal = $('#modal');
     if (modal) modal.hidden = true;
@@ -1753,6 +1934,7 @@
     syncBodyScroll();
     if (state.tab === 'db') renderDB();
     else if (state.tab === 'watched' || state.tab === 'planned') renderTierList(state.tab);
+    if (!opts.fromHash) writeLocationHash();
   }
 
   function renderModal() {
@@ -1885,6 +2067,7 @@
     updateOfflineBanner();
 
     if (!opts.silent) window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (!opts.fromHash && !state.booting) writeLocationHash();
   }
 
   /* ---------------- обновление / офлайн ---------------- */
@@ -1907,18 +2090,41 @@
   }
 
   /* ---------------- тосты ---------------- */
-  function toast(message) {
+  function toast(message, options = {}) {
     const box = $('#toasts');
     if (!box) return;
     while (box.children.length >= 4) box.firstElementChild.remove();
     const el = document.createElement('div');
     el.className = 'toast';
-    el.textContent = message;
-    box.appendChild(el);
-    setTimeout(() => {
+    const text = document.createElement('span');
+    text.className = 'toast-text';
+    text.textContent = message;
+    el.appendChild(text);
+
+    let timer = 0;
+    const close = () => {
+      clearTimeout(timer);
       el.classList.add('is-out');
       setTimeout(() => el.remove(), 240);
-    }, 3200);
+    };
+
+    if (options.actionLabel && typeof options.onAction === 'function') {
+      el.classList.add('has-action');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'toast-action';
+      button.textContent = options.actionLabel;
+      button.addEventListener('click', () => {
+        close();
+        try { options.onAction(); }
+        catch (err) { console.warn('AniTier: действие из уведомления не выполнилось', err); }
+      });
+      el.appendChild(button);
+    }
+
+    box.appendChild(el);
+    const duration = Number(options.duration) > 0 ? Number(options.duration) : 3200;
+    timer = setTimeout(close, duration);
   }
 
   Object.assign(App, {
@@ -1936,6 +2142,13 @@
     resetDBFilters,
     updateDBStatus,
     renderDB,
+    continueItems,
+    renderContinue,
+    renderMyCalendar,
+    listVisibleItems,
+    applyLocationHash,
+    applyPendingHashModal,
+    parseLocationHash,
     releaseLine,
     episodeProgressText,
     chipsHTML,

@@ -422,11 +422,12 @@ public void scheduleReleaseNotifications(String json) {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
+                    String name = fileName == null || fileName.isEmpty() ? "anitier-backup.json" : fileName;
+                    String type = name.toLowerCase().endsWith(".ics") ? "text/calendar" : "application/json";
                     Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
                     intent.addCategory(Intent.CATEGORY_OPENABLE);
-                    intent.setType("application/json");
-                    intent.putExtra(Intent.EXTRA_TITLE, fileName == null || fileName.isEmpty()
-                            ? "anitier-backup.json" : fileName);
+                    intent.setType(type);
+                    intent.putExtra(Intent.EXTRA_TITLE, name);
                     try {
                         startActivityForResult(intent, REQUEST_SAVE_BACKUP);
                     } catch (Exception error) {

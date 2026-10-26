@@ -54,6 +54,13 @@
         'Появился горизонтальный скролл',
       );
 
+      T.assert(doc.querySelector('#continue-block'), 'Нет блока «Продолжить просмотр»');
+      T.assert(doc.querySelector('#continue-row'), 'Нет контейнера начатых тайтлов');
+      T.eq(getComputedStyle(doc.querySelector('#continue-row')).gridTemplateColumns.split(/\s+/).length, 1, 'На телефоне начатые тайтлы идут в столбик');
+      T.assert(doc.querySelector('#upcoming-mine'), 'Нет кнопки «Только мои серии»');
+      T.assert(doc.querySelector('[data-action="export-ics"]'), 'Нет экспорта календаря .ics');
+      T.eq(getComputedStyle(doc.querySelector('#toasts')).bottom !== '18px', true, 'Тосты подняты над нижней навигацией');
+
       const modal = doc.getElementById('modal');
       T.eq(getComputedStyle(modal).alignItems, 'end', 'Модалка должна открываться снизу');
       T.eq(

@@ -141,6 +141,14 @@
       <button class="chip" data-action="mode" data-mode="custom">Мои карточки</button>
     </div>
 
+    <section class="continue-block" id="continue-block" aria-label="Продолжить просмотр" hidden>
+      <div class="continue-head">
+        <h2>Продолжить просмотр</h2>
+        <span class="sub">Начатые тайтлы из «Просмотрено»</span>
+      </div>
+      <div class="continue-row" id="continue-row"></div>
+    </section>
+
     <div class="db-status" id="db-status" aria-live="polite"></div>
     <div class="grid" id="db-grid" aria-live="polite"></div>
     <div class="load-row">
@@ -237,6 +245,8 @@
           <option value="title">По названию</option>
         </select>
       </label>
+      <button class="btn btn-ghost" type="button" id="upcoming-mine" data-action="toggle-upcoming-mine" aria-pressed="false">Только мои серии</button>
+      <button class="btn btn-ghost" type="button" data-action="export-ics">Экспорт .ics</button>
       <button class="btn btn-ghost filter-reset" data-action="reset-upcoming">Сбросить</button>
     </div>
     <div class="db-status" id="upcoming-status" aria-live="polite"></div>
