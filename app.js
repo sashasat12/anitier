@@ -1594,7 +1594,11 @@
     }
   }
 
+  let eventsBound = false;
+
   function bindEvents() {
+    if (eventsBound) return;
+    eventsBound = true;
     let tierLayoutTimer = 0;
     window.addEventListener('resize', () => {
       clearTimeout(tierLayoutTimer);
@@ -1837,7 +1841,7 @@
           saveState();
           renderUpdateCard();
           toast('Проверяем обновления…');
-          autoCheckUpdates();
+          autoCheckUpdates({ announce: true });
           break;
 
         case 'update-deny':
@@ -2133,7 +2137,7 @@
         state.settings.updateCheck = normalizeUpdateCheck(settingsUpdate.value);
         state.settings.lastUpdateCheck = 0;
         saveState();
-        if (state.settings.updateCheck === 'on') autoCheckUpdates();
+        if (state.settings.updateCheck === 'on') autoCheckUpdates({ announce: true });
         if (state.settings.updateCheck !== 'ask') renderUpdateCard();
         return;
       }
@@ -2429,7 +2433,8 @@
   }
 
   /* При запуске: спросить разрешение один раз или проверить молча. */
-  async function autoCheckUpdates() {
+  async function autoCheckUpdates(options) {
+    const announce = Boolean(options && options.announce);
     const mode = normalizeUpdateCheck(state.settings.updateCheck);
     if (mode === 'ask') {
       state.updateCard = { mode: 'ask' };
@@ -2439,7 +2444,7 @@
     if (mode !== 'on') return;
 
     const last = Number(state.settings.lastUpdateCheck) || 0;
-    if (Date.now() - last < UPDATE_CHECK_INTERVAL) return;
+    if (!announce && Date.now() - last < UPDATE_CHECK_INTERVAL) return;
     state.settings.lastUpdateCheck = Date.now();
     saveState();
 
@@ -2447,7 +2452,9 @@
       if (typeof App.fetchLatestRelease !== 'function') return;
       const release = await App.fetchLatestRelease();
       if (C.compareVersions(release.version, C.APP_VERSION) > 0) showUpdateAvailable(release);
-    } catch (_) {
+      else if (announce) toast(`У вас последняя версия ${C.APP_VERSION}.`);
+    } catch (err) {
+      if (announce) toast(err && err.message ? err.message : 'Не удалось проверить обновления');
       /* нет сети или GitHub недоступен — молча ждём следующего запуска */
     }
   }
@@ -2496,7 +2503,8 @@
     }
   }
 
-  function applySettingsChange(kind, value) {    if (kind === 'searchLang') {
+  function applySettingsChange(kind, value) {
+    if (kind === 'searchLang') {
       state.settings.searchLang = C.normalizeSearchLang(value);
       syncLangUI();
     } else if (kind === 'translationProvider') {
@@ -2527,6 +2535,11 @@
     if (state.customForm.open) { closeCustomForm(); return true; }
     if (state.exchange.open) { closeExchange(); return true; }
     if (state.modalId != null) { closeModal(); return true; }
+    if (state.updateCard) {
+      state.updateCard = null;
+      renderUpdateCard();
+      return true;
+    }
     if (state.tab !== 'db') { switchTab('db'); return true; }
 
     /* Выход из приложения подтверждается вторым нажатием: первый раз

@@ -765,7 +765,30 @@ button { font-family: inherit; }
   gap: 4px 10px;
 }
 .notif-meta b { color: #ffb3cd; font-weight: 700; }
-.notif-actions { display: flex; gap: 7px; }
+.notif-eps { padding: 0 14px 12px; }
+.notif-eps .ep-block { margin-top: 0; }
+.notif-actions {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  z-index: 2;
+  display: flex;
+  gap: 6px;
+  opacity: .92;
+  transition: opacity .2s;
+}
+.notif:hover .notif-actions { opacity: 1; }
+.notif-actions .mini-btn {
+  width: 32px;
+  height: 32px;
+  font-size: 13px;
+  border-radius: 10px;
+  background: rgba(8, 10, 18, .74);
+  border-color: rgba(255, 255, 255, .2);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+.notif-actions .mini-btn:hover { background: var(--accent); border-color: var(--accent); }
 
 /* ---------- прогресс серий ---------- */
 .ep-block {
@@ -2058,6 +2081,35 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
   .exchange-actions .btn { flex: 1 1 auto; }
 }
 
+/* ---------- карточка обновления ---------- */
+.update-card {
+  position: fixed;
+  left: 18px;
+  bottom: 18px;
+  z-index: 110;
+  width: min(360px, calc(100vw - 36px));
+  padding: 16px 18px 15px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 77, 141, .42);
+  background: linear-gradient(160deg, rgba(46, 30, 55, .97), rgba(19, 23, 35, .98));
+  box-shadow: 0 22px 48px rgba(0, 0, 0, .6);
+  animation: toastIn .26s ease both;
+}
+.update-card[hidden] { display: none; }
+.update-card-kicker {
+  display: inline-block;
+  margin-bottom: 6px;
+  color: #ffb3cd;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.update-card h3 { margin: 0 0 6px; font-size: 15.5px; letter-spacing: -.01em; }
+.update-card p { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+.update-card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
+.update-card-actions .btn { flex: 1 1 auto; min-height: 38px; font-size: 12.5px; }
+
 /* ---------- тосты ---------- */
 #toasts {
   position: fixed;
@@ -2392,35 +2444,51 @@ body.mobile-app .load-row { margin-top: 18px; }
 body.mobile-app .load-row .btn { min-height: 44px; width: 100%; }
 
 /* ---------- уведомления ---------- */
-body.mobile-app .notif {
-  grid-template-columns: 76px minmax(0, 1fr);
+body.mobile-app .notif-list {
+  grid-template-columns: 1fr;
   gap: 10px;
-  padding: 10px;
+}
+
+body.mobile-app .notif {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: start;
   border-radius: 14px;
 }
 
-body.mobile-app .notif-visual { gap: 5px; }
-body.mobile-app .notif-date { padding: 2px 4px; font-size: 9px; }
+body.mobile-app .notif-visual { height: auto; }
+body.mobile-app .notif-date { left: 6px; top: 6px; gap: 4px; padding: 2px 5px; font-size: 9px; }
 body.mobile-app .notif-date b { font-size: 12px; }
 body.mobile-app .notif-poster {
-  width: 76px;
-  height: 108px;
-  border-radius: 9px;
+  width: 92px;
+  height: 138px;
 }
 
-body.mobile-app .notif-title { font-size: 12.5px; }
+body.mobile-app .notif-eps {
+  grid-column: 1 / -1;
+  padding: 0 10px 10px;
+}
+
+body.mobile-app .notif-body { padding: 11px 10px 9px; }
+body.mobile-app .notif-title { padding-right: 66px; font-size: 13px; }
 body.mobile-app .notif-meta { font-size: 10.5px; }
 body.mobile-app .notif-alt { font-size: 10.5px; }
 
-body.mobile-app .notif-actions {
-  grid-column: 1 / -1;
-  justify-content: flex-start;
-}
+body.mobile-app .notif-actions { right: 6px; top: 6px; gap: 5px; }
+body.mobile-app .notif-actions .mini-btn { width: 29px; height: 29px; font-size: 12px; }
 
-body.mobile-app .notif-actions .mini-btn {
-  width: 36px;
-  height: 36px;
+/* ---------- карточка обновления ---------- */
+body.mobile-app .update-card {
+  left: 10px;
+  right: 10px;
+  bottom: calc(86px + env(safe-area-inset-bottom));
+  width: auto;
+  padding: 14px 15px;
+  border-radius: 15px;
 }
+body.mobile-app .update-card h3 { font-size: 14.5px; }
+body.mobile-app .update-card p { font-size: 12px; }
+body.mobile-app .update-card-actions .btn { min-height: 40px; }
 
 /* ---------- тир-листы ---------- */
 body.mobile-app .tier-row {
@@ -3870,12 +3938,22 @@ body.mobile-app .offline-banner {
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.11.0';
+  const APP_VERSION = '1.12.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* История изменений для экрана «Что нового». Новые версии — сверху.
      Пункты пишем для пользователя: что теперь можно сделать, а не как это сделано. */
   const CHANGELOG = [
+    {
+      version: '1.12.0',
+      date: '26 октября 2026',
+      title: 'Проверка обновлений и карточки уведомлений',
+      items: [
+        'При запуске AniTier предлагает проверять обновления: можно разрешить, отказаться или выбрать режим в настройках.',
+        'Если на GitHub вышла новая версия, внизу экрана появляется карточка с кнопкой «Скачать APK» или «Открыть релиз».',
+        'Уведомления о сериях теперь показываются карточками: постер, дата и быстрые кнопки на видном месте.',
+      ],
+    },
     {
       version: '1.11.0',
       date: '25 октября 2026',
@@ -7259,8 +7337,8 @@ body.mobile-app .offline-banner {
           <span>· ${a.episodes ? a.episodes + ' эп.' : 'серий: ?'}</span>
           ${a.score ? `<span>· <b>★ ${a.score.toFixed(1)}</b></span>` : ''}
         </div>
-        ${renderEpisodeBlock(a, 'notif')}
       </div>
+      <div class="notif-eps">${renderEpisodeBlock(a, 'notif')}</div>
       <div class="notif-actions">
         <button class="mini-btn ${inW ? 'is-on' : ''}" data-action="add-watched" data-id="${a.id}" title="Добавить в просмотрено" aria-label="Добавить в просмотрено">✓</button>
         <button class="mini-btn ${inP ? 'is-on' : ''}" data-action="add-planned" data-id="${a.id}" title="В планы" aria-label="Добавить в планы">◷</button>
@@ -10350,7 +10428,11 @@ body.mobile-app .offline-banner {
     }
   }
 
+  let eventsBound = false;
+
   function bindEvents() {
+    if (eventsBound) return;
+    eventsBound = true;
     let tierLayoutTimer = 0;
     window.addEventListener('resize', () => {
       clearTimeout(tierLayoutTimer);
@@ -10593,7 +10675,7 @@ body.mobile-app .offline-banner {
           saveState();
           renderUpdateCard();
           toast('Проверяем обновления…');
-          autoCheckUpdates();
+          autoCheckUpdates({ announce: true });
           break;
 
         case 'update-deny':
@@ -10889,7 +10971,7 @@ body.mobile-app .offline-banner {
         state.settings.updateCheck = normalizeUpdateCheck(settingsUpdate.value);
         state.settings.lastUpdateCheck = 0;
         saveState();
-        if (state.settings.updateCheck === 'on') autoCheckUpdates();
+        if (state.settings.updateCheck === 'on') autoCheckUpdates({ announce: true });
         if (state.settings.updateCheck !== 'ask') renderUpdateCard();
         return;
       }
@@ -11185,7 +11267,8 @@ body.mobile-app .offline-banner {
   }
 
   /* При запуске: спросить разрешение один раз или проверить молча. */
-  async function autoCheckUpdates() {
+  async function autoCheckUpdates(options) {
+    const announce = Boolean(options && options.announce);
     const mode = normalizeUpdateCheck(state.settings.updateCheck);
     if (mode === 'ask') {
       state.updateCard = { mode: 'ask' };
@@ -11195,7 +11278,7 @@ body.mobile-app .offline-banner {
     if (mode !== 'on') return;
 
     const last = Number(state.settings.lastUpdateCheck) || 0;
-    if (Date.now() - last < UPDATE_CHECK_INTERVAL) return;
+    if (!announce && Date.now() - last < UPDATE_CHECK_INTERVAL) return;
     state.settings.lastUpdateCheck = Date.now();
     saveState();
 
@@ -11203,7 +11286,9 @@ body.mobile-app .offline-banner {
       if (typeof App.fetchLatestRelease !== 'function') return;
       const release = await App.fetchLatestRelease();
       if (C.compareVersions(release.version, C.APP_VERSION) > 0) showUpdateAvailable(release);
-    } catch (_) {
+      else if (announce) toast(`У вас последняя версия ${C.APP_VERSION}.`);
+    } catch (err) {
+      if (announce) toast(err && err.message ? err.message : 'Не удалось проверить обновления');
       /* нет сети или GitHub недоступен — молча ждём следующего запуска */
     }
   }
@@ -11252,7 +11337,8 @@ body.mobile-app .offline-banner {
     }
   }
 
-  function applySettingsChange(kind, value) {    if (kind === 'searchLang') {
+  function applySettingsChange(kind, value) {
+    if (kind === 'searchLang') {
       state.settings.searchLang = C.normalizeSearchLang(value);
       syncLangUI();
     } else if (kind === 'translationProvider') {
@@ -11283,6 +11369,11 @@ body.mobile-app .offline-banner {
     if (state.customForm.open) { closeCustomForm(); return true; }
     if (state.exchange.open) { closeExchange(); return true; }
     if (state.modalId != null) { closeModal(); return true; }
+    if (state.updateCard) {
+      state.updateCard = null;
+      renderUpdateCard();
+      return true;
+    }
     if (state.tab !== 'db') { switchTab('db'); return true; }
 
     /* Выход из приложения подтверждается вторым нажатием: первый раз

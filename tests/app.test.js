@@ -442,6 +442,9 @@
       const visual = notification.querySelector('.notif-visual');
       T.assert(visual, 'Дата и постер должны быть в одном визуальном столбце');
       T.assert(visual.querySelector('.notif-date').compareDocumentPosition(visual.querySelector('.notif-poster')) & app.win.Node.DOCUMENT_POSITION_FOLLOWING, 'Дата должна располагаться над постером');
+      T.eq(app.win.getComputedStyle(notification).flexDirection, 'column', 'Уведомление должно быть вертикальной карточкой');
+      T.eq(app.win.getComputedStyle(doc.querySelector('#notif-list')).display, 'grid', 'Уведомления раскладываются сеткой карточек');
+      T.assert(notification.querySelector('.notif-actions'), 'У карточки уведомления есть быстрые действия');
       const shortBlock = doc.querySelector('[data-ep-block="52991"]');
       T.eq(shortBlock.querySelectorAll('input[data-action="ep-slider"]').length, 0, 'У тайтла с семью вышедшими сериями нет ползунка');
       T.eq(shortBlock.querySelectorAll('.ep-chip').length, 7, 'У короткого тайтла должны быть кнопки серий');
@@ -1504,6 +1507,94 @@
       App.fetchLatestRelease = async () => { throw new Error('Сети нет'); };
       await App.checkForUpdates();
       T.includes(doc.querySelector('#settings-content').textContent, 'Сети нет', 'Ошибка показывается в настройках');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: при запуске спрашивает разрешение на проверку обновлений', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      await win.__anitierTest.init();
+      const App = win.AniTier;
+      const doc = win.document;
+      const state = win.__anitierTest.state;
+      const card = doc.getElementById('update-card');
+      T.assert(card, 'Нет карточки обновления');
+      T.eq(card.hidden, true, 'По умолчанию карточка скрыта');
+      T.eq(App.normalizeUpdateCheck('чепуха'), 'ask', 'Неизвестный режим проверки сбрасывается на «спрашивать»');
+
+      state.settings.updateCheck = 'ask';
+      await App.autoCheckUpdates();
+      T.eq(card.hidden, false, 'При первом запуске спрашиваем разрешение');
+      T.includes(card.textContent, 'Проверять обновления при запуске?', 'В карточке есть вопрос');
+
+      card.querySelector('[data-action="update-deny"]').click();
+      T.eq(state.settings.updateCheck, 'off', 'Отказ запоминается');
+      T.eq(card.hidden, true, 'Карточка закрывается после отказа');
+
+      let calls = 0;
+      App.fetchLatestRelease = async () => {
+        calls++;
+        return {
+          version: '99.0.0',
+          name: 'Новая сборка',
+          url: 'https://github.com/sashasat12/anitier/releases/tag/v99.0.0',
+          notes: '',
+        };
+      };
+
+      state.settings.updateCheck = 'ask';
+      state.settings.lastUpdateCheck = 0;
+      await App.autoCheckUpdates();
+      card.querySelector('[data-action="update-allow"]').click();
+      T.eq(state.settings.updateCheck, 'on', 'Разрешение сохраняется');
+      await T.waitFor(() => calls === 1, 'После разрешения проверка не запустилась', 3000);
+      await T.waitFor(() => !card.hidden && card.textContent.includes('99.0.0'), 'Карточка не показала новую версию', 3000);
+      T.includes(card.textContent, 'Открыть релиз', 'В браузере предлагаем открыть релиз');
+      T.eq(state.updateCard.url, 'https://github.com/sashasat12/anitier/releases/tag/v99.0.0', 'Ссылка ведёт на релиз');
+
+      card.querySelector('[data-action="dismiss-update"]').click();
+      T.eq(card.hidden, true, 'Карточку можно отложить');
+
+      state.settings.updateCheck = 'on';
+      state.settings.lastUpdateCheck = 0;
+      calls = 0;
+      await App.autoCheckUpdates();
+      T.eq(calls, 1, 'В режиме «Проверять при запуске» запрос уходит');
+      T.eq(card.hidden, false);
+      await App.autoCheckUpdates();
+      T.eq(calls, 1, 'Повторная проверка ждёт 12 часов');
+
+      card.querySelector('[data-action="dismiss-update"]').click();
+      state.settings.updateCheck = 'off';
+      calls = 0;
+      await App.autoCheckUpdates();
+      T.eq(calls, 0, 'В режиме «Не проверять» запросов нет');
+      T.eq(card.hidden, true);
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: в APK карточка обновления ведёт на APK', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      await win.__anitierTest.init();
+      const App = win.AniTier;
+      win.AniTierAndroid = { openUrl: () => {} };
+      App.showUpdateAvailable({
+        version: '99.0.0',
+        name: '',
+        url: 'https://github.com/sashasat12/anitier/releases/tag/v99.0.0',
+        notes: '',
+      });
+      const card = win.document.getElementById('update-card');
+      T.eq(card.hidden, false);
+      T.includes(card.textContent, 'Скачать APK', 'В APK предлагаем скачать APK');
+      T.includes(win.__anitierTest.state.updateCard.url, '/releases/latest/download/AniTier.apk');
     } finally {
       app.close();
     }

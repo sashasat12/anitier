@@ -82,6 +82,24 @@
       win.__anitierTest.closeExchange();
       T.eq(exchangeModal.hidden, true, 'Модалка обмена не закрылась');
 
+      /* Карточка обновления должна помещаться над нижней навигацией. */
+      await win.__anitierTest.init();
+      const mobileState = win.__anitierTest.state;
+      mobileState.settings.updateCheck = 'ask';
+      await win.AniTier.autoCheckUpdates();
+      const updateCard = doc.getElementById('update-card');
+      T.eq(updateCard.hidden, false, 'Карточка обновления не показалась на телефоне');
+      const updateRect = updateCard.getBoundingClientRect();
+      T.assert(updateRect.width <= win.innerWidth + 1, 'Карточка обновления шире экрана');
+      T.assert(updateRect.bottom <= nav.getBoundingClientRect().top + 1, 'Карточка обновления перекрывает навигацию');
+      T.assert(updateRect.top >= 0, 'Карточка обновления уехала за верх экрана');
+      T.assert(
+        doc.documentElement.scrollWidth <= win.innerWidth + 1,
+        'Карточка обновления добавила горизонтальный скролл',
+      );
+      updateCard.querySelector('[data-action="update-deny"]').click();
+      T.eq(updateCard.hidden, true, 'Карточка обновления не закрылась');
+
       const manifest = await fetch('../mobile/manifest.webmanifest');
       T.eq(manifest.status, 200, 'Манифест не отдаётся');
       T.includes(

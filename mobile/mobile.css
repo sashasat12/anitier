@@ -222,35 +222,51 @@ body.mobile-app .load-row { margin-top: 18px; }
 body.mobile-app .load-row .btn { min-height: 44px; width: 100%; }
 
 /* ---------- уведомления ---------- */
-body.mobile-app .notif {
-  grid-template-columns: 76px minmax(0, 1fr);
+body.mobile-app .notif-list {
+  grid-template-columns: 1fr;
   gap: 10px;
-  padding: 10px;
+}
+
+body.mobile-app .notif {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: start;
   border-radius: 14px;
 }
 
-body.mobile-app .notif-visual { gap: 5px; }
-body.mobile-app .notif-date { padding: 2px 4px; font-size: 9px; }
+body.mobile-app .notif-visual { height: auto; }
+body.mobile-app .notif-date { left: 6px; top: 6px; gap: 4px; padding: 2px 5px; font-size: 9px; }
 body.mobile-app .notif-date b { font-size: 12px; }
 body.mobile-app .notif-poster {
-  width: 76px;
-  height: 108px;
-  border-radius: 9px;
+  width: 92px;
+  height: 138px;
 }
 
-body.mobile-app .notif-title { font-size: 12.5px; }
+body.mobile-app .notif-eps {
+  grid-column: 1 / -1;
+  padding: 0 10px 10px;
+}
+
+body.mobile-app .notif-body { padding: 11px 10px 9px; }
+body.mobile-app .notif-title { padding-right: 66px; font-size: 13px; }
 body.mobile-app .notif-meta { font-size: 10.5px; }
 body.mobile-app .notif-alt { font-size: 10.5px; }
 
-body.mobile-app .notif-actions {
-  grid-column: 1 / -1;
-  justify-content: flex-start;
-}
+body.mobile-app .notif-actions { right: 6px; top: 6px; gap: 5px; }
+body.mobile-app .notif-actions .mini-btn { width: 29px; height: 29px; font-size: 12px; }
 
-body.mobile-app .notif-actions .mini-btn {
-  width: 36px;
-  height: 36px;
+/* ---------- карточка обновления ---------- */
+body.mobile-app .update-card {
+  left: 10px;
+  right: 10px;
+  bottom: calc(86px + env(safe-area-inset-bottom));
+  width: auto;
+  padding: 14px 15px;
+  border-radius: 15px;
 }
+body.mobile-app .update-card h3 { font-size: 14.5px; }
+body.mobile-app .update-card p { font-size: 12px; }
+body.mobile-app .update-card-actions .btn { min-height: 40px; }
 
 /* ---------- тир-листы ---------- */
 body.mobile-app .tier-row {

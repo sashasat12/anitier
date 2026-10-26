@@ -751,7 +751,30 @@ button { font-family: inherit; }
   gap: 4px 10px;
 }
 .notif-meta b { color: #ffb3cd; font-weight: 700; }
-.notif-actions { display: flex; gap: 7px; }
+.notif-eps { padding: 0 14px 12px; }
+.notif-eps .ep-block { margin-top: 0; }
+.notif-actions {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  z-index: 2;
+  display: flex;
+  gap: 6px;
+  opacity: .92;
+  transition: opacity .2s;
+}
+.notif:hover .notif-actions { opacity: 1; }
+.notif-actions .mini-btn {
+  width: 32px;
+  height: 32px;
+  font-size: 13px;
+  border-radius: 10px;
+  background: rgba(8, 10, 18, .74);
+  border-color: rgba(255, 255, 255, .2);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+.notif-actions .mini-btn:hover { background: var(--accent); border-color: var(--accent); }
 
 /* ---------- прогресс серий ---------- */
 .ep-block {
@@ -2043,6 +2066,35 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
   .exchange-footer .btn { width: 100%; }
   .exchange-actions .btn { flex: 1 1 auto; }
 }
+
+/* ---------- карточка обновления ---------- */
+.update-card {
+  position: fixed;
+  left: 18px;
+  bottom: 18px;
+  z-index: 110;
+  width: min(360px, calc(100vw - 36px));
+  padding: 16px 18px 15px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 77, 141, .42);
+  background: linear-gradient(160deg, rgba(46, 30, 55, .97), rgba(19, 23, 35, .98));
+  box-shadow: 0 22px 48px rgba(0, 0, 0, .6);
+  animation: toastIn .26s ease both;
+}
+.update-card[hidden] { display: none; }
+.update-card-kicker {
+  display: inline-block;
+  margin-bottom: 6px;
+  color: #ffb3cd;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.update-card h3 { margin: 0 0 6px; font-size: 15.5px; letter-spacing: -.01em; }
+.update-card p { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+.update-card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
+.update-card-actions .btn { flex: 1 1 auto; min-height: 38px; font-size: 12.5px; }
 
 /* ---------- тосты ---------- */
 #toasts {

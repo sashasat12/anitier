@@ -504,8 +504,8 @@
           <span>· ${a.episodes ? a.episodes + ' эп.' : 'серий: ?'}</span>
           ${a.score ? `<span>· <b>★ ${a.score.toFixed(1)}</b></span>` : ''}
         </div>
-        ${renderEpisodeBlock(a, 'notif')}
       </div>
+      <div class="notif-eps">${renderEpisodeBlock(a, 'notif')}</div>
       <div class="notif-actions">
         <button class="mini-btn ${inW ? 'is-on' : ''}" data-action="add-watched" data-id="${a.id}" title="Добавить в просмотрено" aria-label="Добавить в просмотрено">✓</button>
         <button class="mini-btn ${inP ? 'is-on' : ''}" data-action="add-planned" data-id="${a.id}" title="В планы" aria-label="Добавить в планы">◷</button>
