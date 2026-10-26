@@ -509,6 +509,25 @@
     return [...exact, ...starts, ...contains].slice(0, Math.max(1, Number(limit) || 30));
   }
 
+  /** Ищет ID AniList по русскому названию во втором словаре. */
+  function russianTitleAniListIds(query, limit = 30) {
+    const q = normalizeTitleKey(query);
+    if (!q) return [];
+    const map = (typeof window !== 'undefined' && window.AniTierTitlesRuAniList) || {};
+    const exact = [];
+    const starts = [];
+    const contains = [];
+    for (const [id, title] of Object.entries(map)) {
+      if (!/^\d+$/.test(id)) continue;
+      const key = normalizeTitleKey(title);
+      if (!key) continue;
+      if (key === q) exact.push(Number(id));
+      else if (key.startsWith(q)) starts.push(Number(id));
+      else if (key.includes(q)) contains.push(Number(id));
+    }
+    return [...exact, ...starts, ...contains].slice(0, Math.max(1, Number(limit) || 30));
+  }
+
   function dedupeById(items) {
     const seen = new Set();
     return (Array.isArray(items) ? items : []).filter(item => {
@@ -1348,7 +1367,7 @@
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.30.0';
+  const APP_VERSION = '1.31.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -1937,6 +1956,7 @@
     filterUpcoming,
     buildAniListVariables,
     russianTitleIds,
+    russianTitleAniListIds,
     dedupeById,
     normalizeTitleKey,
     animeIdentityKeys,

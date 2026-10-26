@@ -23,6 +23,7 @@
 | `core.js` | чистые функции: фильтры, переменные AniList, склейка дублей, пагинация, обмен тир-листами | без DOM, `fetch`, `localStorage` и глобального состояния; экспорт в `root.AniTierCore` |
 | `changelog.js` | история версий для экрана «Что нового» | только данные, без DOM и логики; новые версии сверху, `APP_VERSION` в `core.js` совпадает с первой записью |
 | `titles-ru.js` | словарь русских названий: MAL ID → название | только данные; ручные записи важнее автоматических |
+| `titles-ru-anilist.js` | русские названия по ID AniList | только данные; используется, когда MAL ID нет |
 | `tags.js` | теги AniList: название, русская подпись, категория | только данные; взрослые теги не добавлять |
 | `app-store.js` | состояние, `localStorage`, списки, прогресс, операции со списками | без сетевых запросов; экспорт в `window.AniTier` |
 | `app-api.js` | AniList/Kitsu, поиск, кэш, демо-данные | без DOM; экспорт в `window.AniTier` |
@@ -73,7 +74,7 @@ powershell -ExecutionPolicy Bypass -File .\graph-versions.ps1 -Diff v1.8.1 v1.9.
 ## Сборка и артефакты
 
 `AniTier-phone.html`, `android/assets/index.html`, `AniTier.apk`, `AniTier.apk.idsig` — **генерируемые**.
-После правок в `app-store.js`, `app-api.js`, `app-render.js`, `app.js`, `core.js`, `changelog.js`, `titles-ru.js`, `tags.js`, `styles.css`, `index.html` или `mobile/`:
+После правок в `app-store.js`, `app-api.js`, `app-render.js`, `app.js`, `core.js`, `changelog.js`, `titles-ru.js`, `titles-ru-anilist.js`, `tags.js`, `styles.css`, `index.html` или `mobile/`:
 
 1. `build-phone.ps1` — обновляет `AniTier-phone.html`;
 2. `android/build-apk.ps1` — обновляет `AniTier.apk` (сначала `build-phone.ps1`).

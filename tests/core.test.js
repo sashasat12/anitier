@@ -207,6 +207,12 @@
     T.eq(C.russianTitleIds('абракадабра-нет-такого'), []);
   });
 
+  T.test('core: русский словарь находит ID AniList по названию', () => {
+    const C = core();
+    T.assert(C.russianTitleAniListIds('Атака титанов').includes(16498));
+    T.eq(C.russianTitleAniListIds(''), []);
+  });
+
   T.test('core: несколько годов и жанров фильтруют по И внутри поля', () => {
     const C = core();
     const items = [

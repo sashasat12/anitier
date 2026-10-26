@@ -225,4 +225,32 @@
       app.close();
     }
   });
+  T.test('titles: русское название по ID AniList без MAL ID', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const a = app.win.AniTier.mapAniList({
+        id: 16498,
+        idMal: null,
+        title: { romaji: 'Shingeki no Kyojin', english: 'Attack on Titan', native: '進撃の巨人' },
+        synonyms: [],
+        format: 'TV',
+        episodes: 25,
+        status: 'FINISHED',
+        seasonYear: 2013,
+        startDate: { year: 2013, month: 4, day: 7 },
+        endDate: { year: 2013, month: 9, day: 29 },
+        averageScore: 85,
+        description: 'Titans.',
+        genres: ['Action'],
+        studios: { nodes: [] },
+        coverImage: { large: '' },
+        siteUrl: '',
+        nextAiringEpisode: null,
+      });
+      T.eq(a.titleRu, 'Атака титанов');
+      T.includes(app.win.AniTier.displayTitle(a), 'Атака титанов');
+    } finally {
+      app.close();
+    }
+  });
 })();

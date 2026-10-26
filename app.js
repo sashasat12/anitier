@@ -205,6 +205,11 @@
         && C.normalizeSearchLang(state.settings.searchLang) !== 'ja'
         ? C.russianTitleIds(s.query, PAGE_LIMIT)
         : [];
+      const ruAniListIds = s.query && C.hasCyrillic(s.query)
+        && C.normalizeSearchLang(state.settings.searchLang) !== 'en'
+        && C.normalizeSearchLang(state.settings.searchLang) !== 'ja'
+        ? C.russianTitleAniListIds(s.query, PAGE_LIMIT)
+        : [];
 
       if (s.mode === 'custom') {
         const all = C.filterItems(state.customCards, { query: s.query, filters: s.filters });
@@ -258,15 +263,17 @@
         if (!media.length) s.hasNext = false;
       }
 
-      if (!s.items.length && page === 1 && ruIds.length && s.mode !== 'custom' && !state.forceDemo) {
+      const fallbackIds = ruIds.length ? ruIds : ruAniListIds;
+      const fallbackKey = ruIds.length ? 'idMal_in' : 'id_in';
+      if (!s.items.length && page === 1 && fallbackIds.length && s.mode !== 'custom' && !state.forceDemo) {
         const variables = C.buildAniListVariables({
           mode: s.mode,
           query: '',
           filters: s.filters,
           page: 1,
-          limit: ruIds.length,
+          limit: fallbackIds.length,
         });
-        variables.idMal_in = ruIds;
+        variables[fallbackKey] = fallbackIds;
         const pageData = await fetchAniList(variables, { timeout: SEARCH_TIMEOUT });
         if (revision !== s.revision) return;
         const data = pageData.media.map(mapAniList).filter(anime => C.matchesFilters(anime, s.filters));

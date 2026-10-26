@@ -17,6 +17,7 @@
     ANILIST_TRACKED_QUERY,
     ANILIST_SCHEDULE_QUERY,
     RU_TITLES,
+    RU_TITLES_ANILIST,
     DEMO_BASE,
     makePoster,
     addDays,
@@ -196,7 +197,7 @@
     const malId = raw.idMal ? Number(raw.idMal) : null;
     const titles = raw.title || {};
     const ruSynonym = C.firstCyrillic(raw.synonyms || []);
-    const ru = (malId && RU_TITLES[malId]) || ruSynonym || '';
+    const ru = (malId && RU_TITLES[malId]) || RU_TITLES_ANILIST[raw.id] || ruSynonym || '';
     const title = ru || titles.english || titles.romaji || titles.native || 'Без названия';
     const originalTitle = titles.romaji || titles.english || titles.native || '';
     let altTitle = '';

@@ -18,6 +18,7 @@ $mobileStyles = Read-Text 'mobile\mobile.css'
 $core = Read-Text 'core.js'
 $tags = Read-Text 'tags.js'
 $titles = Read-Text 'titles-ru.js'
+$titlesAniList = Read-Text 'titles-ru-anilist.js'
 $changelog = Read-Text 'changelog.js'
 $store = Read-Text 'app-store.js'
 $api = Read-Text 'app-api.js'
@@ -31,6 +32,7 @@ $html = $html.Replace(
 
 $html = $html.Replace(
   '<script src="../tags.js" defer></script>' + "`n" +
+  '<script src="../titles-ru-anilist.js" defer></script>' + "`n" +
   '<script src="../titles-ru.js" defer></script>' + "`n" +
   '<script src="../changelog.js" defer></script>' + "`n" +
   '<script src="../core.js" defer></script>' + "`n" +
@@ -39,7 +41,7 @@ $html = $html.Replace(
   '<script src="../app-render.js" defer></script>' + "`n" +
   '<script src="../app.js" defer></script>' + "`n" +
   '<script src="mobile.js" defer></script>',
-  "<script>`n$tags`n</script>`n<script>`n$titles`n</script>`n<script>`n$changelog`n</script>`n<script>`n$core`n</script>`n<script>`n$store`n</script>`n<script>`n$api`n</script>`n<script>`n$render`n</script>`n<script>`n$app`n</script>"
+  "<script>`n$tags`n</script>`n<script>`n$titlesAniList`n</script>`n<script>`n$titles`n</script>`n<script>`n$changelog`n</script>`n<script>`n$core`n</script>`n<script>`n$store`n</script>`n<script>`n$api`n</script>`n<script>`n$render`n</script>`n<script>`n$app`n</script>"
 )
 
 $html = $html.Replace('<link rel="manifest" href="manifest.webmanifest">' + "`n", '')

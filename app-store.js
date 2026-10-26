@@ -40,6 +40,7 @@
     $sort: [MediaSort],
     $type: MediaType,
     $idMal_in: [Int],
+    $id_in: [Int],
     $status: MediaStatus,
     $status_in: [MediaStatus],
     $format: MediaFormat,
@@ -60,6 +61,7 @@
         search: $search,
         type: $type,
         idMal_in: $idMal_in,
+        id_in: $id_in,
         status: $status,
         status_in: $status_in,
         format: $format,
@@ -253,6 +255,9 @@
   /* Русские названия лежат в titles-ru.js: данные отдельно от логики. */
   const RU_TITLES = (typeof window !== 'undefined' && window.AniTierTitlesRu && typeof window.AniTierTitlesRu === 'object')
     ? window.AniTierTitlesRu
+    : {};
+  const RU_TITLES_ANILIST = (typeof window !== 'undefined' && window.AniTierTitlesRuAniList && typeof window.AniTierTitlesRuAniList === 'object')
+    ? window.AniTierTitlesRuAniList
     : {};
 
   /* Демо-данные на случай отсутствия сети */
@@ -489,6 +494,7 @@
       catalog: normalizeCatalogPreferences(),
     },
     modalId: null,
+    quickMenu: null,
     command: { open: false, query: '', index: 0, results: [] },
     exchange: {
       open: false,
@@ -1372,6 +1378,7 @@
     MONTHS_FULL,
     VIEW_TABS,
     RU_TITLES,
+    RU_TITLES_ANILIST,
     DEMO_BASE,
     $,
     $$,
