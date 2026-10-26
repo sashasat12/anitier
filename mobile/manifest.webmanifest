@@ -12,6 +12,35 @@
   "background_color": "#07080e",
   "theme_color": "#0c0d14",
   "categories": ["entertainment", "lifestyle"],
+  "shortcuts": [
+    {
+      "name": "Поиск аниме",
+      "short_name": "Поиск",
+      "url": "./index.html#db",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Просмотрено",
+      "short_name": "Просмотрено",
+      "url": "./index.html#watched",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Запланировано",
+      "short_name": "Планы",
+      "url": "./index.html#planned",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "share_target": {
+    "action": "./index.html",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
   "icons": [
     {
       "src": "icons/icon-192.png",

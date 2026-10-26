@@ -1144,6 +1144,21 @@
     return true;
   }
 
+  /* PWA share_target: Android делится ссылкой на TikTok прямо в приложение. */
+  function consumeSharedLink() {
+    if (typeof location === 'undefined') return false;
+    let params = null;
+    try { params = new URLSearchParams(location.search); } catch { return false; }
+    const text = [params.get('text'), params.get('url'), params.get('title')]
+      .filter(Boolean)
+      .join(' ');
+    if (!text || !/tiktok\.com/i.test(text)) return false;
+    try {
+      history.replaceState(null, '', location.pathname + location.hash);
+    } catch { /* не критично */ }
+    return receiveSharedTikTok(text);
+  }
+
   function receiveSharedTikTok(text) {
     const links = String(text || '').match(/https?:\/\/[^\s<>"']+/gi) || [String(text || '').trim()];
     const url = links.map(link => link.replace(/[),.;!?\]}]+$/g, '')).find(C.isTikTokUrl);
@@ -3242,6 +3257,7 @@
 
     applyLocationHash();
 
+    consumeSharedLink();
     enrichRussianTitles();
     return bootstrap();
   }

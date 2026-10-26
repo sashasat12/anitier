@@ -1008,6 +1008,20 @@
     }
   });
 
+  T.test('app: PWA share_target открывает ссылку TikTok из параметров', async () => {
+    const shared = encodeURIComponent('Смотри: https://www.tiktok.com/@anime/video/7412345678901234567');
+    const app = await T.mountApp({ query: `?demo=1&test=1&text=${shared}` });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      await T.waitFor(() => api.state.tiktokImport.open, 'Окно TikTok не открылось', 6000);
+      T.eq(api.state.tiktokImport.url, 'https://www.tiktok.com/@anime/video/7412345678901234567');
+      T.eq(app.win.location.search, '', 'Параметры шаринга убраны из адреса');
+    } finally {
+      app.close();
+    }
+  });
+
   T.test('app: русский синоним AniList становится основным названием', async () => {
     const app = await T.mountApp({ query: '?demo=1&test=1' });
 

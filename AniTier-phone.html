@@ -4739,6 +4739,17 @@ window.AniTierTitlesRu = {
 
 window.AniTierChangelog = [
   {
+    version: '1.27.0',
+    date: '27 октября 2026',
+    title: 'Ярлыки и «Поделиться» в PWA',
+    items: [
+      'У установленной PWA появились быстрые действия: «Поиск», «Просмотрено» и «Планы» — по долгому нажатию на иконку.',
+      'Можно поделиться ссылкой на TikTok из Android прямо в AniTier: откроется окно «Моменты» с уже вставленной ссылкой.',
+      'После шаринга параметры убираются из адреса, поэтому повторное открытие не дублирует окно.',
+      'В APK такая же функция уже работала через системное «Поделиться».',
+    ],
+  },
+  {
     version: '1.26.0',
     date: '27 октября 2026',
     title: 'Резервная копия сама',
@@ -6388,7 +6399,7 @@ window.AniTierChangelog = [
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.26.0';
+  const APP_VERSION = '1.27.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -13788,6 +13799,21 @@ window.AniTierChangelog = [
     return true;
   }
 
+  /* PWA share_target: Android делится ссылкой на TikTok прямо в приложение. */
+  function consumeSharedLink() {
+    if (typeof location === 'undefined') return false;
+    let params = null;
+    try { params = new URLSearchParams(location.search); } catch { return false; }
+    const text = [params.get('text'), params.get('url'), params.get('title')]
+      .filter(Boolean)
+      .join(' ');
+    if (!text || !/tiktok\.com/i.test(text)) return false;
+    try {
+      history.replaceState(null, '', location.pathname + location.hash);
+    } catch { /* не критично */ }
+    return receiveSharedTikTok(text);
+  }
+
   function receiveSharedTikTok(text) {
     const links = String(text || '').match(/https?:\/\/[^\s<>"']+/gi) || [String(text || '').trim()];
     const url = links.map(link => link.replace(/[),.;!?\]}]+$/g, '')).find(C.isTikTokUrl);
@@ -15886,6 +15912,7 @@ window.AniTierChangelog = [
 
     applyLocationHash();
 
+    consumeSharedLink();
     enrichRussianTitles();
     return bootstrap();
   }
