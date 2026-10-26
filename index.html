@@ -25,20 +25,20 @@
   </a>
 
   <nav class="tabs" role="tablist" aria-label="Разделы">
-    <button class="tab is-active" role="tab" data-action="tab" data-tab="db"><span class="tab-ico" aria-hidden="true">▦</span><span>База аниме</span></button>
-    <button class="tab" role="tab" data-action="tab" data-tab="notifications">
+    <button class="tab is-active" role="tab" id="tab-db" aria-selected="true" aria-controls="view-db" tabindex="0" data-action="tab" data-tab="db"><span class="tab-ico" aria-hidden="true">▦</span><span>База аниме</span></button>
+    <button class="tab" role="tab" id="tab-notifications" aria-selected="false" aria-controls="view-notifications" tabindex="-1" data-action="tab" data-tab="notifications">
       <span class="tab-ico" aria-hidden="true">✦</span><span>Уведомления</span>
       <b class="badge" id="bell-badge" hidden>0</b>
     </button>
-    <button class="tab" role="tab" data-action="tab" data-tab="watched">
+    <button class="tab" role="tab" id="tab-watched" aria-selected="false" aria-controls="view-watched" tabindex="-1" data-action="tab" data-tab="watched">
       <span class="tab-ico" aria-hidden="true">✓</span><span>Просмотрено</span>
       <b class="count" id="count-watched">0</b>
     </button>
-    <button class="tab" role="tab" data-action="tab" data-tab="planned">
+    <button class="tab" role="tab" id="tab-planned" aria-selected="false" aria-controls="view-planned" tabindex="-1" data-action="tab" data-tab="planned">
       <span class="tab-ico" aria-hidden="true">◷</span><span>Запланировано</span>
       <b class="count" id="count-planned">0</b>
     </button>
-    <button class="tab" role="tab" data-action="tab" data-tab="upcoming"><span class="tab-ico" aria-hidden="true">↗</span><span>Скоро выйдут</span></button>
+    <button class="tab" role="tab" id="tab-upcoming" aria-selected="false" aria-controls="view-upcoming" tabindex="-1" data-action="tab" data-tab="upcoming"><span class="tab-ico" aria-hidden="true">↗</span><span>Скоро выйдут</span></button>
   </nav>
 
   <div class="topbar-actions">
@@ -164,7 +164,7 @@
       </div>
       <button class="btn btn-ghost" data-action="refresh-notifications">Обновить</button>
     </div>
-    <div class="notif-list" id="notif-list" aria-live="polite"></div>
+    <div class="notif-feed" id="notif-list" aria-live="polite"></div>
   </section>
 
   <!-- ================= ПРОСМОТРЕНО ================= -->
@@ -345,7 +345,7 @@
 </div>
 
 <div class="update-card" id="update-card" role="status" aria-live="polite" hidden></div>
-<div id="toasts" aria-live="polite" aria-atomic="false"></div>
+<div id="toasts" role="status" aria-live="polite" aria-atomic="false"></div>
 
 <script src="core.js" defer></script>
 <script src="app-store.js" defer></script>

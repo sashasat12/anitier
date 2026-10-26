@@ -672,6 +672,8 @@ button { font-family: inherit; }
 }
 
 .notif-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; align-items: stretch; }
+/* Внешняя лента — обычный блок: внутри группы уже раскладываются сеткой. */
+.notif-feed { display: block; }
 
 .notif {
   position: relative;
@@ -2699,6 +2701,36 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
 }
 
+/* ---------- доступность: видимый клавиатурный фокус ---------- */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.card:focus-visible,
+.tier-card:focus-visible,
+.tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* ---------- пустые состояния с действием ---------- */
+.empty-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0;
+  padding: 26px 22px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, .02);
+  text-align: center;
+}
+.empty-cta b { font-size: 18px; letter-spacing: -.01em; }
+.empty-cta p { margin: 0; max-width: 440px; color: var(--muted); font-size: 13px; }
+.empty-cta .btn { margin-top: 6px; }
+
+
 /* ============================================================
    AniTier Mobile — мобильная оболочка
    Подключается после styles.css и только для /mobile/
@@ -3146,20 +3178,20 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
 </header>
 
 <nav class="tabs" role="tablist" aria-label="Разделы">
-  <button class="tab is-active" role="tab" data-action="tab" data-tab="db"><span class="tab-ico" aria-hidden="true">▦</span><span>База</span></button>
-  <button class="tab" role="tab" data-action="tab" data-tab="notifications">
+  <button class="tab is-active" role="tab" id="tab-db" aria-selected="true" aria-controls="view-db" tabindex="0" data-action="tab" data-tab="db"><span class="tab-ico" aria-hidden="true">▦</span><span>База</span></button>
+  <button class="tab" role="tab" id="tab-notifications" aria-selected="false" aria-controls="view-notifications" tabindex="-1" data-action="tab" data-tab="notifications">
     <span class="tab-ico" aria-hidden="true">✦</span><span>События</span>
     <b class="badge" id="bell-badge" hidden>0</b>
   </button>
-  <button class="tab" role="tab" data-action="tab" data-tab="watched">
+  <button class="tab" role="tab" id="tab-watched" aria-selected="false" aria-controls="view-watched" tabindex="-1" data-action="tab" data-tab="watched">
     <span class="tab-ico" aria-hidden="true">✓</span><span>Просмотрено</span>
     <b class="count" id="count-watched">0</b>
   </button>
-  <button class="tab" role="tab" data-action="tab" data-tab="planned">
+  <button class="tab" role="tab" id="tab-planned" aria-selected="false" aria-controls="view-planned" tabindex="-1" data-action="tab" data-tab="planned">
     <span class="tab-ico" aria-hidden="true">◷</span><span>Планы</span>
     <b class="count" id="count-planned">0</b>
   </button>
-  <button class="tab" role="tab" data-action="tab" data-tab="upcoming"><span class="tab-ico" aria-hidden="true">↗</span><span>Скоро</span></button>
+  <button class="tab" role="tab" id="tab-upcoming" aria-selected="false" aria-controls="view-upcoming" tabindex="-1" data-action="tab" data-tab="upcoming"><span class="tab-ico" aria-hidden="true">↗</span><span>Скоро</span></button>
 </nav>
 
 <main class="wrap">
@@ -3275,7 +3307,7 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
       </div>
       <button class="btn btn-ghost" data-action="refresh-notifications">Обновить</button>
     </div>
-    <div class="notif-list" id="notif-list" aria-live="polite"></div>
+    <div class="notif-feed" id="notif-list" aria-live="polite"></div>
   </section>
 
   <!-- ================= ПРОСМОТРЕНО ================= -->
@@ -3450,7 +3482,7 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
 </div>
 
 <div class="update-card" id="update-card" role="status" aria-live="polite" hidden></div>
-<div id="toasts" aria-live="polite" aria-atomic="false"></div>
+<div id="toasts" role="status" aria-live="polite" aria-atomic="false"></div>
 
 <script>
 /* Чистые функции AniTier: фильтры, параметры AniList, страницы.
@@ -4712,12 +4744,25 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.20.0';
+  const APP_VERSION = '1.21.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* История изменений для экрана «Что нового». Новые версии — сверху.
      Пункты пишем для пользователя: что теперь можно сделать, а не как это сделано. */
   const CHANGELOG = [
+    {
+      version: '1.21.0',
+      date: '26 октября 2026',
+      title: 'Доступность и спокойная прокрутка',
+      items: [
+        'Уведомления больше не разваливаются на две колонки: лента идёт одной колонкой, а карточки внутри групп — сеткой.',
+        'При прокрутке нет вспышек: догрузка базы добавляет новые карточки, не пересоздавая уже показанные, а перебор результатов поиска не перерисовывает строки.',
+        'У карточек, кнопок и вкладок виден клавиатурный фокус.',
+        'Вкладки объявляются экранному диктору как ARIA Tabs: выбранная помечена, стрелки, Home и End переключают разделы.',
+        'Тосты и карточка обновления озвучиваются автоматически.',
+        'Пустой список предлагает «Найти аниме», пустая выдача — «Сбросить фильтры», а не просто текст.',
+      ],
+    },
     {
       version: '1.20.0',
       date: '26 октября 2026',
@@ -8401,12 +8446,12 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     return Array.from({ length: n }, () => `<div class="skel" style="height:104px"></div>`).join('');
   }
 
-  function msgBlock(emoji, title, text, action) {
+  function msgBlock(emoji, title, text, action, actionLabel) {
     return `<div class="msg">
       <span class="emoji">${emoji}</span>
       <h3>${esc(title)}</h3>
       <p>${esc(text)}</p>
-      ${action ? `<button class="btn btn-ghost" data-action="${action}">Попробовать снова</button>` : ''}
+      ${action ? `<button class="btn btn-ghost" data-action="${action}">${esc(actionLabel || 'Попробовать снова')}</button>` : ''}
     </div>`;
   }
 
@@ -8580,6 +8625,7 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
 
     if ((s.loading || state.booting) && !s.items.length) {
       grid.innerHTML = skeletonCards(12);
+      grid.dataset.cardIds = '';
       if (more) more.hidden = true;
       updateDBStatus();
       return;
@@ -8589,6 +8635,7 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
         ? ` Поиск: ${s.resolveVia === 'dictionary' ? 'словарь AniTier' : s.resolveVia === 'anilist' ? 'название AniList' : s.resolveVia === 'mymemory' ? 'перевод MyMemory' : 'исходная фраза'}.`
         : '';
       grid.innerHTML = msgBlock('⚠️', 'Не удалось загрузить базу', `${s.error}${status}`, 'retry-db');
+      grid.dataset.cardIds = '';
       if (more) more.hidden = true;
       updateDBStatus();
       return;
@@ -8601,6 +8648,7 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
           <p>Добавьте тайтл, которого нет в AniList или Kitsu: название, постер, год и серии.</p>
           <button class="btn btn-primary" data-action="new-custom">Создать карточку</button>
         </div>`;
+        grid.dataset.cardIds = '';
         if (more) more.hidden = true;
         updateDBStatus();
         return;
@@ -8625,13 +8673,26 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
         text = `По запросу «${s.query}» нет результатов.${resolved}${tried}${unavailable} Попробуйте другое название или ослабьте фильтры.`;
       }
       else if (hasFilters) text = 'По выбранным фильтрам ничего не нашлось. Попробуйте ослабить условия.';
-      grid.innerHTML = msgBlock('🔎', 'Ничего не нашлось', text);
+      grid.innerHTML = hasFilters || s.query
+        ? msgBlock('🔎', 'Ничего не нашлось', text, 'reset-filters', 'Сбросить фильтры')
+        : msgBlock('🔎', 'Ничего не нашлось', text, 'refresh', 'Обновить');
+      grid.dataset.cardIds = '';
       if (more) more.hidden = true;
       updateDBStatus();
       return;
     }
 
-    grid.innerHTML = s.items.map(a => cardHTML(a, 'db')).join('');
+    /* Догрузка страницы не должна пересоздавать уже показанные карточки:
+       иначе при скролле вся сетка мигает и постеры грузятся заново. */
+    const key = s.items.map(a => a.id).join(',');
+    const previous = grid.dataset.cardIds || '';
+    if (previous && key.startsWith(previous + ',')) {
+      const shown = previous.split(',').length;
+      grid.insertAdjacentHTML('beforeend', s.items.slice(shown).map(a => cardHTML(a, 'db')).join(''));
+    } else if (previous !== key) {
+      grid.innerHTML = s.items.map(a => cardHTML(a, 'db')).join('');
+    }
+    grid.dataset.cardIds = key;
     if (more) {
       more.hidden = !s.hasNext;
       more.disabled = s.loading;
@@ -9233,6 +9294,21 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     const view = listView(name);
     const shown = new Set(C.filterItems(all, view));
     syncListControls(name, all);
+
+    /* Пустой список подсказывает, что делать дальше, а не просто молчит. */
+    let empty = document.getElementById(`empty-${name}`);
+    if (!empty) {
+      empty = document.createElement('div');
+      empty.id = `empty-${name}`;
+      empty.className = 'empty-cta';
+      root.parentNode.insertBefore(empty, root);
+    }
+    empty.hidden = all.length > 0;
+    if (!empty.hidden) {
+      empty.innerHTML = `<b>Пока пусто</b>
+        <p>${name === 'watched' ? 'Найдите аниме в базе и отметьте его просмотренным — оно появится здесь.' : 'Найдите аниме в базе и добавьте в планы — оно появится здесь.'}</p>
+        <button class="btn btn-primary" type="button" data-action="find-more">Найти аниме</button>`;
+    }
 
     root.innerHTML = TIERS.map(t => {
       const tierItems = list[t.id] || [];
@@ -9881,6 +9957,13 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     if (active >= 0) input.setAttribute('aria-activedescendant', `command-row-${active}`);
     else input.removeAttribute('aria-activedescendant');
 
+    const rows = box.querySelectorAll('.command-row');
+    rows.forEach((row, index) => {
+      const on = index === active;
+      row.classList.toggle('is-active', on);
+      row.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+
     const row = box.querySelector('.command-row.is-active');
     if (!row) return;
     const boxRect = box.getBoundingClientRect();
@@ -9991,7 +10074,9 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     const total = state.command.results.length;
     if (!total) return;
     state.command.index = (state.command.index + delta + total) % total;
-    renderCommandResults();
+    /* Без перерисовки: подчёркиваем другую строку на месте, иначе постеры
+       пересоздаются и список мигает при каждом нажатии. */
+    syncCommandSelection();
   }
 
   /** Переход к первому или последнему результату для клавиш Home/End. */
@@ -9999,7 +10084,7 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     const total = state.command.results.length;
     if (!total) return;
     state.command.index = edge === 'last' ? total - 1 : 0;
-    renderCommandResults();
+    syncCommandSelection();
   }
 
   function openCommandResult(index) {
@@ -10710,8 +10795,12 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
       const on = t.dataset.tab === tab;
       t.classList.toggle('is-active', on);
       t.setAttribute('aria-selected', on ? 'true' : 'false');
+      t.tabIndex = on ? 0 : -1;
     });
-    $$('.view').forEach(v => { v.hidden = v.id !== 'view-' + tab; });
+    $$('.view').forEach(v => {
+      v.hidden = v.id !== 'view-' + tab;
+      v.setAttribute('aria-labelledby', 'tab-' + v.id.replace('view-', ''));
+    });
 
     if (!opts.deferActions) {
       if (tab === 'db') renderDB();
@@ -13684,6 +13773,25 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
         if (e.key === 'Enter') {
           e.preventDefault();
           openCommandResult(state.command.index);
+          return;
+        }
+      }
+      /* Стрелки внутри полосы вкладок переключают разделы, как в ARIA Tabs. */
+      const tablist = e.target && e.target.closest ? e.target.closest('.tabs') : null;
+      if (tablist && (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === 'Home' || e.key === 'End')) {
+        const tabs = [...tablist.querySelectorAll('.tab')];
+        const current = tabs.findIndex(tab => tab === e.target.closest('.tab'));
+        if (current >= 0) {
+          e.preventDefault();
+          let next = current;
+          if (e.key === 'Home') next = 0;
+          else if (e.key === 'End') next = tabs.length - 1;
+          else {
+            const step = e.key === 'ArrowRight' ? 1 : -1;
+            next = (current + step + tabs.length) % tabs.length;
+          }
+          tabs[next].focus();
+          switchTab(tabs[next].dataset.tab);
           return;
         }
       }

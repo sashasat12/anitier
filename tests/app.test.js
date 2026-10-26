@@ -443,7 +443,9 @@
       T.assert(visual, 'Дата и постер должны быть в одном визуальном столбце');
       T.assert(visual.querySelector('.notif-date').compareDocumentPosition(visual.querySelector('.notif-poster')) & app.win.Node.DOCUMENT_POSITION_FOLLOWING, 'Дата должна располагаться над постером');
       T.eq(app.win.getComputedStyle(notification).flexDirection, 'column', 'Уведомление должно быть вертикальной карточкой');
-      T.eq(app.win.getComputedStyle(doc.querySelector('#notif-list')).display, 'grid', 'Уведомления раскладываются сеткой карточек');
+      const notifications = doc.querySelector('.notif-group .notif-list');
+      T.eq(app.win.getComputedStyle(notifications).display, 'grid', 'Уведомления раскладываются сеткой карточек');
+      T.eq(app.win.getComputedStyle(doc.querySelector('#notif-list')).display, 'block', 'Лента уведомлений — одна колонка');
       T.assert(notification.querySelector('.notif-actions'), 'У карточки уведомления есть быстрые действия');
       const shortBlock = doc.querySelector('[data-ep-block="52991"]');
       T.eq(shortBlock.querySelectorAll('input[data-action="ep-slider"]').length, 0, 'У тайтла с семью вышедшими сериями нет ползунка');

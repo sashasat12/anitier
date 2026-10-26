@@ -658,6 +658,8 @@ button { font-family: inherit; }
 }
 
 .notif-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; align-items: stretch; }
+/* Внешняя лента — обычный блок: внутри группы уже раскладываются сеткой. */
+.notif-feed { display: block; }
 
 .notif {
   position: relative;
@@ -2684,3 +2686,33 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
 }
+
+/* ---------- доступность: видимый клавиатурный фокус ---------- */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.card:focus-visible,
+.tier-card:focus-visible,
+.tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* ---------- пустые состояния с действием ---------- */
+.empty-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0;
+  padding: 26px 22px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, .02);
+  text-align: center;
+}
+.empty-cta b { font-size: 18px; letter-spacing: -.01em; }
+.empty-cta p { margin: 0; max-width: 440px; color: var(--muted); font-size: 13px; }
+.empty-cta .btn { margin-top: 6px; }
+

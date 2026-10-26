@@ -2807,6 +2807,25 @@
           return;
         }
       }
+      /* Стрелки внутри полосы вкладок переключают разделы, как в ARIA Tabs. */
+      const tablist = e.target && e.target.closest ? e.target.closest('.tabs') : null;
+      if (tablist && (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === 'Home' || e.key === 'End')) {
+        const tabs = [...tablist.querySelectorAll('.tab')];
+        const current = tabs.findIndex(tab => tab === e.target.closest('.tab'));
+        if (current >= 0) {
+          e.preventDefault();
+          let next = current;
+          if (e.key === 'Home') next = 0;
+          else if (e.key === 'End') next = tabs.length - 1;
+          else {
+            const step = e.key === 'ArrowRight' ? 1 : -1;
+            next = (current + step + tabs.length) % tabs.length;
+          }
+          tabs[next].focus();
+          switchTab(tabs[next].dataset.tab);
+          return;
+        }
+      }
       if (e.key === 'Escape') {
         if (state.command.open) {
           closeCommand();

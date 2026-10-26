@@ -120,12 +120,12 @@
     return Array.from({ length: n }, () => `<div class="skel" style="height:104px"></div>`).join('');
   }
 
-  function msgBlock(emoji, title, text, action) {
+  function msgBlock(emoji, title, text, action, actionLabel) {
     return `<div class="msg">
       <span class="emoji">${emoji}</span>
       <h3>${esc(title)}</h3>
       <p>${esc(text)}</p>
-      ${action ? `<button class="btn btn-ghost" data-action="${action}">Попробовать снова</button>` : ''}
+      ${action ? `<button class="btn btn-ghost" data-action="${action}">${esc(actionLabel || 'Попробовать снова')}</button>` : ''}
     </div>`;
   }
 
@@ -299,6 +299,7 @@
 
     if ((s.loading || state.booting) && !s.items.length) {
       grid.innerHTML = skeletonCards(12);
+      grid.dataset.cardIds = '';
       if (more) more.hidden = true;
       updateDBStatus();
       return;
@@ -308,6 +309,7 @@
         ? ` Поиск: ${s.resolveVia === 'dictionary' ? 'словарь AniTier' : s.resolveVia === 'anilist' ? 'название AniList' : s.resolveVia === 'mymemory' ? 'перевод MyMemory' : 'исходная фраза'}.`
         : '';
       grid.innerHTML = msgBlock('⚠️', 'Не удалось загрузить базу', `${s.error}${status}`, 'retry-db');
+      grid.dataset.cardIds = '';
       if (more) more.hidden = true;
       updateDBStatus();
       return;
@@ -320,6 +322,7 @@
           <p>Добавьте тайтл, которого нет в AniList или Kitsu: название, постер, год и серии.</p>
           <button class="btn btn-primary" data-action="new-custom">Создать карточку</button>
         </div>`;
+        grid.dataset.cardIds = '';
         if (more) more.hidden = true;
         updateDBStatus();
         return;
@@ -344,13 +347,26 @@
         text = `По запросу «${s.query}» нет результатов.${resolved}${tried}${unavailable} Попробуйте другое название или ослабьте фильтры.`;
       }
       else if (hasFilters) text = 'По выбранным фильтрам ничего не нашлось. Попробуйте ослабить условия.';
-      grid.innerHTML = msgBlock('🔎', 'Ничего не нашлось', text);
+      grid.innerHTML = hasFilters || s.query
+        ? msgBlock('🔎', 'Ничего не нашлось', text, 'reset-filters', 'Сбросить фильтры')
+        : msgBlock('🔎', 'Ничего не нашлось', text, 'refresh', 'Обновить');
+      grid.dataset.cardIds = '';
       if (more) more.hidden = true;
       updateDBStatus();
       return;
     }
 
-    grid.innerHTML = s.items.map(a => cardHTML(a, 'db')).join('');
+    /* Догрузка страницы не должна пересоздавать уже показанные карточки:
+       иначе при скролле вся сетка мигает и постеры грузятся заново. */
+    const key = s.items.map(a => a.id).join(',');
+    const previous = grid.dataset.cardIds || '';
+    if (previous && key.startsWith(previous + ',')) {
+      const shown = previous.split(',').length;
+      grid.insertAdjacentHTML('beforeend', s.items.slice(shown).map(a => cardHTML(a, 'db')).join(''));
+    } else if (previous !== key) {
+      grid.innerHTML = s.items.map(a => cardHTML(a, 'db')).join('');
+    }
+    grid.dataset.cardIds = key;
     if (more) {
       more.hidden = !s.hasNext;
       more.disabled = s.loading;
@@ -952,6 +968,21 @@
     const view = listView(name);
     const shown = new Set(C.filterItems(all, view));
     syncListControls(name, all);
+
+    /* Пустой список подсказывает, что делать дальше, а не просто молчит. */
+    let empty = document.getElementById(`empty-${name}`);
+    if (!empty) {
+      empty = document.createElement('div');
+      empty.id = `empty-${name}`;
+      empty.className = 'empty-cta';
+      root.parentNode.insertBefore(empty, root);
+    }
+    empty.hidden = all.length > 0;
+    if (!empty.hidden) {
+      empty.innerHTML = `<b>Пока пусто</b>
+        <p>${name === 'watched' ? 'Найдите аниме в базе и отметьте его просмотренным — оно появится здесь.' : 'Найдите аниме в базе и добавьте в планы — оно появится здесь.'}</p>
+        <button class="btn btn-primary" type="button" data-action="find-more">Найти аниме</button>`;
+    }
 
     root.innerHTML = TIERS.map(t => {
       const tierItems = list[t.id] || [];
@@ -1600,6 +1631,13 @@
     if (active >= 0) input.setAttribute('aria-activedescendant', `command-row-${active}`);
     else input.removeAttribute('aria-activedescendant');
 
+    const rows = box.querySelectorAll('.command-row');
+    rows.forEach((row, index) => {
+      const on = index === active;
+      row.classList.toggle('is-active', on);
+      row.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+
     const row = box.querySelector('.command-row.is-active');
     if (!row) return;
     const boxRect = box.getBoundingClientRect();
@@ -1710,7 +1748,9 @@
     const total = state.command.results.length;
     if (!total) return;
     state.command.index = (state.command.index + delta + total) % total;
-    renderCommandResults();
+    /* Без перерисовки: подчёркиваем другую строку на месте, иначе постеры
+       пересоздаются и список мигает при каждом нажатии. */
+    syncCommandSelection();
   }
 
   /** Переход к первому или последнему результату для клавиш Home/End. */
@@ -1718,7 +1758,7 @@
     const total = state.command.results.length;
     if (!total) return;
     state.command.index = edge === 'last' ? total - 1 : 0;
-    renderCommandResults();
+    syncCommandSelection();
   }
 
   function openCommandResult(index) {
@@ -2429,8 +2469,12 @@
       const on = t.dataset.tab === tab;
       t.classList.toggle('is-active', on);
       t.setAttribute('aria-selected', on ? 'true' : 'false');
+      t.tabIndex = on ? 0 : -1;
     });
-    $$('.view').forEach(v => { v.hidden = v.id !== 'view-' + tab; });
+    $$('.view').forEach(v => {
+      v.hidden = v.id !== 'view-' + tab;
+      v.setAttribute('aria-labelledby', 'tab-' + v.id.replace('view-', ''));
+    });
 
     if (!opts.deferActions) {
       if (tab === 'db') renderDB();
