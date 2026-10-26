@@ -18,6 +18,7 @@
     TIER_IDS,
     TIERS,
     LIST_LABELS,
+    VIEW_TABS,
     TEST_MODE,
     createAltSearchState,
     saveState,
@@ -2209,6 +2210,163 @@
     }
   }
 
+  /* ---------------- быстрые жесты: меню карточки и свайпы ---------------- */
+  let longPressTimer = 0;
+  let touchGesture = null;
+  let pullDistance = 0;
+  let suppressQuickClickUntil = 0;
+
+  function isMobileShell() {
+    return document.body.classList.contains('mobile-app')
+      || (typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 720px)').matches);
+  }
+
+  function quickMenuHTML(id) {
+    const anime = getAnime(id);
+    if (!anime) return '';
+    const inW = hasIn('watched', id);
+    const inP = hasIn('planned', id);
+    return `<div class="quick-backdrop" data-action="quick-close"></div>
+      <div class="quick-panel" role="dialog" aria-modal="true" aria-label="Быстрые действия">
+        <b class="quick-title">${App.esc(App.displayTitle ? App.displayTitle(anime) : anime.title)}</b>
+        <button type="button" class="quick-action" data-action="quick-open" data-id="${id}">Открыть карточку</button>
+        <button type="button" class="quick-action ${inW ? 'is-on' : ''}" data-action="quick-watched" data-id="${id}">${inW ? 'Убрать из просмотрено' : 'Отметить просмотренным'}</button>
+        <button type="button" class="quick-action ${inP ? 'is-on' : ''}" data-action="quick-planned" data-id="${id}">${inP ? 'Убрать из планов' : 'Добавить в планы'}</button>
+        <button type="button" class="quick-action quick-cancel" data-action="quick-close">Отмена</button>
+      </div>`;
+  }
+
+  function openQuickMenu(id) {
+    if (!getAnime(id)) return;
+    let box = document.getElementById('quick-menu');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'quick-menu';
+      box.className = 'quick-menu';
+      box.hidden = true;
+      document.body.appendChild(box);
+    }
+    state.quickMenu = { id };
+    box.innerHTML = quickMenuHTML(id);
+    box.hidden = false;
+    App.syncBodyScroll();
+    const first = box.querySelector('.quick-action');
+    if (first) first.focus({ preventScroll: true });
+  }
+
+  function closeQuickMenu() {
+    state.quickMenu = null;
+    const box = document.getElementById('quick-menu');
+    if (box) { box.hidden = true; box.innerHTML = ''; }
+    App.syncBodyScroll();
+  }
+
+  function pullIndicator() {
+    let el = document.getElementById('pull-refresh');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'pull-refresh';
+      el.className = 'pull-refresh';
+      el.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(el);
+    }
+    return el;
+  }
+
+  function resetPullIndicator() {
+    const el = document.getElementById('pull-refresh');
+    if (el) { el.style.transform = ''; el.textContent = ''; el.classList.remove('is-ready', 'is-busy'); }
+    pullDistance = 0;
+  }
+
+  function bindGestures() {
+    document.addEventListener('touchstart', event => {
+      if (!isMobileShell() || event.touches.length !== 1) return;
+      if (state.quickMenu || state.modalId != null) return;
+      const target = event.target;
+      if (!target || !target.closest) return;
+      if (target.closest('input, textarea, select, .modal, .quick-menu, .ep-chips, .notif-tabs, .continue-row, .chips')) return;
+
+      const touch = event.touches[0];
+      touchGesture = {
+        x: touch.clientX,
+        y: touch.clientY,
+        time: Date.now(),
+        pull: window.scrollY <= 0 && !target.closest('.tier-card'),
+      };
+      pullDistance = 0;
+
+      const card = target.closest('.card[data-id], .notif[data-id]');
+      if (card && !target.closest('.card-actions, .notif-actions, .mini-btn, .ep-chip')) {
+        const id = Number(card.dataset.id);
+        clearTimeout(longPressTimer);
+        longPressTimer = setTimeout(() => {
+          longPressTimer = 0;
+          suppressQuickClickUntil = Date.now() + 700;
+          openQuickMenu(id);
+          if (navigator.vibrate) { try { navigator.vibrate(12); } catch { /* не критично */ } }
+          touchGesture = null;
+          resetPullIndicator();
+        }, 520);
+      }
+    }, { passive: true });
+
+    document.addEventListener('touchmove', event => {
+      if (!touchGesture || event.touches.length !== 1) return;
+      const touch = event.touches[0];
+      const dx = touch.clientX - touchGesture.x;
+      const dy = touch.clientY - touchGesture.y;
+
+      if (Math.abs(dx) > 10 || Math.abs(dy) > 10) clearTimeout(longPressTimer);
+      if (Math.abs(dx) > Math.abs(dy) * 1.2) {
+        resetPullIndicator();
+        return;
+      }
+      if (!touchGesture.pull || dy <= 0) return;
+      pullDistance = Math.min(120, dy * 0.6);
+      const el = pullIndicator();
+      el.textContent = pullDistance >= 48 ? 'Отпустите, чтобы обновить' : 'Потяните вниз';
+      el.classList.toggle('is-ready', pullDistance >= 48);
+      el.style.transform = `translate(-50%, ${pullDistance}px)`;
+    }, { passive: true });
+
+    document.addEventListener('touchend', event => {
+      clearTimeout(longPressTimer);
+      if (!touchGesture) { resetPullIndicator(); return; }
+      const touch = event.changedTouches && event.changedTouches[0];
+      const dx = touch ? touch.clientX - touchGesture.x : 0;
+      const dy = touch ? touch.clientY - touchGesture.y : 0;
+      const elapsed = Date.now() - touchGesture.time;
+      const gesture = touchGesture;
+      touchGesture = null;
+
+      if (gesture.pull && pullDistance >= 48 && dy > 0) {
+        const el = pullIndicator();
+        el.textContent = 'Обновляем…';
+        el.classList.add('is-busy');
+        el.style.transform = 'translate(-50%, 18px)';
+        Promise.resolve(refreshCurrent()).finally(() => {
+          setTimeout(() => { el.classList.remove('is-busy'); resetPullIndicator(); }, 600);
+        });
+        return;
+      }
+      resetPullIndicator();
+
+      if (elapsed < 900 && Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        const index = VIEW_TABS.indexOf(state.tab);
+        if (index < 0) return;
+        const next = dx < 0 ? index + 1 : index - 1;
+        if (next >= 0 && next < VIEW_TABS.length) switchTab(VIEW_TABS[next]);
+      }
+    }, { passive: true });
+
+    document.addEventListener('touchcancel', () => {
+      clearTimeout(longPressTimer);
+      touchGesture = null;
+      resetPullIndicator();
+    }, { passive: true });
+  }
+
   let eventsBound = false;
 
   function bindEvents() {
@@ -2225,6 +2383,10 @@
 
     document.addEventListener('click', e => {
       if (Date.now() < suppressTierClickUntil && e.target.closest && e.target.closest('.tier-card')) {
+        e.preventDefault();
+        return;
+      }
+      if (Date.now() < suppressQuickClickUntil && e.target.closest && e.target.closest('.card, .notif')) {
         e.preventDefault();
         return;
       }
@@ -2284,6 +2446,25 @@
 
         case 'add-watched':
           toggleList('watched', getAnime(id));
+          break;
+
+        case 'quick-close':
+          closeQuickMenu();
+          break;
+
+        case 'quick-open':
+          closeQuickMenu();
+          openModal(id);
+          break;
+
+        case 'quick-watched':
+          toggleList('watched', getAnime(id));
+          closeQuickMenu();
+          break;
+
+        case 'quick-planned':
+          toggleList('planned', getAnime(id));
+          closeQuickMenu();
           break;
 
         case 'add-planned':
@@ -3051,6 +3232,10 @@
           closeFilterMenus();
           return;
         }
+        if (state.quickMenu) {
+          closeQuickMenu();
+          return;
+        }
         if (state.command.open) {
           closeCommand();
           return;
@@ -3233,6 +3418,7 @@
     restoreCatalogPreferences();
     syncLangUI();
     bindEvents();
+    bindGestures();
     setupInfiniteScroll();
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && dailySyncIsDue()) runDailySync();
@@ -3432,6 +3618,7 @@
 
   /* Системная кнопка «назад» в Android: сначала закрываем слои интерфейса. */
   function handleAndroidBack() {
+    if (state.quickMenu) { closeQuickMenu(); return true; }
     if (state.command.open) { closeCommand(); return true; }
     if (state.tiktokImport.open) { closeTikTokImport(); return true; }
     if (state.statsScreen && state.statsScreen.open) { closeStats(); return true; }
@@ -3543,6 +3730,8 @@
       enrichRussianTitles,
       autoBackupDue,
       runAutoBackup,
+      openQuickMenu,
+      closeQuickMenu,
       fetchAnimeRelations: App.fetchAnimeRelations,
       clearPersistentApiCache,
       clearMemoryApiCache: clearAniListCache,
