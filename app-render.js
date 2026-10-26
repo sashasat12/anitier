@@ -1466,8 +1466,118 @@
       </div>`;
   }
 
+  /* ---------------- статистика профиля ---------------- */
+  function statsTierRows(stats) {
+    const max = Math.max(1, ...TIER_IDS.map(tier => stats.tierCounts[tier] || 0));
+    return TIERS.map(tier => {
+      const count = stats.tierCounts[tier.id] || 0;
+      const width = Math.round((count / max) * 100);
+      return `<div class="stats-tier-row">
+        <span class="stats-tier-badge tier-${tier.id}">${esc(tier.label)}</span>
+        <span class="stats-tier-name">${esc(tier.name)}</span>
+        <span class="stats-tier-track"><span class="stats-tier-fill tier-${tier.id}" style="width:${width}%"></span></span>
+        <b>${count}</b>
+      </div>`;
+    }).join('');
+  }
+
+  function renderStatsScreen() {
+    const box = $('#stats-content');
+    if (!box) return;
+    const stats = C.buildProfileStats(state.lists, state.progress);
+    if (!stats.watched && !stats.planned) {
+      box.innerHTML = `<section class="stats-screen">
+        <header class="stats-head">
+          <div class="exchange-eyebrow">Профиль</div>
+          <h2 id="stats-title">Статистика</h2>
+          <p class="exchange-sub">Здесь появятся часы за экраном, любимые жанры и распределение по тирам.</p>
+        </header>
+        <div class="exchange-empty">Пока пусто. Добавьте первый тайтл в «Просмотрено» — статистика соберётся сама.</div>
+      </section>`;
+      return;
+    }
+
+    const time = C.formatWatchTime(stats.minutes);
+    const avg = stats.averageScore == null ? '—' : String(stats.averageScore);
+    const genres = stats.topGenres.length
+      ? stats.topGenres.map(genre => `<span class="stats-chip">${esc(genre.name)} <b>${genre.count}</b></span>`).join('')
+      : '<span class="stats-muted">Жанры появятся, когда в списке будут тайтлы с жанрами.</span>';
+    const studios = stats.topStudios.length
+      ? stats.topStudios.map(studio => `<li><span>${esc(studio.name)}</span><b>${studio.count}</b></li>`).join('')
+      : '';
+    const years = stats.years.length
+      ? stats.years.slice(0, 8).map(year => `<span class="stats-chip">${year.year} <b>${year.count}</b></span>`).join('')
+      : '';
+    const completionWidth = Math.max(0, Math.min(100, stats.completion));
+
+    box.innerHTML = `<section class="stats-screen">
+      <header class="stats-head">
+        <div class="exchange-eyebrow">Профиль</div>
+        <h2 id="stats-title">Статистика</h2>
+        <p class="exchange-sub">Собрана из ваших списков и отмеченных серий. По 24 минуты на серию.</p>
+      </header>
+
+      <div class="stats-hero">
+        <div class="stats-hero-time">
+          <b>${esc(time)}</b>
+          <span>за экраном</span>
+        </div>
+        <div class="stats-hero-grid">
+          <div><b>${stats.episodesWatched}</b><span>серий просмотрено</span></div>
+          <div><b>${stats.watched}</b><span>тайтлов в «Просмотрено»</span></div>
+          <div><b>${avg}</b><span>средняя оценка</span></div>
+          <div><b>${stats.planned}</b><span>в планах</span></div>
+        </div>
+      </div>
+
+      <div class="stats-progress-card">
+        <div class="stats-progress-head">
+          <b>Завершено ${stats.completed} из ${stats.watched}</b>
+          <span>${stats.completion}%</span>
+        </div>
+        <div class="stats-progress-track"><span style="width:${completionWidth}%"></span></div>
+        <p class="stats-muted">Смотрю ${stats.inProgress} · не начато ${stats.notStarted} · известно серий ${stats.knownEpisodes}</p>
+      </div>
+
+      <h3 class="stats-subtitle">По тирам</h3>
+      <div class="stats-tier-list">${statsTierRows(stats)}</div>
+
+      <h3 class="stats-subtitle">Любимые жанры</h3>
+      <div class="stats-chips">${genres}</div>
+
+      ${studios ? `<h3 class="stats-subtitle">Студии</h3>
+      <ul class="stats-studio-list">${studios}</ul>` : ''}
+
+      ${years ? `<h3 class="stats-subtitle">Годы выхода</h3>
+      <div class="stats-chips">${years}</div>` : ''}
+    </section>`;
+  }
+
+  function openStats() {
+    if (state.modalId != null) closeModal();
+    if (state.settingsScreen && state.settingsScreen.open) closeSettings();
+    state.statsScreen = { open: true };
+    renderStatsScreen();
+    const modal = $('#stats-modal');
+    if (modal) modal.hidden = false;
+    syncBodyScroll();
+    const panel = $('#stats-panel');
+    if (panel) {
+      panel.scrollTop = 0;
+      panel.focus({ preventScroll: true });
+    }
+  }
+
+  function closeStats() {
+    state.statsScreen = { open: false };
+    const modal = $('#stats-modal');
+    if (modal) modal.hidden = true;
+    syncBodyScroll();
+  }
+
   function openSettings() {
     if (state.modalId != null) closeModal();
+    if (state.statsScreen && state.statsScreen.open) closeStats();
     if (state.backup && state.backup.open) closeBackup();
     state.settingsScreen = { open: true, view: 'main', checking: false, message: '', error: false, latest: null };
     renderSettings();
@@ -1493,6 +1603,7 @@
     else if (state.tab === 'notifications') renderNotifications();
     else if (state.tab === 'upcoming') renderUpcoming();
     if (state.modalId != null) renderModal();
+    if (state.statsScreen && state.statsScreen.open) renderStatsScreen();
   }
 
   function syncBodyScroll() {
@@ -1501,6 +1612,7 @@
       || Boolean(state.customForm && state.customForm.open)
       || Boolean(state.momentForm && state.momentForm.open)
       || Boolean(state.tiktokImport && state.tiktokImport.open)
+      || Boolean(state.statsScreen && state.statsScreen.open)
       || Boolean(state.backup && state.backup.open);
     document.body.classList.toggle('no-scroll', locked);
   }
@@ -2260,6 +2372,9 @@
     renderUpcoming,
     renderTierList,
     renderStats,
+    renderStatsScreen,
+    openStats,
+    closeStats,
     layoutTierCards,
     updateCounters,
     openCustomForm,

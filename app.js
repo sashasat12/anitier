@@ -129,6 +129,8 @@
     normalizeUpdateCheck,
     openSettings,
     closeSettings,
+    openStats,
+    closeStats,
     openExchange,
     closeExchange,
     setExchangeMode,
@@ -2258,6 +2260,14 @@
           openSettings();
           break;
 
+        case 'open-stats':
+          openStats();
+          break;
+
+        case 'close-stats':
+          closeStats();
+          break;
+
         case 'close-settings':
           closeSettings();
           break;
@@ -2652,6 +2662,10 @@
           closeTikTokImport();
           return;
         }
+        if (state.statsScreen && state.statsScreen.open) {
+          closeStats();
+          return;
+        }
         if (state.settingsScreen && state.settingsScreen.open) {
           closeSettings();
           return;
@@ -2999,6 +3013,7 @@
   /* Системная кнопка «назад» в Android: сначала закрываем слои интерфейса. */
   function handleAndroidBack() {
     if (state.tiktokImport.open) { closeTikTokImport(); return true; }
+    if (state.statsScreen && state.statsScreen.open) { closeStats(); return true; }
     if (state.settingsScreen && state.settingsScreen.open) {
       if (state.settingsScreen.view === 'changelog') {
         state.settingsScreen.view = 'main';
@@ -3084,6 +3099,8 @@
     renderUpdateCard,
     openSettings,
     closeSettings,
+    openStats,
+    closeStats,
     renderSettings,
     scrollPageBy,
     openExternalLink,
@@ -3119,6 +3136,8 @@
       receiveSharedTikTok,
       openTikTokSearch,
       invalidateNotificationEpisodes,
+      openStats,
+      closeStats,
       openExchange,
       closeExchange,
       setExchangeMode,

@@ -177,6 +177,7 @@
         <p class="sub">Разложи тайтлы по тирам — от S до F. Карточки перетаскиваются мышью или долгим нажатием.</p>
       </div>
       <div class="head-actions">
+        <button class="btn btn-ghost" data-action="open-stats">Статистика</button>
         <button class="btn btn-ghost" data-action="exchange-export" data-list="watched">Экспорт</button>
         <button class="btn btn-ghost" data-action="exchange-import">Импорт</button>
         <button class="btn btn-ghost" data-action="find-more">+ Добавить тайтл</button>
@@ -287,6 +288,15 @@
   <div class="modal-panel backup-panel" id="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title" tabindex="-1">
     <button class="modal-close" data-action="close-settings" aria-label="Закрыть">✕</button>
     <div class="backup-content" id="settings-content"></div>
+  </div>
+</div>
+
+<!-- ================= СТАТИСТИКА ================= -->
+<div class="modal" id="stats-modal" hidden>
+  <div class="modal-backdrop" data-action="close-stats"></div>
+  <div class="modal-panel stats-panel" id="stats-panel" role="dialog" aria-modal="true" aria-labelledby="stats-title" tabindex="-1">
+    <button class="modal-close" data-action="close-stats" aria-label="Закрыть">✕</button>
+    <div class="stats-content" id="stats-content"></div>
   </div>
 </div>
 

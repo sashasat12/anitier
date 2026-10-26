@@ -1179,12 +1179,22 @@
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.15.0';
+  const APP_VERSION = '1.16.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* История изменений для экрана «Что нового». Новые версии — сверху.
      Пункты пишем для пользователя: что теперь можно сделать, а не как это сделано. */
   const CHANGELOG = [
+    {
+      version: '1.16.0',
+      date: '26 октября 2026',
+      title: 'Статистика профиля',
+      items: [
+        'На вкладке «Просмотрено» появилась кнопка «Статистика»: часы за экраном, просмотренные серии, средняя оценка и завершённость.',
+        'Видно распределение по тирам, любимые жанры, студии и годы выхода.',
+        'Время считается по отмеченным сериям из расчёта 24 минуты на серию.',
+      ],
+    },
     {
       version: '1.15.0',
       date: '26 октября 2026',
@@ -1631,6 +1641,119 @@
     };
   }
 
+  /* ---------------- статистика профиля ---------------- */
+  function pluralRu(value, one, few, many) {
+    const abs = Math.abs(Number(value) || 0) % 100;
+    const last = abs % 10;
+    if (abs > 10 && abs < 20) return many;
+    if (last > 1 && last < 5) return few;
+    if (last === 1) return one;
+    return many;
+  }
+
+  /** Минуты просмотра в человеческий вид: «3 дня 4 ч», «12 ч 30 мин», «45 мин». */
+  function formatWatchTime(minutes) {
+    const total = Math.max(0, Math.round(Number(minutes) || 0));
+    const days = Math.floor(total / 1440);
+    const hours = Math.floor((total % 1440) / 60);
+    const mins = total % 60;
+    const parts = [];
+    if (days) parts.push(`${days} ${pluralRu(days, 'день', 'дня', 'дней')}`);
+    if (hours) parts.push(`${hours} ч`);
+    if (!days && mins) parts.push(`${mins} мин`);
+    return parts.length ? parts.join(' ') : '0 мин';
+  }
+
+  /**
+   * Собирает статистику профиля из списков и прогресса серий.
+   * Возвращает числа, распределение по тирам, жанры, студии и годы.
+   */
+  function buildProfileStats(lists, progress, options = {}) {
+    const minutesPerEpisode = Math.max(1, Math.trunc(Number(options.minutesPerEpisode) || 24));
+    const topLimit = Math.max(1, Math.trunc(Number(options.topLimit) || 5));
+    const tierCounts = {};
+    for (const tier of TIER_IDS) tierCounts[tier] = 0;
+
+    const genreCounts = new Map();
+    const studioCounts = new Map();
+    const yearCounts = new Map();
+    let watched = 0;
+    let planned = 0;
+    let episodesWatched = 0;
+    let knownEpisodes = 0;
+    let completed = 0;
+    let inProgress = 0;
+    let notStarted = 0;
+    let scored = 0;
+    let scoreSum = 0;
+
+    for (const tier of TIER_IDS) {
+      const items = (lists && lists.watched && lists.watched[tier]) || [];
+      for (const item of items) {
+        if (!item) continue;
+        watched += 1;
+        tierCounts[tier] += 1;
+
+        const episodes = Math.max(0, Math.trunc(Number(item.episodes) || 0));
+        knownEpisodes += episodes;
+        const entry = progress && progress[item.id];
+        const seen = entry && Array.isArray(entry.watched) ? entry.watched.length : 0;
+        episodesWatched += seen;
+        if (episodes > 0 && seen >= episodes) completed += 1;
+        else if (seen > 0) inProgress += 1;
+        else notStarted += 1;
+
+        if (Number.isFinite(item.score) && item.score > 0) {
+          scored += 1;
+          scoreSum += item.score;
+        }
+
+        for (const genre of Array.isArray(item.genres) ? item.genres : []) {
+          if (!genre) continue;
+          genreCounts.set(genre, (genreCounts.get(genre) || 0) + 1);
+        }
+        for (const studio of Array.isArray(item.studios) ? item.studios : []) {
+          if (!studio) continue;
+          studioCounts.set(studio, (studioCounts.get(studio) || 0) + 1);
+        }
+        const year = Number(item.year);
+        if (Number.isInteger(year) && year > 1900 && year <= 2100) {
+          yearCounts.set(year, (yearCounts.get(year) || 0) + 1);
+        }
+      }
+
+      const plans = (lists && lists.planned && lists.planned[tier]) || [];
+      planned += plans.filter(Boolean).length;
+    }
+
+    const top = map => [...map.entries()]
+      .sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0]), 'ru'))
+      .slice(0, topLimit)
+      .map(([name, count]) => ({ name, count }));
+
+    const minutes = episodesWatched * minutesPerEpisode;
+    return {
+      watched,
+      planned,
+      episodesWatched,
+      knownEpisodes,
+      minutes,
+      hours: Math.round((minutes / 60) * 10) / 10,
+      completed,
+      inProgress,
+      notStarted,
+      completion: watched ? Math.round((completed / watched) * 100) : 0,
+      averageScore: scored ? Math.round((scoreSum / scored) * 10) / 10 : null,
+      scored,
+      tierCounts,
+      topGenres: top(genreCounts),
+      topStudios: top(studioCounts),
+      years: [...yearCounts.entries()]
+        .sort((a, b) => b[0] - a[0])
+        .map(([year, count]) => ({ year, count })),
+    };
+  }
+
   /* ---------------- PNG тир-листа ---------------- */
   const TIER_IMAGE_DEFAULTS = {
     width: 1400,
@@ -1754,6 +1877,8 @@
     planImport,
     TIER_IMAGE_DEFAULTS,
     buildTierImageLayout,
+    formatWatchTime,
+    buildProfileStats,
     APP_VERSION,
     GITHUB_URL,
     CHANGELOG,

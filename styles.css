@@ -938,6 +938,155 @@ button { font-family: inherit; }
 }
 .stat span { font-size: 11.5px; color: var(--muted); font-weight: 600; }
 
+/* ---------- статистика профиля ---------- */
+.stats-panel { width: min(760px, 100%); }
+.stats-content { padding: 26px; }
+.stats-head { padding-right: 40px; margin-bottom: 16px; }
+.stats-head h2 {
+  margin: 0 0 6px;
+  font-size: clamp(22px, 3vw, 30px);
+  line-height: 1.1;
+  letter-spacing: -.03em;
+}
+.stats-hero {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  align-items: stretch;
+  padding: 18px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(255, 77, 141, .12), rgba(183, 155, 255, .06));
+}
+.stats-hero-time {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 190px;
+  padding-right: 18px;
+  border-right: 1px solid var(--line);
+}
+.stats-hero-time b {
+  font-size: clamp(28px, 4.4vw, 40px);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -.04em;
+}
+.stats-hero-time span,
+.stats-hero-grid span { color: var(--muted); font-size: 11.5px; font-weight: 600; }
+.stats-hero-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 22px;
+  flex: 1;
+  min-width: 220px;
+}
+.stats-hero-grid div { display: flex; flex-direction: column; gap: 2px; }
+.stats-hero-grid b { font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
+.stats-progress-card {
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+}
+.stats-progress-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 12.5px;
+}
+.stats-progress-head span { color: #ff9dbc; font-weight: 800; }
+.stats-progress-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .07);
+}
+.stats-progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ff5c8a, #b79bff);
+}
+.stats-progress-card .stats-muted { margin: 8px 0 0; }
+.stats-subtitle {
+  margin: 18px 0 10px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #ff9dbc;
+}
+.stats-tier-list { display: flex; flex-direction: column; gap: 7px; }
+.stats-tier-row {
+  display: grid;
+  grid-template-columns: 34px minmax(70px, 110px) minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 9px;
+}
+.stats-tier-badge {
+  display: grid;
+  place-items: center;
+  height: 26px;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+.stats-tier-name { color: var(--muted); font-size: 12px; font-weight: 600; }
+.stats-tier-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .06);
+}
+.stats-tier-fill { display: block; height: 100%; min-width: 2px; border-radius: inherit; }
+.stats-tier-row b { text-align: right; font-size: 12.5px; }
+.stats-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.stats-chip {
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .035);
+  color: #d7deef;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.stats-chip b { margin-left: 4px; color: #ff9dbc; }
+.stats-studio-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.stats-studio-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 11px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .03);
+  font-size: 12px;
+}
+.stats-studio-list b { color: #ff9dbc; }
+.stats-muted { margin: 0; color: var(--muted); font-size: 11.5px; }
+@media (max-width: 560px) {
+  .stats-content { padding: 20px; }
+  .stats-hero-time {
+    width: 100%;
+    padding: 0 0 14px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .stats-tier-row { grid-template-columns: 30px minmax(54px, 84px) minmax(0, 1fr) 28px; gap: 7px; }
+  .stats-tier-name { font-size: 11px; }
+}
+
 .tierlist { display: flex; flex-direction: column; gap: 12px; }
 
 .tier-row {
