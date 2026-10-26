@@ -39,6 +39,7 @@
     $search: String,
     $sort: [MediaSort],
     $type: MediaType,
+    $idMal_in: [Int],
     $status: MediaStatus,
     $status_in: [MediaStatus],
     $format: MediaFormat,
@@ -57,6 +58,7 @@
       media(
         search: $search,
         type: $type,
+        idMal_in: $idMal_in,
         status: $status,
         status_in: $status_in,
         format: $format,
@@ -242,38 +244,10 @@
     };
   }
 
-  /* Русские названия для популярных тайтлов (MAL id) */
-  const RU_TITLES = {
-    1: 'Ковбой Бибоп',
-    19: 'Монстр',
-    20: 'Наруто',
-    21: 'Ван-Пис',
-    30: 'Евангелион',
-    1535: 'Тетрадь смерти',
-    1575: 'Код Гиас: Восставший Лелуш',
-    5114: 'Стальной алхимик: Братство',
-    6547: 'Ангельские ритмы!',
-    9253: 'Врата Штейна',
-    11061: 'Хантер × Хантер',
-    11757: 'Мастера меча онлайн',
-    16498: 'Атака титанов',
-    19815: 'Нет игры — нет жизни',
-    20583: 'Волейбол!!',
-    22319: 'Токийский гуль',
-    23273: 'Твоя апрельская ложь',
-    28851: 'Форма голоса',
-    30276: 'Ванпанчмен',
-    31240: 'Re:Zero. Жизнь с нуля в другом мире',
-    31964: 'Моя геройская академия',
-    32281: 'Твоё имя',
-    34599: 'Созданный в Бездне',
-    38000: 'Клинок, рассекающий демонов',
-    40748: 'Магическая битва',
-    41467: 'Блич: Тысячелетняя кровавая война',
-    44511: 'Человек-бензопила',
-    47917: 'Боччи на рок-концерте!',
-    52991: 'Провожающая в последний путь Фрирен',
-  };
+  /* Русские названия лежат в titles-ru.js: данные отдельно от логики. */
+  const RU_TITLES = (typeof window !== 'undefined' && window.AniTierTitlesRu && typeof window.AniTierTitlesRu === 'object')
+    ? window.AniTierTitlesRu
+    : {};
 
   /* Демо-данные на случай отсутствия сети */
   const DEMO_BASE = [
@@ -495,6 +469,7 @@
     forceDemo: new URLSearchParams(location.search).has('demo'),
     settings: {
       searchLang: 'auto',
+      titleLang: 'ru',
       translationProvider: 'auto',
       updateCheck: 'ask',
       lastUpdateCheck: 0,
@@ -1127,6 +1102,7 @@
         seenNotifications: [...state.seenNotifications],
         settings: {
           searchLang: C.normalizeSearchLang(state.settings.searchLang),
+          titleLang: state.settings.titleLang === 'original' ? 'original' : 'ru',
           translationProvider: normalizeTranslationProvider(state.settings.translationProvider),
           updateCheck: normalizeUpdateCheck(state.settings.updateCheck),
           lastUpdateCheck: Number(state.settings.lastUpdateCheck) || 0,

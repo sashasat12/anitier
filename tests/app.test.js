@@ -92,7 +92,7 @@
     if (value.includes('frieren')) return [frierenAniList(), anilistUnique()];
     if (value.includes('naruto')) {
       return [rawAniList(402, 'Naruto', {
-        idMal: 404,
+        idMal: 9404,
         startDate: { year: 2002, month: 10, day: 3 },
         endDate: { year: 2007, month: 2, day: 8 },
         averageScore: 82,
@@ -129,6 +129,14 @@
         }
 
         if (vars.search) return anilistResponse(searchMedia(vars.search, page), false);
+
+        if (Array.isArray(vars.idMal_in) && vars.idMal_in.length) {
+          return anilistResponse(vars.idMal_in.map((mal, index) => rawAniList(
+            5000 + index,
+            'Русский тайтл ' + mal,
+            { idMal: Number(mal) },
+          )), false);
+        }
 
         if (vars.status === 'RELEASING') {
           return anilistResponse([

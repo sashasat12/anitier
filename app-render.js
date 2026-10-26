@@ -59,13 +59,22 @@
   const fetchNotifications = (...args) => App.fetchNotifications(...args);
   const fetchUpcoming = (...args) => App.fetchUpcoming(...args);
 
+  /** Название для интерфейса: русское по умолчанию, оригинальное — по настройке. */
+  function displayTitle(a) {
+    if (!a) return '';
+    if (state.settings && state.settings.titleLang === 'original') {
+      return a.originalTitle || a.altTitle || a.titleRu || a.title || '';
+    }
+    return a.titleRu || a.title || a.originalTitle || '';
+  }
+
   function imgAttrs(a, alt) {
     const image = String(a.image || '');
     const src = image || makePoster(a.title, a.id);
     const remote = /^https?:\/\//i.test(image)
       ? ` data-poster-src="${esc(image)}" onload="cachePoster(this)"`
       : '';
-    return `src="${esc(src)}" alt="${esc(alt !== undefined ? alt : a.title)}" loading="lazy" decoding="async" data-title="${esc(a.title)}" data-id="${a.id}"${remote} onerror="posterFallback(this)"`;
+    return `src="${esc(src)}" alt="${esc(alt !== undefined ? alt : displayTitle(a))}" loading="lazy" decoding="async" data-title="${esc(displayTitle(a))}" data-id="${a.id}"${remote} onerror="posterFallback(this)"`;
   }
 
   function cardHTML(a, ctx) {
@@ -76,7 +85,7 @@
     const pTotal = stats.total || stats.available || 0;
     const pct = pTotal ? Math.min(100, Math.round((wc / pTotal) * 100)) : 0;
     const metaBits = [typeRu(a.type) || '—', a.year || '—', a.episodes ? `${a.episodes} эп.` : 'серий: ?'];
-    return `<article class="card" data-action="open" data-id="${a.id}" tabindex="0" aria-label="${esc(a.title)}">
+    return `<article class="card" data-action="open" data-id="${a.id}" tabindex="0" aria-label="${esc(displayTitle(a))}">
       <div class="poster">
         <img ${imgAttrs(a)}>
         <div class="poster-shade"></div>
@@ -89,7 +98,7 @@
         </div>
       </div>
       <div class="card-body">
-        <h3 class="card-title">${esc(a.title)}</h3>
+        <h3 class="card-title">${esc(displayTitle(a))}</h3>
         <p class="card-meta">${esc(metaBits.join(' · '))}</p>
         ${ctx === 'upcoming' && a.airedFrom ? `<p class="card-date"><span>${esc(dateShort(a.airedFrom))}</span><span class="dot"></span><span class="soon">${esc(countdownLabel(a.airedFrom))}</span></p>` : ''}
         ${wc > 0 ? `<div class="card-progress"><span class="cp-bar"><i style="width:${pct}%"></i></span><span class="cp-label">✓ ${wc}${pTotal ? ' / ' + pTotal : ''}</span></div>` : ''}
@@ -107,7 +116,7 @@
       <img ${imgAttrs(a)}>
       <button class="tc-remove" data-action="remove" data-id="${a.id}" data-list="${list}" title="Убрать из списка" aria-label="Убрать из списка">✕</button>
       <div class="tc-body">
-        <div class="tc-title" title="${esc(a.title)}">${esc(a.title)}</div>
+        <div class="tc-title" title="${esc(displayTitle(a))}">${esc(displayTitle(a))}</div>
         <div class="tc-meta">${a.episodes ? a.episodes + ' эп.' : '? эп.'}${a.score ? ' · ★ ' + a.score.toFixed(1) : ''}${wc ? ' · ✓ ' + wc : ''}</div>
       </div>
     </article>`;
@@ -309,15 +318,15 @@
     const nextLine = item.next && item.next.date
       ? `Следующая: ${item.next.n}-я · ${esc(dateShort(item.next.date))}`
       : 'Следующая серия';
-    return `<article class="continue-card" data-action="open" data-id="${anime.id}" tabindex="0" aria-label="Продолжить: ${esc(anime.title)}">
+    return `<article class="continue-card" data-action="open" data-id="${anime.id}" tabindex="0" aria-label="Продолжить: ${esc(displayTitle(anime))}">
       <img ${imgAttrs(anime)}>
       <div class="continue-body">
-        <b class="continue-title" title="${esc(anime.title)}">${esc(anime.title)}</b>
+        <b class="continue-title" title="${esc(displayTitle(anime))}">${esc(displayTitle(anime))}</b>
         <span class="continue-meta">Просмотрено ${item.count}${item.total ? ` из ${item.total}` : ''}</span>
         <span class="continue-next">${nextLine}</span>
         <span class="continue-bar"><i style="width:${pct}%"></i></span>
       </div>
-      <button class="btn btn-primary continue-btn" type="button" data-action="quick-watch" data-id="${anime.id}" aria-label="Отметить следующую серию: ${esc(anime.title)}">+1 серия</button>
+      <button class="btn btn-primary continue-btn" type="button" data-action="quick-watch" data-id="${anime.id}" aria-label="Отметить следующую серию: ${esc(displayTitle(anime))}">+1 серия</button>
     </article>`;
   }
 
@@ -339,7 +348,7 @@
 
     if ((s.loading || state.booting) && !s.items.length) {
       grid.innerHTML = skeletonCards(12);
-      grid.dataset.cardIds = '';
+      grid.dataset.cardSignature = '';
       if (more) more.hidden = true;
       updateDBStatus();
       return;
@@ -349,7 +358,7 @@
         ? ` Поиск: ${s.resolveVia === 'dictionary' ? 'словарь AniTier' : s.resolveVia === 'anilist' ? 'название AniList' : s.resolveVia === 'mymemory' ? 'перевод MyMemory' : 'исходная фраза'}.`
         : '';
       grid.innerHTML = msgBlock('⚠️', 'Не удалось загрузить базу', `${s.error}${status}`, 'retry-db');
-      grid.dataset.cardIds = '';
+      grid.dataset.cardSignature = '';
       if (more) more.hidden = true;
       updateDBStatus();
       return;
@@ -362,7 +371,7 @@
           <p>Добавьте тайтл, которого нет в AniList или Kitsu: название, постер, год и серии.</p>
           <button class="btn btn-primary" data-action="new-custom">Создать карточку</button>
         </div>`;
-        grid.dataset.cardIds = '';
+        grid.dataset.cardSignature = '';
         if (more) more.hidden = true;
         updateDBStatus();
         return;
@@ -390,23 +399,27 @@
       grid.innerHTML = hasFilters || s.query
         ? msgBlock('🔎', 'Ничего не нашлось', text, 'reset-filters', 'Сбросить фильтры')
         : msgBlock('🔎', 'Ничего не нашлось', text, 'refresh', 'Обновить');
-      grid.dataset.cardIds = '';
+      grid.dataset.cardSignature = '';
       if (more) more.hidden = true;
       updateDBStatus();
       return;
     }
 
     /* Догрузка страницы не должна пересоздавать уже показанные карточки:
-       иначе при скролле вся сетка мигает и постеры грузятся заново. */
+       иначе при скролле вся сетка мигает и постеры грузятся заново.
+       Смена языка названий — повод перерисовать всё. */
     const key = s.items.map(a => a.id).join(',');
-    const previous = grid.dataset.cardIds || '';
-    if (previous && key.startsWith(previous + ',')) {
-      const shown = previous.split(',').length;
+    const lang = state.settings.titleLang === 'original' ? 'original' : 'ru';
+    const signature = key + '|' + lang;
+    const previous = grid.dataset.cardSignature || '';
+    const [previousKey, previousLang] = previous.split('|');
+    if (previousLang === lang && previousKey && key.startsWith(previousKey + ',')) {
+      const shown = previousKey.split(',').length;
       grid.insertAdjacentHTML('beforeend', s.items.slice(shown).map(a => cardHTML(a, 'db')).join(''));
-    } else if (previous !== key) {
+    } else if (previous !== signature) {
       grid.innerHTML = s.items.map(a => cardHTML(a, 'db')).join('');
     }
-    grid.dataset.cardIds = key;
+    grid.dataset.cardSignature = signature;
     if (more) {
       more.hidden = !s.hasNext;
       more.disabled = s.loading;
@@ -610,10 +623,10 @@
       ? `<span>Старт: ${esc(dateShort(a.airedFrom))}</span>`
       : `<span>Завершено ${esc(relativePast(a.airedTo))}</span>`;
 
-    return `<article class="notif notif-${kind}" data-action="open" data-id="${a.id}" tabindex="0" aria-label="${esc(a.title)}">
+    return `<article class="notif notif-${kind}" data-action="open" data-id="${a.id}" tabindex="0" aria-label="${esc(displayTitle(a))}">
       <div class="notif-visual"><div class="notif-date"><b>${day}</b><span>${mon}</span></div><img class="notif-poster" ${imgAttrs(a, '')}></div>
       <div class="notif-body">
-        <h3 class="notif-title">${esc(a.title)}${isNew ? '<span class="flag-new">new</span>' : ''}</h3>
+        <h3 class="notif-title">${esc(displayTitle(a))}${isNew ? '<span class="flag-new">new</span>' : ''}</h3>
         <p class="notif-alt">${esc(a.altTitle || '')}</p>
         <div class="notif-meta">
           ${meta}
@@ -814,9 +827,9 @@
         day = label;
         html += `<h2 class="month-head">${esc(label)}</h2>`;
       }
-      html += `<article class="calendar-row" data-action="open" data-id="${item.id}" tabindex="0" aria-label="Открыть: ${esc(item.title)}">
+      html += `<article class="calendar-row" data-action="open" data-id="${item.id}" tabindex="0" aria-label="Открыть: ${esc(displayTitle(item))}">
         <span class="calendar-date"><b>${esc(label)}</b><small>${esc(countdownLabel(item.date))}</small></span>
-        <span class="calendar-main"><b>${esc(item.title)}</b><small>Серия ${item.n}</small></span>
+        <span class="calendar-main"><b>${esc(displayTitle(item))}</b><small>Серия ${item.n}</small></span>
         <span class="calendar-arrow" aria-hidden="true">›</span>
       </article>`;
     }
@@ -1238,7 +1251,7 @@
     const a = getAnime(f.animeId);
     if (!a) return;
     const mode = f.mode;    box.innerHTML = `<form class="custom-form moment-form" id="moment-form" novalidate>
-      <h2 id="moment-title">Момент из «${esc(a.title)}»</h2>
+      <h2 id="moment-title">Момент из «${esc(displayTitle(a))}»</h2>
       <div class="moment-tabs">
         <button type="button" class="chip ${mode === 'tiktok' ? 'is-active' : ''}" data-action="moment-mode" data-mode="tiktok">TikTok</button>
         <button type="button" class="chip ${mode === 'file' ? 'is-active' : ''}" data-action="moment-mode" data-mode="file">Видео или GIF</button>
@@ -1297,7 +1310,7 @@
     const selection = inputFocused ? document.activeElement.selectionStart : null;
     const items = tiktokImportOptions();
     const rows = items.map(anime => `<button type="button" class="tiktok-import-result" data-action="tiktok-import-save" data-id="${anime.id}">
-      <img ${imgAttrs(anime, '')}><span><b>${esc(anime.title)}</b><small>${esc([anime.altTitle, anime.year, typeRu(anime.type)].filter(Boolean).join(' · '))}</small></span><strong>Добавить</strong>
+      <img ${imgAttrs(anime, '')}><span><b>${esc(displayTitle(anime))}</b><small>${esc([anime.altTitle, anime.year, typeRu(anime.type)].filter(Boolean).join(' · '))}</small></span><strong>Добавить</strong>
     </button>`).join('');
     const hint = items.length ? '' : model.query
       ? '<p class="ep-note">В загруженном каталоге такого аниме нет. Сначала найдите его во вкладке «База».</p>'
@@ -1454,6 +1467,7 @@
     const remindersOn = remindersSupported
       && Boolean(App.releaseNotificationsEnabled && App.releaseNotificationsEnabled());
     const searchLang = C.normalizeSearchLang(state.settings.searchLang);
+    const titleLang = state.settings.titleLang === 'original' ? 'original' : 'ru';
     const provider = state.settings.translationProvider || 'auto';
     const updateCheck = normalizeUpdateCheck(state.settings.updateCheck);
     const github = C.GITHUB_URL || '';
@@ -1500,6 +1514,13 @@
             <option value="ru"${searchLang === 'ru' ? ' selected' : ''}>Русский</option>
             <option value="en"${searchLang === 'en' ? ' selected' : ''}>English</option>
             <option value="ja"${searchLang === 'ja' ? ' selected' : ''}>日本語</option>
+          </select>
+        </label>
+        <label class="settings-field">
+          <span>Названия тайтлов</span>
+          <select data-action="settings-title-lang" aria-label="Язык названий">
+            <option value="ru"${titleLang === 'ru' ? ' selected' : ''}>Русские, если есть</option>
+            <option value="original"${titleLang === 'original' ? ' selected' : ''}>Оригинальные</option>
           </select>
         </label>
         <label class="settings-field">
@@ -1724,7 +1745,7 @@
       return `<button type="button" class="command-row ${index === state.command.index ? 'is-active' : ''}" id="command-row-${index}" role="option" aria-selected="${index === state.command.index}" data-action="command-open" data-id="${a.id}" data-index="${index}" tabindex="-1">
         <img class="command-poster" ${imgAttrs(a, '')}>
         <span class="command-main">
-          <b>${esc(a.title)}</b>
+          <b>${esc(displayTitle(a))}</b>
           <small>${meta || 'Без года'}</small>
         </span>
         <span class="command-badge command-badge-${result.where}">${esc(commandWhereLabel(result))}</span>
@@ -2004,7 +2025,7 @@
     addToList('planned', row.anime, 'N', true);
     ex.comparison = C.compareTierLists(ex.parsed.tiers, state.lists, { tierIds: TIER_IDS });
     renderExchange();
-    toast(`«${row.anime.title}» → Запланировано · Без оценки`);
+    toast(`«${displayTitle(row.anime)}» → Запланировано · Без оценки`);
   }
 
   function exchangeRowHTML(row) {
@@ -2026,7 +2047,7 @@
     return `<article class="exchange-row">
       <img class="exchange-poster" ${imgAttrs(anime, '')}>
       <div class="exchange-row-main">
-        <div class="exchange-row-title">${esc(anime.title)}</div>
+        <div class="exchange-row-title">${esc(displayTitle(anime))}</div>
         <div class="exchange-row-meta">${esc(meta || 'данные неполные')}</div>
         <div class="exchange-row-badges">
           <span class="exchange-badge friend">Друг: ${esc(tierShort(row.tier))}</span>
@@ -2349,9 +2370,9 @@
       const meta = [typeRu(item.type) || '', item.year || '', item.episodes ? `${item.episodes} серий` : ''].filter(Boolean).join(' · ');
       const listStatus = tier ? `В тире ${tier}` : 'Не в тир-листе';
       const progressStatus = progress ? `Просмотрено ${progress}${item.episodes ? ` из ${item.episodes}` : ''}` : '';
-      return `<article class="franchise-link${isCurrent ? ' franchise-current' : ''}" data-action="open" data-id="${item.id}" tabindex="0" role="button"${isCurrent ? ' aria-current="true"' : ''} aria-label="${isCurrent ? 'Текущая часть: ' : 'Открыть: '}${esc(item.title)}">
+      return `<article class="franchise-link${isCurrent ? ' franchise-current' : ''}" data-action="open" data-id="${item.id}" tabindex="0" role="button"${isCurrent ? ' aria-current="true"' : ''} aria-label="${isCurrent ? 'Текущая часть: ' : 'Открыть: '}${esc(displayTitle(item))}">
         <span class="franchise-poster"><img ${imgAttrs(item)}>${item.score ? `<span class="franchise-score">★ ${item.score.toFixed(1)}</span>` : ''}<span class="franchise-link-arrow" aria-hidden="true">›</span></span>
-        <span class="franchise-link-main"><span class="franchise-link-kind">${esc(franchiseRelationLabel(link.relationType))}</span><b>${esc(item.title)}</b><small>${esc(meta || 'Данные уточняются')}</small><span class="franchise-link-status">${esc(listStatus)}${progressStatus ? ` · ${esc(progressStatus)}` : ''}</span></span>
+        <span class="franchise-link-main"><span class="franchise-link-kind">${esc(franchiseRelationLabel(link.relationType))}</span><b>${esc(displayTitle(item))}</b><small>${esc(meta || 'Данные уточняются')}</small><span class="franchise-link-status">${esc(listStatus)}${progressStatus ? ` · ${esc(progressStatus)}` : ''}</span></span>
       </article>`;
     }).join('');
     return `<div class="modal-section franchise-section"><div class="modal-label">Сезоны и порядок просмотра</div><p class="franchise-intro">Сначала приквелы, затем открытая часть и продолжения. Нажмите карточку, чтобы перейти к сезону.</p><div class="franchise-list">${rows}</div><p class="hint">У каждого сезона свой тир-лист и прогресс серий.</p></div>`;
@@ -2426,6 +2447,10 @@
     const tiers = TIERS.map(t => `<button class="tier-pick tier-${t.id} ${curTier === t.id ? 'is-active' : ''}" data-action="set-tier" data-id="${a.id}" data-tier="${t.id}" title="${esc(t.name)}" aria-label="Тир ${esc(t.name)}">${t.label}</button>`).join('');
     const genres = (a.genres || []).map(g => `<span class="tag">${esc(C.genreRu(g))}</span>`).join('');
     const poster = a.image || makePoster(a.title, a.id);
+    const mainTitle = displayTitle(a);
+    const secondaryTitle = mainTitle === (a.titleRu || '')
+      ? (a.originalTitle || a.altTitle || '')
+      : (a.titleRu || a.altTitle || '');
     const translationProvider = state.settings.translationProvider || 'auto';
     const translatedSynopsis = App.cachedTranslation ? App.cachedTranslation(a.synopsis, translationProvider) : '';
     const translatedVia = App.cachedTranslationProvider ? App.cachedTranslationProvider(a.synopsis, translationProvider) : '';
@@ -2455,14 +2480,14 @@
       <div class="modal-grid">
         <div class="modal-poster">
           <div class="modal-poster-wrap">
-            <img src="${esc(poster)}" alt="${esc(a.title)}" data-title="${esc(a.title)}" data-id="${a.id}"${/^https?:\/\//i.test(poster) ? ` data-poster-src="${esc(poster)}" onload="cachePoster(this)"` : ''} onerror="posterFallback(this)">
+            <img src="${esc(poster)}" alt="${esc(displayTitle(a))}" data-title="${esc(displayTitle(a))}" data-id="${a.id}"${/^https?:\/\//i.test(poster) ? ` data-poster-src="${esc(poster)}" onload="cachePoster(this)"` : ''} onerror="posterFallback(this)">
             <div class="modal-side-score">${a.score ? `★ ${a.score.toFixed(2)}` : '★ —'}<small>рейтинг</small></div>
           </div>
         </div>
         <div class="modal-info">
           <div class="modal-eyebrow">${esc(typeRu(a.type) || 'Аниме')}${a.year ? ' · ' + a.year : ''}</div>
-          <h2 id="modal-title">${esc(a.title)}</h2>
-          ${a.altTitle ? `<p class="modal-alt">${esc(a.altTitle)}</p>` : ''}
+          <h2 id="modal-title">${esc(mainTitle)}</h2>
+          ${secondaryTitle ? `<p class="modal-alt">${esc(secondaryTitle)}</p>` : ''}
           <div class="modal-facts">${facts}</div>
           <div class="modal-actions">
             <button class="btn ${inW ? 'is-on' : 'btn-primary'}" data-action="add-watched" data-id="${a.id}">${inW ? '✓ В просмотрено' : 'Отметить просмотренным'}</button>
@@ -2589,6 +2614,7 @@
   }
 
   Object.assign(App, {
+    displayTitle,
     imgAttrs,
     cardHTML,
     tierCardHTML,

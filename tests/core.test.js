@@ -178,6 +178,15 @@
     T.eq(multi.year, ['2016', '2015']);
   });
 
+  T.test('core: русский словарь находит MAL ID по названию', () => {
+    const C = core();
+    T.assert(C.russianTitleIds('Атака титанов').includes(16498), 'Точное название');
+    T.eq(C.russianTitleIds('атака титанов')[0], 16498, 'Регистр не важен');
+    T.assert(C.russianTitleIds('титанов').includes(16498), 'Ищет по части названия');
+    T.eq(C.russianTitleIds(''), []);
+    T.eq(C.russianTitleIds('абракадабра-нет-такого'), []);
+  });
+
   T.test('core: несколько годов и жанров фильтруют по И внутри поля', () => {
     const C = core();
     const items = [

@@ -197,6 +197,14 @@
     try {
       let usedAlt = false;
 
+      /* Русский запрос: если обычный поиск ничего не дал, пробуем
+         локальный словарь названий и забираем карточки по MAL ID. */
+      const ruIds = s.query && C.hasCyrillic(s.query)
+        && C.normalizeSearchLang(state.settings.searchLang) !== 'en'
+        && C.normalizeSearchLang(state.settings.searchLang) !== 'ja'
+        ? C.russianTitleIds(s.query, PAGE_LIMIT)
+        : [];
+
       if (s.mode === 'custom') {
         const all = C.filterItems(state.customCards, { query: s.query, filters: s.filters });
         const pageData = C.slicePage(all, page, PAGE_LIMIT);
@@ -247,6 +255,26 @@
         s.hasNext = Boolean(pageData.pageInfo?.hasNextPage) && media.length > 0;
         s.page = page + 1;
         if (!media.length) s.hasNext = false;
+      }
+
+      if (!s.items.length && page === 1 && ruIds.length && s.mode !== 'custom' && !state.forceDemo) {
+        const variables = C.buildAniListVariables({
+          mode: s.mode,
+          query: '',
+          filters: s.filters,
+          page: 1,
+          limit: ruIds.length,
+        });
+        variables.idMal_in = ruIds;
+        const pageData = await fetchAniList(variables, { timeout: SEARCH_TIMEOUT });
+        if (revision !== s.revision) return;
+        const data = pageData.media.map(mapAniList).filter(anime => C.matchesFilters(anime, s.filters));
+        s.items = C.dedupeById(data);
+        s.sources = ['AniList'];
+        s.resolvedQuery = s.query;
+        s.resolveVia = 'dictionary';
+        s.hasNext = false;
+        s.page = page + 1;
       }
     } catch (err) {
       if (revision !== s.revision) return;
@@ -2750,6 +2778,8 @@
     document.addEventListener('change', e => {
       const settingsLang = e.target.closest && e.target.closest('select[data-action="settings-search-lang"]');
       if (settingsLang) applySettingsChange('searchLang', settingsLang.value);
+      const settingsTitleLang = e.target.closest && e.target.closest('select[data-action="settings-title-lang"]');
+      if (settingsTitleLang) applySettingsChange('titleLang', settingsTitleLang.value);
       const settingsProvider = e.target.closest && e.target.closest('select[data-action="settings-translation"]');
       if (settingsProvider) applySettingsChange('translationProvider', settingsProvider.value);
       const settingsUpdate = e.target.closest && e.target.closest('select[data-action="settings-update-check"]');
@@ -3212,6 +3242,9 @@
     if (kind === 'searchLang') {
       state.settings.searchLang = C.normalizeSearchLang(value);
       syncLangUI();
+    } else if (kind === 'titleLang') {
+      state.settings.titleLang = value === 'original' ? 'original' : 'ru';
+      if (typeof App.refreshViews === 'function') App.refreshViews();
     } else if (kind === 'translationProvider') {
       state.settings.translationProvider = ['mymemory', 'google'].includes(value) ? value : 'auto';
     } else {

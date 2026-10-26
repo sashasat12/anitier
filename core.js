@@ -384,7 +384,7 @@
   /** Строка для поиска по тайтлу: названия, альтернативы, жанры, студии. */
   function searchHaystack(anime) {
     if (!anime) return '';
-    const parts = [anime.title, anime.altTitle, anime.originalTitle];
+    const parts = [anime.title, anime.titleRu, anime.altTitle, anime.originalTitle];
     if (Array.isArray(anime.aliases)) parts.push(...anime.aliases);
     if (Array.isArray(anime.genres)) {
       parts.push(...anime.genres);
@@ -480,6 +480,25 @@
     return variables;
   }
 
+  /** Ищет MAL ID по русскому названию в локальном словаре titles-ru.js. */
+  function russianTitleIds(query, limit = 30) {
+    const q = normalizeTitleKey(query);
+    if (!q) return [];
+    const map = (typeof window !== 'undefined' && window.AniTierTitlesRu) || {};
+    const exact = [];
+    const starts = [];
+    const contains = [];
+    for (const [mal, title] of Object.entries(map)) {
+      if (!/^\d+$/.test(mal)) continue;
+      const key = normalizeTitleKey(title);
+      if (!key) continue;
+      if (key === q) exact.push(Number(mal));
+      else if (key.startsWith(q)) starts.push(Number(mal));
+      else if (key.includes(q)) contains.push(Number(mal));
+    }
+    return [...exact, ...starts, ...contains].slice(0, Math.max(1, Number(limit) || 30));
+  }
+
   function dedupeById(items) {
     const seen = new Set();
     return (Array.isArray(items) ? items : []).filter(item => {
@@ -523,7 +542,7 @@
         ? `id:${item.id}`
         : `t:${normalizeTitleKey(item.title)}:${item.year || ''}`;
       if (seen.has(key)) return;
-      const titles = [item.title, item.altTitle, item.originalTitle]
+      const titles = [item.title, item.titleRu, item.altTitle, item.originalTitle]
         .map(normalizeTitleKey)
         .filter(Boolean);
       if (!titles.length) return;
@@ -571,7 +590,7 @@
     if (item.source && item.sourceId != null) keys.push(`src:${item.source}:${item.sourceId}`);
 
     const year = Number(item.year) || 0;
-    const titles = [item.title, item.altTitle, ...(Array.isArray(item.aliases) ? item.aliases : [])];
+    const titles = [item.title, item.titleRu, item.altTitle, ...(Array.isArray(item.aliases) ? item.aliases : [])];
     const normalized = new Set(titles.map(normalizeTitleKey).filter(Boolean));
     for (const title of normalized) keys.push(`title:${title}:${year || '?'}`);
     return keys;
@@ -1319,7 +1338,7 @@
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.22.1';
+  const APP_VERSION = '1.23.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -1906,6 +1925,7 @@
     excludeListed,
     filterUpcoming,
     buildAniListVariables,
+    russianTitleIds,
     dedupeById,
     normalizeTitleKey,
     animeIdentityKeys,
