@@ -1383,9 +1383,17 @@
       ? `<div class="backup-block">
           <h3>Google Drive</h3>
           <p>Копия сохраняется в файл <code>anitier-backup.json</code> в вашем Google Drive. Приложение видит только файлы, созданные им самим.</p>
+          <label class="settings-field">
+            <span>Авто-бэкап</span>
+            <select data-action="settings-drive-auto" aria-label="Авто-бэкап в Google Drive"${disabled}>
+              <option value="off"${state.settings.driveAutoBackup ? '' : ' selected'}>Выключен</option>
+              <option value="on"${state.settings.driveAutoBackup ? ' selected' : ''}>Раз в сутки</option>
+            </select>
+          </label>
+          <p class="form-note">Копия сохраняется при открытии приложения, если прошли сутки. Для тихой записи нужен действующий вход в Google; иначе сохраните вручную.</p>
           <div class="form-actions">
             <button class="btn btn-primary" type="button" data-action="backup-drive-save"${disabled}>${f.busy ? 'Подождите…' : 'Сохранить в Google Drive'}</button>
-            <button class="btn btn-ghost" type="button" data-action="backup-drive-load"${disabled}>Восстановить из Google Drive</button>
+            <button class="btn btn-ghost" type="button" data-action="backup-drive-load"${disabled}>Восстановить последнюю версию</button>
           </div>
         </div>`
       : `<div class="backup-block">

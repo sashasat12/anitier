@@ -4739,6 +4739,17 @@ window.AniTierTitlesRu = {
 
 window.AniTierChangelog = [
   {
+    version: '1.26.0',
+    date: '27 октября 2026',
+    title: 'Резервная копия сама',
+    items: [
+      'В окне резервной копии появился авто-бэкап: раз в сутки при открытии приложения копия сохраняется в Google Drive.',
+      'Если тихая запись не удалась, приложение повторит попытку через 6 часов и не будет мешать окнами.',
+      'Кнопка «Восстановить последнюю версию» поднимает актуальную копию из Drive.',
+      'Авто-бэкап работает на сайте и в PWA; в APK остаётся файловая копия через системный диалог.',
+    ],
+  },
+  {
     version: '1.25.0',
     date: '27 октября 2026',
     title: 'Язык контента в одном месте',
@@ -6377,7 +6388,7 @@ window.AniTierChangelog = [
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.25.0';
+  const APP_VERSION = '1.26.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -7459,6 +7470,9 @@ window.AniTierChangelog = [
       translationProvider: 'auto',
       updateCheck: 'ask',
       lastUpdateCheck: 0,
+      driveAutoBackup: false,
+      lastDriveBackupAt: 0,
+      lastDriveBackupTry: 0,
       catalog: normalizeCatalogPreferences(),
     },
     modalId: null,
@@ -8097,6 +8111,9 @@ window.AniTierChangelog = [
           translationProvider: normalizeTranslationProvider(state.settings.translationProvider),
           updateCheck: normalizeUpdateCheck(state.settings.updateCheck),
           lastUpdateCheck: Number(state.settings.lastUpdateCheck) || 0,
+          driveAutoBackup: Boolean(state.settings.driveAutoBackup),
+          lastDriveBackupAt: Number(state.settings.lastDriveBackupAt) || 0,
+          lastDriveBackupTry: Number(state.settings.lastDriveBackupTry) || 0,
           catalog: normalizeCatalogPreferences(state.settings.catalog),
         },
       }));
@@ -11241,9 +11258,17 @@ window.AniTierChangelog = [
       ? `<div class="backup-block">
           <h3>Google Drive</h3>
           <p>Копия сохраняется в файл <code>anitier-backup.json</code> в вашем Google Drive. Приложение видит только файлы, созданные им самим.</p>
+          <label class="settings-field">
+            <span>Авто-бэкап</span>
+            <select data-action="settings-drive-auto" aria-label="Авто-бэкап в Google Drive"${disabled}>
+              <option value="off"${state.settings.driveAutoBackup ? '' : ' selected'}>Выключен</option>
+              <option value="on"${state.settings.driveAutoBackup ? ' selected' : ''}>Раз в сутки</option>
+            </select>
+          </label>
+          <p class="form-note">Копия сохраняется при открытии приложения, если прошли сутки. Для тихой записи нужен действующий вход в Google; иначе сохраните вручную.</p>
           <div class="form-actions">
             <button class="btn btn-primary" type="button" data-action="backup-drive-save"${disabled}>${f.busy ? 'Подождите…' : 'Сохранить в Google Drive'}</button>
-            <button class="btn btn-ghost" type="button" data-action="backup-drive-load"${disabled}>Восстановить из Google Drive</button>
+            <button class="btn btn-ghost" type="button" data-action="backup-drive-load"${disabled}>Восстановить последнюю версию</button>
           </div>
         </div>`
       : `<div class="backup-block">
@@ -14778,6 +14803,41 @@ window.AniTierChangelog = [
     }
   }
 
+  /* ---------------- авто-бэкап в Google Drive ---------------- */
+  const AUTO_BACKUP_INTERVAL = 24 * 60 * 60 * 1000;
+  const AUTO_BACKUP_RETRY = 6 * 60 * 60 * 1000;
+
+  function autoBackupDue() {
+    if (!state.settings.driveAutoBackup) return false;
+    if (typeof driveAvailable === 'function' && !driveAvailable()) return false;
+    const now = Date.now();
+    if (now - (Number(state.settings.lastDriveBackupAt) || 0) < AUTO_BACKUP_INTERVAL) return false;
+    if (now - (Number(state.settings.lastDriveBackupTry) || 0) < AUTO_BACKUP_RETRY) return false;
+    return true;
+  }
+
+  async function runAutoBackup() {
+    if (!autoBackupDue()) return false;
+    state.settings.lastDriveBackupTry = Date.now();
+    saveState();
+    try {
+      const token = await ensureDriveToken();
+      await driveSaveBackup(token, JSON.stringify(buildBackupPayload()));
+      state.settings.lastDriveBackupAt = Date.now();
+      state.settings.lastDriveBackupTry = 0;
+      saveState();
+      if (state.backup && state.backup.open) {
+        const when = new Date(state.settings.lastDriveBackupAt).toLocaleString('ru-RU');
+        setBackupMessage(`Авто-копия сохранена: ${when}`, false);
+      }
+      return true;
+    } catch (err) {
+      if (err && err.code === 'AUTH') driveToken = '';
+      /* Тихо: при следующем открытии попробуем снова, но не чаще раза в 6 часов. */
+      return false;
+    }
+  }
+
   let eventsBound = false;
 
   function bindEvents() {
@@ -15494,6 +15554,15 @@ window.AniTierChangelog = [
       if (settingsSynopsisLang) applySettingsChange('synopsisLang', settingsSynopsisLang.value);
       const settingsProvider = e.target.closest && e.target.closest('select[data-action="settings-translation"]');
       if (settingsProvider) applySettingsChange('translationProvider', settingsProvider.value);
+      const driveAuto = e.target.closest && e.target.closest('select[data-action="settings-drive-auto"]');
+      if (driveAuto) {
+        state.settings.driveAutoBackup = driveAuto.value === 'on';
+        if (state.settings.driveAutoBackup) state.settings.lastDriveBackupTry = 0;
+        saveState();
+        if (state.backup && state.backup.open) renderBackup();
+        if (state.settings.driveAutoBackup) runAutoBackup();
+        return;
+      }
       const settingsUpdate = e.target.closest && e.target.closest('select[data-action="settings-update-check"]');
       if (settingsUpdate) {
         state.settings.updateCheck = normalizeUpdateCheck(settingsUpdate.value);
@@ -15769,6 +15838,7 @@ window.AniTierChangelog = [
       scheduleDailySync();
       if (dailySyncIsDue()) runDailySync();
       if (!TEST_MODE) setTimeout(() => { autoCheckUpdates(); }, 1500);
+      if (!TEST_MODE) setTimeout(() => { runAutoBackup(); }, 3000);
     }
   }
 
@@ -15788,6 +15858,7 @@ window.AniTierChangelog = [
     setupInfiniteScroll();
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && dailySyncIsDue()) runDailySync();
+      if (document.visibilityState === 'visible') runAutoBackup();
     });
 
     renderTierList('watched');
@@ -16081,6 +16152,8 @@ window.AniTierChangelog = [
       fetchAniList,
       fetchRussianTitles: App.fetchRussianTitles,
       enrichRussianTitles,
+      autoBackupDue,
+      runAutoBackup,
       fetchAnimeRelations: App.fetchAnimeRelations,
       clearPersistentApiCache,
       clearMemoryApiCache: clearAniListCache,

@@ -444,6 +444,41 @@
     }
   });
 
+  T.test('app: авто-бэкап включается и не частит чаще суток', async () => {
+    const app = await T.mountApp({ query: '?test=1' });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const doc = app.win.document;
+      const meta = doc.querySelector('meta[name="anitier-google-client-id"]');
+      T.assert(meta, 'Есть meta с client ID');
+
+      meta.content = 'test-client';
+      api.state.settings.driveAutoBackup = true;
+      api.state.settings.lastDriveBackupAt = 0;
+      api.state.settings.lastDriveBackupTry = 0;
+      T.eq(api.autoBackupDue(), true, 'Первый запуск — пора сохранять');
+
+      api.state.settings.lastDriveBackupAt = Date.now();
+      T.eq(api.autoBackupDue(), false, 'После успешной копии сутки ждём');
+
+      api.state.settings.lastDriveBackupAt = 0;
+      api.state.settings.lastDriveBackupTry = Date.now();
+      T.eq(api.autoBackupDue(), false, 'Неудачная попытка ждёт 6 часов');
+
+      meta.content = 'test-client';
+      doc.querySelector('[data-action="open-backup"]').click();
+      const select = doc.querySelector('select[data-action="settings-drive-auto"]');
+      T.assert(select, 'В окне копии есть переключатель авто-бэкапа');
+      select.value = 'on';
+      select.dispatchEvent(new app.win.Event('change', { bubbles: true }));
+      T.eq(api.state.settings.driveAutoBackup, true);
+      T.eq(doc.querySelector('select[data-action="settings-drive-auto"]').value, 'on');
+    } finally {
+      app.close();
+    }
+  });
+
   T.test('app: поиск не теряется, если предыдущая загрузка ещё идёт', async () => {
     const calls = [];
     let resolveFirstDB;

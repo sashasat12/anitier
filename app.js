@@ -2159,6 +2159,41 @@
     }
   }
 
+  /* ---------------- авто-бэкап в Google Drive ---------------- */
+  const AUTO_BACKUP_INTERVAL = 24 * 60 * 60 * 1000;
+  const AUTO_BACKUP_RETRY = 6 * 60 * 60 * 1000;
+
+  function autoBackupDue() {
+    if (!state.settings.driveAutoBackup) return false;
+    if (typeof driveAvailable === 'function' && !driveAvailable()) return false;
+    const now = Date.now();
+    if (now - (Number(state.settings.lastDriveBackupAt) || 0) < AUTO_BACKUP_INTERVAL) return false;
+    if (now - (Number(state.settings.lastDriveBackupTry) || 0) < AUTO_BACKUP_RETRY) return false;
+    return true;
+  }
+
+  async function runAutoBackup() {
+    if (!autoBackupDue()) return false;
+    state.settings.lastDriveBackupTry = Date.now();
+    saveState();
+    try {
+      const token = await ensureDriveToken();
+      await driveSaveBackup(token, JSON.stringify(buildBackupPayload()));
+      state.settings.lastDriveBackupAt = Date.now();
+      state.settings.lastDriveBackupTry = 0;
+      saveState();
+      if (state.backup && state.backup.open) {
+        const when = new Date(state.settings.lastDriveBackupAt).toLocaleString('ru-RU');
+        setBackupMessage(`Авто-копия сохранена: ${when}`, false);
+      }
+      return true;
+    } catch (err) {
+      if (err && err.code === 'AUTH') driveToken = '';
+      /* Тихо: при следующем открытии попробуем снова, но не чаще раза в 6 часов. */
+      return false;
+    }
+  }
+
   let eventsBound = false;
 
   function bindEvents() {
@@ -2875,6 +2910,15 @@
       if (settingsSynopsisLang) applySettingsChange('synopsisLang', settingsSynopsisLang.value);
       const settingsProvider = e.target.closest && e.target.closest('select[data-action="settings-translation"]');
       if (settingsProvider) applySettingsChange('translationProvider', settingsProvider.value);
+      const driveAuto = e.target.closest && e.target.closest('select[data-action="settings-drive-auto"]');
+      if (driveAuto) {
+        state.settings.driveAutoBackup = driveAuto.value === 'on';
+        if (state.settings.driveAutoBackup) state.settings.lastDriveBackupTry = 0;
+        saveState();
+        if (state.backup && state.backup.open) renderBackup();
+        if (state.settings.driveAutoBackup) runAutoBackup();
+        return;
+      }
       const settingsUpdate = e.target.closest && e.target.closest('select[data-action="settings-update-check"]');
       if (settingsUpdate) {
         state.settings.updateCheck = normalizeUpdateCheck(settingsUpdate.value);
@@ -3150,6 +3194,7 @@
       scheduleDailySync();
       if (dailySyncIsDue()) runDailySync();
       if (!TEST_MODE) setTimeout(() => { autoCheckUpdates(); }, 1500);
+      if (!TEST_MODE) setTimeout(() => { runAutoBackup(); }, 3000);
     }
   }
 
@@ -3169,6 +3214,7 @@
     setupInfiniteScroll();
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && dailySyncIsDue()) runDailySync();
+      if (document.visibilityState === 'visible') runAutoBackup();
     });
 
     renderTierList('watched');
@@ -3462,6 +3508,8 @@
       fetchAniList,
       fetchRussianTitles: App.fetchRussianTitles,
       enrichRussianTitles,
+      autoBackupDue,
+      runAutoBackup,
       fetchAnimeRelations: App.fetchAnimeRelations,
       clearPersistentApiCache,
       clearMemoryApiCache: clearAniListCache,
