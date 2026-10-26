@@ -11,6 +11,8 @@ function Read-Text([string]$relative) {
 }
 
 $html = Read-Text 'mobile\index.html'
+# Версия в ссылках сбрасывает кэш на сайте; в автономном файле параметры не нужны.
+$html = [regex]::Replace($html, '\?v=[0-9A-Za-z.\-]+', '')
 $styles = Read-Text 'styles.css'
 $mobileStyles = Read-Text 'mobile\mobile.css'
 $core = Read-Text 'core.js'

@@ -122,7 +122,7 @@
       await api.init();
       const doc = app.win.document;
 
-      const style = doc.querySelector('link[href$="styles.css"]');
+      const style = doc.querySelector('link[href*="styles.css"]');
       T.assert(style, 'Стили подключены');
       const text = await fetch(style.href).then(response => response.text());
       T.includes(text, ':focus-visible');

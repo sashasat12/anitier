@@ -858,6 +858,9 @@ button { font-family: inherit; }
   overflow-x: auto;
   scrollbar-width: thin;
 }
+/* В карточке уведомления серии переносятся на новую строку: горизонтальная
+   прокрутка обрезала последнюю кнопку у правого края. */
+.notif .ep-chips { flex-wrap: wrap; overflow: visible; padding-bottom: 0; }
 .ep-chip {
   flex: none;
   min-width: 28px;

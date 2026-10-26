@@ -62,6 +62,11 @@
       T.assert(grid, 'Карточки лежат в своей сетке');
       T.eq(win.getComputedStyle(grid).display, 'grid');
       T.assert(grid.getBoundingClientRect().width > 0);
+
+      const chips = feed.querySelector('.notif .ep-chips');
+      T.assert(chips, 'У карточки есть кнопки серий');
+      T.eq(win.getComputedStyle(chips).flexWrap, 'wrap', 'Серии переносятся, а не обрезаются');
+      T.assert(chips.scrollWidth <= chips.clientWidth + 1, 'Кнопки серий не вылезают за карточку');
     } finally {
       app.close();
     }
