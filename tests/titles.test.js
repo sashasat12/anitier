@@ -182,4 +182,47 @@
       app.close();
     }
   });
+  T.test('titles: язык описаний по умолчанию применяется к карточке', async () => {
+    const translation = 'Эльфийский маг.';
+    const source = 'Elf mage.';
+    const app = await T.mountApp({
+      query: '?test=1',
+      setup(win) {
+        const key = `t${win.AniTier.hash(source)}-${source.length}`;
+        win.localStorage.setItem('anitier.translations.v1', JSON.stringify({ [key]: translation }));
+      },
+    });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const win = app.win;
+      const doc = win.document;
+
+      api.state.db.loading = false;
+      api.state.db.error = null;
+      api.state.db.items = [{
+        id: 999903, malId: 999903, title: 'Elf Story', titleRu: '', originalTitle: 'Elf Story',
+        altTitle: '', image: '', episodes: 12, type: 'TV', status: 'Завершено', score: 8,
+        year: 2020, genres: [], synopsis: source,
+      }];
+      win.AniTier.renderDB();
+      doc.querySelector('#db-grid .card').click();
+      T.includes(doc.querySelector('.modal-synopsis').textContent, translation, 'По умолчанию перевод');
+
+      doc.querySelector('#modal .modal-close').click();
+      doc.querySelector('[data-action="open-settings"]').click();
+      const select = doc.querySelector('select[data-action="settings-synopsis-lang"]');
+      T.assert(select, 'В настройках есть язык описаний');
+      select.value = 'original';
+      select.dispatchEvent(new win.Event('change', { bubbles: true }));
+      T.eq(api.state.settings.synopsisLang, 'original');
+
+      doc.querySelector('[data-action="close-settings"]').click();
+      doc.querySelector('#db-grid .card').click();
+      T.includes(doc.querySelector('.modal-synopsis').textContent, source, 'Показан оригинал');
+      T.assert(!doc.querySelector('.modal-synopsis').hasAttribute('data-translated'), 'Пометка перевода снята');
+    } finally {
+      app.close();
+    }
+  });
 })();

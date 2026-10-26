@@ -476,6 +476,7 @@
     settings: {
       searchLang: 'auto',
       titleLang: 'ru',
+      synopsisLang: 'translated',
       translationProvider: 'auto',
       updateCheck: 'ask',
       lastUpdateCheck: 0,
@@ -1113,6 +1114,7 @@
         settings: {
           searchLang: C.normalizeSearchLang(state.settings.searchLang),
           titleLang: state.settings.titleLang === 'original' ? 'original' : 'ru',
+          synopsisLang: state.settings.synopsisLang === 'original' ? 'original' : 'translated',
           translationProvider: normalizeTranslationProvider(state.settings.translationProvider),
           updateCheck: normalizeUpdateCheck(state.settings.updateCheck),
           lastUpdateCheck: Number(state.settings.lastUpdateCheck) || 0,

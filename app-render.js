@@ -1508,6 +1508,7 @@
       && Boolean(App.releaseNotificationsEnabled && App.releaseNotificationsEnabled());
     const searchLang = C.normalizeSearchLang(state.settings.searchLang);
     const titleLang = state.settings.titleLang === 'original' ? 'original' : 'ru';
+    const synopsisLang = state.settings.synopsisLang === 'original' ? 'original' : 'translated';
     const provider = state.settings.translationProvider || 'auto';
     const updateCheck = normalizeUpdateCheck(state.settings.updateCheck);
     const github = C.GITHUB_URL || '';
@@ -1546,7 +1547,21 @@
       <p class="custom-sub">AniTier ${esc(version)} · данные хранятся только на этом устройстве.</p>
       ${reminders}
       <div class="backup-block">
-        <h3>Поиск и перевод</h3>
+        <h3>Язык контента</h3>
+        <label class="settings-field">
+          <span>Названия тайтлов</span>
+          <select data-action="settings-title-lang" aria-label="Язык названий">
+            <option value="ru"${titleLang === 'ru' ? ' selected' : ''}>Русские, если есть</option>
+            <option value="original"${titleLang === 'original' ? ' selected' : ''}>Оригинальные</option>
+          </select>
+        </label>
+        <label class="settings-field">
+          <span>Описания</span>
+          <select data-action="settings-synopsis-lang" aria-label="Язык описаний">
+            <option value="translated"${synopsisLang === 'translated' ? ' selected' : ''}>Перевод на русский</option>
+            <option value="original"${synopsisLang === 'original' ? ' selected' : ''}>Оригинал</option>
+          </select>
+        </label>
         <label class="settings-field">
           <span>Язык поиска</span>
           <select data-action="settings-search-lang" aria-label="Язык поиска">
@@ -1557,14 +1572,7 @@
           </select>
         </label>
         <label class="settings-field">
-          <span>Названия тайтлов</span>
-          <select data-action="settings-title-lang" aria-label="Язык названий">
-            <option value="ru"${titleLang === 'ru' ? ' selected' : ''}>Русские, если есть</option>
-            <option value="original"${titleLang === 'original' ? ' selected' : ''}>Оригинальные</option>
-          </select>
-        </label>
-        <label class="settings-field">
-          <span>Перевод синопсисов</span>
+          <span>Перевод описаний</span>
           <select data-action="settings-translation" aria-label="Провайдер перевода">
             <option value="auto"${provider === 'auto' ? ' selected' : ''}>Авто: MyMemory → Google</option>
             <option value="mymemory"${provider === 'mymemory' ? ' selected' : ''}>MyMemory</option>
@@ -2496,7 +2504,8 @@
     const translatedVia = App.cachedTranslationProvider ? App.cachedTranslationProvider(a.synopsis, translationProvider) : '';
     const translationRequestKey = `${a.id}:${translationProvider}`;
     const canTranslateSynopsis = Boolean(a.synopsis && !C.hasCyrillic(a.synopsis));
-    const synopsisMode = state.synopsisModes.get(a.id) || 'translated';
+    const synopsisMode = state.synopsisModes.get(a.id)
+      || (state.settings.synopsisLang === 'original' ? 'original' : 'translated');
     const showTranslatedSynopsis = Boolean(canTranslateSynopsis && translatedSynopsis && synopsisMode !== 'original');
     const synopsis = (showTranslatedSynopsis ? translatedSynopsis : a.synopsis) || 'Описание пока недоступно.';
     const synopsisControls = canTranslateSynopsis

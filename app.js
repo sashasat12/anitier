@@ -2871,6 +2871,8 @@
       if (settingsLang) applySettingsChange('searchLang', settingsLang.value);
       const settingsTitleLang = e.target.closest && e.target.closest('select[data-action="settings-title-lang"]');
       if (settingsTitleLang) applySettingsChange('titleLang', settingsTitleLang.value);
+      const settingsSynopsisLang = e.target.closest && e.target.closest('select[data-action="settings-synopsis-lang"]');
+      if (settingsSynopsisLang) applySettingsChange('synopsisLang', settingsSynopsisLang.value);
       const settingsProvider = e.target.closest && e.target.closest('select[data-action="settings-translation"]');
       if (settingsProvider) applySettingsChange('translationProvider', settingsProvider.value);
       const settingsUpdate = e.target.closest && e.target.closest('select[data-action="settings-update-check"]');
@@ -3337,6 +3339,9 @@
     } else if (kind === 'titleLang') {
       state.settings.titleLang = value === 'original' ? 'original' : 'ru';
       if (typeof App.refreshViews === 'function') App.refreshViews();
+    } else if (kind === 'synopsisLang') {
+      state.settings.synopsisLang = value === 'original' ? 'original' : 'translated';
+      if (state.modalId != null) renderModal();
     } else if (kind === 'translationProvider') {
       state.settings.translationProvider = ['mymemory', 'google'].includes(value) ? value : 'auto';
     } else {

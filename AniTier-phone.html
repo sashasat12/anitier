@@ -4739,6 +4739,17 @@ window.AniTierTitlesRu = {
 
 window.AniTierChangelog = [
   {
+    version: '1.25.0',
+    date: '27 октября 2026',
+    title: 'Язык контента в одном месте',
+    items: [
+      'В настройках появился блок «Язык контента»: названия тайтлов, описания, язык поиска и провайдер перевода собраны вместе.',
+      'Описания можно открывать сразу на оригинале — выбранный язык применяется к новой карточке по умолчанию.',
+      'Переключатель «Перевод / Оригинал» в самой карточке по-прежнему важнее общей настройки.',
+      'Настройки сохраняются между запусками и работают в APK и PWA.',
+    ],
+  },
+  {
     version: '1.24.0',
     date: '27 октября 2026',
     title: 'Больше жанров и все теги',
@@ -6366,7 +6377,7 @@ window.AniTierChangelog = [
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.24.0';
+  const APP_VERSION = '1.25.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -7444,6 +7455,7 @@ window.AniTierChangelog = [
     settings: {
       searchLang: 'auto',
       titleLang: 'ru',
+      synopsisLang: 'translated',
       translationProvider: 'auto',
       updateCheck: 'ask',
       lastUpdateCheck: 0,
@@ -8081,6 +8093,7 @@ window.AniTierChangelog = [
         settings: {
           searchLang: C.normalizeSearchLang(state.settings.searchLang),
           titleLang: state.settings.titleLang === 'original' ? 'original' : 'ru',
+          synopsisLang: state.settings.synopsisLang === 'original' ? 'original' : 'translated',
           translationProvider: normalizeTranslationProvider(state.settings.translationProvider),
           updateCheck: normalizeUpdateCheck(state.settings.updateCheck),
           lastUpdateCheck: Number(state.settings.lastUpdateCheck) || 0,
@@ -11353,6 +11366,7 @@ window.AniTierChangelog = [
       && Boolean(App.releaseNotificationsEnabled && App.releaseNotificationsEnabled());
     const searchLang = C.normalizeSearchLang(state.settings.searchLang);
     const titleLang = state.settings.titleLang === 'original' ? 'original' : 'ru';
+    const synopsisLang = state.settings.synopsisLang === 'original' ? 'original' : 'translated';
     const provider = state.settings.translationProvider || 'auto';
     const updateCheck = normalizeUpdateCheck(state.settings.updateCheck);
     const github = C.GITHUB_URL || '';
@@ -11391,7 +11405,21 @@ window.AniTierChangelog = [
       <p class="custom-sub">AniTier ${esc(version)} · данные хранятся только на этом устройстве.</p>
       ${reminders}
       <div class="backup-block">
-        <h3>Поиск и перевод</h3>
+        <h3>Язык контента</h3>
+        <label class="settings-field">
+          <span>Названия тайтлов</span>
+          <select data-action="settings-title-lang" aria-label="Язык названий">
+            <option value="ru"${titleLang === 'ru' ? ' selected' : ''}>Русские, если есть</option>
+            <option value="original"${titleLang === 'original' ? ' selected' : ''}>Оригинальные</option>
+          </select>
+        </label>
+        <label class="settings-field">
+          <span>Описания</span>
+          <select data-action="settings-synopsis-lang" aria-label="Язык описаний">
+            <option value="translated"${synopsisLang === 'translated' ? ' selected' : ''}>Перевод на русский</option>
+            <option value="original"${synopsisLang === 'original' ? ' selected' : ''}>Оригинал</option>
+          </select>
+        </label>
         <label class="settings-field">
           <span>Язык поиска</span>
           <select data-action="settings-search-lang" aria-label="Язык поиска">
@@ -11402,14 +11430,7 @@ window.AniTierChangelog = [
           </select>
         </label>
         <label class="settings-field">
-          <span>Названия тайтлов</span>
-          <select data-action="settings-title-lang" aria-label="Язык названий">
-            <option value="ru"${titleLang === 'ru' ? ' selected' : ''}>Русские, если есть</option>
-            <option value="original"${titleLang === 'original' ? ' selected' : ''}>Оригинальные</option>
-          </select>
-        </label>
-        <label class="settings-field">
-          <span>Перевод синопсисов</span>
+          <span>Перевод описаний</span>
           <select data-action="settings-translation" aria-label="Провайдер перевода">
             <option value="auto"${provider === 'auto' ? ' selected' : ''}>Авто: MyMemory → Google</option>
             <option value="mymemory"${provider === 'mymemory' ? ' selected' : ''}>MyMemory</option>
@@ -12341,7 +12362,8 @@ window.AniTierChangelog = [
     const translatedVia = App.cachedTranslationProvider ? App.cachedTranslationProvider(a.synopsis, translationProvider) : '';
     const translationRequestKey = `${a.id}:${translationProvider}`;
     const canTranslateSynopsis = Boolean(a.synopsis && !C.hasCyrillic(a.synopsis));
-    const synopsisMode = state.synopsisModes.get(a.id) || 'translated';
+    const synopsisMode = state.synopsisModes.get(a.id)
+      || (state.settings.synopsisLang === 'original' ? 'original' : 'translated');
     const showTranslatedSynopsis = Boolean(canTranslateSynopsis && translatedSynopsis && synopsisMode !== 'original');
     const synopsis = (showTranslatedSynopsis ? translatedSynopsis : a.synopsis) || 'Описание пока недоступно.';
     const synopsisControls = canTranslateSynopsis
@@ -15468,6 +15490,8 @@ window.AniTierChangelog = [
       if (settingsLang) applySettingsChange('searchLang', settingsLang.value);
       const settingsTitleLang = e.target.closest && e.target.closest('select[data-action="settings-title-lang"]');
       if (settingsTitleLang) applySettingsChange('titleLang', settingsTitleLang.value);
+      const settingsSynopsisLang = e.target.closest && e.target.closest('select[data-action="settings-synopsis-lang"]');
+      if (settingsSynopsisLang) applySettingsChange('synopsisLang', settingsSynopsisLang.value);
       const settingsProvider = e.target.closest && e.target.closest('select[data-action="settings-translation"]');
       if (settingsProvider) applySettingsChange('translationProvider', settingsProvider.value);
       const settingsUpdate = e.target.closest && e.target.closest('select[data-action="settings-update-check"]');
@@ -15934,6 +15958,9 @@ window.AniTierChangelog = [
     } else if (kind === 'titleLang') {
       state.settings.titleLang = value === 'original' ? 'original' : 'ru';
       if (typeof App.refreshViews === 'function') App.refreshViews();
+    } else if (kind === 'synopsisLang') {
+      state.settings.synopsisLang = value === 'original' ? 'original' : 'translated';
+      if (state.modalId != null) renderModal();
     } else if (kind === 'translationProvider') {
       state.settings.translationProvider = ['mymemory', 'google'].includes(value) ? value : 'auto';
     } else {
