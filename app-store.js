@@ -428,6 +428,12 @@
       comparison: null,
       filter: 'all',
       error: '',
+      importBusy: false,
+      importError: '',
+      importPlan: null,
+      importResult: null,
+      importSource: '',
+      importToken: 0,
     },
     byId: new Map(),
     franchiseById: new Map(),
@@ -1166,6 +1172,39 @@
     }
   }
 
+  function importTrackedItems(entries) {
+    const rows = Array.isArray(entries) ? entries : [];
+    const skipped = [];
+    let added = 0;
+    for (const entry of rows) {
+      const anime = entry && entry.anime;
+      if (!anime || anime.id == null) continue;
+      if (hasIn('watched', anime.id) || hasIn('planned', anime.id)) {
+        skipped.push(anime);
+        continue;
+      }
+      const name = entry.list === 'planned' ? 'planned' : 'watched';
+      const tier = TIER_IDS.includes(entry.tier) ? entry.tier : 'N';
+      const snapshot = snapshotAnime(anime);
+      snapshot.addedAt = Date.now();
+      state.lists[name][tier].unshift(snapshot);
+      state.byId.set(anime.id, anime);
+      const watched = Math.max(0, Math.trunc(Number(entry.watched) || 0));
+      if (watched > 0) {
+        state.progress[anime.id] = {
+          watched: Array.from({ length: watched }, (_, index) => index + 1),
+          updated: Date.now(),
+        };
+      }
+      added += 1;
+    }
+    if (added) {
+      saveState();
+      refreshViews();
+    }
+    return { added, skipped: skipped.length, skippedItems: skipped };
+  }
+
   function removeFromList(name, id, silent = false) {
     let removed = false;
     for (const k of TIER_IDS) {
@@ -1302,6 +1341,7 @@
     findTier,
     getAnime,
     addToList,
+    importTrackedItems,
     removeFromList,
     moveToTier,
     toggleList,

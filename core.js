@@ -1179,12 +1179,23 @@
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.13.0';
+  const APP_VERSION = '1.14.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* История изменений для экрана «Что нового». Новые версии — сверху.
      Пункты пишем для пользователя: что теперь можно сделать, а не как это сделано. */
   const CHANGELOG = [
+    {
+      version: '1.14.0',
+      date: '26 октября 2026',
+      title: 'Импорт из MyAnimeList и Shikimori',
+      items: [
+        'В «Обмен тир-листами» появился импорт списка: XML из MyAnimeList или JSON с оценками Shikimori.',
+        'Перед добавлением AniTier показывает, сколько тайтлов новое, что уже есть в списках и что не нашлось в AniList.',
+        'Оценки превращаются в тиры, а просмотренные серии восстанавливаются в прогрессе.',
+        'Файл читается в браузере и никуда не отправляется.',
+      ],
+    },
     {
       version: '1.13.0',
       date: '26 октября 2026',
@@ -1374,6 +1385,243 @@
     return `${(bytes / (1024 * 1024)).toFixed(bytes < 10 * 1024 * 1024 ? 1 : 0)} МБ`;
   }
 
+  /* ---------------- импорт из MyAnimeList и Shikimori ---------------- */
+  const IMPORT_MAX_ROWS = 20000;
+  const IMPORT_MAX_BYTES = 12 * 1024 * 1024;
+
+  /** Оценка из списка превращается в тир: 9–10 → S, 8 → A, 7 → B, 6 → C, 5 → D, 1–4 → F. */
+  function tierFromScore(score) {
+    const value = Number(score);
+    if (!Number.isFinite(value) || value <= 0) return 'N';
+    if (value >= 9) return 'S';
+    if (value >= 8) return 'A';
+    if (value >= 7) return 'B';
+    if (value >= 6) return 'C';
+    if (value >= 5) return 'D';
+    return 'F';
+  }
+
+  /** Статус из файла: «просмотрено» или «запланировано». Неизвестный статус — пустая строка. */
+  function importStatusList(source, status) {
+    const value = String(status == null ? '' : status)
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_-]+/g, ' ');
+    if (!value) return '';
+    if (value === 'plan to watch' || value === 'planned') return 'planned';
+    if (['completed', 'watching', 'rewatching', 'on hold', 'dropped'].includes(value)) return 'watched';
+    return '';
+  }
+
+  function importYear(value) {
+    const match = String(value == null ? '' : value).match(/^(\d{4})/);
+    return match ? Number(match[1]) : null;
+  }
+
+  /** Приводит строку из любого источника к общему виду. */
+  function normalizeImportedRow(raw, source = '') {
+    if (!raw || typeof raw !== 'object') return null;
+    const malIdNumber = Number(raw.malId);
+    const malId = Number.isInteger(malIdNumber) && malIdNumber > 0 ? malIdNumber : null;
+    const title = String(raw.title == null ? '' : raw.title).trim().slice(0, 300);
+    if (!malId && !title) return null;
+
+    const episodes = Math.max(0, Math.trunc(Number(raw.episodes) || 0));
+    let watched = Math.max(0, Math.trunc(Number(raw.watched) || 0));
+    if (episodes > 0) watched = Math.min(watched, episodes);
+    const score = Math.max(0, Math.min(10, Number(raw.score) || 0));
+    const origin = String(source || raw.source || '').toLowerCase();
+    const status = importStatusList(origin, raw.status);
+    const list = status || (watched > 0 || score > 0 ? 'watched' : 'planned');
+
+    return {
+      malId,
+      title,
+      altTitle: String(raw.altTitle == null ? '' : raw.altTitle).trim().slice(0, 300),
+      episodes: episodes || null,
+      watched,
+      score,
+      status: String(raw.status == null ? '' : raw.status).trim().slice(0, 40),
+      list,
+      tier: list === 'watched' ? tierFromScore(score) : 'N',
+      image: /^https?:\/\//i.test(String(raw.image || '')) ? String(raw.image).slice(0, 1000) : '',
+      type: String(raw.type == null ? '' : raw.type).trim().slice(0, 40),
+      year: importYear(raw.year),
+      source: origin,
+    };
+  }
+
+  /** Убирает повторы и строки без опознавательных данных, сохраняя порядок файла. */
+  function normalizeImportRows(rows, source = '') {
+    const result = [];
+    const seen = new Set();
+    for (const raw of Array.isArray(rows) ? rows : []) {
+      const row = normalizeImportedRow(raw, source);
+      if (!row) continue;
+      const key = row.malId
+        ? `mal:${row.malId}`
+        : `title:${normalizeTitleKey(row.title)}:${row.year || '?'}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push(row);
+      if (result.length >= IMPORT_MAX_ROWS) break;
+    }
+    return result;
+  }
+
+  function malNodeText(node, tag) {
+    if (!node || typeof node.getElementsByTagName !== 'function') return '';
+    const nodes = node.getElementsByTagName(tag);
+    return nodes && nodes.length ? String(nodes[0].textContent || '').trim() : '';
+  }
+
+  /**
+   * Разбирает XML-экспорт MyAnimeList. Парсер передаётся снаружи,
+   * чтобы core.js не зависел от DOM.
+   */
+  function parseMalXml(text, parser) {
+    const xml = String(text == null ? '' : text);
+    if (!xml.trim()) throw new Error('Файл пустой.');
+    if (!parser || typeof parser.parseFromString !== 'function') {
+      throw new Error('Браузер не умеет читать XML.');
+    }
+    let doc = null;
+    try { doc = parser.parseFromString(xml, 'text/xml'); } catch { doc = null; }
+    if (!doc || (doc.getElementsByTagName && doc.getElementsByTagName('parsererror').length)) {
+      throw new Error('Не удалось прочитать XML. Выберите файл экспорта MyAnimeList.');
+    }
+    const nodes = doc.getElementsByTagName ? doc.getElementsByTagName('anime') : [];
+    if (!nodes.length) throw new Error('В файле нет списка аниме MyAnimeList.');
+
+    const rows = [];
+    for (const node of Array.from(nodes)) {
+      rows.push({
+        malId: malNodeText(node, 'series_animedb_id'),
+        title: malNodeText(node, 'series_title'),
+        episodes: malNodeText(node, 'series_episodes'),
+        watched: malNodeText(node, 'my_watched_episodes'),
+        score: malNodeText(node, 'my_score'),
+        status: malNodeText(node, 'my_status'),
+        type: malNodeText(node, 'series_type'),
+        year: malNodeText(node, 'series_start'),
+        image: malNodeText(node, 'series_image'),
+      });
+    }
+    return normalizeImportRows(rows, 'mal');
+  }
+
+  function shikimoriRows(payload) {
+    if (Array.isArray(payload)) return payload;
+    if (!payload || typeof payload !== 'object') return [];
+    for (const key of ['anime_rates', 'rates', 'anime', 'data', 'list']) {
+      if (Array.isArray(payload[key])) return payload[key];
+    }
+    return [];
+  }
+
+  /** Разбирает JSON с оценками Shikimori (ответ API anime_rates или сохранённый файл). */
+  function parseShikimoriJson(text) {
+    const raw = String(text == null ? '' : text);
+    if (!raw.trim()) throw new Error('Файл пустой.');
+    let payload = null;
+    try { payload = JSON.parse(raw); } catch {
+      throw new Error('Не удалось прочитать JSON. Выберите файл оценок Shikimori.');
+    }
+    const rates = shikimoriRows(payload);
+    if (!rates.length) throw new Error('В файле нет оценок Shikimori.');
+
+    const rows = rates.map(item => {
+      const anime = item && item.anime && typeof item.anime === 'object' ? item.anime : item;
+      const image = anime && anime.image && typeof anime.image === 'object'
+        ? (anime.image.original || anime.image.preview || anime.image.x96 || '')
+        : (anime && anime.image) || '';
+      return {
+        malId: anime && (anime.id ?? item.anime_id ?? item.target_id),
+        title: (anime && (anime.russian || anime.name)) || item.russian || item.name,
+        altTitle: (anime && anime.name) || item.name,
+        episodes: anime && anime.episodes,
+        watched: item && (item.episodes ?? item.watched_episodes),
+        score: item && item.score,
+        status: item && item.status,
+        type: anime && anime.kind,
+        year: anime && anime.aired_on,
+        image,
+      };
+    });
+    return normalizeImportRows(rows, 'shikimori');
+  }
+
+  /**
+   * Сопоставляет строки файла с тайтлами AniList и решает, что добавлять.
+   * Возвращает новые записи, уже имеющиеся тайтлы и то, что не нашлось.
+   */
+  function planImport(rows, resolved, lists) {
+    const sourceRows = Array.isArray(rows) ? rows : [];
+    const byMal = new Map();
+    for (const anime of Array.isArray(resolved) ? resolved : []) {
+      if (!anime || anime.malId == null) continue;
+      const malId = Number(anime.malId);
+      if (Number.isInteger(malId) && malId > 0) byMal.set(malId, anime);
+    }
+
+    const existing = new Set();
+    for (const name of ['watched', 'planned']) {
+      for (const tier of TIER_IDS) {
+        for (const item of (lists && lists[name] && lists[name][tier]) || []) {
+          if (item && item.id != null) existing.add(item.id);
+        }
+      }
+    }
+
+    const entries = [];
+    const already = [];
+    const unmatched = [];
+    const seen = new Set();
+    const tierCounts = {};
+    for (const tier of TIER_IDS) tierCounts[tier] = 0;
+
+    for (const row of sourceRows) {
+      if (!row) continue;
+      const anime = row.malId != null ? byMal.get(Number(row.malId)) : null;
+      if (!anime) {
+        unmatched.push(row);
+        continue;
+      }
+      if (existing.has(anime.id) || seen.has(anime.id)) {
+        already.push({ row, anime });
+        continue;
+      }
+      seen.add(anime.id);
+      const list = row.list === 'planned' ? 'planned' : 'watched';
+      const tier = list === 'planned' ? 'N' : (TIER_IDS.includes(row.tier) ? row.tier : tierFromScore(row.score));
+      tierCounts[tier] += 1;
+      entries.push({
+        row,
+        anime,
+        list,
+        tier,
+        watched: Math.max(0, Math.min(Number(row.watched) || 0, Number(row.episodes) || Number(row.watched) || 0)),
+      });
+    }
+
+    const watched = entries.filter(entry => entry.list === 'watched').length;
+    return {
+      entries,
+      unmatched,
+      already,
+      summary: {
+        total: sourceRows.length,
+        matched: entries.length + already.length,
+        newCount: entries.length,
+        already: already.length,
+        unmatched: unmatched.length,
+        watched,
+        planned: entries.length - watched,
+        tierCounts,
+      },
+    };
+  }
+
   return {
     PAGE_LIMIT,
     TIER_IDS,
@@ -1420,6 +1668,15 @@
     normalizeListSort,
     sortListItems,
     randomItem,
+    IMPORT_MAX_BYTES,
+    IMPORT_MAX_ROWS,
+    tierFromScore,
+    importStatusList,
+    normalizeImportedRow,
+    normalizeImportRows,
+    parseMalXml,
+    parseShikimoriJson,
+    planImport,
     APP_VERSION,
     GITHUB_URL,
     CHANGELOG,

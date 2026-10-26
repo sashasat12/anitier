@@ -1902,6 +1902,74 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
 }
 .exchange-sub { margin: 0; max-width: 620px; color: var(--muted); font-size: 13px; }
 
+.exchange-import {
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .025);
+}
+.exchange-import-head { margin-bottom: 12px; }
+.exchange-import-head .exchange-sub { max-width: 720px; }
+.exchange-pick { display: flex; gap: 8px; flex-wrap: wrap; }
+.exchange-import-status {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .04);
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.exchange-import-plan { margin-top: 10px; }
+.exchange-import-summary,
+.exchange-import-lists { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.exchange-import-summary span,
+.exchange-import-lists span {
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .04);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+.exchange-import-summary b,
+.exchange-import-lists b { color: #fff; }
+.exchange-import-missing { margin-top: 10px; }
+.exchange-import-missing summary {
+  color: #ffd0a8;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.exchange-import-missing ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.exchange-import-result {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(90, 255, 170, .25);
+  border-radius: 10px;
+  background: rgba(90, 255, 170, .07);
+  color: #bfffe0;
+  font-size: 12.5px;
+}
+.exchange-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 14px;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.exchange-divider::before,
+.exchange-divider::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+
 .exchange-switch {
   display: inline-flex;
   flex: none;
@@ -4203,12 +4271,23 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.13.0';
+  const APP_VERSION = '1.14.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* История изменений для экрана «Что нового». Новые версии — сверху.
      Пункты пишем для пользователя: что теперь можно сделать, а не как это сделано. */
   const CHANGELOG = [
+    {
+      version: '1.14.0',
+      date: '26 октября 2026',
+      title: 'Импорт из MyAnimeList и Shikimori',
+      items: [
+        'В «Обмен тир-листами» появился импорт списка: XML из MyAnimeList или JSON с оценками Shikimori.',
+        'Перед добавлением AniTier показывает, сколько тайтлов новое, что уже есть в списках и что не нашлось в AniList.',
+        'Оценки превращаются в тиры, а просмотренные серии восстанавливаются в прогрессе.',
+        'Файл читается в браузере и никуда не отправляется.',
+      ],
+    },
     {
       version: '1.13.0',
       date: '26 октября 2026',
@@ -4398,6 +4477,243 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     return `${(bytes / (1024 * 1024)).toFixed(bytes < 10 * 1024 * 1024 ? 1 : 0)} МБ`;
   }
 
+  /* ---------------- импорт из MyAnimeList и Shikimori ---------------- */
+  const IMPORT_MAX_ROWS = 20000;
+  const IMPORT_MAX_BYTES = 12 * 1024 * 1024;
+
+  /** Оценка из списка превращается в тир: 9–10 → S, 8 → A, 7 → B, 6 → C, 5 → D, 1–4 → F. */
+  function tierFromScore(score) {
+    const value = Number(score);
+    if (!Number.isFinite(value) || value <= 0) return 'N';
+    if (value >= 9) return 'S';
+    if (value >= 8) return 'A';
+    if (value >= 7) return 'B';
+    if (value >= 6) return 'C';
+    if (value >= 5) return 'D';
+    return 'F';
+  }
+
+  /** Статус из файла: «просмотрено» или «запланировано». Неизвестный статус — пустая строка. */
+  function importStatusList(source, status) {
+    const value = String(status == null ? '' : status)
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_-]+/g, ' ');
+    if (!value) return '';
+    if (value === 'plan to watch' || value === 'planned') return 'planned';
+    if (['completed', 'watching', 'rewatching', 'on hold', 'dropped'].includes(value)) return 'watched';
+    return '';
+  }
+
+  function importYear(value) {
+    const match = String(value == null ? '' : value).match(/^(\d{4})/);
+    return match ? Number(match[1]) : null;
+  }
+
+  /** Приводит строку из любого источника к общему виду. */
+  function normalizeImportedRow(raw, source = '') {
+    if (!raw || typeof raw !== 'object') return null;
+    const malIdNumber = Number(raw.malId);
+    const malId = Number.isInteger(malIdNumber) && malIdNumber > 0 ? malIdNumber : null;
+    const title = String(raw.title == null ? '' : raw.title).trim().slice(0, 300);
+    if (!malId && !title) return null;
+
+    const episodes = Math.max(0, Math.trunc(Number(raw.episodes) || 0));
+    let watched = Math.max(0, Math.trunc(Number(raw.watched) || 0));
+    if (episodes > 0) watched = Math.min(watched, episodes);
+    const score = Math.max(0, Math.min(10, Number(raw.score) || 0));
+    const origin = String(source || raw.source || '').toLowerCase();
+    const status = importStatusList(origin, raw.status);
+    const list = status || (watched > 0 || score > 0 ? 'watched' : 'planned');
+
+    return {
+      malId,
+      title,
+      altTitle: String(raw.altTitle == null ? '' : raw.altTitle).trim().slice(0, 300),
+      episodes: episodes || null,
+      watched,
+      score,
+      status: String(raw.status == null ? '' : raw.status).trim().slice(0, 40),
+      list,
+      tier: list === 'watched' ? tierFromScore(score) : 'N',
+      image: /^https?:\/\//i.test(String(raw.image || '')) ? String(raw.image).slice(0, 1000) : '',
+      type: String(raw.type == null ? '' : raw.type).trim().slice(0, 40),
+      year: importYear(raw.year),
+      source: origin,
+    };
+  }
+
+  /** Убирает повторы и строки без опознавательных данных, сохраняя порядок файла. */
+  function normalizeImportRows(rows, source = '') {
+    const result = [];
+    const seen = new Set();
+    for (const raw of Array.isArray(rows) ? rows : []) {
+      const row = normalizeImportedRow(raw, source);
+      if (!row) continue;
+      const key = row.malId
+        ? `mal:${row.malId}`
+        : `title:${normalizeTitleKey(row.title)}:${row.year || '?'}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push(row);
+      if (result.length >= IMPORT_MAX_ROWS) break;
+    }
+    return result;
+  }
+
+  function malNodeText(node, tag) {
+    if (!node || typeof node.getElementsByTagName !== 'function') return '';
+    const nodes = node.getElementsByTagName(tag);
+    return nodes && nodes.length ? String(nodes[0].textContent || '').trim() : '';
+  }
+
+  /**
+   * Разбирает XML-экспорт MyAnimeList. Парсер передаётся снаружи,
+   * чтобы core.js не зависел от DOM.
+   */
+  function parseMalXml(text, parser) {
+    const xml = String(text == null ? '' : text);
+    if (!xml.trim()) throw new Error('Файл пустой.');
+    if (!parser || typeof parser.parseFromString !== 'function') {
+      throw new Error('Браузер не умеет читать XML.');
+    }
+    let doc = null;
+    try { doc = parser.parseFromString(xml, 'text/xml'); } catch { doc = null; }
+    if (!doc || (doc.getElementsByTagName && doc.getElementsByTagName('parsererror').length)) {
+      throw new Error('Не удалось прочитать XML. Выберите файл экспорта MyAnimeList.');
+    }
+    const nodes = doc.getElementsByTagName ? doc.getElementsByTagName('anime') : [];
+    if (!nodes.length) throw new Error('В файле нет списка аниме MyAnimeList.');
+
+    const rows = [];
+    for (const node of Array.from(nodes)) {
+      rows.push({
+        malId: malNodeText(node, 'series_animedb_id'),
+        title: malNodeText(node, 'series_title'),
+        episodes: malNodeText(node, 'series_episodes'),
+        watched: malNodeText(node, 'my_watched_episodes'),
+        score: malNodeText(node, 'my_score'),
+        status: malNodeText(node, 'my_status'),
+        type: malNodeText(node, 'series_type'),
+        year: malNodeText(node, 'series_start'),
+        image: malNodeText(node, 'series_image'),
+      });
+    }
+    return normalizeImportRows(rows, 'mal');
+  }
+
+  function shikimoriRows(payload) {
+    if (Array.isArray(payload)) return payload;
+    if (!payload || typeof payload !== 'object') return [];
+    for (const key of ['anime_rates', 'rates', 'anime', 'data', 'list']) {
+      if (Array.isArray(payload[key])) return payload[key];
+    }
+    return [];
+  }
+
+  /** Разбирает JSON с оценками Shikimori (ответ API anime_rates или сохранённый файл). */
+  function parseShikimoriJson(text) {
+    const raw = String(text == null ? '' : text);
+    if (!raw.trim()) throw new Error('Файл пустой.');
+    let payload = null;
+    try { payload = JSON.parse(raw); } catch {
+      throw new Error('Не удалось прочитать JSON. Выберите файл оценок Shikimori.');
+    }
+    const rates = shikimoriRows(payload);
+    if (!rates.length) throw new Error('В файле нет оценок Shikimori.');
+
+    const rows = rates.map(item => {
+      const anime = item && item.anime && typeof item.anime === 'object' ? item.anime : item;
+      const image = anime && anime.image && typeof anime.image === 'object'
+        ? (anime.image.original || anime.image.preview || anime.image.x96 || '')
+        : (anime && anime.image) || '';
+      return {
+        malId: anime && (anime.id ?? item.anime_id ?? item.target_id),
+        title: (anime && (anime.russian || anime.name)) || item.russian || item.name,
+        altTitle: (anime && anime.name) || item.name,
+        episodes: anime && anime.episodes,
+        watched: item && (item.episodes ?? item.watched_episodes),
+        score: item && item.score,
+        status: item && item.status,
+        type: anime && anime.kind,
+        year: anime && anime.aired_on,
+        image,
+      };
+    });
+    return normalizeImportRows(rows, 'shikimori');
+  }
+
+  /**
+   * Сопоставляет строки файла с тайтлами AniList и решает, что добавлять.
+   * Возвращает новые записи, уже имеющиеся тайтлы и то, что не нашлось.
+   */
+  function planImport(rows, resolved, lists) {
+    const sourceRows = Array.isArray(rows) ? rows : [];
+    const byMal = new Map();
+    for (const anime of Array.isArray(resolved) ? resolved : []) {
+      if (!anime || anime.malId == null) continue;
+      const malId = Number(anime.malId);
+      if (Number.isInteger(malId) && malId > 0) byMal.set(malId, anime);
+    }
+
+    const existing = new Set();
+    for (const name of ['watched', 'planned']) {
+      for (const tier of TIER_IDS) {
+        for (const item of (lists && lists[name] && lists[name][tier]) || []) {
+          if (item && item.id != null) existing.add(item.id);
+        }
+      }
+    }
+
+    const entries = [];
+    const already = [];
+    const unmatched = [];
+    const seen = new Set();
+    const tierCounts = {};
+    for (const tier of TIER_IDS) tierCounts[tier] = 0;
+
+    for (const row of sourceRows) {
+      if (!row) continue;
+      const anime = row.malId != null ? byMal.get(Number(row.malId)) : null;
+      if (!anime) {
+        unmatched.push(row);
+        continue;
+      }
+      if (existing.has(anime.id) || seen.has(anime.id)) {
+        already.push({ row, anime });
+        continue;
+      }
+      seen.add(anime.id);
+      const list = row.list === 'planned' ? 'planned' : 'watched';
+      const tier = list === 'planned' ? 'N' : (TIER_IDS.includes(row.tier) ? row.tier : tierFromScore(row.score));
+      tierCounts[tier] += 1;
+      entries.push({
+        row,
+        anime,
+        list,
+        tier,
+        watched: Math.max(0, Math.min(Number(row.watched) || 0, Number(row.episodes) || Number(row.watched) || 0)),
+      });
+    }
+
+    const watched = entries.filter(entry => entry.list === 'watched').length;
+    return {
+      entries,
+      unmatched,
+      already,
+      summary: {
+        total: sourceRows.length,
+        matched: entries.length + already.length,
+        newCount: entries.length,
+        already: already.length,
+        unmatched: unmatched.length,
+        watched,
+        planned: entries.length - watched,
+        tierCounts,
+      },
+    };
+  }
+
   return {
     PAGE_LIMIT,
     TIER_IDS,
@@ -4444,6 +4760,15 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     normalizeListSort,
     sortListItems,
     randomItem,
+    IMPORT_MAX_BYTES,
+    IMPORT_MAX_ROWS,
+    tierFromScore,
+    importStatusList,
+    normalizeImportedRow,
+    normalizeImportRows,
+    parseMalXml,
+    parseShikimoriJson,
+    planImport,
     APP_VERSION,
     GITHUB_URL,
     CHANGELOG,
@@ -4914,6 +5239,12 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
       comparison: null,
       filter: 'all',
       error: '',
+      importBusy: false,
+      importError: '',
+      importPlan: null,
+      importResult: null,
+      importSource: '',
+      importToken: 0,
     },
     byId: new Map(),
     franchiseById: new Map(),
@@ -5652,6 +5983,39 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     }
   }
 
+  function importTrackedItems(entries) {
+    const rows = Array.isArray(entries) ? entries : [];
+    const skipped = [];
+    let added = 0;
+    for (const entry of rows) {
+      const anime = entry && entry.anime;
+      if (!anime || anime.id == null) continue;
+      if (hasIn('watched', anime.id) || hasIn('planned', anime.id)) {
+        skipped.push(anime);
+        continue;
+      }
+      const name = entry.list === 'planned' ? 'planned' : 'watched';
+      const tier = TIER_IDS.includes(entry.tier) ? entry.tier : 'N';
+      const snapshot = snapshotAnime(anime);
+      snapshot.addedAt = Date.now();
+      state.lists[name][tier].unshift(snapshot);
+      state.byId.set(anime.id, anime);
+      const watched = Math.max(0, Math.trunc(Number(entry.watched) || 0));
+      if (watched > 0) {
+        state.progress[anime.id] = {
+          watched: Array.from({ length: watched }, (_, index) => index + 1),
+          updated: Date.now(),
+        };
+      }
+      added += 1;
+    }
+    if (added) {
+      saveState();
+      refreshViews();
+    }
+    return { added, skipped: skipped.length, skippedItems: skipped };
+  }
+
   function removeFromList(name, id, silent = false) {
     let removed = false;
     for (const k of TIER_IDS) {
@@ -5788,6 +6152,7 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     findTier,
     getAnime,
     addToList,
+    importTrackedItems,
     removeFromList,
     moveToTier,
     toggleList,
@@ -8664,6 +9029,12 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
       comparison: null,
       filter: 'all',
       error: '',
+      importBusy: false,
+      importError: '',
+      importPlan: null,
+      importResult: null,
+      importSource: '',
+      importToken: 0,
     };
     if (state.exchange.mode === 'export') {
       state.exchange.code = C.encodeTierShare(C.makeTierShare(exportList, state.lists[exportList], { tierIds: TIER_IDS }));
@@ -8694,6 +9065,12 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     ex.comparison = null;
     ex.error = '';
     ex.filter = 'all';
+    ex.importBusy = false;
+    ex.importError = '';
+    ex.importPlan = null;
+    ex.importResult = null;
+    ex.importSource = '';
+    ex.importToken += 1;
     if (ex.mode === 'export') {
       ex.code = C.encodeTierShare(C.makeTierShare(ex.list, state.lists[ex.list], { tierIds: TIER_IDS }));
     }
@@ -8875,6 +9252,82 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     </div>`;
   }
 
+  function renderImportBlock(ex) {
+    const pick = `<div class="exchange-pick">
+      <button class="btn btn-ghost" data-action="exchange-import-pick" data-source="mal">MyAnimeList (.xml)</button>
+      <button class="btn btn-ghost" data-action="exchange-import-pick" data-source="shikimori">Shikimori (.json)</button>
+      <input type="file" id="import-list-file" data-action="import-list-file" accept=".xml,.json,text/xml,application/xml,application/json" hidden>
+    </div>`;
+
+    if (ex.importBusy) {
+      return `<section class="exchange-import">
+        <div class="exchange-import-head">
+          <div class="exchange-eyebrow">Импорт списка</div>
+          <p class="exchange-sub">Файл читается в браузере и никуда не отправляется.</p>
+        </div>
+        <div class="exchange-import-status" role="status">Читаем файл и сверяем с AniList…</div>
+        ${pick}
+      </section>`;
+    }
+
+    const plan = ex.importPlan;
+    const result = ex.importResult;
+    let preview = '';
+    if (plan) {
+      const summary = plan.summary;
+      const tiers = TIERS
+        .filter(tier => summary.tierCounts[tier.id])
+        .map(tier => `${tier.id} ${summary.tierCounts[tier.id]}`)
+        .join(' · ');
+      const missing = plan.unmatched.slice(0, 8).map(row => (
+        `<li>${esc(row.title || `MAL #${row.malId || '?'}`)}</li>`
+      )).join('');
+      const moreMissing = plan.unmatched.length > 8
+        ? `<li>и ещё ${plan.unmatched.length - 8}</li>`
+        : '';
+      const addLabel = summary.newCount
+        ? `Добавить ${summary.newCount} ${plural(summary.newCount, 'тайтл', 'тайтла', 'тайтлов')}`
+        : 'Новых тайтлов нет';
+      preview = `<div class="exchange-import-plan">
+        <div class="exchange-import-summary">
+          <span><b>${summary.total}</b> в файле</span>
+          <span><b>${summary.newCount}</b> новых</span>
+          <span><b>${summary.already}</b> уже у вас</span>
+          <span><b>${summary.unmatched}</b> не найдено</span>
+        </div>
+        <div class="exchange-import-lists">
+          <span>Просмотрено: <b>${summary.watched}</b></span>
+          <span>Запланировано: <b>${summary.planned}</b></span>
+          ${tiers ? `<span>Тиры: <b>${esc(tiers)}</b></span>` : ''}
+        </div>
+        ${plan.unmatched.length ? `<details class="exchange-import-missing">
+          <summary>${plan.unmatched.length} ${plural(plan.unmatched.length, 'тайтл', 'тайтла', 'тайтлов')} не нашлись в AniList</summary>
+          <ul>${missing}${moreMissing}</ul>
+        </details>` : ''}
+        <div class="exchange-actions">
+          <button class="btn btn-primary" data-action="exchange-import-confirm" ${summary.newCount ? '' : 'disabled'}>${esc(addLabel)}</button>
+          <button class="btn btn-ghost" data-action="exchange-import-cancel">Отменить импорт</button>
+        </div>
+        <p class="exchange-note">Существующие тайтлы и их тиры не меняются. Прогресс серий восстановится из файла.</p>
+      </div>`;
+    } else if (result) {
+      preview = `<div class="exchange-import-result" role="status">
+        <b>Импорт завершён.</b> Добавлено: ${result.added}. Пропущено как уже существующие: ${result.skipped}.
+        ${result.unmatched ? ` Не найдено в AniList: ${result.unmatched}.` : ''}
+      </div>`;
+    }
+
+    return `<section class="exchange-import">
+      <div class="exchange-import-head">
+        <div class="exchange-eyebrow">Импорт списка</div>
+        <p class="exchange-sub">Перенесите оценки из MyAnimeList или Shikimori: файл читается в браузере и никуда не отправляется.</p>
+      </div>
+      ${pick}
+      ${ex.importError ? `<div class="exchange-error" role="alert">${esc(ex.importError)}</div>` : ''}
+      ${preview}
+    </section>`;
+  }
+
   function renderExchange() {
     const content = $('#exchange-content');
     const ex = state.exchange;
@@ -8920,10 +9373,12 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
           <div>
             <div class="exchange-eyebrow">Обмен тир-листом</div>
             <h2 id="exchange-title">Импорт и сравнение</h2>
-            <p class="exchange-sub">Вставьте код друга. Сначала покажем сравнение — менять ваш тир-лист можно только по одному тайтлу.</p>
+            <p class="exchange-sub">Перенесите свой список из MyAnimeList или Shikimori либо вставьте код друга. Перед добавлением покажем, что изменится.</p>
           </div>
           <button class="exchange-link" data-action="exchange-mode" data-mode="export">Экспорт →</button>
         </div>
+        ${renderImportBlock(ex)}
+        <div class="exchange-divider"><span>или код друга</span></div>
         <label class="exchange-field">
           <span>Код тир-листа</span>
           <textarea class="exchange-code" id="import-code" rows="6" placeholder="Вставьте сюда ANITIER-TIER-1:…">${esc(ex.code)}</textarea>
@@ -9380,6 +9835,7 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     loadMoments,
     hasIn,
     addToList,
+    importTrackedItems,
     removeFromList,
     moveToTier,
     toggleList,
@@ -10763,6 +11219,94 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     });
   }
 
+  function importSourceForFile(file) {
+    const name = String(file && file.name || '').toLowerCase();
+    if (name.endsWith('.xml')) return 'mal';
+    if (name.endsWith('.json')) return 'shikimori';
+    return state.exchange.importSource === 'mal' ? 'mal' : 'shikimori';
+  }
+
+  async function importListFile(file) {
+    if (!file) return;
+    const ex = state.exchange;
+    if (!ex.open || ex.mode !== 'import') return;
+
+    if (file.size > C.IMPORT_MAX_BYTES) {
+      ex.importError = `Файл больше ${C.formatBytes(C.IMPORT_MAX_BYTES)} — это не экспорт списка.`;
+      ex.importPlan = null;
+      ex.importResult = null;
+      renderExchange();
+      return;
+    }
+
+    const source = importSourceForFile(file);
+    const token = (Number(ex.importToken) || 0) + 1;
+    ex.importToken = token;
+    ex.importSource = source;
+    ex.importBusy = true;
+    ex.importError = '';
+    ex.importPlan = null;
+    ex.importResult = null;
+    renderExchange();
+
+    try {
+      const text = await readTextFile(file);
+      if (token !== ex.importToken) return;
+      const rows = source === 'mal'
+        ? C.parseMalXml(text, new DOMParser())
+        : C.parseShikimoriJson(text);
+      const malIds = [...new Set(rows.map(row => row.malId).filter(Boolean))];
+      let resolved = [];
+      if (malIds.length) {
+        try {
+          resolved = await fetchTrackedAnime(malIds);
+        } catch {
+          throw new Error('Не удалось получить данные из AniList. Проверьте интернет и попробуйте снова.');
+        }
+      }
+      if (token !== ex.importToken) return;
+      ex.importPlan = C.planImport(rows, resolved, state.lists);
+    } catch (err) {
+      if (token !== ex.importToken) return;
+      ex.importError = err && err.message ? err.message : 'Не удалось прочитать файл.';
+    } finally {
+      if (token === ex.importToken) {
+        ex.importBusy = false;
+        renderExchange();
+      }
+    }
+  }
+
+  function confirmImportList() {
+    const ex = state.exchange;
+    if (!ex.open || !ex.importPlan) return;
+    const plan = ex.importPlan;
+    if (!plan.entries.length) {
+      toast('Новых тайтлов для добавления нет');
+      return;
+    }
+    const result = importTrackedItems(plan.entries);
+    ex.importPlan = null;
+    ex.importResult = {
+      added: result.added,
+      skipped: result.skipped,
+      unmatched: plan.summary.unmatched,
+    };
+    renderExchange();
+    const skipped = result.skipped ? `, пропущено ${result.skipped}` : '';
+    toast(`Импортировано ${result.added} ${plural(result.added, 'тайтл', 'тайтла', 'тайтлов')}${skipped}`);
+  }
+
+  function cancelImportList() {
+    const ex = state.exchange;
+    ex.importToken = (Number(ex.importToken) || 0) + 1;
+    ex.importBusy = false;
+    ex.importPlan = null;
+    ex.importError = '';
+    ex.importResult = null;
+    renderExchange();
+  }
+
   async function restoreBackupText(text, source) {
     if (!C.isBackupSizeAllowed(String(text == null ? '' : text).length)) {
       setBackupMessage('Файл больше 30 МБ — это не резервная копия AniTier.', true);
@@ -11422,6 +11966,23 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
           setExchangeMode(el.dataset.mode);
           break;
 
+        case 'exchange-import-pick': {
+          const input = $('#import-list-file');
+          if (!input) break;
+          state.exchange.importSource = el.dataset.source === 'mal' ? 'mal' : 'shikimori';
+          input.value = '';
+          input.click();
+          break;
+        }
+
+        case 'exchange-import-confirm':
+          confirmImportList();
+          break;
+
+        case 'exchange-import-cancel':
+          cancelImportList();
+          break;
+
         case 'exchange-list':
           switchExchangeList(el.dataset.list);
           break;
@@ -11502,6 +12063,14 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
       const file = input.files && input.files[0];
       input.value = '';
       importMediaFile(file);
+    });
+
+    document.addEventListener('change', e => {
+      const input = e.target;
+      if (!input || input.dataset.action !== 'import-list-file') return;
+      const file = input.files && input.files[0];
+      input.value = '';
+      importListFile(file);
     });
 
     const search = $('#search-input');
@@ -12121,6 +12690,9 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
       switchExchangeList,
       parseImportCode,
       addExchangeItem,
+      importListFile,
+      confirmImportList,
+      cancelImportList,
       renderExchange,
       saveCustomForm,
       removeCustomCard,

@@ -1521,6 +1521,12 @@
       comparison: null,
       filter: 'all',
       error: '',
+      importBusy: false,
+      importError: '',
+      importPlan: null,
+      importResult: null,
+      importSource: '',
+      importToken: 0,
     };
     if (state.exchange.mode === 'export') {
       state.exchange.code = C.encodeTierShare(C.makeTierShare(exportList, state.lists[exportList], { tierIds: TIER_IDS }));
@@ -1551,6 +1557,12 @@
     ex.comparison = null;
     ex.error = '';
     ex.filter = 'all';
+    ex.importBusy = false;
+    ex.importError = '';
+    ex.importPlan = null;
+    ex.importResult = null;
+    ex.importSource = '';
+    ex.importToken += 1;
     if (ex.mode === 'export') {
       ex.code = C.encodeTierShare(C.makeTierShare(ex.list, state.lists[ex.list], { tierIds: TIER_IDS }));
     }
@@ -1732,6 +1744,82 @@
     </div>`;
   }
 
+  function renderImportBlock(ex) {
+    const pick = `<div class="exchange-pick">
+      <button class="btn btn-ghost" data-action="exchange-import-pick" data-source="mal">MyAnimeList (.xml)</button>
+      <button class="btn btn-ghost" data-action="exchange-import-pick" data-source="shikimori">Shikimori (.json)</button>
+      <input type="file" id="import-list-file" data-action="import-list-file" accept=".xml,.json,text/xml,application/xml,application/json" hidden>
+    </div>`;
+
+    if (ex.importBusy) {
+      return `<section class="exchange-import">
+        <div class="exchange-import-head">
+          <div class="exchange-eyebrow">Импорт списка</div>
+          <p class="exchange-sub">Файл читается в браузере и никуда не отправляется.</p>
+        </div>
+        <div class="exchange-import-status" role="status">Читаем файл и сверяем с AniList…</div>
+        ${pick}
+      </section>`;
+    }
+
+    const plan = ex.importPlan;
+    const result = ex.importResult;
+    let preview = '';
+    if (plan) {
+      const summary = plan.summary;
+      const tiers = TIERS
+        .filter(tier => summary.tierCounts[tier.id])
+        .map(tier => `${tier.id} ${summary.tierCounts[tier.id]}`)
+        .join(' · ');
+      const missing = plan.unmatched.slice(0, 8).map(row => (
+        `<li>${esc(row.title || `MAL #${row.malId || '?'}`)}</li>`
+      )).join('');
+      const moreMissing = plan.unmatched.length > 8
+        ? `<li>и ещё ${plan.unmatched.length - 8}</li>`
+        : '';
+      const addLabel = summary.newCount
+        ? `Добавить ${summary.newCount} ${plural(summary.newCount, 'тайтл', 'тайтла', 'тайтлов')}`
+        : 'Новых тайтлов нет';
+      preview = `<div class="exchange-import-plan">
+        <div class="exchange-import-summary">
+          <span><b>${summary.total}</b> в файле</span>
+          <span><b>${summary.newCount}</b> новых</span>
+          <span><b>${summary.already}</b> уже у вас</span>
+          <span><b>${summary.unmatched}</b> не найдено</span>
+        </div>
+        <div class="exchange-import-lists">
+          <span>Просмотрено: <b>${summary.watched}</b></span>
+          <span>Запланировано: <b>${summary.planned}</b></span>
+          ${tiers ? `<span>Тиры: <b>${esc(tiers)}</b></span>` : ''}
+        </div>
+        ${plan.unmatched.length ? `<details class="exchange-import-missing">
+          <summary>${plan.unmatched.length} ${plural(plan.unmatched.length, 'тайтл', 'тайтла', 'тайтлов')} не нашлись в AniList</summary>
+          <ul>${missing}${moreMissing}</ul>
+        </details>` : ''}
+        <div class="exchange-actions">
+          <button class="btn btn-primary" data-action="exchange-import-confirm" ${summary.newCount ? '' : 'disabled'}>${esc(addLabel)}</button>
+          <button class="btn btn-ghost" data-action="exchange-import-cancel">Отменить импорт</button>
+        </div>
+        <p class="exchange-note">Существующие тайтлы и их тиры не меняются. Прогресс серий восстановится из файла.</p>
+      </div>`;
+    } else if (result) {
+      preview = `<div class="exchange-import-result" role="status">
+        <b>Импорт завершён.</b> Добавлено: ${result.added}. Пропущено как уже существующие: ${result.skipped}.
+        ${result.unmatched ? ` Не найдено в AniList: ${result.unmatched}.` : ''}
+      </div>`;
+    }
+
+    return `<section class="exchange-import">
+      <div class="exchange-import-head">
+        <div class="exchange-eyebrow">Импорт списка</div>
+        <p class="exchange-sub">Перенесите оценки из MyAnimeList или Shikimori: файл читается в браузере и никуда не отправляется.</p>
+      </div>
+      ${pick}
+      ${ex.importError ? `<div class="exchange-error" role="alert">${esc(ex.importError)}</div>` : ''}
+      ${preview}
+    </section>`;
+  }
+
   function renderExchange() {
     const content = $('#exchange-content');
     const ex = state.exchange;
@@ -1777,10 +1865,12 @@
           <div>
             <div class="exchange-eyebrow">Обмен тир-листом</div>
             <h2 id="exchange-title">Импорт и сравнение</h2>
-            <p class="exchange-sub">Вставьте код друга. Сначала покажем сравнение — менять ваш тир-лист можно только по одному тайтлу.</p>
+            <p class="exchange-sub">Перенесите свой список из MyAnimeList или Shikimori либо вставьте код друга. Перед добавлением покажем, что изменится.</p>
           </div>
           <button class="exchange-link" data-action="exchange-mode" data-mode="export">Экспорт →</button>
         </div>
+        ${renderImportBlock(ex)}
+        <div class="exchange-divider"><span>или код друга</span></div>
         <label class="exchange-field">
           <span>Код тир-листа</span>
           <textarea class="exchange-code" id="import-code" rows="6" placeholder="Вставьте сюда ANITIER-TIER-1:…">${esc(ex.code)}</textarea>

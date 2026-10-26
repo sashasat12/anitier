@@ -23,6 +23,7 @@
     loadMoments,
     hasIn,
     addToList,
+    importTrackedItems,
     removeFromList,
     moveToTier,
     toggleList,
@@ -1406,6 +1407,94 @@
     });
   }
 
+  function importSourceForFile(file) {
+    const name = String(file && file.name || '').toLowerCase();
+    if (name.endsWith('.xml')) return 'mal';
+    if (name.endsWith('.json')) return 'shikimori';
+    return state.exchange.importSource === 'mal' ? 'mal' : 'shikimori';
+  }
+
+  async function importListFile(file) {
+    if (!file) return;
+    const ex = state.exchange;
+    if (!ex.open || ex.mode !== 'import') return;
+
+    if (file.size > C.IMPORT_MAX_BYTES) {
+      ex.importError = `Файл больше ${C.formatBytes(C.IMPORT_MAX_BYTES)} — это не экспорт списка.`;
+      ex.importPlan = null;
+      ex.importResult = null;
+      renderExchange();
+      return;
+    }
+
+    const source = importSourceForFile(file);
+    const token = (Number(ex.importToken) || 0) + 1;
+    ex.importToken = token;
+    ex.importSource = source;
+    ex.importBusy = true;
+    ex.importError = '';
+    ex.importPlan = null;
+    ex.importResult = null;
+    renderExchange();
+
+    try {
+      const text = await readTextFile(file);
+      if (token !== ex.importToken) return;
+      const rows = source === 'mal'
+        ? C.parseMalXml(text, new DOMParser())
+        : C.parseShikimoriJson(text);
+      const malIds = [...new Set(rows.map(row => row.malId).filter(Boolean))];
+      let resolved = [];
+      if (malIds.length) {
+        try {
+          resolved = await fetchTrackedAnime(malIds);
+        } catch {
+          throw new Error('Не удалось получить данные из AniList. Проверьте интернет и попробуйте снова.');
+        }
+      }
+      if (token !== ex.importToken) return;
+      ex.importPlan = C.planImport(rows, resolved, state.lists);
+    } catch (err) {
+      if (token !== ex.importToken) return;
+      ex.importError = err && err.message ? err.message : 'Не удалось прочитать файл.';
+    } finally {
+      if (token === ex.importToken) {
+        ex.importBusy = false;
+        renderExchange();
+      }
+    }
+  }
+
+  function confirmImportList() {
+    const ex = state.exchange;
+    if (!ex.open || !ex.importPlan) return;
+    const plan = ex.importPlan;
+    if (!plan.entries.length) {
+      toast('Новых тайтлов для добавления нет');
+      return;
+    }
+    const result = importTrackedItems(plan.entries);
+    ex.importPlan = null;
+    ex.importResult = {
+      added: result.added,
+      skipped: result.skipped,
+      unmatched: plan.summary.unmatched,
+    };
+    renderExchange();
+    const skipped = result.skipped ? `, пропущено ${result.skipped}` : '';
+    toast(`Импортировано ${result.added} ${plural(result.added, 'тайтл', 'тайтла', 'тайтлов')}${skipped}`);
+  }
+
+  function cancelImportList() {
+    const ex = state.exchange;
+    ex.importToken = (Number(ex.importToken) || 0) + 1;
+    ex.importBusy = false;
+    ex.importPlan = null;
+    ex.importError = '';
+    ex.importResult = null;
+    renderExchange();
+  }
+
   async function restoreBackupText(text, source) {
     if (!C.isBackupSizeAllowed(String(text == null ? '' : text).length)) {
       setBackupMessage('Файл больше 30 МБ — это не резервная копия AniTier.', true);
@@ -2065,6 +2154,23 @@
           setExchangeMode(el.dataset.mode);
           break;
 
+        case 'exchange-import-pick': {
+          const input = $('#import-list-file');
+          if (!input) break;
+          state.exchange.importSource = el.dataset.source === 'mal' ? 'mal' : 'shikimori';
+          input.value = '';
+          input.click();
+          break;
+        }
+
+        case 'exchange-import-confirm':
+          confirmImportList();
+          break;
+
+        case 'exchange-import-cancel':
+          cancelImportList();
+          break;
+
         case 'exchange-list':
           switchExchangeList(el.dataset.list);
           break;
@@ -2145,6 +2251,14 @@
       const file = input.files && input.files[0];
       input.value = '';
       importMediaFile(file);
+    });
+
+    document.addEventListener('change', e => {
+      const input = e.target;
+      if (!input || input.dataset.action !== 'import-list-file') return;
+      const file = input.files && input.files[0];
+      input.value = '';
+      importListFile(file);
     });
 
     const search = $('#search-input');
@@ -2764,6 +2878,9 @@
       switchExchangeList,
       parseImportCode,
       addExchangeItem,
+      importListFile,
+      confirmImportList,
+      cancelImportList,
       renderExchange,
       saveCustomForm,
       removeCustomCard,

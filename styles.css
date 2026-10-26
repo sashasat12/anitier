@@ -1888,6 +1888,74 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
 }
 .exchange-sub { margin: 0; max-width: 620px; color: var(--muted); font-size: 13px; }
 
+.exchange-import {
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .025);
+}
+.exchange-import-head { margin-bottom: 12px; }
+.exchange-import-head .exchange-sub { max-width: 720px; }
+.exchange-pick { display: flex; gap: 8px; flex-wrap: wrap; }
+.exchange-import-status {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .04);
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.exchange-import-plan { margin-top: 10px; }
+.exchange-import-summary,
+.exchange-import-lists { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.exchange-import-summary span,
+.exchange-import-lists span {
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .04);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+.exchange-import-summary b,
+.exchange-import-lists b { color: #fff; }
+.exchange-import-missing { margin-top: 10px; }
+.exchange-import-missing summary {
+  color: #ffd0a8;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.exchange-import-missing ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.exchange-import-result {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(90, 255, 170, .25);
+  border-radius: 10px;
+  background: rgba(90, 255, 170, .07);
+  color: #bfffe0;
+  font-size: 12.5px;
+}
+.exchange-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 14px;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.exchange-divider::before,
+.exchange-divider::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+
 .exchange-switch {
   display: inline-flex;
   flex: none;
