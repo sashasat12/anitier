@@ -401,6 +401,7 @@ public void scheduleReleaseNotifications(String json) {
                 MainActivity.this, oldJson);
 
         prefs.edit().putString(RELEASE_ITEMS, json).apply();
+        NextEpisodeWidgetProvider.updateAll(MainActivity.this);
 
         if (prefs.getBoolean(RELEASE_ENABLED, false)
                 && hasNotificationPermission()) {

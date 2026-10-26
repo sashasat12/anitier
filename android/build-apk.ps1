@@ -64,6 +64,8 @@ try {
 
   Write-Host '3/6 Компиляция Java...' -ForegroundColor Cyan
   $sources = Get-ChildItem (Join-Path $root 'src') -Recurse -Filter *.java | ForEach-Object { $_.FullName }
+  $generatedR = Get-ChildItem $genDir -Recurse -Filter R.java -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
+  if ($generatedR) { $sources = @($sources) + @($generatedR) }
   & $javac -encoding UTF-8 -source 1.8 -target 1.8 -Xlint:-options -classpath $platformJar -d $classesDir $sources
   if ($LASTEXITCODE -ne 0) { throw 'javac завершился с ошибкой' }
 
