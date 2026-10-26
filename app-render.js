@@ -1527,6 +1527,7 @@
       importResult: null,
       importSource: '',
       importToken: 0,
+      pngBusy: false,
     };
     if (state.exchange.mode === 'export') {
       state.exchange.code = C.encodeTierShare(C.makeTierShare(exportList, state.lists[exportList], { tierIds: TIER_IDS }));
@@ -1563,6 +1564,7 @@
     ex.importResult = null;
     ex.importSource = '';
     ex.importToken += 1;
+    ex.pngBusy = false;
     if (ex.mode === 'export') {
       ex.code = C.encodeTierShare(C.makeTierShare(ex.list, state.lists[ex.list], { tierIds: TIER_IDS }));
     }
@@ -1847,6 +1849,7 @@
         </label>
         <div class="exchange-actions">
           <button class="btn btn-primary" data-action="exchange-copy">Скопировать код</button>
+          <button class="btn btn-ghost" data-action="tier-png" data-list="${esc(ex.list)}" ${ex.pngBusy ? 'disabled' : ''}>${ex.pngBusy ? 'Готовим PNG…' : 'Скачать PNG'}</button>
           <button class="btn btn-ghost" data-action="exchange-mode" data-mode="import">Перейти к импорту</button>
         </div>
         <p class="exchange-note">Код начинается с <code>${esc(C.SHARE_PREFIX)}</code>. Его можно отправить в мессенджере — файл не нужен.</p>`

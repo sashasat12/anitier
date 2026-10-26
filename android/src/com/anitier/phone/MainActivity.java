@@ -445,9 +445,11 @@ public void scheduleReleaseNotifications(String json) {
                 public void run() {
                     Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
                     intent.addCategory(Intent.CATEGORY_OPENABLE);
-                    intent.setType("application/octet-stream");
-                    intent.putExtra(Intent.EXTRA_TITLE, fileName == null || fileName.isEmpty()
-                            ? "anitier-media.bin" : fileName);
+                    String safeName = fileName == null || fileName.isEmpty()
+                            ? "anitier-media.bin" : fileName;
+                    intent.setType(safeName.toLowerCase().endsWith(".png")
+                            ? "image/png" : "application/octet-stream");
+                    intent.putExtra(Intent.EXTRA_TITLE, safeName);
                     try {
                         startActivityForResult(intent, REQUEST_SAVE_MEDIA);
                     } catch (Exception error) {

@@ -1179,12 +1179,22 @@
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.14.0';
+  const APP_VERSION = '1.15.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* История изменений для экрана «Что нового». Новые версии — сверху.
      Пункты пишем для пользователя: что теперь можно сделать, а не как это сделано. */
   const CHANGELOG = [
+    {
+      version: '1.15.0',
+      date: '26 октября 2026',
+      title: 'Тир-лист картинкой',
+      items: [
+        'В окне экспорта появилась кнопка «Скачать PNG»: тир-лист сохраняется готовой картинкой с постерами, тирами и подписью AniTier.',
+        'Картинку можно отправить в чат или соцсеть — код и приложение для просмотра не нужны.',
+        'Если в списке больше 400 тайтлов, в PNG попадут первые 400, а внизу будет пометка.',
+      ],
+    },
     {
       version: '1.14.0',
       date: '26 октября 2026',
@@ -1555,8 +1565,7 @@
    * Сопоставляет строки файла с тайтлами AniList и решает, что добавлять.
    * Возвращает новые записи, уже имеющиеся тайтлы и то, что не нашлось.
    */
-  function planImport(rows, resolved, lists) {
-    const sourceRows = Array.isArray(rows) ? rows : [];
+  function planImport(rows, resolved, lists) {    const sourceRows = Array.isArray(rows) ? rows : [];
     const byMal = new Map();
     for (const anime of Array.isArray(resolved) ? resolved : []) {
       if (!anime || anime.malId == null) continue;
@@ -1622,6 +1631,72 @@
     };
   }
 
+  /* ---------------- PNG тир-листа ---------------- */
+  const TIER_IMAGE_DEFAULTS = {
+    width: 1400,
+    padding: 48,
+    labelWidth: 168,
+    labelGap: 22,
+    posterWidth: 108,
+    posterHeight: 152,
+    posterGap: 14,
+    captionHeight: 36,
+    tierPadding: 16,
+    tierGap: 20,
+    headerHeight: 150,
+    footerHeight: 96,
+    maxItems: 400,
+  };
+
+  /**
+   * Раскладка PNG-тир-листа: размеры холста и координаты каждого постера.
+   * groups: [{ tier, label, name, items: [...] }]
+   */
+  function buildTierImageLayout(groups, options = {}) {
+    const opts = { ...TIER_IMAGE_DEFAULTS, ...(options || {}) };
+    const contentX = opts.padding + opts.labelWidth + opts.labelGap;
+    const available = Math.max(opts.posterWidth, opts.width - contentX - opts.padding);
+    const columns = Math.max(1, Math.floor((available + opts.posterGap) / (opts.posterWidth + opts.posterGap)));
+    const rowHeight = opts.posterHeight + opts.captionHeight + opts.posterGap;
+    const maxItems = Math.max(0, Math.trunc(Number(opts.maxItems) || 0));
+    let remaining = maxItems;
+    let omitted = 0;
+    let y = opts.headerHeight;
+    const tiers = [];
+
+    for (const group of Array.isArray(groups) ? groups : []) {
+      const items = Array.isArray(group && group.items) ? group.items : [];
+      if (!items.length) continue;
+      const allowed = items.slice(0, Math.max(0, remaining));
+      omitted += items.length - allowed.length;
+      if (!allowed.length) continue;
+      remaining -= allowed.length;
+      const rows = Math.ceil(allowed.length / columns);
+      const height = opts.tierPadding * 2 + rows * rowHeight - opts.posterGap;
+      tiers.push({
+        tier: group.tier,
+        label: group.label || group.tier,
+        name: group.name || '',
+        count: items.length,
+        y,
+        height,
+        rows,
+        items: allowed.map((anime, index) => ({
+          anime,
+          x: contentX + (index % columns) * (opts.posterWidth + opts.posterGap),
+          y: y + opts.tierPadding + Math.floor(index / columns) * rowHeight,
+        })),
+      });
+      y += height + opts.tierGap;
+    }
+
+    const height = Math.max(
+      opts.headerHeight + opts.footerHeight + 40,
+      y - opts.tierGap + opts.footerHeight,
+    );
+    return { ...opts, contentX, columns, rowHeight, height, omitted, tiers };
+  }
+
   return {
     PAGE_LIMIT,
     TIER_IDS,
@@ -1677,6 +1752,8 @@
     parseMalXml,
     parseShikimoriJson,
     planImport,
+    TIER_IMAGE_DEFAULTS,
+    buildTierImageLayout,
     APP_VERSION,
     GITHUB_URL,
     CHANGELOG,

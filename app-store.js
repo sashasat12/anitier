@@ -434,6 +434,7 @@
       importResult: null,
       importSource: '',
       importToken: 0,
+      pngBusy: false,
     },
     byId: new Map(),
     franchiseById: new Map(),

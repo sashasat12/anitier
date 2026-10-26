@@ -560,4 +560,40 @@
       T.assert(Array.isArray(entry.items) && entry.items.length > 0, `У версии ${entry.version} есть пункты`);
     }
   });
+  T.test('core: раскладка PNG ставит постеры в колонки и считает высоту', () => {
+    const C = core();
+    const groups = [
+      { tier: 'S', label: 'S', name: 'Шедевр', items: [{ id: 1 }, { id: 2 }, { id: 3 }] },
+      { tier: 'A', label: 'A', name: 'Отлично', items: Array.from({ length: 10 }, (_, i) => ({ id: 10 + i })) },
+      { tier: 'B', label: 'B', name: 'Хорошо', items: [] },
+    ];
+    const layout = C.buildTierImageLayout(groups);
+
+    T.eq(layout.columns, 9, 'На ширине 1400 помещается 9 постеров');
+    T.eq(layout.tiers.length, 2, 'Пустой тир не рисуется');
+    T.eq(layout.tiers[0].items.length, 3);
+    T.eq(layout.tiers[0].items[1].x - layout.tiers[0].items[0].x, layout.posterWidth + layout.posterGap);
+    T.eq(layout.tiers[0].items[2].y, layout.tiers[0].items[0].y, 'Три постерa в одном ряду');
+    T.eq(layout.tiers[1].rows, 2, 'Десять постеров занимают два ряда');
+    T.eq(layout.tiers[1].items[9].y > layout.tiers[1].items[0].y, true, 'Десятый постер ниже');
+    T.eq(layout.height > layout.tiers[1].y, true, 'Высота холста больше последнего тира');
+    T.eq(layout.omitted, 0);
+  });
+
+  T.test('core: PNG ограничивает число постеров и сообщает об остатке', () => {
+    const C = core();
+    const groups = [
+      { tier: 'S', label: 'S', name: 'Шедевр', items: Array.from({ length: 6 }, (_, i) => ({ id: i + 1 })) },
+      { tier: 'A', label: 'A', name: 'Отлично', items: Array.from({ length: 6 }, (_, i) => ({ id: 100 + i })) },
+    ];
+    const layout = C.buildTierImageLayout(groups, { maxItems: 7 });
+    T.eq(layout.tiers[0].items.length, 6);
+    T.eq(layout.tiers[1].items.length, 1);
+    T.eq(layout.omitted, 5);
+
+    const none = C.buildTierImageLayout(groups, { maxItems: 0 });
+    T.eq(none.tiers.length, 0);
+    T.eq(none.omitted, 12);
+    T.eq(none.height > 0, true, 'Даже пустой холст имеет высоту');
+  });
 })();
