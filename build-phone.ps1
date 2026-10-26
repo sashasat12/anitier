@@ -16,6 +16,7 @@ $html = [regex]::Replace($html, '\?v=[0-9A-Za-z.\-]+', '')
 $styles = Read-Text 'styles.css'
 $mobileStyles = Read-Text 'mobile\mobile.css'
 $core = Read-Text 'core.js'
+$changelog = Read-Text 'changelog.js'
 $store = Read-Text 'app-store.js'
 $api = Read-Text 'app-api.js'
 $render = Read-Text 'app-render.js'
@@ -27,13 +28,14 @@ $html = $html.Replace(
 )
 
 $html = $html.Replace(
+  '<script src="../changelog.js" defer></script>' + "`n" +
   '<script src="../core.js" defer></script>' + "`n" +
   '<script src="../app-store.js" defer></script>' + "`n" +
   '<script src="../app-api.js" defer></script>' + "`n" +
   '<script src="../app-render.js" defer></script>' + "`n" +
   '<script src="../app.js" defer></script>' + "`n" +
   '<script src="mobile.js" defer></script>',
-  "<script>`n$core`n</script>`n<script>`n$store`n</script>`n<script>`n$api`n</script>`n<script>`n$render`n</script>`n<script>`n$app`n</script>"
+  "<script>`n$changelog`n</script>`n<script>`n$core`n</script>`n<script>`n$store`n</script>`n<script>`n$api`n</script>`n<script>`n$render`n</script>`n<script>`n$app`n</script>"
 )
 
 $html = $html.Replace('<link rel="manifest" href="manifest.webmanifest">' + "`n", '')
