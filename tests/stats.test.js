@@ -37,6 +37,7 @@
           score: 9.2,
           year: 2023,
           genres: ['Фэнтези', 'Драма'],
+          tags: ['Shounen', 'Isekai'],
           studios: ['Madhouse'],
         })],
         A: [anime({
@@ -46,6 +47,7 @@
           score: 8.5,
           year: 2022,
           genres: ['Экшен'],
+          tags: ['Shounen'],
           studios: ['Mappa'],
         })],
         B: [anime({
@@ -103,6 +105,8 @@
     T.eq(stats.tierCounts.N, 0, 'Тиры считаются только по просмотренному');
     T.eq(stats.topGenres[0], { name: 'Экшен', count: 2 });
     T.eq(stats.topGenres[1], { name: 'Драма', count: 1 });
+    T.eq(stats.topTags[0], { name: 'Сёнэн', count: 2 });
+    T.eq(stats.topTags[1], { name: 'Исекай', count: 1 });
     T.eq(stats.topStudios[0].count, 2);
     T.eq(stats.years.map(year => year.year), [2023, 2022]);
   });

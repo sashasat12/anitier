@@ -2843,6 +2843,9 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
 /* ---------- сортировка базы ---------- */
 .db-sort-row {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
   justify-content: flex-end;
   margin: -6px 0 14px;
 }
@@ -2850,6 +2853,19 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
   flex-direction: row;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+}
+.db-hide-toggle { margin-right: auto; }
+@media (max-width: 560px) {
+  .db-sort-row { justify-content: space-between; }
+  .db-sort-field { flex: 1 1 160px; }
+  .db-sort-field select { width: 100%; min-width: 0; }
+}
+.db-hide-toggle { margin-right: auto; }
+.db-hide-toggle.is-active {
+  color: #fff;
+  border-color: rgba(255, 77, 141, .5);
+  background: rgba(255, 77, 141, .14);
 }
 .db-sort-field > span {
   color: var(--muted);
@@ -2933,8 +2949,11 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
 .pull-refresh.is-ready { color: #fff; border-color: rgba(255, 77, 141, .5); }
 
 
-/* ---------- темы, плотность и размер шрифта ---------- */
-:root { --text-scale: 1; --base-font: 15px; }
+@media (max-width: 560px) {
+  .db-sort-field select { width: 100%; min-width: 0; }
+}
+
+/* ---------- темы, плотность и размер шрифта ---------- */:root { --text-scale: 1; --base-font: 15px; }
 html[data-font="small"] { --text-scale: .9; --base-font: 13.5px; }
 html[data-font="large"] { --text-scale: 1.12; --base-font: 16.5px; }
 body { font-size: var(--base-font); }
@@ -3553,6 +3572,7 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     </div>
 
     <div class="db-sort-row">
+      <button type="button" class="chip db-hide-toggle" id="db-hide-mine" data-action="toggle-hide-mine" aria-pressed="false">Скрыть мои списки</button>
       <label class="filter-field db-sort-field">
         <span>Сортировка</span>
         <select id="db-sort" data-db-sort aria-label="Сортировка базы">
@@ -5611,6 +5631,17 @@ window.AniTierTitlesRu = {
 
 window.AniTierChangelog = [
   {
+    version: '1.34.0',
+    date: '27 октября 2026',
+    title: 'Только новое и любимые теги',
+    items: [
+      'В базе появилась кнопка «Скрыть мои списки»: тайтлы из «Просмотрено» и «Планов» больше не мешают искать новое.',
+      'Настройка сохраняется и восстанавливается при следующем запуске.',
+      'В статистике профиля появился блок «Любимые теги» — по всем просмотренным тайтлам.',
+      'Панель сортировки и скрытия аккуратно переносится на узких экранах.',
+    ],
+  },
+  {
     version: '1.33.0',
     date: '27 октября 2026',
     title: 'История поиска и поиск по истории',
@@ -7397,7 +7428,7 @@ window.AniTierChangelog = [
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.33.0';
+  const APP_VERSION = '1.34.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -7750,6 +7781,7 @@ window.AniTierChangelog = [
     for (const tier of TIER_IDS) tierCounts[tier] = 0;
 
     const genreCounts = new Map();
+    const tagCounts = new Map();
     const studioCounts = new Map();
     const yearCounts = new Map();
     let watched = 0;
@@ -7787,6 +7819,10 @@ window.AniTierChangelog = [
           if (!genre) continue;
           genreCounts.set(genre, (genreCounts.get(genre) || 0) + 1);
         }
+        for (const tag of Array.isArray(item.tags) ? item.tags : []) {
+          if (!tag) continue;
+          tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+        }
         for (const studio of Array.isArray(item.studios) ? item.studios : []) {
           if (!studio) continue;
           studioCounts.set(studio, (studioCounts.get(studio) || 0) + 1);
@@ -7822,6 +7858,14 @@ window.AniTierChangelog = [
       scored,
       tierCounts,
       topGenres: top(genreCounts),
+      topTags: top((() => {
+        const localized = new Map();
+        for (const [name, count] of tagCounts.entries()) {
+          const label = genreRu(name);
+          localized.set(label, (localized.get(label) || 0) + count);
+        }
+        return localized;
+      })()),
       topStudios: top(studioCounts),
       years: [...yearCounts.entries()]
         .sort((a, b) => b[0] - a[0])
@@ -8251,6 +8295,7 @@ window.AniTierChangelog = [
       tab: VIEW_TABS.includes(value.tab) ? value.tab : 'db',
       mode: DB_MODES.includes(value.mode) ? value.mode : 'popular',
       sort: C.normalizeDBSort(value.sort),
+      hideMine: Boolean(value.hideMine),
       query: String(value.query == null ? '' : value.query).trim().slice(0, 160),
       filters: C.normalizeFilters(value.filters),
     };
@@ -8544,6 +8589,7 @@ window.AniTierChangelog = [
     db: {
       mode: 'popular',
       sort: 'default',
+      hideMine: false,
       query: '',
       filters: C.normalizeFilters(C.DEFAULT_FILTERS),
       page: 1,
@@ -12618,6 +12664,9 @@ window.AniTierChangelog = [
     const genres = stats.topGenres.length
       ? stats.topGenres.map(genre => `<span class="stats-chip">${esc(genre.name)} <b>${genre.count}</b></span>`).join('')
       : '<span class="stats-muted">Жанры появятся, когда в списке будут тайтлы с жанрами.</span>';
+    const tags = Array.isArray(stats.topTags) && stats.topTags.length
+      ? stats.topTags.map(tag => `<span class="stats-chip">${esc(tag.name)} <b>${tag.count}</b></span>`).join('')
+      : '';
     const studios = stats.topStudios.length
       ? stats.topStudios.map(studio => `<li><span>${esc(studio.name)}</span><b>${studio.count}</b></li>`).join('')
       : '';
@@ -12660,6 +12709,9 @@ window.AniTierChangelog = [
 
       <h3 class="stats-subtitle">Любимые жанры</h3>
       <div class="stats-chips">${genres}</div>
+
+      ${tags ? `<h3 class="stats-subtitle">Любимые теги</h3>
+      <div class="stats-chips">${tags}</div>` : ''}
 
       ${studios ? `<h3 class="stats-subtitle">Студии</h3>
       <ul class="stats-studio-list">${studios}</ul>` : ''}
@@ -13929,6 +13981,7 @@ window.AniTierChangelog = [
 
     try {
       let usedAlt = false;
+      const keepMine = anime => !s.hideMine || !(hasIn('watched', anime.id) || hasIn('planned', anime.id));
 
       /* Русский запрос: если обычный поиск ничего не дал, пробуем
          локальный словарь названий и забираем карточки по MAL ID. */
@@ -13947,7 +14000,7 @@ window.AniTierChangelog = [
         const all = C.filterItems(state.customCards, { query: s.query, filters: s.filters });
         const pageData = C.slicePage(all, page, PAGE_LIMIT);
         if (revision !== s.revision) return;
-        s.items.push(...pageData.items);
+        s.items.push(...pageData.items.filter(keepMine));
         s.sources = ['Свои карточки'];
         s.hasNext = pageData.hasNext;
         s.page = page + 1;
@@ -13955,7 +14008,7 @@ window.AniTierChangelog = [
         const alt = await fillAltPage(s, revision);
         if (revision !== s.revision || alt.aborted) return;
         if (alt.ok) {
-          s.items = C.dedupeById([...s.items, ...alt.items]);
+          s.items = C.dedupeById([...s.items, ...alt.items.filter(keepMine)]);
           s.sources = alt.sources;
           s.hasNext = alt.hasNext;
           s.page = page + 1;
@@ -13969,7 +14022,7 @@ window.AniTierChangelog = [
         const all = C.filterItems(demoAnime(), { query: s.query, filters: s.filters });
         const pageData = C.slicePage(all, page, PAGE_LIMIT);
         if (revision !== s.revision) return;
-        s.items.push(...pageData.items);
+        s.items.push(...pageData.items.filter(keepMine));
         s.sources = [];
         s.hasNext = pageData.hasNext;
         s.page = page + 1;
@@ -13988,7 +14041,7 @@ window.AniTierChangelog = [
         const media = pageData.media.map(mapAniList);
         /* Сервер получает диапазон лет и списки, но точные годы (когда их
            несколько) и прочие условия проверяем повторно на клиенте. */
-        const data = media.filter(anime => C.matchesFilters(anime, s.filters));
+        const data = media.filter(anime => C.matchesFilters(anime, s.filters)).filter(keepMine);
         s.items = C.dedupeById([...s.items, ...data]);
         s.sources = ['AniList'];
         s.hasNext = Boolean(pageData.pageInfo?.hasNextPage) && media.length > 0;
@@ -14009,7 +14062,7 @@ window.AniTierChangelog = [
         variables[fallbackKey] = fallbackIds;
         const pageData = await fetchAniList(variables, { timeout: SEARCH_TIMEOUT });
         if (revision !== s.revision) return;
-        const data = pageData.media.map(mapAniList).filter(anime => C.matchesFilters(anime, s.filters));
+        const data = pageData.media.map(mapAniList).filter(anime => C.matchesFilters(anime, s.filters)).filter(keepMine);
         s.items = C.dedupeById(data);
         s.sources = ['AniList'];
         s.resolvedQuery = s.query;
@@ -14612,6 +14665,7 @@ window.AniTierChangelog = [
       tab: state.tab,
       mode: state.db.mode,
       sort: state.db.sort,
+      hideMine: Boolean(state.db.hideMine),
       query: state.db.query,
       filters: state.db.filters,
     };
@@ -14623,12 +14677,18 @@ window.AniTierChangelog = [
     state.tab = catalog.tab || 'db';
     state.db.mode = catalog.mode || 'popular';
     state.db.sort = C.normalizeDBSort(catalog.sort);
+    state.db.hideMine = Boolean(catalog.hideMine);
     state.db.query = catalog.query || '';
     state.db.filters = C.normalizeFilters(catalog.filters);
     const input = $('#search-input');
     if (input) input.value = state.db.query;
     const sortSelect = $('#db-sort');
     if (sortSelect) sortSelect.value = state.db.sort;
+    const hideToggle = $('#db-hide-mine');
+    if (hideToggle) {
+      hideToggle.classList.toggle('is-active', state.db.hideMine);
+      hideToggle.setAttribute('aria-pressed', state.db.hideMine ? 'true' : 'false');
+    }
     syncFilterUI();
     syncModeChips();
     switchTab(state.tab, { silent: true, deferActions: true, deferPersistence: true });
@@ -16337,6 +16397,15 @@ window.AniTierChangelog = [
           const input = $('#search-input');
           if (input) input.value = '';
           syncModeChips();
+          persistCatalogPreferences();
+          fetchDB(true);
+          break;
+        }
+
+        case 'toggle-hide-mine': {
+          state.db.hideMine = !state.db.hideMine;
+          el.classList.toggle('is-active', state.db.hideMine);
+          el.setAttribute('aria-pressed', state.db.hideMine ? 'true' : 'false');
           persistCatalogPreferences();
           fetchDB(true);
           break;

@@ -2829,6 +2829,9 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
 /* ---------- сортировка базы ---------- */
 .db-sort-row {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
   justify-content: flex-end;
   margin: -6px 0 14px;
 }
@@ -2836,6 +2839,19 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
   flex-direction: row;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+}
+.db-hide-toggle { margin-right: auto; }
+@media (max-width: 560px) {
+  .db-sort-row { justify-content: space-between; }
+  .db-sort-field { flex: 1 1 160px; }
+  .db-sort-field select { width: 100%; min-width: 0; }
+}
+.db-hide-toggle { margin-right: auto; }
+.db-hide-toggle.is-active {
+  color: #fff;
+  border-color: rgba(255, 77, 141, .5);
+  background: rgba(255, 77, 141, .14);
 }
 .db-sort-field > span {
   color: var(--muted);
@@ -2919,8 +2935,11 @@ body.mobile-app .settings-field select { flex: 1 1 auto; min-height: 44px; }
 .pull-refresh.is-ready { color: #fff; border-color: rgba(255, 77, 141, .5); }
 
 
-/* ---------- темы, плотность и размер шрифта ---------- */
-:root { --text-scale: 1; --base-font: 15px; }
+@media (max-width: 560px) {
+  .db-sort-field select { width: 100%; min-width: 0; }
+}
+
+/* ---------- темы, плотность и размер шрифта ---------- */:root { --text-scale: 1; --base-font: 15px; }
 html[data-font="small"] { --text-scale: .9; --base-font: 13.5px; }
 html[data-font="large"] { --text-scale: 1.12; --base-font: 16.5px; }
 body { font-size: var(--base-font); }

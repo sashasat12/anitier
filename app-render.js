@@ -1709,6 +1709,9 @@
     const genres = stats.topGenres.length
       ? stats.topGenres.map(genre => `<span class="stats-chip">${esc(genre.name)} <b>${genre.count}</b></span>`).join('')
       : '<span class="stats-muted">Жанры появятся, когда в списке будут тайтлы с жанрами.</span>';
+    const tags = Array.isArray(stats.topTags) && stats.topTags.length
+      ? stats.topTags.map(tag => `<span class="stats-chip">${esc(tag.name)} <b>${tag.count}</b></span>`).join('')
+      : '';
     const studios = stats.topStudios.length
       ? stats.topStudios.map(studio => `<li><span>${esc(studio.name)}</span><b>${studio.count}</b></li>`).join('')
       : '';
@@ -1751,6 +1754,9 @@
 
       <h3 class="stats-subtitle">Любимые жанры</h3>
       <div class="stats-chips">${genres}</div>
+
+      ${tags ? `<h3 class="stats-subtitle">Любимые теги</h3>
+      <div class="stats-chips">${tags}</div>` : ''}
 
       ${studios ? `<h3 class="stats-subtitle">Студии</h3>
       <ul class="stats-studio-list">${studios}</ul>` : ''}

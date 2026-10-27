@@ -197,6 +197,7 @@
 
     try {
       let usedAlt = false;
+      const keepMine = anime => !s.hideMine || !(hasIn('watched', anime.id) || hasIn('planned', anime.id));
 
       /* Русский запрос: если обычный поиск ничего не дал, пробуем
          локальный словарь названий и забираем карточки по MAL ID. */
@@ -215,7 +216,7 @@
         const all = C.filterItems(state.customCards, { query: s.query, filters: s.filters });
         const pageData = C.slicePage(all, page, PAGE_LIMIT);
         if (revision !== s.revision) return;
-        s.items.push(...pageData.items);
+        s.items.push(...pageData.items.filter(keepMine));
         s.sources = ['Свои карточки'];
         s.hasNext = pageData.hasNext;
         s.page = page + 1;
@@ -223,7 +224,7 @@
         const alt = await fillAltPage(s, revision);
         if (revision !== s.revision || alt.aborted) return;
         if (alt.ok) {
-          s.items = C.dedupeById([...s.items, ...alt.items]);
+          s.items = C.dedupeById([...s.items, ...alt.items.filter(keepMine)]);
           s.sources = alt.sources;
           s.hasNext = alt.hasNext;
           s.page = page + 1;
@@ -237,7 +238,7 @@
         const all = C.filterItems(demoAnime(), { query: s.query, filters: s.filters });
         const pageData = C.slicePage(all, page, PAGE_LIMIT);
         if (revision !== s.revision) return;
-        s.items.push(...pageData.items);
+        s.items.push(...pageData.items.filter(keepMine));
         s.sources = [];
         s.hasNext = pageData.hasNext;
         s.page = page + 1;
@@ -256,7 +257,7 @@
         const media = pageData.media.map(mapAniList);
         /* Сервер получает диапазон лет и списки, но точные годы (когда их
            несколько) и прочие условия проверяем повторно на клиенте. */
-        const data = media.filter(anime => C.matchesFilters(anime, s.filters));
+        const data = media.filter(anime => C.matchesFilters(anime, s.filters)).filter(keepMine);
         s.items = C.dedupeById([...s.items, ...data]);
         s.sources = ['AniList'];
         s.hasNext = Boolean(pageData.pageInfo?.hasNextPage) && media.length > 0;
@@ -277,7 +278,7 @@
         variables[fallbackKey] = fallbackIds;
         const pageData = await fetchAniList(variables, { timeout: SEARCH_TIMEOUT });
         if (revision !== s.revision) return;
-        const data = pageData.media.map(mapAniList).filter(anime => C.matchesFilters(anime, s.filters));
+        const data = pageData.media.map(mapAniList).filter(anime => C.matchesFilters(anime, s.filters)).filter(keepMine);
         s.items = C.dedupeById(data);
         s.sources = ['AniList'];
         s.resolvedQuery = s.query;
@@ -880,6 +881,7 @@
       tab: state.tab,
       mode: state.db.mode,
       sort: state.db.sort,
+      hideMine: Boolean(state.db.hideMine),
       query: state.db.query,
       filters: state.db.filters,
     };
@@ -891,12 +893,18 @@
     state.tab = catalog.tab || 'db';
     state.db.mode = catalog.mode || 'popular';
     state.db.sort = C.normalizeDBSort(catalog.sort);
+    state.db.hideMine = Boolean(catalog.hideMine);
     state.db.query = catalog.query || '';
     state.db.filters = C.normalizeFilters(catalog.filters);
     const input = $('#search-input');
     if (input) input.value = state.db.query;
     const sortSelect = $('#db-sort');
     if (sortSelect) sortSelect.value = state.db.sort;
+    const hideToggle = $('#db-hide-mine');
+    if (hideToggle) {
+      hideToggle.classList.toggle('is-active', state.db.hideMine);
+      hideToggle.setAttribute('aria-pressed', state.db.hideMine ? 'true' : 'false');
+    }
     syncFilterUI();
     syncModeChips();
     switchTab(state.tab, { silent: true, deferActions: true, deferPersistence: true });
@@ -2605,6 +2613,15 @@
           const input = $('#search-input');
           if (input) input.value = '';
           syncModeChips();
+          persistCatalogPreferences();
+          fetchDB(true);
+          break;
+        }
+
+        case 'toggle-hide-mine': {
+          state.db.hideMine = !state.db.hideMine;
+          el.classList.toggle('is-active', state.db.hideMine);
+          el.setAttribute('aria-pressed', state.db.hideMine ? 'true' : 'false');
           persistCatalogPreferences();
           fetchDB(true);
           break;

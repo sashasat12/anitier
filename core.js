@@ -1407,7 +1407,7 @@
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.33.0';
+  const APP_VERSION = '1.34.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -1760,6 +1760,7 @@
     for (const tier of TIER_IDS) tierCounts[tier] = 0;
 
     const genreCounts = new Map();
+    const tagCounts = new Map();
     const studioCounts = new Map();
     const yearCounts = new Map();
     let watched = 0;
@@ -1797,6 +1798,10 @@
           if (!genre) continue;
           genreCounts.set(genre, (genreCounts.get(genre) || 0) + 1);
         }
+        for (const tag of Array.isArray(item.tags) ? item.tags : []) {
+          if (!tag) continue;
+          tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+        }
         for (const studio of Array.isArray(item.studios) ? item.studios : []) {
           if (!studio) continue;
           studioCounts.set(studio, (studioCounts.get(studio) || 0) + 1);
@@ -1832,6 +1837,14 @@
       scored,
       tierCounts,
       topGenres: top(genreCounts),
+      topTags: top((() => {
+        const localized = new Map();
+        for (const [name, count] of tagCounts.entries()) {
+          const label = genreRu(name);
+          localized.set(label, (localized.get(label) || 0) + count);
+        }
+        return localized;
+      })()),
       topStudios: top(studioCounts),
       years: [...yearCounts.entries()]
         .sort((a, b) => b[0] - a[0])

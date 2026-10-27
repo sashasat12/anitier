@@ -495,6 +495,32 @@
     }
   });
 
+  T.test('app: «Скрыть мои списки» убирает тайтлы из базы', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const doc = app.win.document;
+      await T.waitFor(() => api.state.db.items.length > 0 && !api.state.db.loading, 'Демо-база не загрузилась');
+
+      const item = api.state.db.items[0];
+      app.win.AniTier.addToList('watched', item, 'S', true);
+      doc.querySelector('#db-hide-mine').click();
+      T.eq(api.state.db.hideMine, true);
+
+      await T.waitFor(
+        () => !api.state.db.loading && !api.state.db.items.some(anime => anime.id === item.id),
+        'Тайтл из списка остался в базе',
+        6000,
+      );
+      T.eq(doc.querySelector('#db-hide-mine').getAttribute('aria-pressed'), 'true');
+      const saved = JSON.parse(app.win.localStorage.getItem('anitier.v1') || '{}');
+      T.eq(saved.settings.catalog.hideMine, true);
+    } finally {
+      app.close();
+    }
+  });
+
   T.test('app: сортировка базы меняет запрос и сохраняется', async () => {
     const calls = [];
     const app = await T.mountApp({
