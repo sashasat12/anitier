@@ -2406,6 +2406,25 @@
     }, { passive: true });
   }
 
+  /* ---------------- похожие по тегам ---------------- */
+  function findSimilarByTags(tags) {
+    const list = Array.isArray(tags) ? tags : [];
+    const clean = [...new Set(list
+      .map(tag => String(tag || '').trim())
+      .filter(Boolean))].slice(0, 3);
+    if (!clean.length) {
+      toast('У этого тайтла пока нет тегов');
+      return;
+    }
+    if (state.modalId != null) closeModal();
+    state.db.filters = C.normalizeFilters({ ...state.db.filters, tags: clean });
+    switchTab('db');
+    syncFilterUI();
+    persistCatalogPreferences();
+    fetchDB(true);
+    toast(clean.length === 1 ? 'Показаны тайтлы с этим тегом' : 'Показаны тайтлы с этими тегами');
+  }
+
   let eventsBound = false;
 
   function bindEvents() {
@@ -2972,6 +2991,16 @@
         case 'close-exchange':
           closeExchange();
           break;
+
+        case 'find-tag':
+          findSimilarByTags([el.dataset.tag]);
+          break;
+
+        case 'find-similar': {
+          const anime = getAnime(id);
+          findSimilarByTags(anime && Array.isArray(anime.tags) ? anime.tags.slice(0, 2) : []);
+          break;
+        }
 
         case 'find-more':
           switchTab('db');

@@ -1692,6 +1692,20 @@ button { font-family: inherit; }
   line-height: 1.65;
   white-space: pre-line;
 }
+.tag-link {
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 700;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.tag-link:hover {
+  border-color: rgba(255, 77, 141, .5);
+  color: #fff;
+  background: rgba(255, 77, 141, .14);
+}
+.modal-tags .btn { margin-top: 10px; }
+.modal-tags .tags { margin-bottom: 0; }
+
 .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
 .tag {
   padding: 5px 10px;
@@ -5631,6 +5645,17 @@ window.AniTierTitlesRu = {
 
 window.AniTierChangelog = [
   {
+    version: '1.35.0',
+    date: '27 октября 2026',
+    title: 'Похожие по тегам',
+    items: [
+      'В подробной карточке появились кликабельные теги: нажмите на тег — база откроется с этим фильтром.',
+      'Кнопка «Найти похожие» ищет тайтлы по двум главным тегам сразу.',
+      'Если тегов нет, приложение честно подскажет, что искать не по чему.',
+      'Фильтр тегов синхронизируется с меню «Теги» — его можно сразу изменить или сбросить.',
+    ],
+  },
+  {
     version: '1.34.0',
     date: '27 октября 2026',
     title: 'Только новое и любимые теги',
@@ -7428,7 +7453,7 @@ window.AniTierChangelog = [
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.34.0';
+  const APP_VERSION = '1.35.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -13516,6 +13541,9 @@ window.AniTierChangelog = [
 
     const tiers = TIERS.map(t => `<button class="tier-pick tier-${t.id} ${curTier === t.id ? 'is-active' : ''}" data-action="set-tier" data-id="${a.id}" data-tier="${t.id}" title="${esc(t.name)}" aria-label="Тир ${esc(t.name)}">${t.label}</button>`).join('');
     const genres = (a.genres || []).map(g => `<span class="tag">${esc(C.genreRu(g))}</span>`).join('');
+    const tagChips = (Array.isArray(a.tags) ? a.tags : []).slice(0, 12).map(tag => (
+      `<button type="button" class="tag tag-link" data-action="find-tag" data-tag="${esc(tag)}">${esc(C.genreRu(tag))}</button>`
+    )).join('');
     const poster = a.image || makePoster(a.title, a.id);
     const mainTitle = displayTitle(a);
     const secondaryTitle = mainTitle === (a.titleRu || '')
@@ -13584,6 +13612,11 @@ window.AniTierChangelog = [
             ${synopsisControls}
             <p class="modal-synopsis"${showTranslatedSynopsis ? ' data-translated="1" title="Автоматический перевод"' : ''}>${esc(synopsis)}</p>
           </section>
+          ${tagChips ? `<section class="modal-section modal-tags">
+            <div class="modal-label">Теги</div>
+            <div class="tags">${tagChips}</div>
+            <button class="btn btn-ghost" type="button" data-action="find-similar" data-id="${a.id}">Найти похожие</button>
+          </section>` : ''}
           ${genres ? `<div class="tags">${genres}</div>` : ''}
           ${sourceLine}
         </div>
@@ -16190,6 +16223,25 @@ window.AniTierChangelog = [
     }, { passive: true });
   }
 
+  /* ---------------- похожие по тегам ---------------- */
+  function findSimilarByTags(tags) {
+    const list = Array.isArray(tags) ? tags : [];
+    const clean = [...new Set(list
+      .map(tag => String(tag || '').trim())
+      .filter(Boolean))].slice(0, 3);
+    if (!clean.length) {
+      toast('У этого тайтла пока нет тегов');
+      return;
+    }
+    if (state.modalId != null) closeModal();
+    state.db.filters = C.normalizeFilters({ ...state.db.filters, tags: clean });
+    switchTab('db');
+    syncFilterUI();
+    persistCatalogPreferences();
+    fetchDB(true);
+    toast(clean.length === 1 ? 'Показаны тайтлы с этим тегом' : 'Показаны тайтлы с этими тегами');
+  }
+
   let eventsBound = false;
 
   function bindEvents() {
@@ -16756,6 +16808,16 @@ window.AniTierChangelog = [
         case 'close-exchange':
           closeExchange();
           break;
+
+        case 'find-tag':
+          findSimilarByTags([el.dataset.tag]);
+          break;
+
+        case 'find-similar': {
+          const anime = getAnime(id);
+          findSimilarByTags(anime && Array.isArray(anime.tags) ? anime.tags.slice(0, 2) : []);
+          break;
+        }
 
         case 'find-more':
           switchTab('db');

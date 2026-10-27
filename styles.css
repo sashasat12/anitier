@@ -1678,6 +1678,20 @@ button { font-family: inherit; }
   line-height: 1.65;
   white-space: pre-line;
 }
+.tag-link {
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 700;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.tag-link:hover {
+  border-color: rgba(255, 77, 141, .5);
+  color: #fff;
+  background: rgba(255, 77, 141, .14);
+}
+.modal-tags .btn { margin-top: 10px; }
+.modal-tags .tags { margin-bottom: 0; }
+
 .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
 .tag {
   padding: 5px 10px;

@@ -495,6 +495,48 @@
     }
   });
 
+  T.test('app: тег в карточке открывает похожие тайтлы в базе', async () => {
+    const calls = [];
+    const app = await T.mountApp({
+      query: '?test=1',
+      setup(win) { win.fetch = baseFetch(calls); },
+    });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const doc = app.win.document;
+      api.state.db.loading = false;
+      api.state.db.error = null;
+      api.state.db.items = [{
+        id: 1, malId: 1, title: 'Тег-тайтл', titleRu: '', originalTitle: 'Тег-тайтл',
+        altTitle: '', image: '', episodes: 12, type: 'TV', status: 'Завершено', score: 8,
+        year: 2020, genres: [], tags: ['Shounen', 'Isekai'],
+      }];
+      app.win.AniTier.renderDB();
+      doc.querySelector('#db-grid .card').click();
+
+      const tagButton = doc.querySelector('[data-action="find-tag"]');
+      T.assert(tagButton, 'В карточке есть кликабельные теги');
+      T.includes(tagButton.textContent, 'Сёнэн');
+      tagButton.click();
+
+      T.eq(api.state.tab, 'db');
+      T.eq(api.state.db.filters.tags, ['Shounen']);
+      T.eq(doc.getElementById('modal').hidden, true, 'Карточка закрылась');
+
+      api.state.db.items = [{
+        id: 1, malId: 1, title: 'Тег-тайтл', titleRu: '', originalTitle: 'Тег-тайтл',
+        altTitle: '', image: '', episodes: 12, type: 'TV', status: 'Завершено', score: 8,
+        year: 2020, genres: [], tags: ['Shounen', 'Isekai'],
+      }];
+      app.win.AniTier.openModal(1);
+      doc.querySelector('[data-action="find-similar"]').click();
+      T.eq(api.state.db.filters.tags, ['Shounen', 'Isekai'], 'Похожие ищутся по двум тегам');
+    } finally {
+      app.close();
+    }
+  });
+
   T.test('app: «Скрыть мои списки» убирает тайтлы из базы', async () => {
     const app = await T.mountApp({ query: '?demo=1&test=1' });
     try {
