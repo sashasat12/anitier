@@ -118,6 +118,10 @@
       T.assert(Array.isArray(manifestJson.shortcuts) && manifestJson.shortcuts.length >= 3, 'В манифесте есть быстрые действия');
       T.eq(manifestJson.share_target && manifestJson.share_target.method, 'GET', 'share_target принимает GET');
       T.eq(manifestJson.share_target && manifestJson.share_target.params && manifestJson.share_target.params.url, 'url', 'share_target читает url');
+      T.eq(manifestJson.orientation, 'any', 'PWA разрешает поворот экрана');
+
+      const androidManifest = await (await fetch('../android/AndroidManifest.xml')).text();
+      T.assert(!androidManifest.includes('screenOrientation="portrait"'), 'APK не блокирует поворот');
 
       const icon192 = await fetch('../mobile/icons/icon-192.png');
       const icon512 = await fetch('../mobile/icons/icon-512.png');

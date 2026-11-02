@@ -1959,6 +1959,7 @@ button { font-family: inherit; }
 .modal-label-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .moments-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
 .moment-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1966,6 +1967,27 @@ button { font-family: inherit; }
   border-radius: 12px;
   background: rgba(8, 10, 16, .6);
 }
+.moment-remove {
+  position: absolute;
+  z-index: 3;
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 50%;
+  background: rgba(6, 8, 14, .82);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.moment-remove:hover { background: #ff2d6f; border-color: #ff2d6f; }
 .moment-preview {
   position: relative;
   display: block;
@@ -2025,8 +2047,10 @@ button { font-family: inherit; }
   line-height: 1.3;
 }
 .moment-meta { color: var(--muted); font-size: 10.5px; }
-.moment-actions { display: flex; gap: 12px; margin-top: 2px; }
+.moment-actions { display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 2px; }
 .moment-actions .ep-link { font-size: 11px; }
+.moment-delete-link { margin-left: auto; color: #ff8fa8; }
+.moment-delete-link:hover { color: #ff5c88; }
 
 .backup-panel { width: min(640px, 100%); }
 .backup-content { padding: 26px; }

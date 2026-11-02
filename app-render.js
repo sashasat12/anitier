@@ -1258,6 +1258,7 @@
       : `<span class="moment-fallback">${m.kind === 'tiktok' ? 'TikTok' : m.kind === 'gif' ? 'GIF' : '▶'}</span>`;
     const meta = m.kind === 'tiktok' ? 'TikTok' : m.kind === 'gif' ? 'GIF' : 'Видео';
     return `<article class="moment-card" data-moment-card="${esc(m.id)}">
+      <button class="moment-remove" type="button" data-action="moment-delete" data-id="${animeId}" data-moment="${esc(m.id)}" title="Удалить момент" aria-label="Удалить момент: ${esc(momentLabel(m))}">✕</button>
       <button class="moment-preview" type="button" data-action="moment-play" data-id="${animeId}" data-moment="${esc(m.id)}" aria-label="Открыть момент: ${esc(momentLabel(m))}">
         ${thumb}<span class="moment-play-icon">▶</span>
       </button>
@@ -1267,7 +1268,7 @@
         <div class="moment-actions">
           ${m.kind === 'tiktok' ? `<button class="ep-link" type="button" data-action="moment-open-tiktok" data-id="${animeId}" data-moment="${esc(m.id)}">Открыть в TikTok ↗</button>` : ''}
           <button class="ep-link" type="button" data-action="moment-share" data-id="${animeId}" data-moment="${esc(m.id)}">Поделиться</button>
-          <button class="ep-link" type="button" data-action="moment-delete" data-id="${animeId}" data-moment="${esc(m.id)}">Удалить</button>
+          <button class="ep-link moment-delete-link" type="button" data-action="moment-delete" data-id="${animeId}" data-moment="${esc(m.id)}">Удалить</button>
         </div>
       </div>
     </article>`;

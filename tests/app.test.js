@@ -1250,6 +1250,40 @@
     }
   });
 
+  T.test('app: момент удаляется кнопкой прямо на карточке', async () => {
+    const app = await T.mountApp({ query: '?test=1' });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const win = app.win;
+      const doc = win.document;
+      api.state.db.loading = false;
+      api.state.db.error = null;
+      api.state.db.items = [{
+        id: 1, malId: 1, title: 'Момент-тайтл', titleRu: '', originalTitle: 'Момент-тайтл',
+        altTitle: '', image: '', episodes: 12, type: 'TV', status: 'Завершено', score: 8,
+        year: 2020, genres: [], tags: [],
+      }];
+      win.AniTier.addMoment(1, {
+        id: 'm1', kind: 'tiktok', url: 'https://www.tiktok.com/@u/video/7412345678901234567',
+        title: 'Клип', thumb: '', videoId: '7412345678901234567',
+      });
+      win.AniTier.openModal(1);
+
+      const remove = doc.querySelector('.moment-remove');
+      T.assert(remove, 'У момента есть кнопка удаления');
+      T.eq(win.getComputedStyle(remove).display, 'grid', 'Кнопка не скрыта');
+      T.includes(remove.getAttribute('aria-label'), 'Удалить момент');
+
+      win.confirm = () => true;
+      remove.click();
+      await T.waitFor(() => win.AniTier.momentsFor(1).length === 0, 'Момент не удалился', 4000);
+      T.eq(doc.querySelectorAll('.moment-card').length, 0);
+    } finally {
+      app.close();
+    }
+  });
+
   T.test('app: русский синоним AniList становится основным названием', async () => {
     const app = await T.mountApp({ query: '?demo=1&test=1' });
 
