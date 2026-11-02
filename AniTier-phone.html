@@ -1703,6 +1703,16 @@ button { font-family: inherit; }
   color: #fff;
   background: rgba(255, 77, 141, .14);
 }
+.tag-spoiler {
+  border-style: dashed;
+  border-color: rgba(255, 209, 102, .45);
+  color: #ffd166;
+  background: rgba(255, 209, 102, .08);
+}
+.tag-spoiler:hover {
+  border-color: rgba(255, 209, 102, .75);
+  background: rgba(255, 209, 102, .16);
+}
 .modal-tags .btn { margin-top: 10px; }
 .modal-tags .tags { margin-bottom: 0; }
 
@@ -3583,6 +3593,7 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
       <button class="chip" data-action="mode" data-mode="airing">Сейчас выходит</button>
       <button class="chip" data-action="mode" data-mode="movie">Фильмы</button>
       <button class="chip" data-action="mode" data-mode="custom">Мои карточки</button>
+      <button class="chip" data-action="random-db">Случайное</button>
     </div>
 
     <div class="db-sort-row">
@@ -5645,6 +5656,17 @@ window.AniTierTitlesRu = {
 
 window.AniTierChangelog = [
   {
+    version: '1.36.0',
+    date: '2 ноября 2026',
+    title: 'Спойлерные теги и случайный тайтл',
+    items: [
+      'Спойлерные теги больше не теряются: они сохраняются в карточке и помечаются пунктиром с подсказкой.',
+      'Фильтр по спойлерному тегу теперь работает — раньше такие тайтлы не находились на клиенте.',
+      'В базе появилась кнопка «Случайное»: открывает случайный тайтл из уже загруженной выдачи.',
+      'Если база ещё не загружена, кнопка честно подскажет, что делать.',
+    ],
+  },
+  {
     version: '1.35.0',
     date: '27 октября 2026',
     title: 'Похожие по тегам',
@@ -7453,7 +7475,7 @@ window.AniTierChangelog = [
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.35.0';
+  const APP_VERSION = '1.36.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -8711,6 +8733,7 @@ window.AniTierChangelog = [
       synopsis: a.synopsis ? String(a.synopsis).slice(0, 700) : '',
       genres: Array.isArray(a.genres) ? a.genres.slice(0, 12) : [],
       tags: Array.isArray(a.tags) ? a.tags.slice(0, 24) : [],
+      spoilerTags: Array.isArray(a.spoilerTags) ? a.spoilerTags.slice(0, 12) : [],
       studios: Array.isArray(a.studios) ? a.studios.slice(0, 6) : [],
       url: a.url || '',
       source: a.source || '',
@@ -9773,7 +9796,10 @@ window.AniTierChangelog = [
       synopsis: stripHtml(raw.description),
       genres: Array.isArray(raw.genres) ? raw.genres : [],
       tags: (Array.isArray(raw.tags) ? raw.tags : [])
-        .filter(tag => tag && tag.name && !tag.isMediaSpoiler)
+        .filter(tag => tag && tag.name)
+        .map(tag => tag.name),
+      spoilerTags: (Array.isArray(raw.tags) ? raw.tags : [])
+        .filter(tag => tag && tag.name && tag.isMediaSpoiler)
         .map(tag => tag.name),
       studios: (raw.studios?.nodes || []).map(node => node.name).filter(Boolean),
       url: raw.siteUrl || `https://anilist.co/anime/${raw.id}`,
@@ -13541,8 +13567,9 @@ window.AniTierChangelog = [
 
     const tiers = TIERS.map(t => `<button class="tier-pick tier-${t.id} ${curTier === t.id ? 'is-active' : ''}" data-action="set-tier" data-id="${a.id}" data-tier="${t.id}" title="${esc(t.name)}" aria-label="Тир ${esc(t.name)}">${t.label}</button>`).join('');
     const genres = (a.genres || []).map(g => `<span class="tag">${esc(C.genreRu(g))}</span>`).join('');
-    const tagChips = (Array.isArray(a.tags) ? a.tags : []).slice(0, 12).map(tag => (
-      `<button type="button" class="tag tag-link" data-action="find-tag" data-tag="${esc(tag)}">${esc(C.genreRu(tag))}</button>`
+    const spoilerTags = new Set(Array.isArray(a.spoilerTags) ? a.spoilerTags : []);
+    const tagChips = (Array.isArray(a.tags) ? a.tags : []).slice(0, 18).map(tag => (
+      `<button type="button" class="tag tag-link${spoilerTags.has(tag) ? ' tag-spoiler' : ''}" data-action="find-tag" data-tag="${esc(tag)}"${spoilerTags.has(tag) ? ' title="Может содержать спойлер"' : ''}>${esc(C.genreRu(tag))}</button>`
     )).join('');
     const poster = a.image || makePoster(a.title, a.id);
     const mainTitle = displayTitle(a);
@@ -16808,6 +16835,16 @@ window.AniTierChangelog = [
         case 'close-exchange':
           closeExchange();
           break;
+
+        case 'random-db': {
+          const pool = state.db.items.filter(Boolean);
+          if (!pool.length) {
+            toast('Сначала загрузите базу');
+            break;
+          }
+          openModal(pool[Math.floor(Math.random() * pool.length)].id);
+          break;
+        }
 
         case 'find-tag':
           findSimilarByTags([el.dataset.tag]);

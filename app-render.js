@@ -2561,8 +2561,9 @@
 
     const tiers = TIERS.map(t => `<button class="tier-pick tier-${t.id} ${curTier === t.id ? 'is-active' : ''}" data-action="set-tier" data-id="${a.id}" data-tier="${t.id}" title="${esc(t.name)}" aria-label="Тир ${esc(t.name)}">${t.label}</button>`).join('');
     const genres = (a.genres || []).map(g => `<span class="tag">${esc(C.genreRu(g))}</span>`).join('');
-    const tagChips = (Array.isArray(a.tags) ? a.tags : []).slice(0, 12).map(tag => (
-      `<button type="button" class="tag tag-link" data-action="find-tag" data-tag="${esc(tag)}">${esc(C.genreRu(tag))}</button>`
+    const spoilerTags = new Set(Array.isArray(a.spoilerTags) ? a.spoilerTags : []);
+    const tagChips = (Array.isArray(a.tags) ? a.tags : []).slice(0, 18).map(tag => (
+      `<button type="button" class="tag tag-link${spoilerTags.has(tag) ? ' tag-spoiler' : ''}" data-action="find-tag" data-tag="${esc(tag)}"${spoilerTags.has(tag) ? ' title="Может содержать спойлер"' : ''}>${esc(C.genreRu(tag))}</button>`
     )).join('');
     const poster = a.image || makePoster(a.title, a.id);
     const mainTitle = displayTitle(a);

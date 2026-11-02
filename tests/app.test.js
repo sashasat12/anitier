@@ -495,6 +495,50 @@
     }
   });
 
+  T.test('app: спойлерные теги сохраняются и участвуют в фильтре', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      const a = win.AniTier.mapAniList({
+        id: 8801, idMal: null,
+        title: { romaji: 'Tag Test', english: 'Tag Test', native: '' },
+        synonyms: [], format: 'TV', episodes: 12, status: 'FINISHED',
+        seasonYear: 2020, startDate: { year: 2020, month: 1, day: 1 },
+        endDate: { year: 2020, month: 3, day: 1 }, averageScore: 80,
+        description: 'Test.', genres: ['Action'],
+        tags: [
+          { name: 'Shounen', rank: 80, isMediaSpoiler: false },
+          { name: 'Plot Twist', rank: 60, isMediaSpoiler: true },
+        ],
+        studios: { nodes: [] }, coverImage: { large: '' }, siteUrl: '',
+        nextAiringEpisode: null,
+      });
+      T.assert(a.tags.includes('Shounen') && a.tags.includes('Plot Twist'), 'Все теги сохранены');
+      T.eq(a.spoilerTags, ['Plot Twist']);
+      const filtered = win.AniTierCore.filterItems([a], { filters: { tags: ['Plot Twist'] } });
+      T.eq(filtered.length, 1, 'Фильтр по спойлерному тегу работает');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: кнопка «Случайное» открывает тайтл из загруженной базы', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const doc = app.win.document;
+      await T.waitFor(() => api.state.db.items.length > 0, 'База не загрузилась');
+      const titles = new Set(api.state.db.items.map(item => app.win.AniTier.displayTitle(item)));
+
+      doc.querySelector('[data-action="random-db"]').click();
+      T.eq(doc.getElementById('modal').hidden, false, 'Карточка открылась');
+      T.assert(titles.has(doc.getElementById('modal-title').textContent), 'Открыт тайтл из базы');
+    } finally {
+      app.close();
+    }
+  });
+
   T.test('app: тег в карточке открывает похожие тайтлы в базе', async () => {
     const calls = [];
     const app = await T.mountApp({

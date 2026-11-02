@@ -639,6 +639,7 @@
       synopsis: a.synopsis ? String(a.synopsis).slice(0, 700) : '',
       genres: Array.isArray(a.genres) ? a.genres.slice(0, 12) : [],
       tags: Array.isArray(a.tags) ? a.tags.slice(0, 24) : [],
+      spoilerTags: Array.isArray(a.spoilerTags) ? a.spoilerTags.slice(0, 12) : [],
       studios: Array.isArray(a.studios) ? a.studios.slice(0, 6) : [],
       url: a.url || '',
       source: a.source || '',

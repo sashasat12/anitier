@@ -2992,6 +2992,16 @@
           closeExchange();
           break;
 
+        case 'random-db': {
+          const pool = state.db.items.filter(Boolean);
+          if (!pool.length) {
+            toast('Сначала загрузите базу');
+            break;
+          }
+          openModal(pool[Math.floor(Math.random() * pool.length)].id);
+          break;
+        }
+
         case 'find-tag':
           findSimilarByTags([el.dataset.tag]);
           break;

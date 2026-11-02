@@ -1689,6 +1689,16 @@ button { font-family: inherit; }
   color: #fff;
   background: rgba(255, 77, 141, .14);
 }
+.tag-spoiler {
+  border-style: dashed;
+  border-color: rgba(255, 209, 102, .45);
+  color: #ffd166;
+  background: rgba(255, 209, 102, .08);
+}
+.tag-spoiler:hover {
+  border-color: rgba(255, 209, 102, .75);
+  background: rgba(255, 209, 102, .16);
+}
 .modal-tags .btn { margin-top: 10px; }
 .modal-tags .tags { margin-bottom: 0; }
 

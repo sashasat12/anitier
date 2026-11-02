@@ -236,7 +236,10 @@
       synopsis: stripHtml(raw.description),
       genres: Array.isArray(raw.genres) ? raw.genres : [],
       tags: (Array.isArray(raw.tags) ? raw.tags : [])
-        .filter(tag => tag && tag.name && !tag.isMediaSpoiler)
+        .filter(tag => tag && tag.name)
+        .map(tag => tag.name),
+      spoilerTags: (Array.isArray(raw.tags) ? raw.tags : [])
+        .filter(tag => tag && tag.name && tag.isMediaSpoiler)
         .map(tag => tag.name),
       studios: (raw.studios?.nodes || []).map(node => node.name).filter(Boolean),
       url: raw.siteUrl || `https://anilist.co/anime/${raw.id}`,
