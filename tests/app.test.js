@@ -106,11 +106,12 @@
 
     return async (url, fetchOptions = {}) => {
       const parsed = new URL(url);
-      const record = { url, host: parsed.hostname, vars: null };
+      const record = { url, host: parsed.hostname, vars: null, query: '' };
 
       if (parsed.hostname === 'graphql.anilist.co') {
         const body = JSON.parse(fetchOptions.body || '{}');
         record.vars = body.variables || {};
+        record.query = body.query || '';
         calls.push(record);
         if (options.onAniList) options.onAniList(record.vars);
 
@@ -118,6 +119,8 @@
         const page = Number(vars.page) || 1;
 
         if (body.query && body.query.includes('AnimeFranchise')) {
+          /* AniList возвращает пустую страницу, если вместе с id прислать idMal: null. */
+          if (vars.idMal === null) return anilistResponse([], false);
           const currentId = Number(vars.id || 1000);
           const current = rawAniList(currentId, currentId === 1000 ? 'База 1' : 'Следующий сезон', {
             relations: currentId === 1000 ? { edges: [
@@ -311,6 +314,10 @@
       const doc = app.win.document;
       doc.querySelector('#db-grid .card').click();
       await T.waitFor(() => doc.querySelector('.franchise-link[data-id="1001"]'), 'В карточке не появился переход к продолжению');
+      const franchiseCall = calls.find(call => /AnimeFranchise/.test(call.query || ''));
+      T.assert(franchiseCall, 'Запрос сезонов ушёл в AniList');
+      T.eq(franchiseCall.vars.id, 1000, 'Сезоны запрашиваются по AniList ID');
+      T.eq('idMal' in franchiseCall.vars, false, 'Не отправляем idMal: null — AniList вернёт пустую страницу');
       const seasonCard = doc.querySelector('.franchise-link[data-id="1001"]');
       T.assert(seasonCard.querySelector('.franchise-poster img').getAttribute('src'), 'Карточка сезона должна содержать постер');
       T.includes(seasonCard.textContent, 'Следующий сезон');
@@ -2582,7 +2589,7 @@
       T.assert(search, 'Сначала ищем тайтл по названию');
       const franchise = calls.find(call => call.query && call.query.includes('AnimeFranchise'));
       T.eq(franchise.vars.id, 21, 'Франшиза запрошена по найденному AniList ID');
-      T.eq(franchise.vars.idMal, null, 'MAL ID не подставляется вместо AniList ID');
+      T.eq('idMal' in franchise.vars, false, 'MAL ID и null не подставляются вместо AniList ID');
     } finally {
       app.close();
     }

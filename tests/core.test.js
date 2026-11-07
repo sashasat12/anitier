@@ -770,4 +770,22 @@
       T.eq(C.genreIdByName(genre.names[1]), String(genre.id), `Английское имя ${genre.names[1]}`);
     }
   });
+
+  T.test('core: версия совпадает в манифесте, changelog и ссылках ?v=', async () => {
+    const C = core();
+    const version = C.APP_VERSION;
+
+    const manifest = await (await fetch('../android/AndroidManifest.xml')).text();
+    T.includes(manifest, 'android:versionName="' + version + '"', 'versionName в AndroidManifest');
+
+    for (const file of ['index.html', 'mobile/index.html']) {
+      const html = await (await fetch('../' + file)).text();
+      const versions = [...html.matchAll(/\?v=([0-9.]+)/g)].map(match => match[1]);
+      T.assert(versions.length > 0, 'В ' + file + ' есть версии ассетов');
+      T.eq(versions.every(value => value === version), true, 'Все ?v= в ' + file + ' равны ' + version);
+    }
+
+    const sw = await (await fetch('../mobile/sw.js')).text();
+    T.assert(/const CACHE = 'anitier-mobile-v\d+';/.test(sw), 'В service worker задана версия кеша');
+  });
 })();

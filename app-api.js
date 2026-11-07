@@ -326,12 +326,10 @@
       if (!id) return [];
     }
     if (id) anime.anilistId = id;
-    const page = await fetchAniList({
-      id: id || null,
-      idMal: id ? null : idMal,
-      page: 1,
-      perPage: 1,
-    }, { query: ANILIST_FRANCHISE_QUERY, timeout: SEARCH_TIMEOUT });
+    /* AniList считает idMal: null фильтром «без MAL ID» и возвращает пустую
+       страницу, даже если id задан. Поэтому передаём ровно один идентификатор. */
+    const variables = id ? { id } : { idMal };
+    const page = await fetchAniList(variables, { query: ANILIST_FRANCHISE_QUERY, timeout: SEARCH_TIMEOUT });
     const raw = (page.media || [])[0];
     if (!raw) return [];
     const mapped = mapTrackedAniList(raw);
