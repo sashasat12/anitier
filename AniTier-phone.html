@@ -3346,6 +3346,24 @@ textarea:focus {
 /* polish */
 img { image-rendering: auto; }
 
+.update-card-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+.update-card-close:hover { background: rgba(255, 255, 255, 0.16); color: #fff; }
+.update-card h3 { padding-right: 30px; }
+
 /* ============================================================
    AniTier Mobile — мобильная оболочка
    Подключается после styles.css и только для /mobile/
@@ -3394,21 +3412,36 @@ body.mobile-app .icon-btn {
   border-radius: 12px;
 }
 
-/* ����� ��� ��������� �������� ��� ������� ��������� */
+/* Меню фильтров на телефоне — шторка над нижней навигацией:
+   иначе длинный список тегов уезжает за нижний край экрана. */
 body.mobile-app .filter-menu {
+  position: fixed;
   z-index: 95;
+  left: 12px;
+  right: 12px;
+  top: auto;
+  bottom: calc(66px + env(safe-area-inset-bottom, 0px));
+  width: auto;
+  max-width: none;
+  max-height: min(46dvh, 380px);
+  border-radius: 16px;
 }
 
 body.mobile-app .filter-menu-wide {
-  left: 12px;
-  right: 12px;
   width: auto;
-  max-height: min(56dvh, 420px);
+  max-height: min(62dvh, 520px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 body.mobile-app .filter-menu-scroll {
-  max-height: min(48dvh, 340px);
+  min-height: 0;
+  max-height: min(44dvh, 360px);
+  flex: 0 1 auto;
+  overflow: auto;
 }
+
 
 /* ����� ���� ������ */
 body.mobile-app #toasts {
@@ -3987,6 +4020,20 @@ body.mobile-app .card-title {
   font-size: 13px;
   line-height: 1.4;
 }
+
+body.mobile-app .update-card {
+  left: 12px;
+  right: 12px;
+  top: calc(64px + env(safe-area-inset-top, 0px));
+  bottom: auto;
+  width: auto;
+  z-index: 85;
+  padding: 12px 14px 11px;
+  border-radius: 14px;
+}
+body.mobile-app .update-card h3 { font-size: 14px; }
+body.mobile-app .update-card p { font-size: 12px; }
+body.mobile-app .update-card-actions .btn { min-height: 34px; font-size: 12px; }
 
 </style>
 </head>
@@ -6182,6 +6229,16 @@ window.AniTierTitlesRu = {
 
 window.AniTierChangelog = [
   {
+    version: '1.38.19',
+    date: '7 ноября 2026',
+    title: 'Меню фильтров всегда на экране',
+    items: [
+      'На телефоне меню фильтров и тегов открывается шторкой над нижней навигацией: длинный список тегов больше не уезжает за нижний край.',
+      'Кнопка «Сбросить теги» теперь действительно есть в меню тегов и сразу очищает выбор.',
+      'Карточку «Проверять обновления?» можно закрыть крестиком, и она не перекрывает меню и списки.',
+    ],
+  },
+  {
     version: '1.38.18',
     date: '7 ноября 2026',
     title: 'Тиры с клавиатуры',
@@ -8131,7 +8188,7 @@ window.AniTierChangelog = [
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.38.18';
+  const APP_VERSION = '1.38.19';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -11869,7 +11926,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
           )).join('')
         }`
       )).join('');
-      panel.innerHTML = `<div class="filter-menu-search"><input type="search" placeholder="Найти тег" aria-label="Поиск тега" autocomplete="off"></div><div class="filter-menu-scroll">${sections}</div>`;
+      panel.innerHTML = `<div class="filter-menu-search"><input type="search" placeholder="Найти тег" aria-label="Поиск тега" autocomplete="off"></div><div class="filter-menu-scroll">${sections}</div><div class="filter-menu-footer"><button type="button" class="btn btn-ghost btn-small" data-action="clear-tag-filter">Сбросить теги</button></div>`;
       return;
     }
 
@@ -13145,6 +13202,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
 
     if (card.mode === 'ask') {
       el.innerHTML = `<div class="update-card-body">
+        <button class="update-card-close" type="button" data-action="dismiss-update" aria-label="Скрыть">✕</button>
         <span class="update-card-kicker">Обновления</span>
         <h3>Проверять обновления при запуске?</h3>
         <p>AniTier сможет сразу предлагать новую версию. Проверка обращается только к GitHub и не отправляет ваши списки.</p>
@@ -13160,6 +13218,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     const release = card.release || {};
     const version = release.version || '';
     el.innerHTML = `<div class="update-card-body">
+      <button class="update-card-close" type="button" data-action="dismiss-update" aria-label="Скрыть">✕</button>
       <span class="update-card-kicker">Доступно обновление</span>
       <h3>AniTier ${esc(version)}</h3>
       <p>У вас ${esc(C.APP_VERSION)}. ${card.apk
@@ -17307,13 +17366,18 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
               if (scroll) scroll.scrollTop = 0;
 
               const field = el.closest('.filter-field');
-              if (field) {
+              if (field && !document.body.classList.contains('mobile-app')) {
                 const rect = field.getBoundingClientRect();
                 const width = Math.min(320, window.innerWidth - 24);
                 const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12));
                 menu.style.width = `${width}px`;
                 menu.style.left = `${left - rect.left}px`;
                 menu.style.right = 'auto';
+              } else {
+                /* На телефоне меню — шторка над навигацией: размеры задаёт CSS. */
+                menu.style.removeProperty('width');
+                menu.style.removeProperty('left');
+                menu.style.removeProperty('right');
               }
             }
             if (key !== 'tags') {

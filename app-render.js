@@ -192,7 +192,7 @@
           )).join('')
         }`
       )).join('');
-      panel.innerHTML = `<div class="filter-menu-search"><input type="search" placeholder="Найти тег" aria-label="Поиск тега" autocomplete="off"></div><div class="filter-menu-scroll">${sections}</div>`;
+      panel.innerHTML = `<div class="filter-menu-search"><input type="search" placeholder="Найти тег" aria-label="Поиск тега" autocomplete="off"></div><div class="filter-menu-scroll">${sections}</div><div class="filter-menu-footer"><button type="button" class="btn btn-ghost btn-small" data-action="clear-tag-filter">Сбросить теги</button></div>`;
       return;
     }
 
@@ -1468,6 +1468,7 @@
 
     if (card.mode === 'ask') {
       el.innerHTML = `<div class="update-card-body">
+        <button class="update-card-close" type="button" data-action="dismiss-update" aria-label="Скрыть">✕</button>
         <span class="update-card-kicker">Обновления</span>
         <h3>Проверять обновления при запуске?</h3>
         <p>AniTier сможет сразу предлагать новую версию. Проверка обращается только к GitHub и не отправляет ваши списки.</p>
@@ -1483,6 +1484,7 @@
     const release = card.release || {};
     const version = release.version || '';
     el.innerHTML = `<div class="update-card-body">
+      <button class="update-card-close" type="button" data-action="dismiss-update" aria-label="Скрыть">✕</button>
       <span class="update-card-kicker">Доступно обновление</span>
       <h3>AniTier ${esc(version)}</h3>
       <p>У вас ${esc(C.APP_VERSION)}. ${card.apk

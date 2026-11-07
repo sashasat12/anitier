@@ -3331,3 +3331,21 @@ textarea:focus {
 
 /* polish */
 img { image-rendering: auto; }
+
+.update-card-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+.update-card-close:hover { background: rgba(255, 255, 255, 0.16); color: #fff; }
+.update-card h3 { padding-right: 30px; }

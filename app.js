@@ -2798,13 +2798,18 @@
               if (scroll) scroll.scrollTop = 0;
 
               const field = el.closest('.filter-field');
-              if (field) {
+              if (field && !document.body.classList.contains('mobile-app')) {
                 const rect = field.getBoundingClientRect();
                 const width = Math.min(320, window.innerWidth - 24);
                 const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12));
                 menu.style.width = `${width}px`;
                 menu.style.left = `${left - rect.left}px`;
                 menu.style.right = 'auto';
+              } else {
+                /* На телефоне меню — шторка над навигацией: размеры задаёт CSS. */
+                menu.style.removeProperty('width');
+                menu.style.removeProperty('left');
+                menu.style.removeProperty('right');
               }
             }
             if (key !== 'tags') {

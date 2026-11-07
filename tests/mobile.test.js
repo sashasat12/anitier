@@ -195,4 +195,57 @@
       frame.remove();
     }
   });
+
+  T.test('mobile: меню тегов — шторка над навигацией со сбросом', async () => {
+    const frame = document.createElement('iframe');
+    frame.style.cssText = 'position:fixed;left:-20000px;top:0;width:390px;height:844px;border:0;';
+    frame.src = '../mobile/index.html?demo=1&test=1';
+
+    const loaded = new Promise((resolve, reject) => {
+      frame.onload = resolve;
+      frame.onerror = reject;
+    });
+
+    document.body.appendChild(frame);
+    await loaded;
+
+    const win = frame.contentWindow;
+    const doc = frame.contentDocument;
+
+    try {
+      await T.waitFor(() => win.__anitierTest, 'Мобильная оболочка не выставила тестовый API', 4000);
+      const api = win.__anitierTest;
+      await api.init();
+
+      doc.querySelector('[data-action="toggle-filters"]').click();
+      doc.querySelector('[data-filter-menu="tags"]').click();
+      const panel = doc.querySelector('[data-filter-panel="tags"]');
+      T.eq(panel.hidden, false, 'Меню тегов открылось');
+
+      const css = win.getComputedStyle(panel);
+      T.eq(css.position, 'fixed', 'Меню на телефоне — фиксированная шторка');
+      T.includes(css.bottom, '66px', 'Шторка прижата к низу над навигацией');
+      T.eq(css.left, '12px', 'Шторка по центру экрана');
+      T.eq(css.right, '12px', 'Шторка по центру экрана');
+      T.eq(panel.style.width, '', 'Позицию не перебивают инлайн-стили десктопа');
+
+      const nav = doc.querySelector('.tabs');
+      T.assert(nav, 'Есть нижняя навигация');
+      T.assert(Number(css.zIndex) > Number(win.getComputedStyle(nav).zIndex), 'Шторка выше навигации');
+
+      const footer = panel.querySelector('.filter-menu-footer [data-action="clear-tag-filter"]');
+      T.assert(footer, 'В меню есть кнопка «Сбросить теги»');
+
+      const box = panel.querySelector('input[value="Shounen"]');
+      box.checked = true;
+      box.dispatchEvent(new win.Event('change', { bubbles: true }));
+      T.eq(api.state.db.filters.tags, ['Shounen'], 'Тег выбран');
+
+      footer.click();
+      T.eq(api.state.db.filters.tags, [], 'Сброс очищает выбранные теги');
+      T.eq(panel.hidden, true, 'Меню закрылось после сброса');
+    } finally {
+      frame.remove();
+    }
+  });
 })();

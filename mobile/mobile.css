@@ -46,21 +46,36 @@ body.mobile-app .icon-btn {
   border-radius: 12px;
 }
 
-/* ����� ��� ��������� �������� ��� ������� ��������� */
+/* Меню фильтров на телефоне — шторка над нижней навигацией:
+   иначе длинный список тегов уезжает за нижний край экрана. */
 body.mobile-app .filter-menu {
+  position: fixed;
   z-index: 95;
+  left: 12px;
+  right: 12px;
+  top: auto;
+  bottom: calc(66px + env(safe-area-inset-bottom, 0px));
+  width: auto;
+  max-width: none;
+  max-height: min(46dvh, 380px);
+  border-radius: 16px;
 }
 
 body.mobile-app .filter-menu-wide {
-  left: 12px;
-  right: 12px;
   width: auto;
-  max-height: min(56dvh, 420px);
+  max-height: min(62dvh, 520px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 body.mobile-app .filter-menu-scroll {
-  max-height: min(48dvh, 340px);
+  min-height: 0;
+  max-height: min(44dvh, 360px);
+  flex: 0 1 auto;
+  overflow: auto;
 }
+
 
 /* ����� ���� ������ */
 body.mobile-app #toasts {
@@ -639,3 +654,17 @@ body.mobile-app .card-title {
   font-size: 13px;
   line-height: 1.4;
 }
+
+body.mobile-app .update-card {
+  left: 12px;
+  right: 12px;
+  top: calc(64px + env(safe-area-inset-top, 0px));
+  bottom: auto;
+  width: auto;
+  z-index: 85;
+  padding: 12px 14px 11px;
+  border-radius: 14px;
+}
+body.mobile-app .update-card h3 { font-size: 14px; }
+body.mobile-app .update-card p { font-size: 12px; }
+body.mobile-app .update-card-actions .btn { min-height: 34px; font-size: 12px; }
