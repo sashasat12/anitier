@@ -133,6 +133,43 @@
     }
   });
 
+  T.test('a11y: Alt+стрелки переносят карточку между тирами', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const doc = app.win.document;
+      const win = app.win;
+
+      win.AniTier.addToList('watched', {
+        id: 777001, malId: 777001, title: 'Тир-клавиша', altTitle: '', image: '',
+        episodes: 12, type: 'TV', status: 'Завершено', score: 8, year: 2022, genres: [],
+      }, 'C', true);
+      doc.getElementById('tab-watched').click();
+
+      const card = doc.querySelector('#tiers-watched .tier-card[data-id="777001"]');
+      T.assert(card, 'Карточка попала в тир C');
+      T.eq(card.getAttribute('aria-keyshortcuts'), 'Alt+ArrowUp Alt+ArrowDown');
+      T.eq(api.state.lists.watched.C[0].id, 777001);
+
+      card.focus();
+      card.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'ArrowUp', altKey: true, bubbles: true }));
+      T.eq(api.state.lists.watched.B[0].id, 777001, 'Alt+↑ поднял карточку в тир B');
+      T.eq(api.state.lists.watched.C.length, 0, 'В тире C карточки не осталось');
+      T.eq(doc.activeElement.dataset.id, '777001', 'Фокус остался на карточке');
+
+      doc.activeElement.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'ArrowDown', altKey: true, bubbles: true }));
+      T.eq(api.state.lists.watched.C[0].id, 777001, 'Alt+↓ вернул карточку в тир C');
+
+      const top = doc.querySelector('#tiers-watched .tier-card[data-id="777001"]');
+      top.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+      T.eq(api.state.lists.watched.B.length, 0, 'Без зажатого Alt карточка не двигается');
+      T.eq(api.state.lists.watched.C[0].id, 777001, 'Карточка осталась в тире C');
+    } finally {
+      app.close();
+    }
+  });
+
   T.test('a11y: фокус зацикливается внутри открытой карточки', async () => {
     const app = await T.mountApp({ query: '?demo=1&test=1' });
     try {

@@ -123,7 +123,7 @@
 
   function tierCardHTML(list, a, tier) {
     const wc = watchedCount(a.id);
-    return `<article class="tier-card" data-action="open" data-id="${a.id}" data-list="${list}" data-tier="${tier}" tabindex="0">
+    return `<article class="tier-card" data-action="open" data-id="${a.id}" data-list="${list}" data-tier="${tier}" tabindex="0" aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown" title="Alt+↑/↓ — перенести в соседний тир">
       <img ${imgAttrs(a)}>
       <button class="tc-remove" data-action="remove" data-id="${a.id}" data-list="${list}" title="Убрать из списка" aria-label="Убрать из списка">✕</button>
       <div class="tc-body">

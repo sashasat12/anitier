@@ -3585,6 +3585,25 @@
         parseImportCode();
         return;
       }
+      /* Alt+↑/↓ переносит карточку тир-листа в соседний тир — правка без мыши. */
+      if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.altKey && !e.ctrlKey && !e.metaKey) {
+        const tierCard = e.target && e.target.closest ? e.target.closest('.tier-card') : null;
+        if (tierCard) {
+          e.preventDefault();
+          const list = tierCard.dataset.list;
+          const id = Number(tierCard.dataset.id);
+          const from = TIER_IDS.indexOf(tierCard.dataset.tier);
+          const step = e.key === 'ArrowUp' ? -1 : 1;
+          const to = Math.max(0, Math.min(TIER_IDS.length - 1, from + step));
+          if (from < 0 || to === from) return;
+          moveToTier(list, id, TIER_IDS[to]);
+          const target = TIERS[to];
+          toast(`Перенесено: ${target.label === '?' ? 'без оценки' : `тир ${target.label}`} · ${target.name}`);
+          const moved = document.querySelector(`.tier-card[data-list="${list}"][data-id="${id}"]`);
+          if (moved) moved.focus({ preventScroll: true });
+          return;
+        }
+      }
       if (e.key === 'Enter' && e.target && e.target.matches && e.target.matches('.card, .notif, .tier-card, .franchise-link')) {
         e.preventDefault();
         const id = Number(e.target.dataset.id);
