@@ -2687,6 +2687,14 @@
           renderModal();
           break;
 
+        case 'franchise-more': {
+          if (!state.franchiseExpanded) state.franchiseExpanded = new Set();
+          if (state.franchiseExpanded.has(id)) state.franchiseExpanded.delete(id);
+          else state.franchiseExpanded.add(id);
+          renderModal();
+          break;
+        }
+
         case 'toggle-ep': {
           const ep = Number(el.dataset.ep);
           if (id != null && Number.isInteger(ep) && ep > 0) toggleEpisode(id, ep);

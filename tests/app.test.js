@@ -2453,4 +2453,138 @@
       app.close();
     }
   });
+  T.test('app: порядок просмотра группирует фильмы и спешлы по датам', async () => {
+    const calls = [];
+    const app = await T.mountApp({ query: '?test=1', setup(win) { win.fetch = baseFetch(calls); } });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const doc = app.win.document;
+      const App = app.win.AniTier;
+
+      const make = (id, title, type, year, airedFrom) => ({
+        id, malId: id, title, titleRu: '', originalTitle: title, altTitle: '',
+        image: '', episodes: type === 'Movie' ? 1 : 12, type, status: 'Завершено',
+        score: null, year, airedFrom, genres: [], tags: [],
+      });
+      const anime = make(21, 'One Piece', 'TV', 1999, '1999-10-20');
+      const links = [
+        { relationType: 'PREQUEL', anime: make(900, 'Приквел', 'TV', 1998, '1998-07-26') },
+        { relationType: 'SEQUEL', anime: make(901, 'Продолжение', 'TV', 2024, '2024-01-01') },
+        ...[2003, 2001, 2005, 2000, 2002, 2006, 2004, 2007, 2008, 2009].map((year, index) => ({
+          relationType: 'SIDE_STORY',
+          anime: make(910 + index, 'Фильм ' + year, 'Movie', year, year + '-03-01'),
+        })),
+        ...[2012, 2010, 2014].map((year, index) => ({
+          relationType: 'SIDE_STORY',
+          anime: make(920 + index, 'Спешл ' + year, 'Special', year, year + '-08-01'),
+        })),
+      ];
+      api.state.franchiseById.set(21, links);
+
+      const build = () => {
+        const box = doc.createElement('div');
+        box.innerHTML = App.renderFranchiseSection(anime);
+        return box;
+      };
+
+      const box = build();
+      const titles = [...box.querySelectorAll('.franchise-group-title')].map(node => node.firstChild.textContent.trim());
+      T.eq(titles.join('|'), 'Основной сериал|Фильмы|Спешлы и OVA', 'Группы: сюжет, фильмы, спешлы');
+
+      const groups = [...box.querySelectorAll('.franchise-group')];
+      const mainCards = groups[0].querySelectorAll('.franchise-link');
+      T.eq(mainCards.length, 3, 'В основном сюжете три части');
+      T.eq(mainCards[0].dataset.id, '900', 'Сначала приквел');
+      T.eq(mainCards[1].dataset.id, '21', 'Текущая часть идёт по дате, а не в конце');
+      T.eq(mainCards[2].dataset.id, '901', 'Потом продолжение');
+      T.eq(mainCards[1].querySelector('.franchise-here').textContent, 'Вы здесь');
+      T.eq(mainCards[0].querySelector('.franchise-order').textContent, '1');
+      T.eq(mainCards[2].querySelector('.franchise-order').textContent, '3');
+
+      const filmIds = [...groups[1].querySelectorAll('.franchise-link')].map(node => node.dataset.id);
+      T.eq(filmIds.join(','), '913,911,914,910,916,912,915,917', 'Фильмы идут по дате выхода, сначала восемь');
+
+      const more = box.querySelector('[data-action="franchise-more"]');
+      T.assert(more, 'Есть кнопка «Показать все»');
+      T.includes(more.textContent, 'Показать все');
+
+      api.state.franchiseExpanded.add(21);
+      const expanded = build();
+      const expandedGroups = [...expanded.querySelectorAll('.franchise-group')];
+      T.eq(expandedGroups[1].querySelectorAll('.franchise-link').length, 10, 'После раскрытия видны все фильмы');
+      T.includes(expanded.querySelector('[data-action="franchise-more"]').textContent, 'Свернуть');
+
+      api.state.franchiseExpanded.delete(21);
+    } finally {
+      app.close();
+    }
+  });
+  T.test('api: сезоны находятся для Kitsu-тайтла без MAL ID', async () => {
+    const calls = [];
+    const app = await T.mountApp({
+      query: '?test=1',
+      setup(win) {
+        win.fetch = async (url, options = {}) => {
+          const parsed = new URL(url);
+          const body = JSON.parse(options.body || '{}');
+          const vars = body.variables || {};
+          calls.push({ host: parsed.hostname, vars, query: body.query || '' });
+          if (body.query && body.query.includes('AnimeFranchise')) {
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({
+                data: {
+                  Page: {
+                    media: [{
+                      ...rawAniList(21, 'One Piece'),
+                      relations: { edges: [
+                        { relationType: 'SIDE_STORY', node: rawAniList(459, 'One Piece (Movie)') },
+                        { relationType: 'SPIN_OFF', node: rawAniList(1234, 'One Piece Spin-off') },
+                      ] },
+                    }],
+                  },
+                },
+              }),
+            };
+          }
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              data: {
+                Page: {
+                  pageInfo: { hasNextPage: false },
+                  media: [rawAniList(21, 'One Piece'), rawAniList(99, 'One Piece Film')],
+                },
+              },
+            }),
+          };
+        };
+      },
+    });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+
+      const relations = await api.fetchAnimeRelations({
+        id: 5001, source: 'Kitsu', sourceId: 12, malId: null,
+        title: 'Ван-Пис', titleRu: 'Ван-Пис', originalTitle: 'One Piece', altTitle: 'One Piece',
+        year: 1999, type: 'TV', episodes: null,
+      });
+
+      T.eq(relations.length, 2, 'Сезоны нашлись через поиск AniList');
+      T.eq(relations[0].anime.id, 459);
+      T.eq(relations[1].relationType, 'SPIN_OFF');
+
+      const search = calls.find(call => call.host === 'graphql.anilist.co' && call.vars && call.vars.search === 'One Piece');
+      T.assert(search, 'Сначала ищем тайтл по названию');
+      const franchise = calls.find(call => call.query && call.query.includes('AnimeFranchise'));
+      T.eq(franchise.vars.id, 21, 'Франшиза запрошена по найденному AniList ID');
+      T.eq(franchise.vars.idMal, null, 'MAL ID не подставляется вместо AniList ID');
+    } finally {
+      app.close();
+    }
+  });
 })();

@@ -531,6 +531,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     franchiseById: new Map(),
     franchiseLoading: new Set(),
     franchiseErrors: new Map(),
+    franchiseExpanded: new Set(),
     synopsisModes: new Map(),
     synopsisTranslating: new Set(),
     customCards: [],

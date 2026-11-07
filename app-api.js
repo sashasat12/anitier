@@ -284,13 +284,51 @@
     }
   }`;
 
+  /* Kitsu-записи часто приходят без MAL ID. Ищем тот же тайтл в AniList
+     по названию — иначе у «Ван-Писа» не находится ни один сезон. */
+  async function resolveAniListIdByName(anime) {
+    const query = String(anime.originalTitle || anime.altTitle || anime.title || '').trim();
+    if (!query) return null;
+    try {
+      const page = await fetchAniList({
+        search: query,
+        page: 1,
+        perPage: 10,
+        type: 'ANIME',
+        isAdult: false,
+      }, { timeout: SEARCH_TIMEOUT });
+      const items = (page.media || []).map(mapAniList);
+      if (!items.length) return null;
+      const wanted = new Set([anime.title, anime.originalTitle, anime.altTitle, anime.titleRu]
+        .map(value => C.normalizeTitleKey(value))
+        .filter(Boolean));
+      const year = Number(anime.year) || 0;
+      const titlesOf = item => [item.title, item.originalTitle, item.altTitle]
+        .map(value => C.normalizeTitleKey(value))
+        .filter(Boolean);
+      const exact = items.find(item => titlesOf(item).some(key => wanted.has(key))
+        && (!year || !item.year || Math.abs(item.year - year) <= 1));
+      const sameYear = year ? items.find(item => item.year === year) : null;
+      const best = exact || sameYear || items[0];
+      return best && best.sourceId ? Number(best.sourceId) : null;
+    } catch {
+      return null;
+    }
+  }
+
   async function fetchAnimeRelations(anime) {
     if (!anime || anime.custom) return [];
     if (Array.isArray(anime.relations)) return anime.relations;
-    if (!anime.sourceId && !anime.malId) return [];
+    let id = Number(anime.anilistId) || (anime.source === 'AniList' && anime.sourceId ? Number(anime.sourceId) : 0);
+    const idMal = anime.malId || null;
+    if (!id && !idMal) {
+      id = await resolveAniListIdByName(anime);
+      if (!id) return [];
+    }
+    if (id) anime.anilistId = id;
     const page = await fetchAniList({
-      id: anime.source === 'AniList' && anime.sourceId ? Number(anime.sourceId) : null,
-      idMal: anime.malId || null,
+      id: id || null,
+      idMal: id ? null : idMal,
       page: 1,
       perPage: 1,
     }, { query: ANILIST_FRANCHISE_QUERY, timeout: SEARCH_TIMEOUT });

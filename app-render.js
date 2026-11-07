@@ -2448,39 +2448,101 @@
     if (type === 'PREQUEL' || type === 'PARENT') return 'Смотреть раньше';
     if (type === 'CURRENT') return 'Текущая часть';
     if (type === 'SEQUEL') return 'Следующий сезон';
+    if (type === 'SIDE_STORY') return 'Побочная история';
     if (type === 'SPIN_OFF') return 'Спин-офф';
+    if (type === 'SUMMARY') return 'Пересказ';
+    if (type === 'ALTERNATIVE') return 'Альтернатива';
+    if (type === 'ADAPTATION') return 'Адаптация';
+    if (type === 'CHARACTER') return 'С участием героев';
     return 'Связанная история';
+  }
+
+  /* Дата выхода связи: по ней строится порядок просмотра. */
+  function franchiseDate(link) {
+    const stamp = Date.parse((link.anime && link.anime.airedFrom) || '');
+    if (Number.isFinite(stamp)) return stamp;
+    const year = Number(link.anime && link.anime.year) || 0;
+    return year ? Date.parse(`${year}-01-01`) : Number.MAX_SAFE_INTEGER;
+  }
+
+  const FRANCHISE_PREVIEW = 8;
+  const FRANCHISE_MAIN = new Set(['PREQUEL', 'PARENT', 'SEQUEL']);
+
+  function franchiseCardHTML(link, opts = {}) {
+    const item = link.anime;
+    const tier = findTier('watched', item.id) || findTier('planned', item.id);
+    const progress = watchedCount(item.id);
+    const isCurrent = link.relationType === 'CURRENT';
+    const meta = [typeRu(item.type) || '', item.year || '', item.episodes ? `${item.episodes} серий` : ''].filter(Boolean).join(' · ');
+    const listStatus = tier ? `В тире ${tier}` : 'Не в тир-листе';
+    const progressStatus = progress ? `Просмотрено ${progress}${item.episodes ? ` из ${item.episodes}` : ''}` : '';
+    const order = Number.isFinite(opts.order)
+      ? `<span class="franchise-order" aria-hidden="true">${opts.order}</span>`
+      : '';
+    const here = isCurrent ? '<span class="franchise-here">Вы здесь</span>' : '';
+    return `<article class="franchise-link${isCurrent ? ' franchise-current' : ''}" data-action="open" data-id="${item.id}" tabindex="0" role="button"${isCurrent ? ' aria-current="true"' : ''} aria-label="${isCurrent ? 'Текущая часть: ' : 'Открыть: '}${esc(displayTitle(item))}">
+      <span class="franchise-poster"><img ${imgAttrs(item)}>${item.score ? `<span class="franchise-score">★ ${item.score.toFixed(1)}</span>` : ''}<span class="franchise-link-arrow" aria-hidden="true">›</span></span>
+      <span class="franchise-link-main">
+        <span class="franchise-link-kind">${order}${esc(franchiseRelationLabel(link.relationType))}${here}</span>
+        <b>${esc(displayTitle(item))}</b>
+        <small>${esc(meta || 'Данные уточняются')}</small>
+        <span class="franchise-link-status">${esc(listStatus)}${progressStatus ? ` · ${esc(progressStatus)}` : ''}</span>
+      </span>
+    </article>`;
   }
 
   function renderFranchiseSection(anime) {
     if (anime.custom) return '';
     const related = state.franchiseById.get(anime.id);
+    const label = '<div class="modal-label">Сезоны и порядок просмотра</div>';
     if (state.franchiseLoading.has(anime.id)) {
-      return '<div class="modal-section franchise-section"><div class="modal-label">Сезоны и порядок просмотра</div><p class="hint">Загружаем связанные сезоны…</p></div>';
+      return `<div class="modal-section franchise-section">${label}<p class="hint">Загружаем связанные сезоны…</p></div>`;
     }
     if (state.franchiseErrors.has(anime.id)) {
-      return `<div class="modal-section franchise-section"><div class="modal-label">Сезоны и порядок просмотра</div><p class="hint">${esc(state.franchiseErrors.get(anime.id))}</p><button class="btn btn-ghost" data-action="retry-franchise" data-id="${anime.id}">Повторить</button></div>`;
+      return `<div class="modal-section franchise-section">${label}<p class="hint">${esc(state.franchiseErrors.get(anime.id))}</p><button class="btn btn-ghost" data-action="retry-franchise" data-id="${anime.id}">Повторить</button></div>`;
     }
-    if (!related) return '<div class="modal-section franchise-section"><div class="modal-label">Сезоны и порядок просмотра</div><p class="hint">Проверяем, есть ли связанные сезоны…</p></div>';
-    if (!related.length) return '<div class="modal-section franchise-section"><div class="modal-label">Сезоны и порядок просмотра</div><p class="hint">Связанные сезоны и продолжения не найдены.</p></div>';
+    if (!related) return `<div class="modal-section franchise-section">${label}<p class="hint">Проверяем, есть ли связанные сезоны…</p></div>`;
+    if (!related.length) return `<div class="modal-section franchise-section">${label}<p class="hint">Связанные сезоны и продолжения не найдены.</p></div>`;
 
-    const before = related.filter(link => link.relationType === 'PREQUEL' || link.relationType === 'PARENT');
-    const after = related.filter(link => link.relationType !== 'PREQUEL' && link.relationType !== 'PARENT');
-    const ordered = [...before, { anime, relationType: 'CURRENT' }, ...after];
-    const rows = ordered.map(link => {
-      const item = link.anime;
-      const tier = findTier('watched', item.id) || findTier('planned', item.id);
-      const progress = watchedCount(item.id);
-      const isCurrent = link.relationType === 'CURRENT';
-      const meta = [typeRu(item.type) || '', item.year || '', item.episodes ? `${item.episodes} серий` : ''].filter(Boolean).join(' · ');
-      const listStatus = tier ? `В тире ${tier}` : 'Не в тир-листе';
-      const progressStatus = progress ? `Просмотрено ${progress}${item.episodes ? ` из ${item.episodes}` : ''}` : '';
-      return `<article class="franchise-link${isCurrent ? ' franchise-current' : ''}" data-action="open" data-id="${item.id}" tabindex="0" role="button"${isCurrent ? ' aria-current="true"' : ''} aria-label="${isCurrent ? 'Текущая часть: ' : 'Открыть: '}${esc(displayTitle(item))}">
-        <span class="franchise-poster"><img ${imgAttrs(item)}>${item.score ? `<span class="franchise-score">★ ${item.score.toFixed(1)}</span>` : ''}<span class="franchise-link-arrow" aria-hidden="true">›</span></span>
-        <span class="franchise-link-main"><span class="franchise-link-kind">${esc(franchiseRelationLabel(link.relationType))}</span><b>${esc(displayTitle(item))}</b><small>${esc(meta || 'Данные уточняются')}</small><span class="franchise-link-status">${esc(listStatus)}${progressStatus ? ` · ${esc(progressStatus)}` : ''}</span></span>
-      </article>`;
+    const current = { anime, relationType: 'CURRENT' };
+    const byDate = (a, b) => (franchiseDate(a) - franchiseDate(b)) || (a.anime.id - b.anime.id);
+    const main = related.filter(link => FRANCHISE_MAIN.has(link.relationType)).sort(byDate);
+    const extras = related.filter(link => !FRANCHISE_MAIN.has(link.relationType)).sort(byDate);
+    /* Текущий тайтл встаёт на своё место по дате, а не в середину списка. */
+    const chain = [...main, current].sort(byDate);
+    const films = extras.filter(link => link.anime.type === 'Movie');
+    const specials = extras.filter(link => link.anime.type === 'OVA' || link.anime.type === 'Special' || link.anime.type === 'TV Special');
+    const spinoffs = extras.filter(link => !films.includes(link) && !specials.includes(link));
+
+    const expanded = Boolean(state.franchiseExpanded && state.franchiseExpanded.has(anime.id));
+    const groups = [
+      { title: 'Основной сериал', list: chain, numbered: true },
+      { title: 'Фильмы', list: films },
+      { title: 'Спешлы и OVA', list: specials },
+      { title: 'Ответвления', list: spinoffs },
+    ];
+    const hidden = groups.reduce((total, group) => total + Math.max(0, group.list.length - FRANCHISE_PREVIEW), 0);
+    const sections = groups.map(group => {
+      if (!group.list.length) return '';
+      const shown = expanded ? group.list : group.list.slice(0, FRANCHISE_PREVIEW);
+      const rows = shown.map((link, index) => franchiseCardHTML(link, {
+        order: group.numbered ? index + 1 : undefined,
+      })).join('');
+      return `<div class="franchise-group">
+        <h4 class="franchise-group-title">${esc(group.title)}<span>${group.list.length}</span></h4>
+        <div class="franchise-list">${rows}</div>
+      </div>`;
     }).join('');
-    return `<div class="modal-section franchise-section"><div class="modal-label">Сезоны и порядок просмотра</div><p class="franchise-intro">Сначала приквелы, затем открытая часть и продолжения. Нажмите карточку, чтобы перейти к сезону.</p><div class="franchise-list">${rows}</div><p class="hint">У каждого сезона свой тир-лист и прогресс серий.</p></div>`;
+
+    return `<div class="modal-section franchise-section">
+      ${label}
+      <p class="franchise-intro">Основной сюжет — по дате выхода: от приквелов к продолжениям. Фильмы и спешлы не обязательны и собраны отдельно.</p>
+      ${sections}
+      ${hidden > 0 || expanded
+        ? `<button class="btn btn-ghost btn-small franchise-more" type="button" data-action="franchise-more" data-id="${anime.id}">${expanded ? 'Свернуть список' : `Показать все (${related.length + 1})`}</button>`
+        : ''}
+      <p class="hint">У каждого тайтла свой тир-лист и прогресс серий.</p>
+    </div>`;
   }
 
   function loadFranchise(anime) {
@@ -2497,9 +2559,8 @@
         seen.add(relation.anime.id);
         links.push(relation);
       }
-      const order = { PREQUEL: 0, PARENT: 1, SEQUEL: 2, SIDE_STORY: 3, SPIN_OFF: 4 };
-      links.sort((a, b) => (order[a.relationType] - order[b.relationType])
-        || ((Date.parse(a.anime.airedFrom || '') || 0) - (Date.parse(b.anime.airedFrom || '') || 0)));
+      /* Только хронология: иначе фильмы и OVA прыгают в конец списка. */
+      links.sort((a, b) => (franchiseDate(a) - franchiseDate(b)) || (a.anime.id - b.anime.id));
       state.franchiseById.set(anime.id, links);
     }).catch(error => {
       state.franchiseErrors.set(anime.id, error && error.message ? error.message : 'Не удалось загрузить порядок просмотра');
