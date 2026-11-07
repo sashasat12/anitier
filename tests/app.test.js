@@ -1822,7 +1822,7 @@
       T.eq(cards(), 1, 'Поиск по студии оставил один тайтл');
       T.eq(doc.querySelector('#watched-search'), search, 'Поле поиска не пересоздаётся при вводе');
       T.includes(doc.querySelector('#list-status-watched').textContent, 'Показано 1 из 3');
-      T.eq(doc.querySelector('#stats-watched .stat b').textContent, '1', 'Статистика считает показанные тайтлы');
+      T.eq((doc.querySelector('#summary-watched .list-summary-pill b') || doc.querySelector('#stats-watched .stat b')).textContent, '1', 'Статистика считает показанные тайтлы');
       T.includes(doc.querySelector('#tiers-watched').textContent, 'Альфа');
       T.assert(!doc.querySelector('#tiers-watched').textContent.includes('Бета'), 'Другие тайтлы скрыты');
 
@@ -2586,5 +2586,104 @@
     } finally {
       app.close();
     }
+  });
+
+  T.test('app: карточка тайтла переключает разделы табами', async () => {
+    const calls = [];
+    const app = await T.mountApp({ query: '?test=1', setup(win) { win.fetch = baseFetch(calls); } });
+    try {
+      await app.win.__anitierTest.init();
+      const doc = app.win.document;
+      doc.querySelector('#db-grid .card').click();
+      await T.waitFor(() => doc.querySelector('.modal-tabs'), 'В карточке не появились табы');
+
+      const tabs = [...doc.querySelectorAll('.modal-tab')];
+      T.eq(tabs.map(t => t.dataset.tab).join(','), 'overview,seasons,episodes,moments', 'Порядок табов');
+      T.eq(tabs[0].getAttribute('aria-selected'), 'true', 'Открыт обзор');
+      T.eq(doc.querySelector('#modal-pane-overview').hidden, false, 'Обзор виден');
+      T.eq(doc.querySelector('#modal-pane-seasons').hidden, true, 'Сезоны скрыты');
+
+      tabs[1].click();
+      T.eq(doc.querySelector('#modal-pane-seasons').hidden, false, 'Сезоны открылись');
+      T.eq(doc.querySelector('#modal-pane-overview').hidden, true, 'Обзор скрылся');
+      T.eq(doc.querySelector('.modal-tab[data-tab="seasons"]').getAttribute('aria-selected'), 'true', 'Таб сезонов активен');
+
+      doc.querySelector('.modal-tab[data-tab="episodes"]').click();
+      T.eq(doc.querySelector('#modal-pane-episodes').hidden, false, 'Серии открылись');
+      T.eq(doc.querySelector('#modal-pane-episodes .ep-block') !== null, true, 'В сериях есть прогресс');
+
+      app.win.__anitierTest.state.modalTab = 'seasons';
+      app.win.AniTier.renderModal();
+      T.eq(doc.querySelector('.modal-tab[data-tab="seasons"]').getAttribute('aria-selected'), 'true', 'Перерисовка сохраняет активный таб');
+    } finally { app.close(); }
+  });
+
+  T.test('app: меню «⋯» прячет редкие действия, сводка и «Продолжить» сворачиваются', async () => {
+    const calls = [];
+    const app = await T.mountApp({ query: '?test=1', setup(win) { win.fetch = baseFetch(calls); } });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const doc = app.win.document;
+      const App = app.win.AniTier;
+
+      const moreBtn = doc.querySelector('[data-action="db-more-menu"]');
+      T.assert(moreBtn, 'Кнопка «⋯» есть в тулбаре');
+      const menu = doc.getElementById('db-more-menu');
+      T.eq(menu.hidden, true, 'Меню закрыто по умолчанию');
+      moreBtn.click();
+      T.eq(menu.hidden, false, 'Меню открылось');
+      T.assert(menu.querySelector('#search-lang'), 'В меню есть выбор языка');
+      T.assert(menu.querySelector('#db-hide-mine'), 'В меню есть «Скрыть мои списки»');
+      moreBtn.click();
+      T.eq(menu.hidden, true, 'Повторный клик закрывает меню');
+
+      const anime = api.state.db.items[0];
+      T.assert(anime, 'База загружена');
+      App.addToList('watched', anime);
+      App.state.progress[anime.id] = { watched: [1] };
+      App.renderDB();
+
+      const block = doc.getElementById('continue-block');
+      const row = doc.getElementById('continue-row');
+      T.eq(block.hidden, false, 'Блок «Продолжить» показан');
+      const toggle = block.querySelector('[data-action="toggle-continue"]');
+      T.assert(toggle, 'У блока есть кнопка сворачивания');
+      toggle.click();
+      T.eq(row.hidden, true, 'Карточки свернулись');
+      T.includes(toggle.textContent, 'Развернуть');
+      toggle.click();
+      T.eq(row.hidden, false, 'Карточки развернулись');
+
+      doc.querySelector('[data-tab="watched"]').click();
+      const summary = doc.getElementById('summary-watched');
+      T.assert(summary, 'Сводка по тирам есть');
+      const pills = summary.querySelectorAll('.list-summary-pill');
+      T.assert(pills.length >= 6, 'Сводка содержит все тиры');
+      T.eq(summary.querySelector('.list-summary-pill b').textContent, '1', 'Первый счётчик — показанные тайтлы');
+    } finally { app.close(); }
+  });
+
+  T.test('app: фильтры «Скоро выйдут» прячутся в панель', async () => {
+    const calls = [];
+    const app = await T.mountApp({ query: '?test=1', setup(win) { win.fetch = baseFetch(calls); } });
+    try {
+      await app.win.__anitierTest.init();
+      const doc = app.win.document;
+      doc.querySelector('[data-tab="upcoming"]').click();
+      const panel = doc.getElementById('upcoming-filters');
+      T.assert(panel, 'Панель фильтров существует');
+      T.eq(panel.hidden, true, 'Панель свёрнута');
+      const toggle = doc.querySelector('[data-action="toggle-upcoming-filters"]');
+      T.assert(toggle, 'Кнопка фильтров есть');
+      T.includes(toggle.textContent, 'Фильтры');
+      toggle.click();
+      T.eq(panel.hidden, false, 'Панель раскрылась');
+      T.eq(toggle.getAttribute('aria-expanded'), 'true', 'aria-expanded обновился');
+      T.assert(panel.querySelector('#upcoming-type'), 'Тип внутри панели');
+      T.assert(panel.querySelector('#upcoming-month'), 'Месяц внутри панели');
+      toggle.click();
+      T.eq(panel.hidden, true, 'Панель снова свёрнута');
+    } finally { app.close(); }
   });
 })();

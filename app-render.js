@@ -210,6 +210,39 @@
     $$('#db-filters [data-filter-menu]').forEach(button => button.setAttribute('aria-expanded', 'false'));
   }
 
+  /* Меню «⋯» на вкладке «База»: язык поиска, своя карточка, случайное. */
+  function closeDBMoreMenu() {
+    const menu = $('#db-more-menu');
+    if (!menu || menu.hidden) return;
+    menu.hidden = true;
+    const btn = menu.parentElement ? menu.parentElement.querySelector('.db-more-btn') : null;
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  }
+
+  function toggleDBMoreMenu() {
+    const menu = $('#db-more-menu');
+    if (!menu) return;
+    const willOpen = menu.hidden;
+    closeDBMoreMenu();
+    if (willOpen) {
+      menu.hidden = false;
+      const btn = menu.parentElement ? menu.parentElement.querySelector('.db-more-btn') : null;
+      if (btn) btn.setAttribute('aria-expanded', 'true');
+    }
+  }
+
+  /* «Продолжить просмотр» сворачивается кнопкой в шапке блока. */
+  function syncContinueToggle() {
+    const block = $('#continue-block');
+    const row = $('#continue-row');
+    if (!block || !row || block.hidden) return;
+    const toggle = block.querySelector('.continue-toggle');
+    if (!toggle) return;
+    row.hidden = Boolean(state.continueCollapsed);
+    toggle.textContent = state.continueCollapsed ? 'Развернуть' : 'Свернуть';
+    toggle.setAttribute('aria-expanded', state.continueCollapsed ? 'false' : 'true');
+  }
+
   function filterMenuLabel(key, values) {
     const labels = values.map(value => {
       const option = filterFieldOptions(key).find(item => item.value === value);
@@ -374,6 +407,7 @@
     const items = continueItems();
     block.hidden = !items.length;
     row.innerHTML = items.length ? items.map(continueCardHTML).join('') : '';
+    syncContinueToggle();
   }
 
   function renderDB() {
@@ -806,6 +840,16 @@
       mine.setAttribute('aria-pressed', on ? 'true' : 'false');
     }
 
+    /* Счётчик на кнопке фильтров и активное состояние. */
+    const activeCount = C.countActiveFilters(view.filters) + (view.month ? 1 : 0);
+    const badge = $('#upcoming-filter-count');
+    if (badge) {
+      badge.textContent = String(activeCount);
+      badge.hidden = activeCount === 0;
+    }
+    const toggle = document.querySelector('[data-action="toggle-upcoming-filters"]');
+    if (toggle) toggle.classList.toggle('is-active', activeCount > 0);
+
     const month = $('#upcoming-month');
     if (!month) return;
     const keys = [...new Set(items.map(a => C.upcomingMonthKey(a.airedFrom)).filter(Boolean))].sort();
@@ -1144,26 +1188,33 @@
     }
   }
 
+  /* Сводка по тирам — одна строка вместо четырёх карточек. */
   function renderStats(name, all = allIn(name), shown = all) {
-    const el = document.getElementById('stats-' + name);
+    const el = document.getElementById('summary-' + name);
     if (!el) return;
     const items = Array.isArray(shown) ? shown : all;
-    const eps = items.reduce((s, a) => s + (Number(a.episodes) || 0), 0);
+    const list = state.lists[name] || {};
+    const itemSet = new Set(items);
+    const tierPills = TIERS.map(t => {
+      const count = (list[t.id] || []).filter(a => itemSet.has(a)).length;
+      return `<span class="list-summary-pill"><span class="tier-dot tier-${t.id}" aria-hidden="true"></span>${esc(t.label)}<b>${count}</b></span>`;
+    }).join('');
     const scored = items.filter(a => typeof a.score === 'number');
     const avg = scored.length ? (scored.reduce((s, a) => s + a.score, 0) / scored.length).toFixed(2) : '—';
-    const topTier = items.filter(a => (state.lists[name].S || []).includes(a)).length;
-    el.innerHTML = `
-      <div class="stat"><b>${items.length}</b><span>тайтлов</span></div>
-      <div class="stat"><b>${eps}</b><span>серий (известных)</span></div>
-      <div class="stat"><b>${avg}</b><span>средний балл</span></div>
-      <div class="stat"><b>${topTier}</b><span>в тире S</span></div>`;
+    el.innerHTML = `<span class="list-summary-pill is-total">Показано<b>${items.length}</b></span>${tierPills}<span class="list-summary-pill">Средний балл<b>${avg}</b></span>`;
   }
 
   function updateCounters() {
     const w = $('#count-watched');
     const p = $('#count-planned');
-    if (w) w.textContent = allIn('watched').length;
-    if (p) p.textContent = allIn('planned').length;
+    /* Нулевые счётчики только шумят в навигации — показываем от одного. */
+    const set = (el, value) => {
+      if (!el) return;
+      el.textContent = String(value);
+      el.hidden = value === 0;
+    };
+    set(w, allIn('watched').length);
+    set(p, allIn('planned').length);
   }
 
   /* ---------------- свои карточки и моменты: формы ---------------- */
@@ -2433,6 +2484,7 @@
     const a = getAnime(id);
     if (!a) { toast('Не удалось открыть карточку'); return; }
     state.modalId = id;
+    state.modalTab = 'overview';
     renderModal();
     const modal = $('#modal');
     modal.hidden = false;
@@ -2467,6 +2519,7 @@
 
   const FRANCHISE_PREVIEW = 8;
   const FRANCHISE_MAIN = new Set(['PREQUEL', 'PARENT', 'SEQUEL']);
+  const MODAL_TABS = ['overview', 'seasons', 'episodes', 'moments'];
 
   function franchiseCardHTML(link, opts = {}) {
     const item = link.anime;
@@ -2572,6 +2625,7 @@
 
   function closeModal(opts = {}) {
     state.modalId = null;
+    state.modalTab = 'overview';
     const modal = $('#modal');
     if (modal) modal.hidden = true;
     if (App.revokeMomentUrls) App.revokeMomentUrls();
@@ -2579,6 +2633,28 @@
     if (state.tab === 'db') renderDB();
     else if (state.tab === 'watched' || state.tab === 'planned') renderTierList(state.tab);
     if (!opts.fromHash) writeLocationHash();
+  }
+
+  /* Переключение разделов карточки без перерисовки: изображения и прогресс
+     остаются на месте, меняются только видимые панели. */
+  function switchModalTab(tab, opts = {}) {
+    if (!MODAL_TABS.includes(tab)) return;
+    state.modalTab = tab;
+    $$('.modal-tab').forEach(node => {
+      const on = node.dataset.tab === tab;
+      node.classList.toggle('is-active', on);
+      node.setAttribute('aria-selected', on ? 'true' : 'false');
+      node.tabIndex = on ? 0 : -1;
+    });
+    $$('.modal-pane').forEach(node => {
+      node.hidden = node.id !== 'modal-pane-' + tab;
+    });
+    const panel = $('.modal-panel');
+    if (panel) panel.scrollTop = 0;
+    if (opts.focus) {
+      const active = $('.modal-tab.is-active');
+      if (active) active.focus({ preventScroll: true });
+    }
   }
 
   function renderModal() {
@@ -2649,6 +2725,14 @@
         </div>`
       : '';
 
+    const related = state.franchiseById.get(a.id) || [];
+    const ownProgress = watchedCount(a.id);
+    const momentsCount = momentsFor(a.id).length;
+    const episodesCount = a.episodes ? `${ownProgress}/${a.episodes}` : (ownProgress ? String(ownProgress) : '');
+    const activeTab = ['overview', 'seasons', 'episodes', 'moments'].includes(state.modalTab) ? state.modalTab : 'overview';
+    const tabButton = (id, label, count) => `<button type="button" class="modal-tab${activeTab === id ? ' is-active' : ''}" role="tab" id="modal-tab-${id}" aria-selected="${activeTab === id ? 'true' : 'false'}" aria-controls="modal-pane-${id}" tabindex="${activeTab === id ? '0' : '-1'}" data-action="modal-tab" data-tab="${id}">${label}${count ? `<b>${esc(String(count))}</b>` : ''}</button>`;
+    const pane = (id, inner) => `<div class="modal-pane" id="modal-pane-${id}" role="tabpanel" aria-labelledby="modal-tab-${id}"${activeTab === id ? '' : ' hidden'}>${inner}</div>`;
+
     content.innerHTML = `
       <div class="modal-grid">
         <div class="modal-poster">
@@ -2668,36 +2752,43 @@
             ${!a.custom ? `<button class="btn btn-ghost" data-action="tiktok-search" data-id="${a.id}">Искать в TikTok</button>` : ''}
           </div>
           ${customActions}
-          <div class="modal-section">
-            <div class="modal-label">Тир-лист</div>
-            <div class="tier-picker">${tiers}</div>
-            <p class="hint">${inW || inP
-              ? 'Выберите уровень — карточка переедет в выбранный тир.'
-              : 'Выберите тир, чтобы сразу добавить тайтл в «Просмотрено».'}</p>
+          <div class="modal-tabs" role="tablist" aria-label="Разделы карточки">
+            ${tabButton('overview', 'Обзор')}
+            ${a.custom ? '' : tabButton('seasons', 'Сезоны', related.length ? related.length + 1 : '')}
+            ${tabButton('episodes', 'Серии', episodesCount)}
+            ${tabButton('moments', 'Моменты', momentsCount || '')}
           </div>
-          ${renderFranchiseSection(a)}
-          <div class="modal-section modal-episodes">
+          ${pane('overview', `
+            <div class="modal-section">
+              <div class="modal-label">Тир-лист</div>
+              <div class="tier-picker">${tiers}</div>
+              <p class="hint">${inW || inP
+                ? 'Выберите уровень — карточка переедет в выбранный тир.'
+                : 'Выберите тир, чтобы сразу добавить тайтл в «Просмотрено».'}</p>
+            </div>
+            <section class="modal-section modal-synopsis-section">
+              <div class="modal-label">Описание</div>
+              ${synopsisControls}
+              <p class="modal-synopsis"${showTranslatedSynopsis ? ' data-translated="1" title="Автоматический перевод"' : ''}>${esc(synopsis)}</p>
+            </section>
+            ${genres ? `<section class="modal-section modal-genres">
+              <div class="modal-label">Жанры</div>
+              <div class="tags">${genres}</div>
+            </section>` : ''}
+            ${tagChips ? `<section class="modal-section modal-tags">
+              <div class="modal-label">Теги</div>
+              <div class="tags">${tagChips}</div>
+              <button class="btn btn-ghost" type="button" data-action="find-similar" data-id="${a.id}">Найти похожие</button>
+            </section>` : ''}
+            ${sourceLine}
+          `)}
+          ${a.custom ? '' : pane('seasons', renderFranchiseSection(a))}
+          ${pane('episodes', `<div class="modal-section modal-episodes">
             <div class="modal-label">Серии и прогресс</div>
             ${renderEpisodeBlock(a, 'modal')}
-          </div>
-          ${momentsHTML(a)}
-          <section class="modal-section modal-synopsis-section">
-            <div class="modal-label">Описание</div>
-            ${synopsisControls}
-            <p class="modal-synopsis"${showTranslatedSynopsis ? ' data-translated="1" title="Автоматический перевод"' : ''}>${esc(synopsis)}</p>
-          </section>
-          ${tagChips ? `<section class="modal-section modal-tags">
-            <div class="modal-label">Теги</div>
-            <div class="tags">${tagChips}</div>
-            <button class="btn btn-ghost" type="button" data-action="find-similar" data-id="${a.id}">Найти похожие</button>
-          </section>` : ''}
-          ${genres ? `<section class="modal-section modal-genres">
-            <div class="modal-label">Жанры</div>
-            <div class="tags">${genres}</div>
-          </section>` : ''}
-          ${sourceLine}
-        </div>
-      </div>`;
+          </div>`)}
+          ${pane('moments', momentsHTML(a))}
+        </div>      </div>`;
 
     const fresh = $('.modal-panel');
     if (fresh) fresh.scrollTop = scrollTop;
@@ -2884,6 +2975,10 @@
     openModal,
     closeModal,
     renderModal,
+    switchModalTab,
+    closeDBMoreMenu,
+    toggleDBMoreMenu,
+    syncContinueToggle,
     renderFranchiseSection,
     switchTab,
     updateOfflineBanner,

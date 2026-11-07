@@ -508,6 +508,8 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       catalog: normalizeCatalogPreferences(),
     },
     modalId: null,
+    modalTab: 'overview',
+    continueCollapsed: false,
     quickMenu: null,
     command: { open: false, query: '', index: 0, results: [] },
     exchange: {

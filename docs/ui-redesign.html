@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AniTier — Предложение по редизайну UI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07080e;
+      --panel: rgba(19, 23, 34, .78);
+      --panel-2: #151a26;
+      --line: rgba(255, 255, 255, .085);
+      --line-strong: rgba(255, 255, 255, .16);
+      --text: #e9ecf6;
+      --muted: #8b93ac;
+      --accent: #ff4d8d;
+      --accent-2: #8a5cff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 15px;
+    }
+    .bg {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background: radial-gradient(900px 600px at 12% -10%, rgba(255, 77, 141, .10), transparent 60%),
+                  radial-gradient(900px 700px at 95% 8%, rgba(138, 92, 255, .12), transparent 60%),
+                  #07080e;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(7, 8, 14, .97);
+      border-bottom: 1px solid var(--line);
+      padding: 16px clamp(16px, 4vw, 48px);
+      backdrop-filter: blur(12px);
+    }
+    header h1 {
+      margin: 0;
+      font-size: clamp(24px, 4vw, 36px);
+      background: linear-gradient(110deg, #fff 10%, #ffb3cd 45%, #b79bff 90%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    header p { margin: 6px 0 0; color: var(--muted); }
+    nav {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+    nav a {
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, .03);
+      color: var(--muted);
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    nav a:hover { color: #fff; border-color: var(--line-strong); }
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 32px clamp(16px, 4vw, 48px) 80px;
+    }
+    section {
+      margin-bottom: 64px;
+    }
+    section h2 {
+      margin: 0 0 8px;
+      font-size: clamp(22px, 3vw, 28px);
+      letter-spacing: -.02em;
+    }
+    .lead {
+      color: var(--muted);
+      margin: 0 0 24px;
+      max-width: 720px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      overflow: hidden;
+      box-shadow: 0 30px 60px rgba(0,0,0,.4);
+    }
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 22px 12px;
+    }
+    .card-head h3 { margin: 0; font-size: 18px; }
+    .tag {
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,77,141,.4);
+      background: rgba(255,77,141,.15);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .mock {
+      padding: 0 22px 22px;
+    }
+    .topbar-mock {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 10px 16px;
+      border-radius: 14px;
+      background: rgba(7,8,14,.95);
+      border: 1px solid var(--line);
+    }
+    .brand-mock {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 800;
+    }
+    .brand-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, #ff4d8d, #8a5cff);
+    }
+    .tabs-mock {
+      display: flex;
+      gap: 4px;
+      flex: 1;
+      overflow: hidden;
+    }
+    .tab-mock {
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .tab-mock.active {
+      background: linear-gradient(135deg, rgba(255,77,141,.22), rgba(138,92,255,.22));
+      color: #fff;
+    }
+    .actions-mock { display: flex; gap: 6px; }
+    .action-dot {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.04);
+    }
+    .db-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin: 18px 0 14px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .db-head h4 { margin: 0; font-size: 20px; }
+    .db-head p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .search-mock {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      min-width: 280px;
+    }
+    .btn-mock {
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.05);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .btn-mock.primary {
+      border-color: transparent;
+      background: linear-gradient(135deg, #ff4d8d, #8a5cff);
+    }
+    .chips-mock {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .chip-mock {
+      padding: 7px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .chip-mock.active {
+      background: linear-gradient(135deg, #ff4d8d, #8a5cff);
+      color: #fff;
+      border-color: transparent;
+    }
+    .continue {
+      padding: 14px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.02);
+      margin-bottom: 16px;
+    }
+    .continue-head {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .continue-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+    }
+    .continue-card {
+      display: flex;
+      gap: 10px;
+      padding: 10px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+    .poster-mini {
+      width: 40px;
+      height: 56px;
+      border-radius: 8px;
+      background: linear-gradient(180deg, #2a3042, #151a26);
+    }
+    .grid-mock {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 14px;
+    }
+    .card-mock {
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      overflow: hidden;
+      background: var(--panel-2);
+    }
+    .poster-mock {
+      aspect-ratio: 2/3;
+      background: linear-gradient(180deg, #242b3d, #151a26);
+    }
+    .card-body-mock {
+      padding: 10px 12px 12px;
+    }
+    .card-title-mock { height: 12px; background: rgba(255,255,255,.4); border-radius: 6px; margin-bottom: 6px; }
+    .card-meta-mock { height: 10px; width: 60%; background: rgba(255,255,255,.18); border-radius: 6px; }
+    .modal-mock {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 22px;
+      padding: 22px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: linear-gradient(180deg, #12151f, #0d1017);
+    }
+    .modal-poster {
+      aspect-ratio: 2/3;
+      border-radius: 14px;
+      background: linear-gradient(180deg, #2a3042, #151a26);
+    }
+    .tabs-row {
+      display: flex;
+      gap: 8px;
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(0,0,0,.18);
+      width: fit-content;
+      margin-bottom: 16px;
+    }
+    .tab-pill {
+      padding: 7px 12px;
+      border-radius: 9px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .tab-pill.active {
+      background: rgba(138,92,255,.25);
+      color: #e2d8ff;
+    }
+    .group-mock {
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.02);
+      margin-bottom: 12px;
+    }
+    .group-head-mock {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+    }
+    .franchise-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+    }
+    .franchise-card {
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      overflow: hidden;
+      background: linear-gradient(160deg, rgba(255,255,255,.055), rgba(255,255,255,.018));
+    }
+    .franchise-poster {
+      aspect-ratio: 2/3;
+      background: linear-gradient(180deg, #242b3d, #151a26);
+    }
+    .franchise-body { padding: 9px; }
+    .franchise-body .line { height: 10px; background: rgba(255,255,255,.3); border-radius: 6px; margin-bottom: 6px; }
+    .franchise-body .line.small { width: 70%; height: 8px; background: rgba(255,255,255,.18); }
+    .list-mock {
+      display: grid;
+      grid-template-columns: 90px 1fr;
+      gap: 14px;
+      padding: 14px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.02);
+    }
+    .tier-summary {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.02);
+      margin-bottom: 14px;
+    }
+    .tier-pill {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .tier-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 4px;
+    }
+    .s { background: linear-gradient(135deg, #ff5c8a, #ff2d6f); }
+    .a { background: linear-gradient(135deg, #ffb15c, #ff8a2b); }
+    .b { background: linear-gradient(135deg, #ffe066, #ffcc00); }
+    .c { background: linear-gradient(135deg, #6ee7a8, #22c55e); }
+    .d { background: linear-gradient(135deg, #7dd3fc, #38bdf8); }
+    .f { background: linear-gradient(135deg, #cbd5e1, #94a3b8); }
+    .mobile-mock {
+      width: 320px;
+      border-radius: 28px;
+      border: 1px solid rgba(255,255,255,.18);
+      overflow: hidden;
+      box-shadow: 0 40px 80px rgba(0,0,0,.6);
+      background: #07080e;
+    }
+    .mobile-notch {
+      height: 18px;
+      background: radial-gradient(circle at 50% 0, rgba(255,255,255,.12), transparent 70%);
+    }
+    .mobile-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+    }
+    .mobile-tabs {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      border-top: 1px solid var(--line);
+      background: rgba(12,13,20,.98);
+    }
+    .mobile-tab {
+      padding: 8px 0 10px;
+      text-align: center;
+      font-size: 9px;
+      color: var(--muted);
+    }
+    .mobile-tab.active { color: #fff; }
+    .changes {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .change {
+      padding: 18px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.02);
+    }
+    .change h4 { margin: 0 0 10px; }
+    .change ul { margin: 0; padding-left: 18px; color: var(--muted); }
+    .change li { margin: 6px 0; }
+    footer {
+      text-align: center;
+      color: var(--muted);
+      padding: 40px 16px;
+      border-top: 1px solid var(--line);
+    }
+    @media (max-width: 1080px) {
+      .modal-mock { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg"></div>
+  <header>
+    <h1>AniTier — предложение по редизайну UI</h1>
+    <p>Вариант A: «Два уровня» • Фокус на читаемости, меньше кликов, больше воздуха</p>
+    <nav>
+      <a href="#base">База аниме</a>
+      <a href="#modal">Карточка тайтла</a>
+      <a href="#lists">Просмотрено / Планы</a>
+      <a href="#upcoming">Скоро выйдут</a>
+      <a href="#notifications">Уведомления</a>
+      <a href="#mobile">Мобильная версия</a>
+      <a href="#changes">Что изменится</a>
+    </nav>
+  </header>
+  <main>
+    <section id="base">
+      <h2>База аниме</h2>
+      <p class="lead">Убираем перегруженный тулбар. Поиск + фильтры собираем в одну строку, редкие действия — в меню «⋯», чипы режимов оставляем только самыми частыми.</p>
+      <div class="card">
+        <div class="card-head">
+          <h3>Десктоп • Вариант A</h3>
+          <span class="tag">Рекомендуемый</span>
+        </div>
+        <div class="mock">
+          <div class="topbar-mock">
+            <div class="brand-mock">
+              <div class="brand-dot"></div>
+              <span>AniTier</span>
+            </div>
+            <div class="tabs-mock">
+              <div class="tab-mock active">База аниме</div>
+              <div class="tab-mock">Уведомления</div>
+              <div class="tab-mock">Просмотрено</div>
+              <div class="tab-mock">Запланировано</div>
+              <div class="tab-mock">Скоро выйдут</div>
+            </div>
+            <div class="actions-mock">
+              <div class="action-dot"></div>
+              <div class="action-dot"></div>
+              <div class="action-dot"></div>
+              <div class="action-dot"></div>
+            </div>
+          </div>
+          <div class="db-head">
+            <div>
+              <h4>База аниме</h4>
+              <p>9 842 тайтла • Тысячи тайтлов из AniList и Kitsu</p>
+            </div>
+            <div class="toolbar">
+              <div class="search-mock">🔍 Поиск: «Фрирен», «Jujutsu Kaisen»…</div>
+              <div class="btn-mock">Фильтры <span style="color:var(--accent)">2</span></div>
+              <div class="btn-mock">⋯</div>
+            </div>
+          </div>
+          <div class="chips-mock">
+            <div class="chip-mock active">Популярное</div>
+            <div class="chip-mock">Топ по рейтингу</div>
+            <div class="chip-mock">Сейчас выходит</div>
+            <div class="chip-mock">Фильмы</div>
+            <div class="chip-mock">Свои карточки</div>
+          </div>
+          <div class="continue">
+            <div class="continue-head">
+              <strong>Продолжить просмотр</strong>
+              <span style="color:var(--muted); font-size:12px;">Свернуть</span>
+            </div>
+            <div class="continue-cards">
+              <div class="continue-card">
+                <div class="poster-mini"></div>
+                <div>
+                  <div style="font-size:12px; font-weight:700;">Ван-Пис</div>
+                  <div style="font-size:11px; color:var(--muted);">Серия 1122 / ∞</div>
+                </div>
+              </div>
+              <div class="continue-card">
+                <div class="poster-mini"></div>
+                <div>
+                  <div style="font-size:12px; font-weight:700;">Sousou no Frieren</div>
+                  <div style="font-size:11px; color:var(--muted);">Серия 28 / 28</div>
+                </div>
+              </div>
+              <div class="continue-card">
+                <div class="poster-mini"></div>
+                <div>
+                  <div style="font-size:12px; font-weight:700;">Jujutsu Kaisen</div>
+                  <div style="font-size:11px; color:var(--muted);">Серия 47 / 47</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="grid-mock">
+            <div class="card-mock"><div class="poster-mock"></div><div class="card-body-mock"><div class="card-title-mock"></div><div class="card-meta-mock"></div></div></div>
+            <div class="card-mock"><div class="poster-mock"></div><div class="card-body-mock"><div class="card-title-mock"></div><div class="card-meta-mock"></div></div></div>
+            <div class="card-mock"><div class="poster-mock"></div><div class="card-body-mock"><div class="card-title-mock"></div><div class="card-meta-mock"></div></div></div>
+            <div class="card-mock"><div class="poster-mock"></div><div class="card-body-mock"><div class="card-title-mock"></div><div class="card-meta-mock"></div></div></div>
+            <div class="card-mock"><div class="poster-mock"></div><div class="card-body-mock"><div class="card-title-mock"></div><div class="card-meta-mock"></div></div></div>
+            <div class="card-mock"><div class="poster-mock"></div><div class="card-body-mock"><div class="card-title-mock"></div><div class="card-meta-mock"></div></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="modal">
+      <h2>Карточка тайтла</h2>
+      <p class="lead">Вместо бесконечной ленты — табы. «Сезоны» становится полноценной вкладкой с нашим новым групповым порядком просмотра.</p>
+      <div class="card">
+        <div class="card-head">
+          <h3>Модалка с табами</h3>
+          <span class="tag">Ключевое изменение</span>
+        </div>
+        <div class="mock">
+          <div class="modal-mock">
+            <div>
+              <div class="modal-poster"></div>
+              <div style="margin-top:12px; text-align:center; padding:10px; border-radius:12px; background:rgba(255,209,102,.1); color:#ffd166; font-weight:800;">★ 8.72</div>
+              <div style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap;">
+                <div class="btn-mock">Добавить в Просмотрено</div>
+                <div class="btn-mock">В Запланированное</div>
+              </div>
+            </div>
+            <div>
+              <div style="color:#ff9dbc; font-size:11px; text-transform:uppercase; letter-spacing:.14em;">ТВ • 1999 • Завершён</div>
+              <h3 style="margin:6px 0 4px; font-size:28px;">Ван-Пис</h3>
+              <div style="color:var(--muted); margin-bottom:16px;">One Piece</div>
+              <div class="tabs-row">
+                <div class="tab-pill active">Обзор</div>
+                <div class="tab-pill">Сезоны <span style="color:var(--accent)">38</span></div>
+                <div class="tab-pill">Серии</div>
+                <div class="tab-pill">Моменты</div>
+              </div>
+              <div class="group-mock">
+                <div class="group-head-mock">
+                  <span>Основной сериал</span>
+                  <span>3</span>
+                </div>
+                <div class="franchise-row">
+                  <div class="franchise-card">
+                    <div class="franchise-poster"></div>
+                    <div class="franchise-body">
+                      <div class="line"></div>
+                      <div class="line small"></div>
+                    </div>
+                  </div>
+                  <div class="franchise-card" style="border-color:rgba(255,77,141,.65);">
+                    <div class="franchise-poster"></div>
+                    <div class="franchise-body">
+                      <div class="line"></div>
+                      <div class="line small"></div>
+                    </div>
+                  </div>
+                  <div class="franchise-card">
+                    <div class="franchise-poster"></div>
+                    <div class="franchise-body">
+                      <div class="line"></div>
+                      <div class="line small"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="group-mock">
+                <div class="group-head-mock">
+                  <span>Фильмы</span>
+                  <span>15</span>
+                </div>
+                <div style="color:var(--muted); font-size:12px;">Показаны первые 8 • <span style="color:#ff9dbc;">Показать все (15)</span></div>
+              </div>
+              <div class="group-mock">
+                <div class="group-head-mock">
+                  <span>Спешлы и OVA</span>
+                  <span>12</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="lists">
+      <h2>Просмотрено / Запланировано</h2>
+      <p class="lead">Сводка по тирам в одну строку, действия экспорта/импорта/статистики — в меню «⋯». Меньше визуального шума.</p>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head">
+            <h3>Просмотрено</h3>
+            <div class="btn-mock">⋯</div>
+          </div>
+          <div class="mock">
+            <div class="tier-summary">
+              <div class="tier-pill"><div class="tier-dot s"></div><span>S</span><strong>4</strong></div>
+              <div class="tier-pill"><div class="tier-dot a"></div><span>A</span><strong>9</strong></div>
+              <div class="tier-pill"><div class="tier-dot b"></div><span>B</span><strong>12</strong></div>
+              <div class="tier-pill"><div class="tier-dot c"></div><span>C</span><strong>10</strong></div>
+              <div class="tier-pill"><div class="tier-dot d"></div><span>D</span><strong>5</strong></div>
+              <div class="tier-pill"><div class="tier-dot f"></div><span>F</span><strong>2</strong></div>
+              <div style="margin-left:auto; color:var(--muted); font-size:12px;">Статистика ▸</div>
+            </div>
+            <div style="display:flex; gap:8px; margin-bottom:12px;">
+              <div class="search-mock" style="min-width:200px; flex:1;">🔍 Поиск в списке</div>
+              <div class="btn-mock">Сортировка ▾</div>
+              <div class="btn-mock">Фильтры</div>
+            </div>
+            <div class="list-mock">
+              <div style="height:90px; border-radius:12px; background:linear-gradient(180deg,#2a3042,#151a26);"></div>
+              <div>
+                <div style="height:14px; width:60%; background:rgba(255,255,255,.4); border-radius:7px; margin-bottom:8px;"></div>
+                <div style="height:10px; width:40%; background:rgba(255,255,255,.18); border-radius:6px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h3>Запланировано</h3>
+            <div class="btn-mock">⋯</div>
+          </div>
+          <div class="mock">
+            <div class="tier-summary">
+              <div class="tier-pill"><div class="tier-dot s"></div><span>S</span><strong>1</strong></div>
+              <div class="tier-pill"><div class="tier-dot a"></div><span>A</span><strong>3</strong></div>
+              <div class="tier-pill"><div class="tier-dot b"></div><span>B</span><strong>7</strong></div>
+              <div class="tier-pill"><div class="tier-dot c"></div><span>C</span><strong>4</strong></div>
+              <div style="margin-left:auto; color:var(--muted); font-size:12px;">Приоритеты по тирам</div>
+            </div>
+            <div style="display:flex; gap:8px; margin-bottom:12px;">
+              <div class="search-mock" style="min-width:200px; flex:1;">🔍 Поиск в списке</div>
+              <div class="btn-mock">Сортировка ▾</div>
+              <div class="btn-mock">Фильтры</div>
+            </div>
+            <div class="list-mock">
+              <div style="height:90px; border-radius:12px; background:linear-gradient(180deg,#2a3042,#151a26);"></div>
+              <div>
+                <div style="height:14px; width:50%; background:rgba(255,255,255,.4); border-radius:7px; margin-bottom:8px;"></div>
+                <div style="height:10px; width:35%; background:rgba(255,255,255,.18); border-radius:6px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="upcoming">
+      <h2>Скоро выйдут</h2>
+      <p class="lead">Компактная панель фильтров вместо 8 контролов в ряд. Поиск + «Только мои» + фильтры + «⋯».</p>
+      <div class="card">
+        <div class="card-head">
+          <h3>Премьеры</h3>
+          <div class="btn-mock">Обновить ⟳</div>
+        </div>
+        <div class="mock">
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;">
+            <div class="search-mock" style="flex:1; min-width:240px;">🔍 Поиск премьеры</div>
+            <div class="btn-mock">Только мои серии</div>
+            <div class="btn-mock">Фильтры 1</div>
+            <div class="btn-mock">⋯</div>
+          </div>
+          <div style="color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.16em; margin-bottom:12px;">Ноябрь • 12 премьер</div>
+          <div class="grid-mock" style="grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));">
+            <div class="card-mock"><div class="poster-mock"></div><div class="card-body-mock"><div class="card-title-mock"></div><div class="card-meta-mock"></div></div></div>
+            <div class="card-mock"><div class="poster-mock"></div><div class="card-body-mock"><div class="card-title-mock"></div><div class="card-meta-mock"></div></div></div>
+            <div class="card-mock"><div class="poster-mock"></div><div class="card-body-mock"><div class="card-title-mock"></div><div class="card-meta-mock"></div></div></div>
+            <div class="card-mock"><div class="poster-mock"></div><div class="card-body-mock"><div class="card-title-mock"></div><div class="card-meta-mock"></div></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="notifications">
+      <h2>Уведомления</h2>
+      <p class="lead">Чистый список с табами фильтров, меньше нагромождения.</p>
+      <div class="card">
+        <div class="card-head">
+          <h3>Уведомления • 9 новых</h3>
+          <div class="btn-mock">Отметить все</div>
+        </div>
+        <div class="mock">
+          <div style="display:flex; gap:8px; margin-bottom:16px;">
+            <div class="chip-mock active">Новые серии 9</div>
+            <div class="chip-mock">Завершились</div>
+            <div class="chip-mock">Всё</div>
+          </div>
+          <div style="color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.14em; margin-bottom:10px;">Сегодня</div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:10px;">
+            <div class="continue-card">
+              <div class="poster-mini"></div>
+              <div>
+                <div style="font-size:13px; font-weight:700;">Аниме • Серия 12 вышла</div>
+                <div style="font-size:11px; color:var(--muted);">Сегодня • 18:00</div>
+              </div>
+            </div>
+            <div class="continue-card">
+              <div class="poster-mini"></div>
+              <div>
+                <div style="font-size:13px; font-weight:700;">Другое аниме • Серия 5 вышла</div>
+                <div style="font-size:11px; color:var(--muted);">Сегодня • 20:30</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="mobile">
+      <h2>Мобильная версия</h2>
+      <p class="lead">Упрощаем навигацию, фильтры — bottom-sheet, табы карточки — снизу/горизонтально.</p>
+      <div style="display:flex; gap:32px; flex-wrap:wrap; align-items:flex-start;">
+        <div class="mobile-mock">
+          <div class="mobile-notch"></div>
+          <div class="mobile-bar">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <div class="brand-dot" style="width:26px;height:26px;"></div>
+              <strong>AniTier</strong>
+            </div>
+            <div style="display:flex; gap:6px;">
+              <div class="action-dot"></div>
+              <div class="action-dot"></div>
+            </div>
+          </div>
+          <div style="padding:14px 12px;">
+            <div class="search-mock" style="min-width:auto; width:100%; margin-bottom:10px;">🔍 Поиск…</div>
+            <div style="display:flex; gap:6px; margin-bottom:12px;">
+              <div class="btn-mock" style="flex:1; text-align:center;">Фильтры 2</div>
+              <div class="btn-mock">⋯</div>
+            </div>
+            <div class="chips-mock" style="margin:0 -12px 12px; padding:0 12px;">
+              <div class="chip-mock active">Популярное</div>
+              <div class="chip-mock">Топ</div>
+              <div class="chip-mock">Сейчас</div>
+              <div class="chip-mock">Фильмы</div>
+            </div>
+            <div style="color:var(--muted); font-size:11px; margin-bottom:8px;">Продолжить просмотр</div>
+            <div style="display:flex; gap:8px; overflow-x:auto;">
+              <div class="continue-card" style="min-width:220px;">
+                <div class="poster-mini"></div>
+                <div>
+                  <div style="font-size:12px; font-weight:700;">Ван-Пис</div>
+                  <div style="font-size:10px; color:var(--muted);">Серия 1122</div>
+                </div>
+              </div>
+              <div class="continue-card" style="min-width:220px;">
+                <div class="poster-mini"></div>
+                <div>
+                  <div style="font-size:12px; font-weight:700;">Frieren</div>
+                  <div style="font-size:10px; color:var(--muted);">Серия 28</div>
+                </div>
+              </div>
+            </div>
+            <div class="grid-mock" style="grid-template-columns:repeat(2,1fr); gap:10px; margin-top:12px;">
+              <div class="card-mock"><div class="poster-mock"></div><div class="card-body-mock"><div class="card-title-mock"></div><div class="card-meta-mock"></div></div></div>
+              <div class="card-mock"><div class="poster-mock"></div><div class="card-body-mock"><div class="card-title-mock"></div><div class="card-meta-mock"></div></div></div>
+            </div>
+          </div>
+          <div class="mobile-tabs">
+            <div class="mobile-tab active">База</div>
+            <div class="mobile-tab">События</div>
+            <div class="mobile-tab">Просмотрено</div>
+            <div class="mobile-tab">Планы</div>
+            <div class="mobile-tab">Скоро</div>
+          </div>
+        </div>
+        <div style="flex:1; min-width:280px;">
+          <div class="card">
+            <div class="card-head">
+              <h3>Карточка тайтла • Мобильный</h3>
+            </div>
+            <div class="mock">
+              <div style="display:flex; gap:14px; margin-bottom:16px;">
+                <div style="width:110px; height:156px; border-radius:14px; background:linear-gradient(180deg,#2a3042,#151a26);"></div>
+                <div>
+                  <div style="color:#ff9dbc; font-size:10px; text-transform:uppercase; letter-spacing:.14em;">ТВ • 1999</div>
+                  <h3 style="margin:6px 0 4px;">Ван-Пис</h3>
+                  <div style="color:var(--muted); font-size:12px;">One Piece</div>
+                  <div style="margin-top:12px; display:flex; gap:6px;">
+                    <div class="btn-mock primary">В Просмотрено</div>
+                    <div class="btn-mock">В Планы</div>
+                  </div>
+                </div>
+              </div>
+              <div class="tabs-row" style="width:100%; justify-content:space-between;">
+                <div class="tab-pill active">Обзор</div>
+                <div class="tab-pill">Сезоны</div>
+                <div class="tab-pill">Серии</div>
+                <div class="tab-pill">Моменты</div>
+              </div>
+              <div style="padding:12px; border-radius:14px; border:1px solid var(--line); background:rgba(255,255,255,.02);">
+                <div style="color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.12em; margin-bottom:10px;">Основной сериал</div>
+                <div style="display:flex; gap:10px; overflow-x:auto;">
+                  <div class="franchise-card" style="min-width:130px;"><div class="franchise-poster"></div><div class="franchise-body"><div class="line"></div><div class="line small"></div></div></div>
+                  <div class="franchise-card" style="min-width:130px; border-color:rgba(255,77,141,.65);"><div class="franchise-poster"></div><div class="franchise-body"><div class="line"></div><div class="line small"></div></div></div>
+                  <div class="franchise-card" style="min-width:130px;"><div class="franchise-poster"></div><div class="franchise-body"><div class="line"></div><div class="line small"></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="changes">
+      <h2>Что свернуть и что изменить</h2>
+      <p class="lead">Пошаговый план внедрения без переписывания всего сразу.</p>
+      <div class="changes">
+        <div class="change">
+          <h4>База аниме</h4>
+          <ul>
+            <li><strong>Свернуть:</strong> «Язык поиска», «+ Своя карточка», «Случайное» → меню «⋯»</li>
+            <li><strong>Убрать из чипов:</strong> «Случайное» (перенести в меню)</li>
+            <li><strong>Собрать:</strong> поиск + «Фильтры N» + «⋯» в одну строку</li>
+            <li><strong>Сделать сворачиваемым:</strong> блок «Продолжить просмотр»</li>
+            <li><strong>Счётчики:</strong> в навбаре показывать только > 0</li>
+          </ul>
+        </div>
+        <div class="change">
+          <h4>Карточка тайтла</h4>
+          <ul>
+            <li><strong>Главное:</strong> перевести секции в табы «Обзор / Сезоны / Серии / Моменты»</li>
+            <li><strong>Сезоны:</strong> использовать новый групповой порядок по датам</li>
+            <li><strong>Обзор:</strong> описание + жанры + теги + MAL</li>
+            <li><strong>Мобильный:</strong> tabs закрепить под заголовком</li>
+          </ul>
+        </div>
+        <div class="change">
+          <h4>Просмотрено / Планы</h4>
+          <ul>
+            <li><strong>Сводка:</strong> тиры в одну компактную строку вместо блока карточек</li>
+            <li><strong>Меню:</strong> Экспорт/Импорт/Статистика → «⋯»</li>
+            <li><strong>Поиск:</strong> «Поиск в списке» + сортировка + фильтры</li>
+          </ul>
+        </div>
+        <div class="change">
+          <h4>Скоро выйдут</h4>
+          <ul>
+            <li><strong>Компактность:</strong> объединить фильтры в панель по кнопке «Фильтры N»</li>
+            <li><strong>Действия:</strong> «Экспорт .ics» → «⋯»</li>
+            <li><strong>Сброс:</strong> оставить в панели фильтров</li>
+          </ul>
+        </div>
+        <div class="change">
+          <h4>Уведомления</h4>
+          <ul>
+            <li><strong>Фильтры:</strong> оставить только 3 таба</li>
+            <li><strong>Группировка:</strong> по дате (Сегодня/Вчера/...)</li>
+            <li><strong>Действия:</strong> «Отметить все» в шапке</li>
+          </ul>
+        </div>
+        <div class="change">
+          <h4>Мобильная версия</h4>
+          <ul>
+            <li><strong>Фильтры:</strong> bottom-sheet над нижней навигацией</li>
+            <li><strong>Табы карточки:</strong> горизонтальные, скролл при переполнении</li>
+            <li><strong>Сезоны:</strong> горизонтальный скролл групп (как сейчас)</li>
+            <li><strong>Навигация:</strong> счётчики только > 0</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer>
+    <div>AniTier UI Redesign Proposal • Вариант A • Основан на текущем кодбейсе</div>
+  </footer>
+</body>
+</html>

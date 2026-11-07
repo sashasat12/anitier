@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=1.39.0">
+<link rel="stylesheet" href="styles.css?v=1.40.0">
 </head>
 <body>
 
@@ -70,19 +70,26 @@
           <input id="search-input" type="search" placeholder="Поиск: «Фрирен», «Jujutsu Kaisen»…" autocomplete="off" list="search-history" aria-label="Поиск аниме">
         <datalist id="search-history"></datalist>
         </div>
-        <label class="lang-field" title="Язык поискового запроса">
-          <span>Язык</span>
-          <select id="search-lang" aria-label="Язык поиска">
-            <option value="auto">Авто</option>
-            <option value="ru">Русский</option>
-            <option value="en">English</option>
-            <option value="ja">日本語</option>
-          </select>
-        </label>
         <button class="btn btn-ghost filter-toggle" data-action="toggle-filters" aria-expanded="false" aria-controls="db-filters">
           Фильтры <b class="filter-count" id="filter-count" hidden>0</b>
         </button>
-        <button class="btn btn-ghost custom-new" data-action="new-custom">+ Своя карточка</button>
+        <div class="db-more">
+          <button type="button" class="icon-btn db-more-btn" data-action="db-more-menu" aria-haspopup="true" aria-expanded="false" aria-controls="db-more-menu" aria-label="Ещё действия на вкладке">⋯</button>
+          <div class="db-more-menu" id="db-more-menu" hidden>
+            <div class="db-more-field">
+              <span>Язык поиска</span>
+              <select id="search-lang" aria-label="Язык поиска">
+                <option value="auto">Авто</option>
+                <option value="ru">Русский</option>
+                <option value="en">English</option>
+                <option value="ja">日本語</option>
+              </select>
+            </div>
+            <button type="button" class="db-more-item" data-action="new-custom">＋ Своя карточка</button>
+            <button type="button" class="db-more-item" data-action="random-db">🎲 Случайное</button>
+            <button type="button" class="db-more-item" id="db-hide-mine" data-action="toggle-hide-mine" aria-pressed="false">Скрыть мои списки</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -141,11 +148,10 @@
       <button class="chip" data-action="mode" data-mode="airing">Сейчас выходит</button>
       <button class="chip" data-action="mode" data-mode="movie">Фильмы</button>
       <button class="chip" data-action="mode" data-mode="custom">Мои карточки</button>
-      <button class="chip" data-action="random-db">Случайное</button>
+      <button class="chip" data-action="random-db" style="display:none" aria-hidden="true">Случайное</button>
     </div>
 
     <div class="db-sort-row">
-      <button type="button" class="chip db-hide-toggle" id="db-hide-mine" data-action="toggle-hide-mine" aria-pressed="false">Скрыть мои списки</button>
       <label class="filter-field db-sort-field">
         <span>Сортировка</span>
         <select id="db-sort" data-db-sort aria-label="Сортировка базы">
@@ -162,6 +168,7 @@
       <div class="continue-head">
         <h2>Продолжить просмотр</h2>
         <span class="sub">Начатые тайтлы из «Просмотрено»</span>
+        <button type="button" class="chip continue-toggle" data-action="toggle-continue" aria-expanded="true" aria-controls="continue-row">Свернуть</button>
       </div>
       <div class="continue-row" id="continue-row"></div>
     </section>
@@ -194,13 +201,18 @@
         <p class="sub">Разложи тайтлы по тирам — от S до F. Карточки перетаскиваются мышью или долгим нажатием.</p>
       </div>
       <div class="head-actions">
-        <button class="btn btn-ghost" data-action="open-stats">Статистика</button>
-        <button class="btn btn-ghost" data-action="exchange-export" data-list="watched">Экспорт</button>
-        <button class="btn btn-ghost" data-action="exchange-import">Импорт</button>
         <button class="btn btn-ghost" data-action="find-more">+ Добавить тайтл</button>
+        <div class="list-more">
+          <button type="button" class="icon-btn list-more-btn" data-action="list-more-menu" data-list="watched" aria-haspopup="true" aria-expanded="false" aria-label="Ещё действия">⋯</button>
+          <div class="list-more-menu" data-list-menu="watched" hidden>
+            <button type="button" class="list-more-item" data-action="open-stats">Статистика</button>
+            <button type="button" class="list-more-item" data-action="exchange-export" data-list="watched">Экспорт</button>
+            <button type="button" class="list-more-item" data-action="exchange-import">Импорт</button>
+          </div>
+        </div>
       </div>
     </div>
-    <div class="stats" id="stats-watched"></div>
+    <div class="list-summary" id="summary-watched" aria-live="polite"></div>
     <div class="filters list-tools" id="list-tools-watched" data-list-tools="watched"></div>
     <div class="db-status" id="list-status-watched" aria-live="polite"></div>
     <div class="tierlist" id="tiers-watched"></div>
@@ -214,12 +226,17 @@
         <p class="sub">Собери вишлист и расставь приоритеты по тирам: что смотреть первым.</p>
       </div>
       <div class="head-actions">
-        <button class="btn btn-ghost" data-action="exchange-export" data-list="planned">Экспорт</button>
-        <button class="btn btn-ghost" data-action="exchange-import">Импорт</button>
         <button class="btn btn-ghost" data-action="find-more">+ Добавить тайтл</button>
+        <div class="list-more">
+          <button type="button" class="icon-btn list-more-btn" data-action="list-more-menu" data-list="planned" aria-haspopup="true" aria-expanded="false" aria-label="Ещё действия">⋯</button>
+          <div class="list-more-menu" data-list-menu="planned" hidden>
+            <button type="button" class="list-more-item" data-action="exchange-export" data-list="planned">Экспорт</button>
+            <button type="button" class="list-more-item" data-action="exchange-import">Импорт</button>
+          </div>
+        </div>
       </div>
     </div>
-    <div class="stats" id="stats-planned"></div>
+    <div class="list-summary" id="summary-planned" aria-live="polite"></div>
     <div class="filters list-tools" id="list-tools-planned" data-list-tools="planned"></div>
     <div class="db-status" id="list-status-planned" aria-live="polite"></div>
     <div class="tierlist" id="tiers-planned"></div>
@@ -234,38 +251,50 @@
       </div>
       <button class="btn btn-ghost" data-action="refresh-upcoming">Обновить</button>
     </div>
-    <div class="filters upcoming-tools" id="upcoming-tools">
-      <div class="search">
-        <input id="upcoming-search" type="search" placeholder="Поиск премьеры: название, жанр, студия" autocomplete="off" aria-label="Поиск премьеры">
+    <div class="upcoming-tools" id="upcoming-tools">
+      <div class="upcoming-bar">
+        <div class="search">
+          <input id="upcoming-search" type="search" placeholder="Поиск премьеры: название, жанр, студия" autocomplete="off" aria-label="Поиск премьеры">
+        </div>
+        <button class="btn btn-ghost" type="button" id="upcoming-mine" data-action="toggle-upcoming-mine" aria-pressed="false">Только мои серии</button>
+        <button class="btn btn-ghost filter-toggle" type="button" data-action="toggle-upcoming-filters" aria-expanded="false" aria-controls="upcoming-filters">
+          Фильтры <b class="filter-count" id="upcoming-filter-count" hidden>0</b>
+        </button>
+        <div class="upcoming-more">
+          <button type="button" class="icon-btn" data-action="upcoming-more-menu" aria-haspopup="true" aria-expanded="false" aria-controls="upcoming-more-menu" aria-label="Ещё действия">⋯</button>
+          <div class="upcoming-more-menu" id="upcoming-more-menu" hidden>
+            <button type="button" class="upcoming-more-item" data-action="export-ics">Экспорт .ics</button>
+            <button type="button" class="upcoming-more-item" data-action="reset-upcoming">Сбросить фильтры</button>
+          </div>
+        </div>
       </div>
-      <label class="filter-field">
-        <span>Тип</span>
-        <select id="upcoming-type" data-upcoming="type" aria-label="Тип премьеры">
-          <option value="">Любой</option>
-        </select>
-      </label>
-      <label class="filter-field">
-        <span>Жанр</span>
-        <select id="upcoming-genre" data-upcoming="genre" aria-label="Жанр премьеры">
-          <option value="">Любой</option>
-        </select>
-      </label>
-      <label class="filter-field">
-        <span>Месяц</span>
-        <select id="upcoming-month" data-upcoming="month" aria-label="Месяц премьеры">
-          <option value="">Все месяцы</option>
-        </select>
-      </label>
-      <label class="filter-field">
-        <span>Порядок</span>
-        <select id="upcoming-sort" data-upcoming="sort" aria-label="Порядок премьер">
-          <option value="date">По дате</option>
-          <option value="title">По названию</option>
-        </select>
-      </label>
-      <button class="btn btn-ghost" type="button" id="upcoming-mine" data-action="toggle-upcoming-mine" aria-pressed="false">Только мои серии</button>
-      <button class="btn btn-ghost" type="button" data-action="export-ics">Экспорт .ics</button>
-      <button class="btn btn-ghost filter-reset" data-action="reset-upcoming">Сбросить</button>
+      <div class="filters upcoming-filters" id="upcoming-filters" hidden>
+        <label class="filter-field">
+          <span>Тип</span>
+          <select id="upcoming-type" data-upcoming="type" aria-label="Тип премьеры">
+            <option value="">Любой</option>
+          </select>
+        </label>
+        <label class="filter-field">
+          <span>Жанр</span>
+          <select id="upcoming-genre" data-upcoming="genre" aria-label="Жанр премьеры">
+            <option value="">Любой</option>
+          </select>
+        </label>
+        <label class="filter-field">
+          <span>Месяц</span>
+          <select id="upcoming-month" data-upcoming="month" aria-label="Месяц премьеры">
+            <option value="">Все месяцы</option>
+          </select>
+        </label>
+        <label class="filter-field">
+          <span>Порядок</span>
+          <select id="upcoming-sort" data-upcoming="sort" aria-label="Порядок премьер">
+            <option value="date">По дате</option>
+            <option value="title">По названию</option>
+          </select>
+        </label>
+      </div>
     </div>
     <div class="db-status" id="upcoming-status" aria-live="polite"></div>
     <div class="grid upcoming-grid" id="upcoming-grid" aria-live="polite"></div>
@@ -366,15 +395,15 @@
 <div class="update-card" id="update-card" role="status" aria-live="polite" hidden></div>
 <div id="toasts" role="status" aria-live="polite" aria-atomic="false"></div>
 
-<script src="tags.js?v=1.39.0" defer></script>
-<script src="titles-ru-anilist.js?v=1.39.0" defer></script>
-<script src="titles-ru.js?v=1.39.0" defer></script>
-<script src="changelog.js?v=1.39.0" defer></script>
-<script src="core.js?v=1.39.0" defer></script>
-<script src="app-store.js?v=1.39.0" defer></script>
-<script src="app-api.js?v=1.39.0" defer></script>
-<script src="app-render.js?v=1.39.0" defer></script>
-<script src="app.js?v=1.39.0" defer></script>
+<script src="tags.js?v=1.40.0" defer></script>
+<script src="titles-ru-anilist.js?v=1.40.0" defer></script>
+<script src="titles-ru.js?v=1.40.0" defer></script>
+<script src="changelog.js?v=1.40.0" defer></script>
+<script src="core.js?v=1.40.0" defer></script>
+<script src="app-store.js?v=1.40.0" defer></script>
+<script src="app-api.js?v=1.40.0" defer></script>
+<script src="app-render.js?v=1.40.0" defer></script>
+<script src="app.js?v=1.40.0" defer></script>
 <button class="scroll-top" id="scroll-top" type="button" aria-label="Наверх" title="Наверх">↑</button>
 </body>
 </html>

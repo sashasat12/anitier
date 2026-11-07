@@ -119,6 +119,10 @@
     invalidateNotificationEpisodes,
     toast,
     renderModal,
+    switchModalTab,
+    closeDBMoreMenu,
+    toggleDBMoreMenu,
+    syncContinueToggle,
     renderExchange,
     openModal,
     closeModal,
@@ -2687,6 +2691,10 @@
           renderModal();
           break;
 
+        case 'modal-tab':
+          switchModalTab(el.dataset.tab, { focus: true });
+          break;
+
         case 'franchise-more': {
           if (!state.franchiseExpanded) state.franchiseExpanded = new Set();
           if (state.franchiseExpanded.has(id)) state.franchiseExpanded.delete(id);
@@ -2785,6 +2793,46 @@
           panel.hidden = !panel.hidden;
           el.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
           if (panel.hidden) closeFilterMenus();
+          break;
+        }
+
+        case 'db-more-menu':
+          toggleDBMoreMenu();
+          break;
+
+        case 'toggle-upcoming-filters': {
+          const panel = $('#upcoming-filters');
+          if (!panel) break;
+          panel.hidden = !panel.hidden;
+          el.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
+          break;
+        }
+
+        case 'upcoming-more-menu': {
+          const menu = $('#upcoming-more-menu');
+          if (!menu) break;
+          const willOpen = menu.hidden;
+          menu.hidden = !willOpen;
+          el.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+          break;
+        }
+
+        case 'list-more-menu': {
+          const listKey = el.dataset.list;
+          if (!listKey) break;
+          $$('.list-more-menu').forEach(menu => { if (menu.dataset.listMenu !== listKey) menu.hidden = true; });
+          const menu = document.querySelector(`.list-more-menu[data-list-menu="${listKey}"]`);
+          const willOpen = menu ? menu.hidden : false;
+          if (menu) {
+            menu.hidden = !willOpen;
+            el.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+          }
+          break;
+        }
+
+        case 'toggle-continue': {
+          state.continueCollapsed = !state.continueCollapsed;
+          syncContinueToggle();
           break;
         }
 
@@ -3315,6 +3363,23 @@
       if (!event.target || !event.target.closest) return;
       if (event.target.closest('.filter-multi')) return;
       closeFilterMenus();
+      /* Меню «⋯» закрывается по клику мимо, как и панели фильтров. */
+      const more = document.querySelector('.db-more');
+      if (more && !more.contains(event.target)) closeDBMoreMenu();
+      /* Меню «⋯» в списках закрывается по клику мимо. */
+      if (!event.target.closest('.list-more')) {
+        $$('.list-more-menu').forEach(menu => { menu.hidden = true; });
+        $$('.list-more-btn').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
+      }
+      /* Меню «⋯» на «Скоро выйдут». */
+      if (!event.target.closest('.upcoming-more')) {
+        const menu = document.getElementById('upcoming-more-menu');
+        if (menu && !menu.hidden) {
+          menu.hidden = true;
+          const btn = document.querySelector('[data-action="upcoming-more-menu"]');
+          if (btn) btn.setAttribute('aria-expanded', 'false');
+        }
+      }
     });
 
     /* На телефоне клавиатура тоже присылает resize (высота), но меню
@@ -3325,6 +3390,9 @@
       if (window.innerWidth === filterMenusWidth) return;
       filterMenusWidth = window.innerWidth;
       closeFilterMenus();
+      closeDBMoreMenu();
+      $$('.list-more-menu').forEach(menu => { menu.hidden = true; });
+      $$('.list-more-btn').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
     }, { passive: true });
 
     const upcomingSearch = $('#upcoming-search');
@@ -3520,6 +3588,24 @@
           return;
         }
       }
+      /* Стрелки в табах карточки тайтла — как в ARIA Tabs. */
+      const modalTabsRow = e.target && e.target.closest ? e.target.closest('.modal-tabs') : null;
+      if (modalTabsRow && (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === 'Home' || e.key === 'End')) {
+        const modalTabs = [...modalTabsRow.querySelectorAll('.modal-tab')];
+        const current = modalTabs.findIndex(node => node === e.target.closest('.modal-tab'));
+        if (current >= 0) {
+          e.preventDefault();
+          let next = current;
+          if (e.key === 'Home') next = 0;
+          else if (e.key === 'End') next = modalTabs.length - 1;
+          else {
+            const step = e.key === 'ArrowRight' ? 1 : -1;
+            next = (current + step + modalTabs.length) % modalTabs.length;
+          }
+          switchModalTab(modalTabs[next].dataset.tab, { focus: true });
+          return;
+        }
+      }
       /* Фокус не уходит за пределы открытого диалога: Tab по кругу внутри шторки. */
       if (e.key === 'Tab') {
         const dialogs = [...document.querySelectorAll('[role="dialog"]')];
@@ -3553,6 +3639,21 @@
       if (e.key === 'Escape') {
         if (document.querySelector('#db-filters [data-filter-panel]:not([hidden])')) {
           closeFilterMenus();
+          return;
+        }
+        if ($('.db-more-menu:not([hidden])')) {
+          closeDBMoreMenu();
+          return;
+        }
+        if ($('.list-more-menu:not([hidden])')) {
+          $$('.list-more-menu').forEach(menu => { menu.hidden = true; });
+          $$('.list-more-btn').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
+          return;
+        }
+        if ($('.upcoming-more-menu:not([hidden])')) {
+          $$('.upcoming-more-menu').forEach(menu => { menu.hidden = true; });
+          const btn = document.querySelector('[data-action="upcoming-more-menu"]');
+          if (btn) btn.setAttribute('aria-expanded', 'false');
           return;
         }
         if (state.quickMenu) {
@@ -4146,3 +4247,4 @@
     init();
   }
 })(window.AniTier);
+

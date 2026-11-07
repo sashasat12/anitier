@@ -1623,6 +1623,55 @@ button { font-family: inherit; }
 
 .modal-actions { display: flex; gap: 9px; flex-wrap: wrap; margin-bottom: 20px; }
 
+/* ---------- табы карточки тайтла ---------- */
+.modal-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 18px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, .18);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.modal-tabs::-webkit-scrollbar { display: none; }
+.modal-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  padding: 8px 13px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+}
+.modal-tab:hover { color: var(--text); background: rgba(255, 255, 255, .06); }
+.modal-tab.is-active {
+  color: #e2d8ff;
+  background: rgba(138, 92, 255, .22);
+}
+.modal-tab b {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(255, 77, 141, .18);
+  color: #ffb3cd;
+  font-size: 10px;
+  line-height: 15px;
+}
+.modal-tab[aria-selected="true"] b {
+  background: rgba(255, 77, 141, .3);
+  color: #ffd0e0;
+}
+.modal-pane:focus { outline: none; }
+
 .modal-section {
   padding: 14px;
   border-radius: 14px;
@@ -3410,6 +3459,127 @@ img { image-rendering: auto; }
   letter-spacing: .04em;
 }
 .franchise-more { margin-top: 12px; width: 100%; justify-content: center; }
+/* ---------- база: меню действий ---------- */
+.db-more { position: relative; }
+.db-more-btn { font-size: 18px; line-height: 1; }
+/* ---------- база: меню действий ---------- */
+.db-more { position: relative; }
+.db-more-btn { font-size: 18px; line-height: 1; }
+.db-more-menu {
+  position: absolute;
+  z-index: 50;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 220px;
+  padding: 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: #11151f;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .55);
+}
+.db-more-menu[hidden] { display: none; }
+.db-more-field { display: flex; flex-direction: column; gap: 5px; padding: 8px 9px 10px; }
+.db-more-field > span { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.db-more-field select { min-height: 36px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--text); font: inherit; font-size: 12.5px; }
+.db-more-item { display: flex; align-items: center; width: 100%; padding: 9px 10px; border: 0; border-radius: 9px; background: transparent; color: var(--text); text-align: left; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.db-more-item:hover { background: rgba(255, 255, 255, .06); }
+.db-more-item[aria-pressed="true"] { color: #ffb3cd; }
+.continue-toggle { margin-left: auto; flex: none; }
+.continue-row[hidden] { display: none !important; }
+/* ---------- списки: меню и сводка ---------- */
+.list-more { position: relative; }
+.list-more-btn { font-size: 18px; line-height: 1; }
+.list-more-menu {
+  position: absolute;
+  z-index: 50;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 190px;
+  padding: 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: #11151f;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .55);
+}
+.list-more-menu[hidden] { display: none; }
+.list-more-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.list-more-item:hover { background: rgba(255, 255, 255, .06); }
+.list-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.list-summary-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, .03);
+  font-size: 12px;
+  font-weight: 700;
+}
+.list-summary-pill b { color: #ffb3cd; }
+.tier-dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.list-summary-pill.is-total b { color: #fff; }
+
+/* ---------- «Скоро выйдут»: строка управления ---------- */
+.upcoming-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.upcoming-bar .search { flex: 1 1 260px; min-width: 0; }
+.upcoming-bar .search input { width: 100%; }
+.upcoming-more { position: relative; }
+.upcoming-more-menu {
+  position: absolute;
+  z-index: 50;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 190px;
+  padding: 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: #11151f;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .55);
+}
+.upcoming-more-menu[hidden] { display: none; }
+.upcoming-more-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.upcoming-more-item:hover { background: rgba(255, 255, 255, .06); }
+.upcoming-filters { margin-top: 0; }
 
 /* ============================================================
    AniTier Mobile — мобильная оболочка
@@ -3794,6 +3964,23 @@ body.mobile-app .tier-pick {
   height: 42px;
 }
 
+body.mobile-app .modal-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  margin: 0 0 14px;
+  background: #12151f;
+}
+body.mobile-app .modal-tab {
+  padding: 7px 9px;
+  font-size: 12px;
+  gap: 5px;
+}
+body.mobile-app .modal-tab b {
+  padding: 1px 5px;
+  font-size: 9.5px;
+}
+
 /* ---------- свои карточки и моменты ---------- */
 body.mobile-app .custom-content { padding: 20px 14px 24px; }
 body.mobile-app .backup-content { padding: 20px 14px 24px; }
@@ -3888,13 +4075,23 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
   body.mobile-app .install-btn { display: none !important; }
 }
 
-/* ---------- ""Скоро выйдут"" ---------- */
-body.mobile-app .upcoming-tools {
-  grid-template-columns: 1fr 1fr;
+/* ---------- "Скоро выйдут" ---------- */
+body.mobile-app .upcoming-bar {
   gap: 8px;
 }
-body.mobile-app .upcoming-tools .search {
-  grid-column: 1 / -1;
+body.mobile-app .upcoming-bar .search {
+  flex: 1 1 100%;
+}
+body.mobile-app .upcoming-bar .btn {
+  flex: 1 1 calc(50% - 4px);
+  min-height: 44px;
+  justify-content: center;
+}
+body.mobile-app .upcoming-more { flex: 0 0 auto; }
+body.mobile-app .upcoming-more .icon-btn { min-height: 44px; width: 44px; }
+body.mobile-app .upcoming-filters {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 body.mobile-app .upcoming-tools .filter-field {
   min-width: 0;
@@ -4142,19 +4339,26 @@ body.mobile-app .update-card-actions .btn { min-height: 34px; font-size: 12px; }
           <input id="search-input" type="search" placeholder="Поиск: «Фрирен», «Jujutsu Kaisen»…" autocomplete="off" list="search-history" aria-label="Поиск аниме">
           <datalist id="search-history"></datalist>
         </div>
-        <label class="lang-field" title="Язык поискового запроса">
-          <span>Язык</span>
-          <select id="search-lang" aria-label="Язык поиска">
-            <option value="auto">Авто</option>
-            <option value="ru">Русский</option>
-            <option value="en">English</option>
-            <option value="ja">日本語</option>
-          </select>
-        </label>
         <button class="btn btn-ghost filter-toggle" data-action="toggle-filters" aria-expanded="false" aria-controls="db-filters">
           Фильтры <b class="filter-count" id="filter-count" hidden>0</b>
         </button>
-        <button class="btn btn-ghost custom-new" data-action="new-custom">+ Своя карточка</button>
+        <div class="db-more">
+          <button type="button" class="icon-btn db-more-btn" data-action="db-more-menu" aria-haspopup="true" aria-expanded="false" aria-controls="db-more-menu" aria-label="Ещё действия на вкладке">⋯</button>
+          <div class="db-more-menu" id="db-more-menu" hidden>
+            <div class="db-more-field">
+              <span>Язык поиска</span>
+              <select id="search-lang" aria-label="Язык поиска">
+                <option value="auto">Авто</option>
+                <option value="ru">Русский</option>
+                <option value="en">English</option>
+                <option value="ja">日本語</option>
+              </select>
+            </div>
+            <button type="button" class="db-more-item" data-action="new-custom">＋ Своя карточка</button>
+            <button type="button" class="db-more-item" data-action="random-db">🎲 Случайное</button>
+            <button type="button" class="db-more-item" id="db-hide-mine" data-action="toggle-hide-mine" aria-pressed="false">Скрыть мои списки</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -4213,11 +4417,10 @@ body.mobile-app .update-card-actions .btn { min-height: 34px; font-size: 12px; }
       <button class="chip" data-action="mode" data-mode="airing">Сейчас выходит</button>
       <button class="chip" data-action="mode" data-mode="movie">Фильмы</button>
       <button class="chip" data-action="mode" data-mode="custom">Мои карточки</button>
-      <button class="chip" data-action="random-db">Случайное</button>
+      <button class="chip" data-action="random-db" style="display:none" aria-hidden="true">Случайное</button>
     </div>
 
     <div class="db-sort-row">
-      <button type="button" class="chip db-hide-toggle" id="db-hide-mine" data-action="toggle-hide-mine" aria-pressed="false">Скрыть мои списки</button>
       <label class="filter-field db-sort-field">
         <span>Сортировка</span>
         <select id="db-sort" data-db-sort aria-label="Сортировка базы">
@@ -4234,6 +4437,7 @@ body.mobile-app .update-card-actions .btn { min-height: 34px; font-size: 12px; }
       <div class="continue-head">
         <h2>Продолжить просмотр</h2>
         <span class="sub">Начатые тайтлы из «Просмотрено»</span>
+        <button type="button" class="chip continue-toggle" data-action="toggle-continue" aria-expanded="true" aria-controls="continue-row">Свернуть</button>
       </div>
       <div class="continue-row" id="continue-row"></div>
     </section>
@@ -4263,16 +4467,21 @@ body.mobile-app .update-card-actions .btn { min-height: 34px; font-size: 12px; }
     <div class="section-head">
       <div class="section-title">
         <h1>Просмотрено</h1>
-        <p class="sub">Разложи тайтлы по тирам — от S до F. Карточки перетаскиваются мышью или долгим нажатием.</p>
+        <p class="sub">Разложи тайтлы по тирам — от S до F.</p>
       </div>
       <div class="head-actions">
-        <button class="btn btn-ghost" data-action="open-stats">Статистика</button>
-        <button class="btn btn-ghost" data-action="exchange-export" data-list="watched">Экспорт</button>
-        <button class="btn btn-ghost" data-action="exchange-import">Импорт</button>
         <button class="btn btn-ghost" data-action="find-more">+ Добавить тайтл</button>
+        <div class="list-more">
+          <button type="button" class="icon-btn list-more-btn" data-action="list-more-menu" data-list="watched" aria-haspopup="true" aria-expanded="false" aria-label="Ещё действия">⋯</button>
+          <div class="list-more-menu" data-list-menu="watched" hidden>
+            <button type="button" class="list-more-item" data-action="open-stats">Статистика</button>
+            <button type="button" class="list-more-item" data-action="exchange-export" data-list="watched">Экспорт</button>
+            <button type="button" class="list-more-item" data-action="exchange-import">Импорт</button>
+          </div>
+        </div>
       </div>
     </div>
-    <div class="stats" id="stats-watched"></div>
+    <div class="list-summary" id="summary-watched" aria-live="polite"></div>
     <div class="filters list-tools" id="list-tools-watched" data-list-tools="watched"></div>
     <div class="db-status" id="list-status-watched" aria-live="polite"></div>
     <div class="tierlist" id="tiers-watched"></div>
@@ -4282,16 +4491,21 @@ body.mobile-app .update-card-actions .btn { min-height: 34px; font-size: 12px; }
   <section class="view" id="view-planned" role="tabpanel" aria-label="Запланировано посмотреть" hidden>
     <div class="section-head">
       <div class="section-title">
-        <h1>Запланировано посмотреть</h1>
-        <p class="sub">Собери вишлист и расставь приоритеты по тирам: что смотреть первым.</p>
+        <h1>Запланировано</h1>
+        <p class="sub">Вишлист и приоритеты по тирам.</p>
       </div>
       <div class="head-actions">
-        <button class="btn btn-ghost" data-action="exchange-export" data-list="planned">Экспорт</button>
-        <button class="btn btn-ghost" data-action="exchange-import">Импорт</button>
         <button class="btn btn-ghost" data-action="find-more">+ Добавить тайтл</button>
+        <div class="list-more">
+          <button type="button" class="icon-btn list-more-btn" data-action="list-more-menu" data-list="planned" aria-haspopup="true" aria-expanded="false" aria-label="Ещё действия">⋯</button>
+          <div class="list-more-menu" data-list-menu="planned" hidden>
+            <button type="button" class="list-more-item" data-action="exchange-export" data-list="planned">Экспорт</button>
+            <button type="button" class="list-more-item" data-action="exchange-import">Импорт</button>
+          </div>
+        </div>
       </div>
     </div>
-    <div class="stats" id="stats-planned"></div>
+    <div class="list-summary" id="summary-planned" aria-live="polite"></div>
     <div class="filters list-tools" id="list-tools-planned" data-list-tools="planned"></div>
     <div class="db-status" id="list-status-planned" aria-live="polite"></div>
     <div class="tierlist" id="tiers-planned"></div>
@@ -4306,38 +4520,50 @@ body.mobile-app .update-card-actions .btn { min-height: 34px; font-size: 12px; }
       </div>
       <button class="btn btn-ghost" data-action="refresh-upcoming">Обновить</button>
     </div>
-    <div class="filters upcoming-tools" id="upcoming-tools">
-      <div class="search">
-        <input id="upcoming-search" type="search" placeholder="Поиск премьеры: название, жанр, студия" autocomplete="off" aria-label="Поиск премьеры">
+    <div class="upcoming-tools" id="upcoming-tools">
+      <div class="upcoming-bar">
+        <div class="search">
+          <input id="upcoming-search" type="search" placeholder="Поиск премьеры: название, жанр, студия" autocomplete="off" aria-label="Поиск премьеры">
+        </div>
+        <button class="btn btn-ghost" type="button" id="upcoming-mine" data-action="toggle-upcoming-mine" aria-pressed="false">Только мои серии</button>
+        <button class="btn btn-ghost filter-toggle" type="button" data-action="toggle-upcoming-filters" aria-expanded="false" aria-controls="upcoming-filters">
+          Фильтры <b class="filter-count" id="upcoming-filter-count" hidden>0</b>
+        </button>
+        <div class="upcoming-more">
+          <button type="button" class="icon-btn" data-action="upcoming-more-menu" aria-haspopup="true" aria-expanded="false" aria-controls="upcoming-more-menu" aria-label="Ещё действия">⋯</button>
+          <div class="upcoming-more-menu" id="upcoming-more-menu" hidden>
+            <button type="button" class="upcoming-more-item" data-action="export-ics">Экспорт .ics</button>
+            <button type="button" class="upcoming-more-item" data-action="reset-upcoming">Сбросить фильтры</button>
+          </div>
+        </div>
       </div>
-      <label class="filter-field">
-        <span>Тип</span>
-        <select id="upcoming-type" data-upcoming="type" aria-label="Тип премьеры">
-          <option value="">Любой</option>
-        </select>
-      </label>
-      <label class="filter-field">
-        <span>Жанр</span>
-        <select id="upcoming-genre" data-upcoming="genre" aria-label="Жанр премьеры">
-          <option value="">Любой</option>
-        </select>
-      </label>
-      <label class="filter-field">
-        <span>Месяц</span>
-        <select id="upcoming-month" data-upcoming="month" aria-label="Месяц премьеры">
-          <option value="">Все месяцы</option>
-        </select>
-      </label>
-      <label class="filter-field">
-        <span>Порядок</span>
-        <select id="upcoming-sort" data-upcoming="sort" aria-label="Порядок премьер">
-          <option value="date">По дате</option>
-          <option value="title">По названию</option>
-        </select>
-      </label>
-      <button class="btn btn-ghost" type="button" id="upcoming-mine" data-action="toggle-upcoming-mine" aria-pressed="false">Только мои серии</button>
-      <button class="btn btn-ghost" type="button" data-action="export-ics">Экспорт .ics</button>
-      <button class="btn btn-ghost filter-reset" data-action="reset-upcoming">Сбросить</button>
+      <div class="filters upcoming-filters" id="upcoming-filters" hidden>
+        <label class="filter-field">
+          <span>Тип</span>
+          <select id="upcoming-type" data-upcoming="type" aria-label="Тип премьеры">
+            <option value="">Любой</option>
+          </select>
+        </label>
+        <label class="filter-field">
+          <span>Жанр</span>
+          <select id="upcoming-genre" data-upcoming="genre" aria-label="Жанр премьеры">
+            <option value="">Любой</option>
+          </select>
+        </label>
+        <label class="filter-field">
+          <span>Месяц</span>
+          <select id="upcoming-month" data-upcoming="month" aria-label="Месяц премьеры">
+            <option value="">Все месяцы</option>
+          </select>
+        </label>
+        <label class="filter-field">
+          <span>Порядок</span>
+          <select id="upcoming-sort" data-upcoming="sort" aria-label="Порядок премьер">
+            <option value="date">По дате</option>
+            <option value="title">По названию</option>
+          </select>
+        </label>
+      </div>
     </div>
     <div class="db-status" id="upcoming-status" aria-live="polite"></div>
     <div class="grid upcoming-grid" id="upcoming-grid" aria-live="polite"></div>
@@ -6275,6 +6501,20 @@ window.AniTierTitlesRu = {
 'use strict';
 
 window.AniTierChangelog = [
+  {
+    version: '1.40.0',
+    date: '7 ноября 2026',
+    title: 'Меньше кнопок — больше аниме',
+    items: [
+      'Карточка тайтла разложена по табам: «Обзор», «Сезоны», «Серии», «Моменты» — больше не нужно прокручивать всё подряд.',
+      'На вкладке «База» в одну строку остались поиск, «Фильтры» и «⋯»: язык поиска, своя карточка, случайное и скрытие списков переехали в меню.',
+      '«Продолжить просмотр» теперь сворачивается одной кнопкой.',
+      'В «Просмотрено» и «Запланировано» сводка по тирам собрана в строку, а экспорт, импорт и статистика — в меню «⋯».',
+      'На вкладке «Скоро выйдут» тип, жанр, месяц и порядок спрятаны в панель фильтров, экспорт .ics — в меню.',
+      'Счётчики в навигации появляются только когда в списке есть тайтлы.',
+      'Длинные списки сезонов по-прежнему сворачиваются, а текущая часть отмечена «Вы здесь».',
+    ],
+  },
   {
     version: '1.39.0',
     date: '7 ноября 2026',
@@ -8247,7 +8487,7 @@ window.AniTierChangelog = [
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.39.0';
+  const APP_VERSION = '1.40.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -9378,6 +9618,8 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       catalog: normalizeCatalogPreferences(),
     },
     modalId: null,
+    modalTab: 'overview',
+    continueCollapsed: false,
     quickMenu: null,
     command: { open: false, query: '', index: 0, results: [] },
     exchange: {
@@ -12042,6 +12284,39 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     $$('#db-filters [data-filter-menu]').forEach(button => button.setAttribute('aria-expanded', 'false'));
   }
 
+  /* Меню «⋯» на вкладке «База»: язык поиска, своя карточка, случайное. */
+  function closeDBMoreMenu() {
+    const menu = $('#db-more-menu');
+    if (!menu || menu.hidden) return;
+    menu.hidden = true;
+    const btn = menu.parentElement ? menu.parentElement.querySelector('.db-more-btn') : null;
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  }
+
+  function toggleDBMoreMenu() {
+    const menu = $('#db-more-menu');
+    if (!menu) return;
+    const willOpen = menu.hidden;
+    closeDBMoreMenu();
+    if (willOpen) {
+      menu.hidden = false;
+      const btn = menu.parentElement ? menu.parentElement.querySelector('.db-more-btn') : null;
+      if (btn) btn.setAttribute('aria-expanded', 'true');
+    }
+  }
+
+  /* «Продолжить просмотр» сворачивается кнопкой в шапке блока. */
+  function syncContinueToggle() {
+    const block = $('#continue-block');
+    const row = $('#continue-row');
+    if (!block || !row || block.hidden) return;
+    const toggle = block.querySelector('.continue-toggle');
+    if (!toggle) return;
+    row.hidden = Boolean(state.continueCollapsed);
+    toggle.textContent = state.continueCollapsed ? 'Развернуть' : 'Свернуть';
+    toggle.setAttribute('aria-expanded', state.continueCollapsed ? 'false' : 'true');
+  }
+
   function filterMenuLabel(key, values) {
     const labels = values.map(value => {
       const option = filterFieldOptions(key).find(item => item.value === value);
@@ -12206,6 +12481,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     const items = continueItems();
     block.hidden = !items.length;
     row.innerHTML = items.length ? items.map(continueCardHTML).join('') : '';
+    syncContinueToggle();
   }
 
   function renderDB() {
@@ -12638,6 +12914,16 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       mine.setAttribute('aria-pressed', on ? 'true' : 'false');
     }
 
+    /* Счётчик на кнопке фильтров и активное состояние. */
+    const activeCount = C.countActiveFilters(view.filters) + (view.month ? 1 : 0);
+    const badge = $('#upcoming-filter-count');
+    if (badge) {
+      badge.textContent = String(activeCount);
+      badge.hidden = activeCount === 0;
+    }
+    const toggle = document.querySelector('[data-action="toggle-upcoming-filters"]');
+    if (toggle) toggle.classList.toggle('is-active', activeCount > 0);
+
     const month = $('#upcoming-month');
     if (!month) return;
     const keys = [...new Set(items.map(a => C.upcomingMonthKey(a.airedFrom)).filter(Boolean))].sort();
@@ -12976,26 +13262,33 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     }
   }
 
+  /* Сводка по тирам — одна строка вместо четырёх карточек. */
   function renderStats(name, all = allIn(name), shown = all) {
-    const el = document.getElementById('stats-' + name);
+    const el = document.getElementById('summary-' + name);
     if (!el) return;
     const items = Array.isArray(shown) ? shown : all;
-    const eps = items.reduce((s, a) => s + (Number(a.episodes) || 0), 0);
+    const list = state.lists[name] || {};
+    const itemSet = new Set(items);
+    const tierPills = TIERS.map(t => {
+      const count = (list[t.id] || []).filter(a => itemSet.has(a)).length;
+      return `<span class="list-summary-pill"><span class="tier-dot tier-${t.id}" aria-hidden="true"></span>${esc(t.label)}<b>${count}</b></span>`;
+    }).join('');
     const scored = items.filter(a => typeof a.score === 'number');
     const avg = scored.length ? (scored.reduce((s, a) => s + a.score, 0) / scored.length).toFixed(2) : '—';
-    const topTier = items.filter(a => (state.lists[name].S || []).includes(a)).length;
-    el.innerHTML = `
-      <div class="stat"><b>${items.length}</b><span>тайтлов</span></div>
-      <div class="stat"><b>${eps}</b><span>серий (известных)</span></div>
-      <div class="stat"><b>${avg}</b><span>средний балл</span></div>
-      <div class="stat"><b>${topTier}</b><span>в тире S</span></div>`;
+    el.innerHTML = `<span class="list-summary-pill is-total">Показано<b>${items.length}</b></span>${tierPills}<span class="list-summary-pill">Средний балл<b>${avg}</b></span>`;
   }
 
   function updateCounters() {
     const w = $('#count-watched');
     const p = $('#count-planned');
-    if (w) w.textContent = allIn('watched').length;
-    if (p) p.textContent = allIn('planned').length;
+    /* Нулевые счётчики только шумят в навигации — показываем от одного. */
+    const set = (el, value) => {
+      if (!el) return;
+      el.textContent = String(value);
+      el.hidden = value === 0;
+    };
+    set(w, allIn('watched').length);
+    set(p, allIn('planned').length);
   }
 
   /* ---------------- свои карточки и моменты: формы ---------------- */
@@ -14265,6 +14558,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     const a = getAnime(id);
     if (!a) { toast('Не удалось открыть карточку'); return; }
     state.modalId = id;
+    state.modalTab = 'overview';
     renderModal();
     const modal = $('#modal');
     modal.hidden = false;
@@ -14299,6 +14593,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
 
   const FRANCHISE_PREVIEW = 8;
   const FRANCHISE_MAIN = new Set(['PREQUEL', 'PARENT', 'SEQUEL']);
+  const MODAL_TABS = ['overview', 'seasons', 'episodes', 'moments'];
 
   function franchiseCardHTML(link, opts = {}) {
     const item = link.anime;
@@ -14404,6 +14699,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
 
   function closeModal(opts = {}) {
     state.modalId = null;
+    state.modalTab = 'overview';
     const modal = $('#modal');
     if (modal) modal.hidden = true;
     if (App.revokeMomentUrls) App.revokeMomentUrls();
@@ -14411,6 +14707,28 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     if (state.tab === 'db') renderDB();
     else if (state.tab === 'watched' || state.tab === 'planned') renderTierList(state.tab);
     if (!opts.fromHash) writeLocationHash();
+  }
+
+  /* Переключение разделов карточки без перерисовки: изображения и прогресс
+     остаются на месте, меняются только видимые панели. */
+  function switchModalTab(tab, opts = {}) {
+    if (!MODAL_TABS.includes(tab)) return;
+    state.modalTab = tab;
+    $$('.modal-tab').forEach(node => {
+      const on = node.dataset.tab === tab;
+      node.classList.toggle('is-active', on);
+      node.setAttribute('aria-selected', on ? 'true' : 'false');
+      node.tabIndex = on ? 0 : -1;
+    });
+    $$('.modal-pane').forEach(node => {
+      node.hidden = node.id !== 'modal-pane-' + tab;
+    });
+    const panel = $('.modal-panel');
+    if (panel) panel.scrollTop = 0;
+    if (opts.focus) {
+      const active = $('.modal-tab.is-active');
+      if (active) active.focus({ preventScroll: true });
+    }
   }
 
   function renderModal() {
@@ -14481,6 +14799,14 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
         </div>`
       : '';
 
+    const related = state.franchiseById.get(a.id) || [];
+    const ownProgress = watchedCount(a.id);
+    const momentsCount = momentsFor(a.id).length;
+    const episodesCount = a.episodes ? `${ownProgress}/${a.episodes}` : (ownProgress ? String(ownProgress) : '');
+    const activeTab = ['overview', 'seasons', 'episodes', 'moments'].includes(state.modalTab) ? state.modalTab : 'overview';
+    const tabButton = (id, label, count) => `<button type="button" class="modal-tab${activeTab === id ? ' is-active' : ''}" role="tab" id="modal-tab-${id}" aria-selected="${activeTab === id ? 'true' : 'false'}" aria-controls="modal-pane-${id}" tabindex="${activeTab === id ? '0' : '-1'}" data-action="modal-tab" data-tab="${id}">${label}${count ? `<b>${esc(String(count))}</b>` : ''}</button>`;
+    const pane = (id, inner) => `<div class="modal-pane" id="modal-pane-${id}" role="tabpanel" aria-labelledby="modal-tab-${id}"${activeTab === id ? '' : ' hidden'}>${inner}</div>`;
+
     content.innerHTML = `
       <div class="modal-grid">
         <div class="modal-poster">
@@ -14500,36 +14826,43 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
             ${!a.custom ? `<button class="btn btn-ghost" data-action="tiktok-search" data-id="${a.id}">Искать в TikTok</button>` : ''}
           </div>
           ${customActions}
-          <div class="modal-section">
-            <div class="modal-label">Тир-лист</div>
-            <div class="tier-picker">${tiers}</div>
-            <p class="hint">${inW || inP
-              ? 'Выберите уровень — карточка переедет в выбранный тир.'
-              : 'Выберите тир, чтобы сразу добавить тайтл в «Просмотрено».'}</p>
+          <div class="modal-tabs" role="tablist" aria-label="Разделы карточки">
+            ${tabButton('overview', 'Обзор')}
+            ${a.custom ? '' : tabButton('seasons', 'Сезоны', related.length ? related.length + 1 : '')}
+            ${tabButton('episodes', 'Серии', episodesCount)}
+            ${tabButton('moments', 'Моменты', momentsCount || '')}
           </div>
-          ${renderFranchiseSection(a)}
-          <div class="modal-section modal-episodes">
+          ${pane('overview', `
+            <div class="modal-section">
+              <div class="modal-label">Тир-лист</div>
+              <div class="tier-picker">${tiers}</div>
+              <p class="hint">${inW || inP
+                ? 'Выберите уровень — карточка переедет в выбранный тир.'
+                : 'Выберите тир, чтобы сразу добавить тайтл в «Просмотрено».'}</p>
+            </div>
+            <section class="modal-section modal-synopsis-section">
+              <div class="modal-label">Описание</div>
+              ${synopsisControls}
+              <p class="modal-synopsis"${showTranslatedSynopsis ? ' data-translated="1" title="Автоматический перевод"' : ''}>${esc(synopsis)}</p>
+            </section>
+            ${genres ? `<section class="modal-section modal-genres">
+              <div class="modal-label">Жанры</div>
+              <div class="tags">${genres}</div>
+            </section>` : ''}
+            ${tagChips ? `<section class="modal-section modal-tags">
+              <div class="modal-label">Теги</div>
+              <div class="tags">${tagChips}</div>
+              <button class="btn btn-ghost" type="button" data-action="find-similar" data-id="${a.id}">Найти похожие</button>
+            </section>` : ''}
+            ${sourceLine}
+          `)}
+          ${a.custom ? '' : pane('seasons', renderFranchiseSection(a))}
+          ${pane('episodes', `<div class="modal-section modal-episodes">
             <div class="modal-label">Серии и прогресс</div>
             ${renderEpisodeBlock(a, 'modal')}
-          </div>
-          ${momentsHTML(a)}
-          <section class="modal-section modal-synopsis-section">
-            <div class="modal-label">Описание</div>
-            ${synopsisControls}
-            <p class="modal-synopsis"${showTranslatedSynopsis ? ' data-translated="1" title="Автоматический перевод"' : ''}>${esc(synopsis)}</p>
-          </section>
-          ${tagChips ? `<section class="modal-section modal-tags">
-            <div class="modal-label">Теги</div>
-            <div class="tags">${tagChips}</div>
-            <button class="btn btn-ghost" type="button" data-action="find-similar" data-id="${a.id}">Найти похожие</button>
-          </section>` : ''}
-          ${genres ? `<section class="modal-section modal-genres">
-            <div class="modal-label">Жанры</div>
-            <div class="tags">${genres}</div>
-          </section>` : ''}
-          ${sourceLine}
-        </div>
-      </div>`;
+          </div>`)}
+          ${pane('moments', momentsHTML(a))}
+        </div>      </div>`;
 
     const fresh = $('.modal-panel');
     if (fresh) fresh.scrollTop = scrollTop;
@@ -14716,6 +15049,10 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     openModal,
     closeModal,
     renderModal,
+    switchModalTab,
+    closeDBMoreMenu,
+    toggleDBMoreMenu,
+    syncContinueToggle,
     renderFranchiseSection,
     switchTab,
     updateOfflineBanner,
@@ -14846,6 +15183,10 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     invalidateNotificationEpisodes,
     toast,
     renderModal,
+    switchModalTab,
+    closeDBMoreMenu,
+    toggleDBMoreMenu,
+    syncContinueToggle,
     renderExchange,
     openModal,
     closeModal,
@@ -17414,6 +17755,10 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
           renderModal();
           break;
 
+        case 'modal-tab':
+          switchModalTab(el.dataset.tab, { focus: true });
+          break;
+
         case 'franchise-more': {
           if (!state.franchiseExpanded) state.franchiseExpanded = new Set();
           if (state.franchiseExpanded.has(id)) state.franchiseExpanded.delete(id);
@@ -17512,6 +17857,46 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
           panel.hidden = !panel.hidden;
           el.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
           if (panel.hidden) closeFilterMenus();
+          break;
+        }
+
+        case 'db-more-menu':
+          toggleDBMoreMenu();
+          break;
+
+        case 'toggle-upcoming-filters': {
+          const panel = $('#upcoming-filters');
+          if (!panel) break;
+          panel.hidden = !panel.hidden;
+          el.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
+          break;
+        }
+
+        case 'upcoming-more-menu': {
+          const menu = $('#upcoming-more-menu');
+          if (!menu) break;
+          const willOpen = menu.hidden;
+          menu.hidden = !willOpen;
+          el.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+          break;
+        }
+
+        case 'list-more-menu': {
+          const listKey = el.dataset.list;
+          if (!listKey) break;
+          $$('.list-more-menu').forEach(menu => { if (menu.dataset.listMenu !== listKey) menu.hidden = true; });
+          const menu = document.querySelector(`.list-more-menu[data-list-menu="${listKey}"]`);
+          const willOpen = menu ? menu.hidden : false;
+          if (menu) {
+            menu.hidden = !willOpen;
+            el.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+          }
+          break;
+        }
+
+        case 'toggle-continue': {
+          state.continueCollapsed = !state.continueCollapsed;
+          syncContinueToggle();
           break;
         }
 
@@ -18042,6 +18427,23 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       if (!event.target || !event.target.closest) return;
       if (event.target.closest('.filter-multi')) return;
       closeFilterMenus();
+      /* Меню «⋯» закрывается по клику мимо, как и панели фильтров. */
+      const more = document.querySelector('.db-more');
+      if (more && !more.contains(event.target)) closeDBMoreMenu();
+      /* Меню «⋯» в списках закрывается по клику мимо. */
+      if (!event.target.closest('.list-more')) {
+        $$('.list-more-menu').forEach(menu => { menu.hidden = true; });
+        $$('.list-more-btn').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
+      }
+      /* Меню «⋯» на «Скоро выйдут». */
+      if (!event.target.closest('.upcoming-more')) {
+        const menu = document.getElementById('upcoming-more-menu');
+        if (menu && !menu.hidden) {
+          menu.hidden = true;
+          const btn = document.querySelector('[data-action="upcoming-more-menu"]');
+          if (btn) btn.setAttribute('aria-expanded', 'false');
+        }
+      }
     });
 
     /* На телефоне клавиатура тоже присылает resize (высота), но меню
@@ -18052,6 +18454,9 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       if (window.innerWidth === filterMenusWidth) return;
       filterMenusWidth = window.innerWidth;
       closeFilterMenus();
+      closeDBMoreMenu();
+      $$('.list-more-menu').forEach(menu => { menu.hidden = true; });
+      $$('.list-more-btn').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
     }, { passive: true });
 
     const upcomingSearch = $('#upcoming-search');
@@ -18247,6 +18652,24 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
           return;
         }
       }
+      /* Стрелки в табах карточки тайтла — как в ARIA Tabs. */
+      const modalTabsRow = e.target && e.target.closest ? e.target.closest('.modal-tabs') : null;
+      if (modalTabsRow && (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === 'Home' || e.key === 'End')) {
+        const modalTabs = [...modalTabsRow.querySelectorAll('.modal-tab')];
+        const current = modalTabs.findIndex(node => node === e.target.closest('.modal-tab'));
+        if (current >= 0) {
+          e.preventDefault();
+          let next = current;
+          if (e.key === 'Home') next = 0;
+          else if (e.key === 'End') next = modalTabs.length - 1;
+          else {
+            const step = e.key === 'ArrowRight' ? 1 : -1;
+            next = (current + step + modalTabs.length) % modalTabs.length;
+          }
+          switchModalTab(modalTabs[next].dataset.tab, { focus: true });
+          return;
+        }
+      }
       /* Фокус не уходит за пределы открытого диалога: Tab по кругу внутри шторки. */
       if (e.key === 'Tab') {
         const dialogs = [...document.querySelectorAll('[role="dialog"]')];
@@ -18280,6 +18703,21 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       if (e.key === 'Escape') {
         if (document.querySelector('#db-filters [data-filter-panel]:not([hidden])')) {
           closeFilterMenus();
+          return;
+        }
+        if ($('.db-more-menu:not([hidden])')) {
+          closeDBMoreMenu();
+          return;
+        }
+        if ($('.list-more-menu:not([hidden])')) {
+          $$('.list-more-menu').forEach(menu => { menu.hidden = true; });
+          $$('.list-more-btn').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
+          return;
+        }
+        if ($('.upcoming-more-menu:not([hidden])')) {
+          $$('.upcoming-more-menu').forEach(menu => { menu.hidden = true; });
+          const btn = document.querySelector('[data-action="upcoming-more-menu"]');
+          if (btn) btn.setAttribute('aria-expanded', 'false');
           return;
         }
         if (state.quickMenu) {
@@ -18873,6 +19311,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     init();
   }
 })(window.AniTier);
+
 
 </script>
 <button class="scroll-top" id="scroll-top" type="button" aria-label="Наверх" title="Наверх">↑</button>
