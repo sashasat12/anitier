@@ -94,6 +94,18 @@ powershell -ExecutionPolicy Bypass -File .\graph-versions.ps1 -Diff v1.8.1 v1.9.
 - Ключи `localStorage`: `anitier.v1` — списки, прогресс, свои карточки (миниатюры), настройки; `anitier.moments.v1` — метаданные моментов; `anitier.translations.v1` — кэш переводов. Полные постеры и медиа моментов лежат в IndexedDB `anitier-media` (хранилища `images` и `media`) и в резервную копию не входят.
 - Google Drive доступен только на сайте и в PWA (`https://`/`http://`), в APK — файловая копия через системный диалог Android.
 
+## Релиз
+
+Каждый релиз — это не только коммит в `main`, но и тег с артефактом. Порядок:
+
+1. поднять `APP_VERSION` в `core.js`, добавить запись сверху в `changelog.js`, `versionCode`/`versionName` в `android/AndroidManifest.xml`, версию кеша в `mobile/sw.js`, `?v=` в `index.html` и `mobile/index.html`;
+2. `test.ps1` — все тесты зелёные;
+3. `build-phone.ps1`, затем `android/build-apk.ps1`;
+4. `git push origin main` — GitHub Pages обновляется сам;
+5. `gh release create vX.Y.Z AniTier.apk --title "AniTier X.Y.Z — ..." --notes-file notes.md` — APK прикрепляется к релизу, по нему работает проверка обновлений в приложении.
+
+Проверка после выкладки: `gh api repos/sashasat12/anitier/pages/builds/latest` (статус `built`) и версия в живом `index.html`.
+
 ## Git
 
 - Не коммитить: `android/anitier.keystore`, `*.keystore`, `*.jks`, `AniTier.apk.idsig`, `android/assets/index.html` (см. `.gitignore`).
