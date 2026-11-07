@@ -6554,7 +6554,14 @@ window.AniTierTitlesRu = {
 
 window.AniTierChangelog = [
   {
-    version: '1.40.2',
+    version: '1.40.3',
+    date: '7 ноября 2026',
+    title: 'Исправлены сезоны франшизы',
+    items: [
+      'Если у тайтла нет связей-продолжений в основной линии, все сезоны и части теперь показываются одним списком по дате выхода.',
+    ],
+  },
+  {
     date: '7 ноября 2026',
     title: 'Фильтры списков — под кнопкой',
     items: [
@@ -8558,7 +8565,7 @@ window.AniTierChangelog = [
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.40.2';
+  const APP_VERSION = '1.40.3';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -14737,12 +14744,33 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     const spinoffs = extras.filter(link => !films.includes(link) && !specials.includes(link));
 
     const expanded = Boolean(state.franchiseExpanded && state.franchiseExpanded.has(anime.id));
-    const groups = [
+    let groups = [
       { title: 'Основной сериал', list: chain, numbered: true },
       { title: 'Фильмы', list: films },
       { title: 'Спешлы и OVA', list: specials },
       { title: 'Ответвления', list: spinoffs },
     ];
+    /* Если нет явной главной линии — показываем всю франшизу по дате одним списком,
+       иначе долгие второстепенные блоки разрывают восприятие. */
+    if (!main.length && extras.length) {
+      groups = [
+        { title: 'Порядок просмотра', list: [...related, current].sort(byDate), numbered: true },
+      ];
+    } else if (main.length && !films.length && !specials.length && !spinoffs.length) {
+      /* Всё относится к основной линии — не плодим пустые заголовки. */
+      groups = [
+        { title: 'Основной сериал', list: chain, numbered: true },
+      ];
+    } else if (main.length === 0 && extras.length === 0) {
+      groups = [];
+    } else if (main.length === 0) {
+      groups = [
+        { title: 'Порядок просмотра', list: chain, numbered: false },
+        { title: 'Фильмы', list: films },
+        { title: 'Спешлы и OVA', list: specials },
+        { title: 'Ответвления', list: spinoffs },
+      ];
+    }
     const hidden = groups.reduce((total, group) => total + Math.max(0, group.list.length - FRANCHISE_PREVIEW), 0);
     const sections = groups.map(group => {
       if (!group.list.length) return '';

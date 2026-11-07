@@ -2592,12 +2592,33 @@
     const spinoffs = extras.filter(link => !films.includes(link) && !specials.includes(link));
 
     const expanded = Boolean(state.franchiseExpanded && state.franchiseExpanded.has(anime.id));
-    const groups = [
+    let groups = [
       { title: 'Основной сериал', list: chain, numbered: true },
       { title: 'Фильмы', list: films },
       { title: 'Спешлы и OVA', list: specials },
       { title: 'Ответвления', list: spinoffs },
     ];
+    /* Если нет явной главной линии — показываем всю франшизу по дате одним списком,
+       иначе долгие второстепенные блоки разрывают восприятие. */
+    if (!main.length && extras.length) {
+      groups = [
+        { title: 'Порядок просмотра', list: [...related, current].sort(byDate), numbered: true },
+      ];
+    } else if (main.length && !films.length && !specials.length && !spinoffs.length) {
+      /* Всё относится к основной линии — не плодим пустые заголовки. */
+      groups = [
+        { title: 'Основной сериал', list: chain, numbered: true },
+      ];
+    } else if (main.length === 0 && extras.length === 0) {
+      groups = [];
+    } else if (main.length === 0) {
+      groups = [
+        { title: 'Порядок просмотра', list: chain, numbered: false },
+        { title: 'Фильмы', list: films },
+        { title: 'Спешлы и OVA', list: specials },
+        { title: 'Ответвления', list: spinoffs },
+      ];
+    }
     const hidden = groups.reduce((total, group) => total + Math.max(0, group.list.length - FRANCHISE_PREVIEW), 0);
     const sections = groups.map(group => {
       if (!group.list.length) return '';
