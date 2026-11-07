@@ -2028,6 +2028,9 @@
       || Boolean(state.statsScreen && state.statsScreen.open)
       || Boolean(state.backup && state.backup.open);
     document.body.classList.toggle('no-scroll', locked);
+    /* Скроллбар html тоже отдаёт полосу ширины: без этого нижний лист
+       на Android-WebView не достаёт до правого края экрана. */
+    if (document.documentElement) document.documentElement.classList.toggle('no-scroll', locked);
   }
 
   function tierShort(tier) {
