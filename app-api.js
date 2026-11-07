@@ -316,6 +316,60 @@
     }
   }
 
+  async function fetchAnimeFranchise(anime, opts = {}) {
+    if (!anime || anime.custom) return [];
+    const depth = Number(opts.depth) || 2;
+    const limit = Number(opts.limit) || 60;
+    const seen = new Set();
+    const queue = [];
+    const rootId = anime.id;
+    seen.add(rootId);
+    queue.push({ anime: anime, depth: 0 });
+    const collected = new Map();
+    collected.set(rootId, anime);
+    let head = 0;
+    while (head < queue.length && collected.size < limit) {
+      const current = queue[head++];
+      const relations = await fetchAnimeRelations(current.anime).catch(() => []);
+      for (const rel of Array.isArray(relations) ? relations : []) {
+        if (!rel || !rel.anime) continue;
+        const relAnime = rel.anime;
+        const relId = relAnime.id;
+        if (!relId) continue;
+        if (!collected.has(relId)) {
+          collected.set(relId, relAnime);
+          if (current.depth + 1 < depth && (rel.relationType === 'PREQUEL' || rel.relationType === 'PARENT' || rel.relationType === 'SEQUEL')) {
+            queue.push({ anime: relAnime, depth: current.depth + 1 });
+          }
+        }
+      }
+    }
+    /* Собираем все связи между найденными узлами. */
+    const graph = [];
+    const ids = [...collected.keys()];
+    for (const id of ids) {
+      const node = collected.get(id);
+      const relations = await fetchAnimeRelations(node).catch(() => []);
+      for (const rel of Array.isArray(relations) ? relations : []) {
+        if (!rel || !rel.anime) continue;
+        if (!collected.has(rel.anime.id)) continue;
+        if (rel.anime.id === id) continue;
+        graph.push({ from: id, relationType: rel.relationType, to: rel.anime.id, anime: rel.anime });
+      }
+    }
+    /* Возвращаем все найденные части, кроме корня, в формате связей. */
+    const out = [];
+    const seenRel = new Set();
+    for (const edge of graph) {
+      if (edge.to === rootId) continue;
+      if (seenRel.has(edge.to)) continue;
+      seenRel.add(edge.to);
+      out.push({ relationType: edge.relationType, anime: edge.anime });
+    }
+    if (out.length) return out;
+    return fetchAnimeRelations(anime);
+  }
+
   async function fetchAnimeRelations(anime) {
     if (!anime || anime.custom) return [];
     if (Array.isArray(anime.relations)) return anime.relations;
@@ -336,6 +390,7 @@
     anime.relations = mapped.relations;
     return anime.relations;
   }
+
 
   function scheduleDate(airingAt) {
     const seconds = Number(airingAt);
@@ -1446,6 +1501,7 @@
     mapAniList,
     mapTrackedAniList,
     fetchAnimeRelations,
+    fetchAnimeFranchise,
     mapKitsu,
     fetchWithTimeout,
     fetchLatestRelease,

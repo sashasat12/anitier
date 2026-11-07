@@ -788,4 +788,82 @@
     const sw = await (await fetch('../mobile/sw.js')).text();
     T.assert(/const CACHE = 'anitier-mobile-v\d+';/.test(sw), 'В service worker задана версия кеша');
   });
+
+  T.test('core: группировка франшизы раскладывает части и сортирует по дате', () => {
+    const C = core();
+    const make = (id, type, year, airedFrom, relationType) => ({
+      relationType,
+      anime: { id, title: 'Тайтл ' + id, type, year, airedFrom },
+    });
+    const related = [
+      make(2, 'TV', 2024, '2024-01-01', 'SEQUEL'),
+      make(1, 'TV', 1998, '1998-07-26', 'PREQUEL'),
+      make(3, 'Movie', 2003, '2003-03-01', 'SIDE_STORY'),
+      make(4, 'Movie', 2001, '2001-03-01', 'SIDE_STORY'),
+      make(5, 'Special', 2010, '2010-08-01', 'SIDE_STORY'),
+      make(6, 'TV', 2012, '2012-01-01', 'SUMMARY'),
+      make(7, 'TV', 2015, '2015-01-01', 'ALTERNATIVE'),
+      make(8, 'ONA', 2016, '2016-01-01', 'SPIN_OFF'),
+    ];
+    const current = { id: 9, title: 'Текущий', type: 'TV', year: 1999, airedFrom: '1999-10-20' };
+    const built = C.buildFranchiseGroups(related, current);
+
+    const titles = built.groups.map(group => group.title);
+    T.eq(titles.join('|'), 'Основной сериал|Фильмы|Спешлы и OVA|Пересказы|Ответвления|Альтернативы', 'Группы идут в ожидаемом порядке');
+
+    const main = built.groups.find(group => group.id === 'main');
+    T.eq(main.list.map(link => link.anime.id).join(','), '1,9,2', 'Текущая часть встаёт между приквелом и продолжением');
+    T.eq(main.numbered, true, 'Основная линия нумеруется');
+
+    const films = built.groups.find(group => group.id === 'films');
+    T.eq(films.list.map(link => link.anime.id).join(','), '4,3', 'Фильмы идут по дате выхода');
+
+    T.eq(built.total, 9, 'Счётчик учитывает все части и текущую');
+    T.eq(built.preview, C.FRANCHISE_PREVIEW, 'Размер предпросмотра берётся из константы');
+  });
+
+  T.test('core: без основной линии франшиза идёт одним списком по дате', () => {
+    const C = core();
+    const make = (id, type, year, relationType) => ({
+      relationType,
+      anime: { id, title: 'Часть ' + id, type, year, airedFrom: year + '-01-01' },
+    });
+    const related = [
+      make(2, 'TV', 2005, 'SPIN_OFF'),
+      make(1, 'Movie', 2003, 'SIDE_STORY'),
+      make(3, 'Special', 2004, 'SIDE_STORY'),
+    ];
+    const current = { id: 9, title: 'Текущий', type: 'TV', year: 2004, airedFrom: '2004-06-01' };
+    const built = C.buildFranchiseGroups(related, current);
+
+    T.eq(built.groups.length, 1, 'Одна группа вместо четырёх');
+    T.eq(built.groups[0].id, 'all');
+    T.eq(built.groups[0].title, 'Порядок просмотра');
+    T.eq(built.groups[0].list.map(link => link.anime.id).join(','), '1,3,9,2', 'Порядок строго по дате');
+  });
+
+  T.test('core: классификация связей понимает format и type', () => {
+    const C = core();
+    T.eq(C.classifyFranchise({ relationType: 'SUMMARY', anime: { type: 'TV' } }), 'summary');
+    T.eq(C.classifyFranchise({ relationType: 'ALTERNATIVE', anime: { type: 'TV' } }), 'alternative');
+    T.eq(C.classifyFranchise({ relationType: 'SIDE_STORY', anime: { type: 'Movie' } }), 'film', 'Тип Movie из списка считается фильмом');
+    T.eq(C.classifyFranchise({ relationType: 'SIDE_STORY', anime: { format: 'MOVIE' } }), 'film', 'Формат MOVIE считается фильмом');
+    T.eq(C.classifyFranchise({ relationType: 'SIDE_STORY', anime: { type: 'Special' } }), 'special');
+    T.eq(C.classifyFranchise({ relationType: 'SPIN_OFF', anime: { type: 'TV' } }), 'spinoff');
+    T.eq(C.classifyFranchise({ relationType: 'SEQUEL', anime: { type: 'TV' } }), 'main');
+    T.eq(C.classifyFranchise({ relationType: 'ADAPTATION', anime: { type: 'TV' } }), 'extras');
+  });
+
+  T.test('core: части без даты уходят в конец списка', () => {
+    const C = core();
+    T.eq(C.franchiseDateKey({ anime: { airedFrom: '' } }), Number.MAX_SAFE_INTEGER);
+    T.eq(C.franchiseDateKey({ anime: {} }), Number.MAX_SAFE_INTEGER);
+    const withDate = C.franchiseDateKey({ anime: { airedFrom: '2020-01-01' } });
+    T.assert(Number.isFinite(withDate) && withDate < Number.MAX_SAFE_INTEGER, 'Дата разбирается в число');
+    const built = C.buildFranchiseGroups([
+      { relationType: 'SEQUEL', anime: { id: 1, title: 'Без даты' } },
+      { relationType: 'PREQUEL', anime: { id: 2, title: 'С датой', airedFrom: '2019-01-01' } },
+    ], { id: 3, title: 'Текущий', airedFrom: '2020-01-01' });
+    T.eq(built.groups[0].list.map(link => link.anime.id).join(','), '2,3,1', 'Бездатные части в конце');
+  });
 })();

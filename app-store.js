@@ -15,6 +15,8 @@
   if (!C) throw new Error('core.js не загружен');
 
   const LS_KEY = 'anitier.v1';
+  /* Версия схемы сохранения. Старые копии без поля читаются как 0. */
+  const SCHEMA_VERSION = 1;
   const MOMENTS_KEY = 'anitier.moments.v1';
   const TRANSLATIONS_KEY = 'anitier.translations.v1';
   const CUSTOM_LIMIT = 100;
@@ -534,6 +536,8 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     franchiseLoading: new Set(),
     franchiseErrors: new Map(),
     franchiseExpanded: new Set(),
+    franchiseFullById: new Map(),
+    franchiseFullLoading: new Set(),
     synopsisModes: new Map(),
     synopsisTranslating: new Set(),
     customCards: [],
@@ -545,8 +549,8 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     settingsScreen: { open: false, checking: false, message: '', error: false, latest: null },
     updateCard: null,
     lists: { watched: emptyTiers(), planned: emptyTiers() },
-    /* Поиск и фильтры внутри «Просмотрено» и «Запланировано». Не сохраняются:
-       после перезапуска тир-лист снова показывает все тайтлы. */
+    /* Поиск и фильтры внутри «Просмотрено» и «Запланировано». Фильтры и
+       порядок сохраняются между запусками, поисковый запрос — нет. */
     listViews: { watched: emptyListView(), planned: emptyListView() },
     progress: {},
     epInfo: {},
@@ -599,8 +603,17 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     return o;
   }
 
+  function normalizeListView(raw) {
+    const value = raw && typeof raw === 'object' ? raw : {};
+    return {
+      query: '',
+      filters: C.normalizeFilters(value.filters),
+      sort: C.normalizeListSort(value.sort),
+    };
+  }
+
   function emptyListView() {
-    return { query: '', filters: C.normalizeFilters(C.DEFAULT_FILTERS), sort: 'default' };
+    return normalizeListView(null);
   }
 
   function createAltSearchState() {
@@ -892,12 +905,17 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     }
 
     const cleanState = {
+      schemaVersion: SCHEMA_VERSION,
       watched: rawState.watched && typeof rawState.watched === 'object' ? rawState.watched : {},
       planned: rawState.planned && typeof rawState.planned === 'object' ? rawState.planned : {},
       customCards: Array.isArray(rawState.customCards) ? rawState.customCards : [],
       progress: rawState.progress && typeof rawState.progress === 'object' ? rawState.progress : {},
       epInfo: rawState.epInfo && typeof rawState.epInfo === 'object' ? rawState.epInfo : {},
       seenNotifications: Array.isArray(rawState.seenNotifications) ? rawState.seenNotifications : [],
+      listViews: {
+        watched: normalizeListView(rawState.listViews && rawState.listViews.watched),
+        planned: normalizeListView(rawState.listViews && rawState.listViews.planned),
+      },
       settings: rawState.settings && typeof rawState.settings === 'object'
         ? {
           searchLang: C.normalizeSearchLang(rawState.settings.searchLang),
@@ -1090,6 +1108,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       state.customCards = [];
       state.settings.searchLang = 'auto';
       state.settings.catalog = normalizeCatalogPreferences();
+      state.listViews = { watched: emptyListView(), planned: emptyListView() };
       return;
     }
     state.lists.watched = normalizeTiers(raw.watched);
@@ -1109,6 +1128,11 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     state.settings.updateCheck = normalizeUpdateCheck(raw.settings && raw.settings.updateCheck);
     state.settings.lastUpdateCheck = Number(raw.settings && raw.settings.lastUpdateCheck) || 0;
     state.settings.catalog = normalizeCatalogPreferences(raw.settings && raw.settings.catalog);
+    /* Старые сохранения без listViews читаются как «все фильтры сброшены». */
+    state.listViews = {
+      watched: normalizeListView(raw.listViews && raw.listViews.watched),
+      planned: normalizeListView(raw.listViews && raw.listViews.planned),
+    };
 
     state.progress = {};
     if (raw.progress && typeof raw.progress === 'object') {
@@ -1137,12 +1161,17 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
         if (val && Number(val.fetchedAt) > cutoff) epInfo[key] = val;
       }
       localStorage.setItem(LS_KEY, JSON.stringify({
+        schemaVersion: SCHEMA_VERSION,
         watched: state.lists.watched,
         planned: state.lists.planned,
         customCards: state.customCards,
         progress: state.progress,
         epInfo,
         seenNotifications: [...state.seenNotifications],
+        listViews: {
+          watched: normalizeListView(state.listViews && state.listViews.watched),
+          planned: normalizeListView(state.listViews && state.listViews.planned),
+        },
         settings: {
           searchLang: C.normalizeSearchLang(state.settings.searchLang),
           titleLang: state.settings.titleLang === 'original' ? 'original' : 'ru',

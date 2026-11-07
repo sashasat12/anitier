@@ -892,6 +892,24 @@
     saveState();
   }
 
+  /* Панели фильтров списков и «Скоро выйдут» закрываются по Esc, клику мимо
+     и повороту экрана — как меню «⋯». */
+  function closeListFilterPanels() {
+    for (const name of ['watched', 'planned']) {
+      const panel = document.getElementById('list-filters-' + name);
+      if (!panel || panel.hidden) continue;
+      panel.hidden = true;
+      const btn = document.querySelector(`[data-action="toggle-list-filters"][data-list="${name}"]`);
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    }
+    const upcoming = document.getElementById('upcoming-filters');
+    if (upcoming && !upcoming.hidden) {
+      upcoming.hidden = true;
+      const btn = document.querySelector('[data-action="toggle-upcoming-filters"]');
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    }
+  }
+
   function restoreCatalogPreferences() {
     const catalog = state.settings.catalog || {};
     state.tab = catalog.tab || 'db';
@@ -2688,8 +2706,40 @@
         case 'retry-franchise':
           state.franchiseById.delete(id);
           state.franchiseErrors.delete(id);
+          if (state.franchiseFullById) state.franchiseFullById.delete(id);
+          if (state.franchiseFullLoading) state.franchiseFullLoading.delete(id);
           renderModal();
           break;
+
+        case 'franchise-full': {
+          const anime = getAnime(id);
+          if (!anime) break;
+          if (!state.franchiseFullLoading) state.franchiseFullLoading = new Set();
+          if (state.franchiseFullLoading.has(id)) break;
+          state.franchiseFullLoading.add(id);
+          renderModal();
+          Promise.resolve((App.fetchAnimeFranchise || App.fetchAnimeRelations)(anime, { depth: 2 }))
+            .then(relations => {
+              const allowed = new Set(['PREQUEL', 'SEQUEL', 'PARENT', 'SIDE_STORY', 'SPIN_OFF', 'SUMMARY', 'ALTERNATIVE', 'ALTERNATIVE_SETTING', 'ADAPTATION', 'CHARACTER', 'OTHER']);
+              const seen = new Set();
+              const links = [];
+              for (const relation of Array.isArray(relations) ? relations : []) {
+                if (!relation || !relation.anime) continue;
+                if (relation.anime.id === anime.id) continue;
+                if (seen.has(relation.anime.id)) continue;
+                seen.add(relation.anime.id);
+                links.push({ relationType: relation.relationType, anime: relation.anime });
+              }
+              if (!state.franchiseFullById) state.franchiseFullById = new Map();
+              state.franchiseFullById.set(id, links);
+            })
+            .catch(() => {})
+            .finally(() => {
+              if (state.franchiseFullLoading) state.franchiseFullLoading.delete(id);
+              if (state.modalId === id) renderModal();
+            });
+          break;
+        }
 
         case 'modal-tab':
           switchModalTab(el.dataset.tab, { focus: true });
@@ -2970,6 +3020,7 @@
             filters: C.normalizeFilters(C.DEFAULT_FILTERS),
             sort: C.normalizeListSort(previous.sort),
           };
+          saveState();
           renderTierList(name);
           break;
         }
@@ -3390,6 +3441,23 @@
           if (btn) btn.setAttribute('aria-expanded', 'false');
         }
       }
+      /* Панели фильтров закрываются кликом мимо своей панели инструментов. */
+      for (const name of ['watched', 'planned']) {
+        const panel = document.getElementById('list-filters-' + name);
+        if (!panel || panel.hidden) continue;
+        const tools = panel.parentElement;
+        if (tools && tools.contains(event.target)) continue;
+        panel.hidden = true;
+        const btn = document.querySelector(`[data-action="toggle-list-filters"][data-list="${name}"]`);
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+      }
+      const upcomingFilters = document.getElementById('upcoming-filters');
+      if (upcomingFilters && !upcomingFilters.hidden
+        && !(upcomingFilters.parentElement && upcomingFilters.parentElement.contains(event.target))) {
+        upcomingFilters.hidden = true;
+        const btn = document.querySelector('[data-action="toggle-upcoming-filters"]');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+      }
     });
 
     /* На телефоне клавиатура тоже присылает resize (высота), но меню
@@ -3401,6 +3469,7 @@
       filterMenusWidth = window.innerWidth;
       closeFilterMenus();
       closeDBMoreMenu();
+      closeListFilterPanels();
       $$('.list-more-menu').forEach(menu => { menu.hidden = true; });
       $$('.list-more-btn').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
     }, { passive: true });
@@ -3524,6 +3593,7 @@
           ...view.filters,
           [listField.dataset.listFilter]: listField.value,
         });
+        saveState();
         renderTierList(name);
         return;
       }
@@ -3535,6 +3605,7 @@
           state.listViews[name] = { query: '', filters: C.normalizeFilters(C.DEFAULT_FILTERS), sort: 'default' };
         }
         state.listViews[name].sort = C.normalizeListSort(listSort.value);
+        saveState();
         renderTierList(name);
         return;
       }
@@ -3649,6 +3720,11 @@
       if (e.key === 'Escape') {
         if (document.querySelector('#db-filters [data-filter-panel]:not([hidden])')) {
           closeFilterMenus();
+          return;
+        }
+        if (['list-filters-watched', 'list-filters-planned', 'upcoming-filters']
+          .some(id => { const node = document.getElementById(id); return node && !node.hidden; })) {
+          closeListFilterPanels();
           return;
         }
         if ($('.db-more-menu:not([hidden])')) {

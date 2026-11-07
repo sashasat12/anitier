@@ -3597,6 +3597,9 @@ img { image-rendering: auto; }
 .upcoming-more-item:hover { background: rgba(255, 255, 255, .06); }
 .upcoming-filters { margin-top: 0; }
 
+.franchise-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
+.franchise-actions .hint{margin:0}
+
 /* ============================================================
    AniTier Mobile — мобильная оболочка
    Подключается после styles.css и только для /mobile/
@@ -6554,6 +6557,18 @@ window.AniTierTitlesRu = {
 
 window.AniTierChangelog = [
   {
+    version: '1.41.0',
+    date: '7 ноября 2026',
+    title: 'Франшиза целиком и фильтры, которые помнятся',
+    items: [
+      'Карточка собирает франшизу на два шага по цепочке сезонов, а кнопка «Показать всю франшизу» догружает остальные части: фильмы, спешлы, пересказы и альтернативы теперь не теряются.',
+      'Группировка сезонов переехала в общую логику и покрыта тестами; спин-оффы больше не путаются со спешлами.',
+      'Фильтры и порядок карточек в «Просмотрено» и «Запланировано» сохраняются между запусками, поисковый запрос остаётся разовым.',
+      'Панели фильтров списков и «Скоро выйдут» закрываются по Esc, клику мимо и повороту экрана.',
+      'В сохранении появилась версия схемы — задел на будущие обновления данных.',
+    ],
+  },
+  {
     version: '1.40.4',
     date: '7 ноября 2026',
     title: 'Сезоны снова загружаются',
@@ -8575,7 +8590,7 @@ window.AniTierChangelog = [
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.40.4';
+  const APP_VERSION = '1.41.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -8629,6 +8644,99 @@ window.AniTierChangelog = [
    * Насколько прокрутить страницу за кадр, если палец или курсор у края экрана.
    * Возвращает 0 в спокойной зоне, положительное число — вниз, отрицательное — вверх.
    */
+
+
+
+  const FRANCHISE_MAIN = ['PREQUEL', 'PARENT', 'SEQUEL'];
+  const FRANCHISE_PREVIEW = 8;
+
+  function franchiseDateKey(link) {
+    if (!link || !link.anime) return Number.MAX_SAFE_INTEGER;
+    const airedFrom = link.anime.airedFrom || link.anime.startDate || '';
+    const stamp = Date.parse(String(airedFrom));
+    if (Number.isFinite(stamp)) return stamp;
+    const year = Number(link.anime.year) || Number(link.anime.seasonYear) || 0;
+    if (year) {
+      const parsed = Date.parse(year + '-01-01');
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return Number.MAX_SAFE_INTEGER;
+  }
+
+  function isFranchiseMain(type) {
+    return FRANCHISE_MAIN.indexOf(String(type || '')) >= 0;
+  }
+
+  function classifyFranchise(link) {
+    if (!link || !link.anime) return 'extras';
+    const type = String(link.relationType || '');
+    const format = String(link.anime.format || link.anime.type || '').toUpperCase();
+    if (type === 'SUMMARY') return 'summary';
+    if (type === 'ALTERNATIVE' || type === 'ALTERNATIVE_SETTING') return 'alternative';
+    if (type === 'SPIN_OFF') return 'spinoff';
+    if (type === 'SIDE_STORY') {
+      if (format === 'MOVIE' || format === 'ФИЛЬМ') return 'film';
+      if (format === 'OVA' || format === 'ONA' || format === 'SPECIAL' || format === 'TV_SPECIAL' || format === 'MUSIC') return 'special';
+      return 'spinoff';
+    }
+    if (type === 'ADAPTATION' || type === 'CHARACTER' || type === 'OTHER') return 'extras';
+    if (format === 'MOVIE' || format === 'ФИЛЬМ') return 'film';
+    if (format === 'OVA' || format === 'ONA' || format === 'SPECIAL' || format === 'TV_SPECIAL') return 'special';
+    return isFranchiseMain(type) ? 'main' : 'spinoff';
+  }
+
+  function buildFranchiseGroups(related, currentAnime) {
+    if (!Array.isArray(related)) related = [];
+    const byDate = (a, b) => (franchiseDateKey(a) - franchiseDateKey(b)) || ((a.anime && a.anime.id) || 0) - ((b.anime && b.anime.id) || 0);
+    const current = currentAnime ? { anime: currentAnime, relationType: 'CURRENT' } : null;
+    const mainLinks = related.filter(link => isFranchiseMain(link && link.relationType)).slice().sort(byDate);
+    const extras = related.filter(link => !isFranchiseMain(link && link.relationType)).slice().sort(byDate);
+
+    const films = [];
+    const specials = [];
+    const spinoffs = [];
+    const summaries = [];
+    const alternatives = [];
+    const others = [];
+    for (const link of extras) {
+      const kind = classifyFranchise(link);
+      if (kind === 'film') films.push(link);
+      else if (kind === 'special') specials.push(link);
+      else if (kind === 'summary') summaries.push(link);
+      else if (kind === 'alternative') alternatives.push(link);
+      else if (kind === 'spinoff') spinoffs.push(link);
+      else others.push(link);
+    }
+
+    let groups = [];
+    if (mainLinks.length || current) {
+      const chain = mainLinks.slice();
+      if (current) chain.push(current);
+      groups.push({ id: 'main', title: 'Основной сериал', list: chain.slice().sort(byDate), numbered: true });
+    }
+    if (films.length) groups.push({ id: 'films', title: 'Фильмы', list: films });
+    if (specials.length) groups.push({ id: 'specials', title: 'Спешлы и OVA', list: specials });
+    if (summaries.length) groups.push({ id: 'summaries', title: 'Пересказы', list: summaries });
+    if (spinoffs.length) groups.push({ id: 'spinoffs', title: 'Ответвления', list: spinoffs });
+    if (alternatives.length) groups.push({ id: 'alternatives', title: 'Альтернативы', list: alternatives });
+    if (others.length) groups.push({ id: 'others', title: 'Другие', list: others });
+
+    if (!mainLinks.length && extras.length && current) {
+      groups = [{ id: 'all', title: 'Порядок просмотра', list: [...related, current].slice().sort(byDate), numbered: true }];
+    } else if (mainLinks.length && films.length === 0 && specials.length === 0 && summaries.length === 0 && spinoffs.length === 0 && alternatives.length === 0 && others.length === 0) {
+      groups = [{ id: 'main', title: 'Основной сериал', list: ([...mainLinks, current].filter(Boolean)).slice().sort(byDate), numbered: true }];
+    } else if (!mainLinks.length && extras.length === 0 && current) {
+      groups = [];
+    }
+
+    let total = 0;
+    for (let i = 0; i < groups.length; i += 1) {
+      total += Array.isArray(groups[i].list) ? groups[i].list.length : 0;
+    }
+    return { groups: groups, total: total, preview: FRANCHISE_PREVIEW };
+  }
+
+
   function dragScrollDelta(pointerY, viewportHeight) {
     const y = Number(pointerY);
     const height = Number(viewportHeight);
@@ -9191,6 +9299,12 @@ window.AniTierChangelog = [
     searchGlobal,
     mergeUniqueAnime,
     slicePage,
+    FRANCHISE_MAIN,
+    FRANCHISE_PREVIEW,
+    franchiseDateKey,
+    isFranchiseMain,
+    classifyFranchise,
+    buildFranchiseGroups,
   };
 });
 
@@ -9213,6 +9327,8 @@ window.AniTierChangelog = [
   if (!C) throw new Error('core.js не загружен');
 
   const LS_KEY = 'anitier.v1';
+  /* Версия схемы сохранения. Старые копии без поля читаются как 0. */
+  const SCHEMA_VERSION = 1;
   const MOMENTS_KEY = 'anitier.moments.v1';
   const TRANSLATIONS_KEY = 'anitier.translations.v1';
   const CUSTOM_LIMIT = 100;
@@ -9732,6 +9848,8 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     franchiseLoading: new Set(),
     franchiseErrors: new Map(),
     franchiseExpanded: new Set(),
+    franchiseFullById: new Map(),
+    franchiseFullLoading: new Set(),
     synopsisModes: new Map(),
     synopsisTranslating: new Set(),
     customCards: [],
@@ -9743,8 +9861,8 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     settingsScreen: { open: false, checking: false, message: '', error: false, latest: null },
     updateCard: null,
     lists: { watched: emptyTiers(), planned: emptyTiers() },
-    /* Поиск и фильтры внутри «Просмотрено» и «Запланировано». Не сохраняются:
-       после перезапуска тир-лист снова показывает все тайтлы. */
+    /* Поиск и фильтры внутри «Просмотрено» и «Запланировано». Фильтры и
+       порядок сохраняются между запусками, поисковый запрос — нет. */
     listViews: { watched: emptyListView(), planned: emptyListView() },
     progress: {},
     epInfo: {},
@@ -9797,8 +9915,17 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     return o;
   }
 
+  function normalizeListView(raw) {
+    const value = raw && typeof raw === 'object' ? raw : {};
+    return {
+      query: '',
+      filters: C.normalizeFilters(value.filters),
+      sort: C.normalizeListSort(value.sort),
+    };
+  }
+
   function emptyListView() {
-    return { query: '', filters: C.normalizeFilters(C.DEFAULT_FILTERS), sort: 'default' };
+    return normalizeListView(null);
   }
 
   function createAltSearchState() {
@@ -10090,12 +10217,17 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     }
 
     const cleanState = {
+      schemaVersion: SCHEMA_VERSION,
       watched: rawState.watched && typeof rawState.watched === 'object' ? rawState.watched : {},
       planned: rawState.planned && typeof rawState.planned === 'object' ? rawState.planned : {},
       customCards: Array.isArray(rawState.customCards) ? rawState.customCards : [],
       progress: rawState.progress && typeof rawState.progress === 'object' ? rawState.progress : {},
       epInfo: rawState.epInfo && typeof rawState.epInfo === 'object' ? rawState.epInfo : {},
       seenNotifications: Array.isArray(rawState.seenNotifications) ? rawState.seenNotifications : [],
+      listViews: {
+        watched: normalizeListView(rawState.listViews && rawState.listViews.watched),
+        planned: normalizeListView(rawState.listViews && rawState.listViews.planned),
+      },
       settings: rawState.settings && typeof rawState.settings === 'object'
         ? {
           searchLang: C.normalizeSearchLang(rawState.settings.searchLang),
@@ -10288,6 +10420,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       state.customCards = [];
       state.settings.searchLang = 'auto';
       state.settings.catalog = normalizeCatalogPreferences();
+      state.listViews = { watched: emptyListView(), planned: emptyListView() };
       return;
     }
     state.lists.watched = normalizeTiers(raw.watched);
@@ -10307,6 +10440,11 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     state.settings.updateCheck = normalizeUpdateCheck(raw.settings && raw.settings.updateCheck);
     state.settings.lastUpdateCheck = Number(raw.settings && raw.settings.lastUpdateCheck) || 0;
     state.settings.catalog = normalizeCatalogPreferences(raw.settings && raw.settings.catalog);
+    /* Старые сохранения без listViews читаются как «все фильтры сброшены». */
+    state.listViews = {
+      watched: normalizeListView(raw.listViews && raw.listViews.watched),
+      planned: normalizeListView(raw.listViews && raw.listViews.planned),
+    };
 
     state.progress = {};
     if (raw.progress && typeof raw.progress === 'object') {
@@ -10335,12 +10473,17 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
         if (val && Number(val.fetchedAt) > cutoff) epInfo[key] = val;
       }
       localStorage.setItem(LS_KEY, JSON.stringify({
+        schemaVersion: SCHEMA_VERSION,
         watched: state.lists.watched,
         planned: state.lists.planned,
         customCards: state.customCards,
         progress: state.progress,
         epInfo,
         seenNotifications: [...state.seenNotifications],
+        listViews: {
+          watched: normalizeListView(state.listViews && state.listViews.watched),
+          planned: normalizeListView(state.listViews && state.listViews.planned),
+        },
         settings: {
           searchLang: C.normalizeSearchLang(state.settings.searchLang),
           titleLang: state.settings.titleLang === 'original' ? 'original' : 'ru',
@@ -10994,6 +11137,60 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     }
   }
 
+  async function fetchAnimeFranchise(anime, opts = {}) {
+    if (!anime || anime.custom) return [];
+    const depth = Number(opts.depth) || 2;
+    const limit = Number(opts.limit) || 60;
+    const seen = new Set();
+    const queue = [];
+    const rootId = anime.id;
+    seen.add(rootId);
+    queue.push({ anime: anime, depth: 0 });
+    const collected = new Map();
+    collected.set(rootId, anime);
+    let head = 0;
+    while (head < queue.length && collected.size < limit) {
+      const current = queue[head++];
+      const relations = await fetchAnimeRelations(current.anime).catch(() => []);
+      for (const rel of Array.isArray(relations) ? relations : []) {
+        if (!rel || !rel.anime) continue;
+        const relAnime = rel.anime;
+        const relId = relAnime.id;
+        if (!relId) continue;
+        if (!collected.has(relId)) {
+          collected.set(relId, relAnime);
+          if (current.depth + 1 < depth && (rel.relationType === 'PREQUEL' || rel.relationType === 'PARENT' || rel.relationType === 'SEQUEL')) {
+            queue.push({ anime: relAnime, depth: current.depth + 1 });
+          }
+        }
+      }
+    }
+    /* Собираем все связи между найденными узлами. */
+    const graph = [];
+    const ids = [...collected.keys()];
+    for (const id of ids) {
+      const node = collected.get(id);
+      const relations = await fetchAnimeRelations(node).catch(() => []);
+      for (const rel of Array.isArray(relations) ? relations : []) {
+        if (!rel || !rel.anime) continue;
+        if (!collected.has(rel.anime.id)) continue;
+        if (rel.anime.id === id) continue;
+        graph.push({ from: id, relationType: rel.relationType, to: rel.anime.id, anime: rel.anime });
+      }
+    }
+    /* Возвращаем все найденные части, кроме корня, в формате связей. */
+    const out = [];
+    const seenRel = new Set();
+    for (const edge of graph) {
+      if (edge.to === rootId) continue;
+      if (seenRel.has(edge.to)) continue;
+      seenRel.add(edge.to);
+      out.push({ relationType: edge.relationType, anime: edge.anime });
+    }
+    if (out.length) return out;
+    return fetchAnimeRelations(anime);
+  }
+
   async function fetchAnimeRelations(anime) {
     if (!anime || anime.custom) return [];
     if (Array.isArray(anime.relations)) return anime.relations;
@@ -11014,6 +11211,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     anime.relations = mapped.relations;
     return anime.relations;
   }
+
 
   function scheduleDate(airingAt) {
     const seconds = Number(airingAt);
@@ -12124,6 +12322,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     mapAniList,
     mapTrackedAniList,
     fetchAnimeRelations,
+    fetchAnimeFranchise,
     mapKitsu,
     fetchWithTimeout,
     fetchLatestRelease,
@@ -14741,47 +14940,20 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     if (!related) return `<div class="modal-section franchise-section">${label}<p class="hint">Проверяем, есть ли связанные сезоны…</p></div>`;
     if (!related.length) return `<div class="modal-section franchise-section">${label}<p class="hint">Связанные сезоны и продолжения не найдены.</p></div>`;
 
-    const current = { anime, relationType: 'CURRENT' };
-    const byDate = (a, b) => (franchiseDate(a) - franchiseDate(b)) || (a.anime.id - b.anime.id);
-    const main = related.filter(link => FRANCHISE_MAIN.has(link.relationType)).sort(byDate);
-    const extras = related.filter(link => !FRANCHISE_MAIN.has(link.relationType)).sort(byDate);
-    /* Текущий тайтл встаёт на своё место по дате, а не в середину списка. */
-    const chain = [...main, current].sort(byDate);
-    const films = extras.filter(link => link.anime.type === 'Movie');
-    const specials = extras.filter(link => link.anime.type === 'OVA' || link.anime.type === 'Special' || link.anime.type === 'TV Special');
-    const spinoffs = extras.filter(link => !films.includes(link) && !specials.includes(link));
-
-    const expanded = Boolean(state.franchiseExpanded && state.franchiseExpanded.has(anime.id));
-    let groups = [
-      { title: 'Основной сериал', list: chain, numbered: true },
-      { title: 'Фильмы', list: films },
-      { title: 'Спешлы и OVA', list: specials },
-      { title: 'Ответвления', list: spinoffs },
-    ];
-    /* Если нет явной главной линии — показываем всю франшизу по дате одним списком,
-       иначе долгие второстепенные блоки разрывают восприятие. */
-    if (!main.length && extras.length) {
-      groups = [
-        { title: 'Порядок просмотра', list: [...related, current].sort(byDate), numbered: true },
-      ];
-    } else if (main.length && !films.length && !specials.length && !spinoffs.length) {
-      /* Всё относится к основной линии — не плодим пустые заголовки. */
-      groups = [
-        { title: 'Основной сериал', list: chain, numbered: true },
-      ];
-    } else if (main.length === 0 && extras.length === 0) {
-      groups = [];
-    } else if (main.length === 0) {
-      groups = [
-        { title: 'Порядок просмотра', list: chain, numbered: false },
-        { title: 'Фильмы', list: films },
-        { title: 'Спешлы и OVA', list: specials },
-        { title: 'Ответвления', list: spinoffs },
-      ];
+    const full = state.franchiseFullById.get(anime.id);
+    const fullLoading = state.franchiseFullLoading && state.franchiseFullLoading.has(anime.id);
+    const useRelated = full || related;
+    const built = (window.AniTierCore && typeof window.AniTierCore.buildFranchiseGroups === 'function')
+      ? window.AniTierCore.buildFranchiseGroups(useRelated, anime)
+      : null;
+    let groups = built && Array.isArray(built.groups) ? built.groups : [];
+    if (!groups.length) {
+      groups = [{ id: 'empty', title: 'Порядок просмотра', list: [], numbered: false }];
     }
-    const hidden = groups.reduce((total, group) => total + Math.max(0, group.list.length - FRANCHISE_PREVIEW), 0);
+    const hidden = groups.reduce((total, group) => total + Math.max(0, (group.list ? group.list.length : 0) - FRANCHISE_PREVIEW), 0);
+    const expanded = Boolean(state.franchiseExpanded && state.franchiseExpanded.has(anime.id));
     const sections = groups.map(group => {
-      if (!group.list.length) return '';
+      if (!group.list || !group.list.length) return '';
       const shown = expanded ? group.list : group.list.slice(0, FRANCHISE_PREVIEW);
       const rows = shown.map((link, index) => franchiseCardHTML(link, {
         order: group.numbered ? index + 1 : undefined,
@@ -14794,11 +14966,16 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
 
     return `<div class="modal-section franchise-section">
       ${label}
-      <p class="franchise-intro">Основной сюжет — по дате выхода: от приквелов к продолжениям. Фильмы и спешлы не обязательны и собраны отдельно.</p>
+      <p class="franchise-intro">Основной сюжет — по дате выхода. Фильмы, спешлы и пересказы собраны отдельно.</p>
       ${sections}
-      ${hidden > 0 || expanded
-        ? `<button class="btn btn-ghost btn-small franchise-more" type="button" data-action="franchise-more" data-id="${anime.id}">${expanded ? 'Свернуть список' : `Показать все (${related.length + 1})`}</button>`
-        : ''}
+      <div class="franchise-actions">
+        ${(hidden > 0 || expanded)
+          ? `<button class="btn btn-ghost btn-small franchise-more" type="button" data-action="franchise-more" data-id="${anime.id}">${expanded ? 'Свернуть список' : `Показать все (${built.total || useRelated.length + 1})`}</button>`
+          : ''}
+        ${!full && !fullLoading
+          ? `<button class="btn btn-ghost btn-small franchise-full" type="button" data-action="franchise-full" data-id="${anime.id}">Показать всю франшизу</button>`
+          : fullLoading ? `<span class="hint">Собираем всю франшизу…</span>` : `<span class="hint">Показана вся доступная франшиза</span>`}
+      </div>
       <p class="hint">У каждого тайтла свой тир-лист и прогресс серий.</p>
     </div>`;
   }
@@ -16085,6 +16262,24 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       filters: state.db.filters,
     };
     saveState();
+  }
+
+  /* Панели фильтров списков и «Скоро выйдут» закрываются по Esc, клику мимо
+     и повороту экрана — как меню «⋯». */
+  function closeListFilterPanels() {
+    for (const name of ['watched', 'planned']) {
+      const panel = document.getElementById('list-filters-' + name);
+      if (!panel || panel.hidden) continue;
+      panel.hidden = true;
+      const btn = document.querySelector(`[data-action="toggle-list-filters"][data-list="${name}"]`);
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    }
+    const upcoming = document.getElementById('upcoming-filters');
+    if (upcoming && !upcoming.hidden) {
+      upcoming.hidden = true;
+      const btn = document.querySelector('[data-action="toggle-upcoming-filters"]');
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    }
   }
 
   function restoreCatalogPreferences() {
@@ -17883,8 +18078,40 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
         case 'retry-franchise':
           state.franchiseById.delete(id);
           state.franchiseErrors.delete(id);
+          if (state.franchiseFullById) state.franchiseFullById.delete(id);
+          if (state.franchiseFullLoading) state.franchiseFullLoading.delete(id);
           renderModal();
           break;
+
+        case 'franchise-full': {
+          const anime = getAnime(id);
+          if (!anime) break;
+          if (!state.franchiseFullLoading) state.franchiseFullLoading = new Set();
+          if (state.franchiseFullLoading.has(id)) break;
+          state.franchiseFullLoading.add(id);
+          renderModal();
+          Promise.resolve((App.fetchAnimeFranchise || App.fetchAnimeRelations)(anime, { depth: 2 }))
+            .then(relations => {
+              const allowed = new Set(['PREQUEL', 'SEQUEL', 'PARENT', 'SIDE_STORY', 'SPIN_OFF', 'SUMMARY', 'ALTERNATIVE', 'ALTERNATIVE_SETTING', 'ADAPTATION', 'CHARACTER', 'OTHER']);
+              const seen = new Set();
+              const links = [];
+              for (const relation of Array.isArray(relations) ? relations : []) {
+                if (!relation || !relation.anime) continue;
+                if (relation.anime.id === anime.id) continue;
+                if (seen.has(relation.anime.id)) continue;
+                seen.add(relation.anime.id);
+                links.push({ relationType: relation.relationType, anime: relation.anime });
+              }
+              if (!state.franchiseFullById) state.franchiseFullById = new Map();
+              state.franchiseFullById.set(id, links);
+            })
+            .catch(() => {})
+            .finally(() => {
+              if (state.franchiseFullLoading) state.franchiseFullLoading.delete(id);
+              if (state.modalId === id) renderModal();
+            });
+          break;
+        }
 
         case 'modal-tab':
           switchModalTab(el.dataset.tab, { focus: true });
@@ -18165,6 +18392,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
             filters: C.normalizeFilters(C.DEFAULT_FILTERS),
             sort: C.normalizeListSort(previous.sort),
           };
+          saveState();
           renderTierList(name);
           break;
         }
@@ -18585,6 +18813,23 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
           if (btn) btn.setAttribute('aria-expanded', 'false');
         }
       }
+      /* Панели фильтров закрываются кликом мимо своей панели инструментов. */
+      for (const name of ['watched', 'planned']) {
+        const panel = document.getElementById('list-filters-' + name);
+        if (!panel || panel.hidden) continue;
+        const tools = panel.parentElement;
+        if (tools && tools.contains(event.target)) continue;
+        panel.hidden = true;
+        const btn = document.querySelector(`[data-action="toggle-list-filters"][data-list="${name}"]`);
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+      }
+      const upcomingFilters = document.getElementById('upcoming-filters');
+      if (upcomingFilters && !upcomingFilters.hidden
+        && !(upcomingFilters.parentElement && upcomingFilters.parentElement.contains(event.target))) {
+        upcomingFilters.hidden = true;
+        const btn = document.querySelector('[data-action="toggle-upcoming-filters"]');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+      }
     });
 
     /* На телефоне клавиатура тоже присылает resize (высота), но меню
@@ -18596,6 +18841,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       filterMenusWidth = window.innerWidth;
       closeFilterMenus();
       closeDBMoreMenu();
+      closeListFilterPanels();
       $$('.list-more-menu').forEach(menu => { menu.hidden = true; });
       $$('.list-more-btn').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
     }, { passive: true });
@@ -18719,6 +18965,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
           ...view.filters,
           [listField.dataset.listFilter]: listField.value,
         });
+        saveState();
         renderTierList(name);
         return;
       }
@@ -18730,6 +18977,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
           state.listViews[name] = { query: '', filters: C.normalizeFilters(C.DEFAULT_FILTERS), sort: 'default' };
         }
         state.listViews[name].sort = C.normalizeListSort(listSort.value);
+        saveState();
         renderTierList(name);
         return;
       }
@@ -18844,6 +19092,11 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       if (e.key === 'Escape') {
         if (document.querySelector('#db-filters [data-filter-panel]:not([hidden])')) {
           closeFilterMenus();
+          return;
+        }
+        if (['list-filters-watched', 'list-filters-planned', 'upcoming-filters']
+          .some(id => { const node = document.getElementById(id); return node && !node.hidden; })) {
+          closeListFilterPanels();
           return;
         }
         if ($('.db-more-menu:not([hidden])')) {

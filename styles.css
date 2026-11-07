@@ -3582,3 +3582,6 @@ img { image-rendering: auto; }
 }
 .upcoming-more-item:hover { background: rgba(255, 255, 255, .06); }
 .upcoming-filters { margin-top: 0; }
+
+.franchise-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
+.franchise-actions .hint{margin:0}

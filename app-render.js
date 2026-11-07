@@ -2581,47 +2581,20 @@
     if (!related) return `<div class="modal-section franchise-section">${label}<p class="hint">Проверяем, есть ли связанные сезоны…</p></div>`;
     if (!related.length) return `<div class="modal-section franchise-section">${label}<p class="hint">Связанные сезоны и продолжения не найдены.</p></div>`;
 
-    const current = { anime, relationType: 'CURRENT' };
-    const byDate = (a, b) => (franchiseDate(a) - franchiseDate(b)) || (a.anime.id - b.anime.id);
-    const main = related.filter(link => FRANCHISE_MAIN.has(link.relationType)).sort(byDate);
-    const extras = related.filter(link => !FRANCHISE_MAIN.has(link.relationType)).sort(byDate);
-    /* Текущий тайтл встаёт на своё место по дате, а не в середину списка. */
-    const chain = [...main, current].sort(byDate);
-    const films = extras.filter(link => link.anime.type === 'Movie');
-    const specials = extras.filter(link => link.anime.type === 'OVA' || link.anime.type === 'Special' || link.anime.type === 'TV Special');
-    const spinoffs = extras.filter(link => !films.includes(link) && !specials.includes(link));
-
-    const expanded = Boolean(state.franchiseExpanded && state.franchiseExpanded.has(anime.id));
-    let groups = [
-      { title: 'Основной сериал', list: chain, numbered: true },
-      { title: 'Фильмы', list: films },
-      { title: 'Спешлы и OVA', list: specials },
-      { title: 'Ответвления', list: spinoffs },
-    ];
-    /* Если нет явной главной линии — показываем всю франшизу по дате одним списком,
-       иначе долгие второстепенные блоки разрывают восприятие. */
-    if (!main.length && extras.length) {
-      groups = [
-        { title: 'Порядок просмотра', list: [...related, current].sort(byDate), numbered: true },
-      ];
-    } else if (main.length && !films.length && !specials.length && !spinoffs.length) {
-      /* Всё относится к основной линии — не плодим пустые заголовки. */
-      groups = [
-        { title: 'Основной сериал', list: chain, numbered: true },
-      ];
-    } else if (main.length === 0 && extras.length === 0) {
-      groups = [];
-    } else if (main.length === 0) {
-      groups = [
-        { title: 'Порядок просмотра', list: chain, numbered: false },
-        { title: 'Фильмы', list: films },
-        { title: 'Спешлы и OVA', list: specials },
-        { title: 'Ответвления', list: spinoffs },
-      ];
+    const full = state.franchiseFullById.get(anime.id);
+    const fullLoading = state.franchiseFullLoading && state.franchiseFullLoading.has(anime.id);
+    const useRelated = full || related;
+    const built = (window.AniTierCore && typeof window.AniTierCore.buildFranchiseGroups === 'function')
+      ? window.AniTierCore.buildFranchiseGroups(useRelated, anime)
+      : null;
+    let groups = built && Array.isArray(built.groups) ? built.groups : [];
+    if (!groups.length) {
+      groups = [{ id: 'empty', title: 'Порядок просмотра', list: [], numbered: false }];
     }
-    const hidden = groups.reduce((total, group) => total + Math.max(0, group.list.length - FRANCHISE_PREVIEW), 0);
+    const hidden = groups.reduce((total, group) => total + Math.max(0, (group.list ? group.list.length : 0) - FRANCHISE_PREVIEW), 0);
+    const expanded = Boolean(state.franchiseExpanded && state.franchiseExpanded.has(anime.id));
     const sections = groups.map(group => {
-      if (!group.list.length) return '';
+      if (!group.list || !group.list.length) return '';
       const shown = expanded ? group.list : group.list.slice(0, FRANCHISE_PREVIEW);
       const rows = shown.map((link, index) => franchiseCardHTML(link, {
         order: group.numbered ? index + 1 : undefined,
@@ -2634,11 +2607,16 @@
 
     return `<div class="modal-section franchise-section">
       ${label}
-      <p class="franchise-intro">Основной сюжет — по дате выхода: от приквелов к продолжениям. Фильмы и спешлы не обязательны и собраны отдельно.</p>
+      <p class="franchise-intro">Основной сюжет — по дате выхода. Фильмы, спешлы и пересказы собраны отдельно.</p>
       ${sections}
-      ${hidden > 0 || expanded
-        ? `<button class="btn btn-ghost btn-small franchise-more" type="button" data-action="franchise-more" data-id="${anime.id}">${expanded ? 'Свернуть список' : `Показать все (${related.length + 1})`}</button>`
-        : ''}
+      <div class="franchise-actions">
+        ${(hidden > 0 || expanded)
+          ? `<button class="btn btn-ghost btn-small franchise-more" type="button" data-action="franchise-more" data-id="${anime.id}">${expanded ? 'Свернуть список' : `Показать все (${built.total || useRelated.length + 1})`}</button>`
+          : ''}
+        ${!full && !fullLoading
+          ? `<button class="btn btn-ghost btn-small franchise-full" type="button" data-action="franchise-full" data-id="${anime.id}">Показать всю франшизу</button>`
+          : fullLoading ? `<span class="hint">Собираем всю франшизу…</span>` : `<span class="hint">Показана вся доступная франшиза</span>`}
+      </div>
       <p class="hint">У каждого тайтла свой тир-лист и прогресс серий.</p>
     </div>`;
   }

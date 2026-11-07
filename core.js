@@ -1459,7 +1459,7 @@
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.40.4';
+  const APP_VERSION = '1.41.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -1513,6 +1513,99 @@
    * Насколько прокрутить страницу за кадр, если палец или курсор у края экрана.
    * Возвращает 0 в спокойной зоне, положительное число — вниз, отрицательное — вверх.
    */
+
+
+
+  const FRANCHISE_MAIN = ['PREQUEL', 'PARENT', 'SEQUEL'];
+  const FRANCHISE_PREVIEW = 8;
+
+  function franchiseDateKey(link) {
+    if (!link || !link.anime) return Number.MAX_SAFE_INTEGER;
+    const airedFrom = link.anime.airedFrom || link.anime.startDate || '';
+    const stamp = Date.parse(String(airedFrom));
+    if (Number.isFinite(stamp)) return stamp;
+    const year = Number(link.anime.year) || Number(link.anime.seasonYear) || 0;
+    if (year) {
+      const parsed = Date.parse(year + '-01-01');
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return Number.MAX_SAFE_INTEGER;
+  }
+
+  function isFranchiseMain(type) {
+    return FRANCHISE_MAIN.indexOf(String(type || '')) >= 0;
+  }
+
+  function classifyFranchise(link) {
+    if (!link || !link.anime) return 'extras';
+    const type = String(link.relationType || '');
+    const format = String(link.anime.format || link.anime.type || '').toUpperCase();
+    if (type === 'SUMMARY') return 'summary';
+    if (type === 'ALTERNATIVE' || type === 'ALTERNATIVE_SETTING') return 'alternative';
+    if (type === 'SPIN_OFF') return 'spinoff';
+    if (type === 'SIDE_STORY') {
+      if (format === 'MOVIE' || format === 'ФИЛЬМ') return 'film';
+      if (format === 'OVA' || format === 'ONA' || format === 'SPECIAL' || format === 'TV_SPECIAL' || format === 'MUSIC') return 'special';
+      return 'spinoff';
+    }
+    if (type === 'ADAPTATION' || type === 'CHARACTER' || type === 'OTHER') return 'extras';
+    if (format === 'MOVIE' || format === 'ФИЛЬМ') return 'film';
+    if (format === 'OVA' || format === 'ONA' || format === 'SPECIAL' || format === 'TV_SPECIAL') return 'special';
+    return isFranchiseMain(type) ? 'main' : 'spinoff';
+  }
+
+  function buildFranchiseGroups(related, currentAnime) {
+    if (!Array.isArray(related)) related = [];
+    const byDate = (a, b) => (franchiseDateKey(a) - franchiseDateKey(b)) || ((a.anime && a.anime.id) || 0) - ((b.anime && b.anime.id) || 0);
+    const current = currentAnime ? { anime: currentAnime, relationType: 'CURRENT' } : null;
+    const mainLinks = related.filter(link => isFranchiseMain(link && link.relationType)).slice().sort(byDate);
+    const extras = related.filter(link => !isFranchiseMain(link && link.relationType)).slice().sort(byDate);
+
+    const films = [];
+    const specials = [];
+    const spinoffs = [];
+    const summaries = [];
+    const alternatives = [];
+    const others = [];
+    for (const link of extras) {
+      const kind = classifyFranchise(link);
+      if (kind === 'film') films.push(link);
+      else if (kind === 'special') specials.push(link);
+      else if (kind === 'summary') summaries.push(link);
+      else if (kind === 'alternative') alternatives.push(link);
+      else if (kind === 'spinoff') spinoffs.push(link);
+      else others.push(link);
+    }
+
+    let groups = [];
+    if (mainLinks.length || current) {
+      const chain = mainLinks.slice();
+      if (current) chain.push(current);
+      groups.push({ id: 'main', title: 'Основной сериал', list: chain.slice().sort(byDate), numbered: true });
+    }
+    if (films.length) groups.push({ id: 'films', title: 'Фильмы', list: films });
+    if (specials.length) groups.push({ id: 'specials', title: 'Спешлы и OVA', list: specials });
+    if (summaries.length) groups.push({ id: 'summaries', title: 'Пересказы', list: summaries });
+    if (spinoffs.length) groups.push({ id: 'spinoffs', title: 'Ответвления', list: spinoffs });
+    if (alternatives.length) groups.push({ id: 'alternatives', title: 'Альтернативы', list: alternatives });
+    if (others.length) groups.push({ id: 'others', title: 'Другие', list: others });
+
+    if (!mainLinks.length && extras.length && current) {
+      groups = [{ id: 'all', title: 'Порядок просмотра', list: [...related, current].slice().sort(byDate), numbered: true }];
+    } else if (mainLinks.length && films.length === 0 && specials.length === 0 && summaries.length === 0 && spinoffs.length === 0 && alternatives.length === 0 && others.length === 0) {
+      groups = [{ id: 'main', title: 'Основной сериал', list: ([...mainLinks, current].filter(Boolean)).slice().sort(byDate), numbered: true }];
+    } else if (!mainLinks.length && extras.length === 0 && current) {
+      groups = [];
+    }
+
+    let total = 0;
+    for (let i = 0; i < groups.length; i += 1) {
+      total += Array.isArray(groups[i].list) ? groups[i].list.length : 0;
+    }
+    return { groups: groups, total: total, preview: FRANCHISE_PREVIEW };
+  }
+
+
   function dragScrollDelta(pointerY, viewportHeight) {
     const y = Number(pointerY);
     const height = Number(viewportHeight);
@@ -2075,5 +2168,11 @@
     searchGlobal,
     mergeUniqueAnime,
     slicePage,
+    FRANCHISE_MAIN,
+    FRANCHISE_PREVIEW,
+    franchiseDateKey,
+    isFranchiseMain,
+    classifyFranchise,
+    buildFranchiseGroups,
   };
 });

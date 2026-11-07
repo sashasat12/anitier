@@ -2748,4 +2748,113 @@
       app.close();
     }
   });
+
+  T.test('app: фильтры и порядок списка переживают перезапуск', async () => {
+    const first = await T.mountApp({ query: '?test=1' });
+    let saved = '';
+    try {
+      const win = first.win;
+      const App = win.AniTier;
+      await win.__anitierTest.init();
+      const make = (id, title, extra = {}) => App.mapAniList(rawAniList(id, title, {
+        idMal: id, genres: extra.genres || ['Action'], seasonYear: extra.year || 2020,
+        ...extra,
+      }));
+      App.addToList('planned', make(9801, 'Первый'), 'S', true);
+      App.addToList('planned', make(9802, 'Второй', { year: 2021 }), 'A', true);
+      App.switchTab('planned');
+
+      const panel = win.document.querySelector('#list-filters-planned');
+      T.assert(panel, 'Панель фильтров на месте');
+      const type = panel.querySelector('[data-list-filter="type"]');
+      type.value = 'tv';
+      type.dispatchEvent(new win.Event('change', { bubbles: true }));
+      const sort = panel.querySelector('[data-list-sort]');
+      sort.value = 'title';
+      sort.dispatchEvent(new win.Event('change', { bubbles: true }));
+
+      saved = win.localStorage.getItem('anitier.v1') || '';
+      const stored = JSON.parse(saved);
+      T.eq(stored.listViews.planned.filters.type.join(','), 'tv', 'Тип сохраняется');
+      T.eq(stored.listViews.planned.sort, 'title', 'Порядок сохраняется');
+      T.eq(stored.listViews.planned.query, '', 'Поисковый запрос не сохраняется');
+      T.eq(stored.schemaVersion, 1, 'В сохранении есть версия схемы');
+    } finally {
+      first.close();
+    }
+
+    const second = await T.mountApp({
+      query: '?test=1',
+      setup(win) { win.localStorage.setItem('anitier.v1', saved); },
+    });
+    try {
+      await second.win.__anitierTest.init();
+      const view = second.win.AniTier.state.listViews.planned;
+      T.eq(view.filters.type.join(','), 'tv', 'Фильтр восстановлен после перезапуска');
+      T.eq(view.sort, 'title', 'Порядок восстановлен после перезапуска');
+    } finally {
+      second.close();
+    }
+  });
+
+  T.test('app: старое сохранение без listViews читается без ошибок', async () => {
+    const app = await T.mountApp({
+      query: '?test=1',
+      setup(win) {
+        win.localStorage.setItem('anitier.v1', JSON.stringify({
+          watched: {}, planned: {}, settings: { searchLang: 'ru' }, progress: {},
+        }));
+      },
+    });
+    try {
+      await app.win.__anitierTest.init();
+      const view = app.win.AniTier.state.listViews.planned;
+      T.eq(view.filters.type.length, 0, 'Старые данные не включают фильтры');
+      T.eq(view.sort, 'default', 'Порядок по умолчанию');
+      T.eq(app.win.document.querySelector('#view-planned') !== null, true, 'Интерфейс запустился');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: панели фильтров закрываются по Esc и клику мимо', async () => {
+    const app = await T.mountApp({ query: '?test=1' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      const doc = win.document;
+      await win.__anitierTest.init();
+
+      const make = (id, title, extra = {}) => App.mapAniList(rawAniList(id, title, {
+        idMal: id, genres: ['Action'], seasonYear: 2020, ...extra,
+      }));
+      App.addToList('planned', make(9851, 'Первый'), 'S', true);
+      App.switchTab('planned');
+
+      const toggle = doc.querySelector('[data-action="toggle-list-filters"][data-list="planned"]');
+      const panel = doc.getElementById('list-filters-planned');
+      toggle.click();
+      T.eq(panel.hidden, false, 'Панель фильтров открыта');
+      doc.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      T.eq(panel.hidden, true, 'Esc закрывает панель фильтров');
+      T.eq(toggle.getAttribute('aria-expanded'), 'false', 'aria-expanded сброшен');
+
+      toggle.click();
+      T.eq(panel.hidden, false, 'Панель снова открыта');
+      doc.body.click();
+      T.eq(panel.hidden, true, 'Клик мимо закрывает панель');
+      T.eq(toggle.getAttribute('aria-expanded'), 'false', 'Флаг кнопки сброшен после клика мимо');
+
+      App.switchTab('upcoming');
+      const upToggle = doc.querySelector('[data-action="toggle-upcoming-filters"]');
+      const upPanel = doc.getElementById('upcoming-filters');
+      upToggle.click();
+      T.eq(upPanel.hidden, false, 'Панель «Скоро выйдут» открыта');
+      doc.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      T.eq(upPanel.hidden, true, 'Esc закрывает панель «Скоро выйдут»');
+      T.eq(upToggle.getAttribute('aria-expanded'), 'false');
+    } finally {
+      app.close();
+    }
+  });
 })();
