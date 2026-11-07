@@ -3507,6 +3507,36 @@
           return;
         }
       }
+      /* Фокус не уходит за пределы открытого диалога: Tab по кругу внутри шторки. */
+      if (e.key === 'Tab') {
+        const dialogs = [...document.querySelectorAll('[role="dialog"]')];
+        const dialog = dialogs.reverse().find(node => {
+          const host = node.closest('.modal');
+          return host ? !host.hidden : node.getClientRects().length > 0;
+        });
+        if (dialog) {
+          const focusables = [...dialog.querySelectorAll(
+            'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          )].filter(node => node.getClientRects().length > 0);
+          if (focusables.length) {
+            const first = focusables[0];
+            const last = focusables[focusables.length - 1];
+            const active = document.activeElement;
+            const inside = dialog.contains(active);
+            if (e.shiftKey && (!inside || active === first)) {
+              e.preventDefault();
+              last.focus();
+              return;
+            }
+            if (!e.shiftKey && (!inside || active === last)) {
+              e.preventDefault();
+              first.focus();
+              return;
+            }
+          }
+        }
+      }
+
       if (e.key === 'Escape') {
         if (document.querySelector('#db-filters [data-filter-panel]:not([hidden])')) {
           closeFilterMenus();

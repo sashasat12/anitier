@@ -6182,6 +6182,15 @@ window.AniTierTitlesRu = {
 
 window.AniTierChangelog = [
   {
+    version: '1.38.17',
+    date: '7 ноября 2026',
+    title: 'Клавиатура внутри карточки',
+    items: [
+      'Tab больше не уводит фокус за пределы открытой карточки или шторки: обход идёт по кругу.',
+      'Shift+Tab с первого элемента возвращает к последнему — удобнее закрывать и подтверждать с клавиатуры.',
+    ],
+  },
+  {
     version: '1.38.16',
     date: '7 ноября 2026',
     title: 'Живее интерфейс и быстрее поиск',
@@ -8113,7 +8122,7 @@ window.AniTierChangelog = [
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.38.16';
+  const APP_VERSION = '1.38.17';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -17998,6 +18007,36 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
           return;
         }
       }
+      /* Фокус не уходит за пределы открытого диалога: Tab по кругу внутри шторки. */
+      if (e.key === 'Tab') {
+        const dialogs = [...document.querySelectorAll('[role="dialog"]')];
+        const dialog = dialogs.reverse().find(node => {
+          const host = node.closest('.modal');
+          return host ? !host.hidden : node.getClientRects().length > 0;
+        });
+        if (dialog) {
+          const focusables = [...dialog.querySelectorAll(
+            'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          )].filter(node => node.getClientRects().length > 0);
+          if (focusables.length) {
+            const first = focusables[0];
+            const last = focusables[focusables.length - 1];
+            const active = document.activeElement;
+            const inside = dialog.contains(active);
+            if (e.shiftKey && (!inside || active === first)) {
+              e.preventDefault();
+              last.focus();
+              return;
+            }
+            if (!e.shiftKey && (!inside || active === last)) {
+              e.preventDefault();
+              first.focus();
+              return;
+            }
+          }
+        }
+      }
+
       if (e.key === 'Escape') {
         if (document.querySelector('#db-filters [data-filter-panel]:not([hidden])')) {
           closeFilterMenus();

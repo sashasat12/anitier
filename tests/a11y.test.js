@@ -132,4 +132,39 @@
       app.close();
     }
   });
+
+  T.test('a11y: фокус зацикливается внутри открытой карточки', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const doc = app.win.document;
+      const win = app.win;
+
+      const card = doc.querySelector('#db-grid .card');
+      T.assert(card, 'В демо-базе есть карточка');
+      card.click();
+
+      const modal = doc.getElementById('modal');
+      T.eq(modal.hidden, false, 'Карточка открылась');
+      const dialog = modal.querySelector('[role="dialog"]');
+      T.assert(dialog, 'У карточки есть роль диалога');
+
+      const selector = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      const focusables = [...dialog.querySelectorAll(selector)].filter(node => node.getClientRects().length > 0);
+      T.assert(focusables.length > 1, 'Внутри карточки есть несколько элементов фокуса');
+
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      last.focus();
+      last.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+      T.eq(doc.activeElement, first, 'Tab с последнего элемента возвращает к первому');
+
+      first.focus();
+      first.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true }));
+      T.eq(doc.activeElement, last, 'Shift+Tab с первого элемента уходит к последнему');
+    } finally {
+      app.close();
+    }
+  });
 })();
