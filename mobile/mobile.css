@@ -499,12 +499,16 @@ body.mobile-app .upcoming-bar {
 body.mobile-app .upcoming-bar .search {
   flex: 1 1 100%;
 }
+/* Вторая строка: «Мои серии» + «Фильтры» + «⋯» одной компактной лентой. */
 body.mobile-app .upcoming-bar .btn {
-  flex: 1 1 calc(50% - 4px);
+  flex: 1 1 0;
+  min-width: 0;
   min-height: 44px;
+  padding: 0 10px;
   justify-content: center;
+  white-space: nowrap;
 }
-body.mobile-app .upcoming-more { flex: 0 0 auto; }
+body.mobile-app .upcoming-more { flex: 0 0 44px; }
 body.mobile-app .upcoming-more .icon-btn { min-height: 44px; width: 44px; }
 body.mobile-app .upcoming-filters {
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -518,6 +522,37 @@ body.mobile-app .upcoming-tools .filter-multi-btn {
   padding: 6px 8px;
   min-height: 34px;
 }
+
+/* ---------- списки: строка поиска и сводка ---------- */
+body.mobile-app .list-bar {
+  gap: 8px;
+}
+body.mobile-app .list-bar .search {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+body.mobile-app .list-bar .search input {
+  width: 100%;
+}
+body.mobile-app .list-bar .filter-toggle {
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 44px;
+  padding: 0 16px;
+  justify-content: center;
+}
+/* Сводка по тирам — одной прокручиваемой строкой, как и задумано. */
+body.mobile-app .list-summary {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  margin: 0 -12px 12px;
+  padding: 0 12px 2px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+body.mobile-app .list-summary::-webkit-scrollbar { display: none; }
+body.mobile-app .list-summary-pill { flex: 0 0 auto; }
 
 body.mobile-app .notif-tools {
   overflow-x: auto;

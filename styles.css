@@ -539,8 +539,22 @@ button { font-family: inherit; }
 
 /* ---------- поиск и фильтры в тир-листах ---------- */
 .list-tools { margin-top: 0; }
-.list-tools .search { grid-column: 1 / -1; }
-.list-tools .search input { width: 100%; }
+.list-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.list-bar .search { flex: 1 1 260px; min-width: 0; }
+.list-bar .search input { width: 100%; }
+.list-bar .filter-toggle { flex: none; }
+.list-filters { margin: 0 0 14px; }
+.when-narrow { display: none; }
+@media (max-width: 560px) {
+  .when-wide { display: none; }
+  .when-narrow { display: inline; }
+}
 
 .db-status {
   min-height: 18px;
@@ -3543,6 +3557,7 @@ img { image-rendering: auto; }
   right: 0;
   top: calc(100% + 6px);
   min-width: 190px;
+  max-width: calc(100vw - 24px);
   padding: 6px;
   border: 1px solid var(--line-strong);
   border-radius: 12px;

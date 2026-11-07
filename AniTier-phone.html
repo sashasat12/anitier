@@ -553,8 +553,22 @@ button { font-family: inherit; }
 
 /* ---------- поиск и фильтры в тир-листах ---------- */
 .list-tools { margin-top: 0; }
-.list-tools .search { grid-column: 1 / -1; }
-.list-tools .search input { width: 100%; }
+.list-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.list-bar .search { flex: 1 1 260px; min-width: 0; }
+.list-bar .search input { width: 100%; }
+.list-bar .filter-toggle { flex: none; }
+.list-filters { margin: 0 0 14px; }
+.when-narrow { display: none; }
+@media (max-width: 560px) {
+  .when-wide { display: none; }
+  .when-narrow { display: inline; }
+}
 
 .db-status {
   min-height: 18px;
@@ -3557,6 +3571,7 @@ img { image-rendering: auto; }
   right: 0;
   top: calc(100% + 6px);
   min-width: 190px;
+  max-width: calc(100vw - 24px);
   padding: 6px;
   border: 1px solid var(--line-strong);
   border-radius: 12px;
@@ -4083,12 +4098,16 @@ body.mobile-app .upcoming-bar {
 body.mobile-app .upcoming-bar .search {
   flex: 1 1 100%;
 }
+/* Вторая строка: «Мои серии» + «Фильтры» + «⋯» одной компактной лентой. */
 body.mobile-app .upcoming-bar .btn {
-  flex: 1 1 calc(50% - 4px);
+  flex: 1 1 0;
+  min-width: 0;
   min-height: 44px;
+  padding: 0 10px;
   justify-content: center;
+  white-space: nowrap;
 }
-body.mobile-app .upcoming-more { flex: 0 0 auto; }
+body.mobile-app .upcoming-more { flex: 0 0 44px; }
 body.mobile-app .upcoming-more .icon-btn { min-height: 44px; width: 44px; }
 body.mobile-app .upcoming-filters {
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4102,6 +4121,37 @@ body.mobile-app .upcoming-tools .filter-multi-btn {
   padding: 6px 8px;
   min-height: 34px;
 }
+
+/* ---------- списки: строка поиска и сводка ---------- */
+body.mobile-app .list-bar {
+  gap: 8px;
+}
+body.mobile-app .list-bar .search {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+body.mobile-app .list-bar .search input {
+  width: 100%;
+}
+body.mobile-app .list-bar .filter-toggle {
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 44px;
+  padding: 0 16px;
+  justify-content: center;
+}
+/* Сводка по тирам — одной прокручиваемой строкой, как и задумано. */
+body.mobile-app .list-summary {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  margin: 0 -12px 12px;
+  padding: 0 12px 2px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+body.mobile-app .list-summary::-webkit-scrollbar { display: none; }
+body.mobile-app .list-summary-pill { flex: 0 0 auto; }
 
 body.mobile-app .notif-tools {
   overflow-x: auto;
@@ -4483,7 +4533,7 @@ body.mobile-app .update-card-actions .btn { min-height: 34px; font-size: 12px; }
       </div>
     </div>
     <div class="list-summary" id="summary-watched" aria-live="polite"></div>
-    <div class="filters list-tools" id="list-tools-watched" data-list-tools="watched"></div>
+    <div class="list-tools" id="list-tools-watched" data-list-tools="watched"></div>
     <div class="db-status" id="list-status-watched" aria-live="polite"></div>
     <div class="tierlist" id="tiers-watched"></div>
   </section>
@@ -4500,6 +4550,7 @@ body.mobile-app .update-card-actions .btn { min-height: 34px; font-size: 12px; }
         <div class="list-more">
           <button type="button" class="icon-btn list-more-btn" data-action="list-more-menu" data-list="planned" aria-haspopup="true" aria-expanded="false" aria-label="Ещё действия">⋯</button>
           <div class="list-more-menu" data-list-menu="planned" hidden>
+            <button type="button" class="list-more-item" data-action="random-planned" data-list="planned">🎲 Что посмотреть?</button>
             <button type="button" class="list-more-item" data-action="exchange-export" data-list="planned">Экспорт</button>
             <button type="button" class="list-more-item" data-action="exchange-import">Импорт</button>
           </div>
@@ -4507,7 +4558,7 @@ body.mobile-app .update-card-actions .btn { min-height: 34px; font-size: 12px; }
       </div>
     </div>
     <div class="list-summary" id="summary-planned" aria-live="polite"></div>
-    <div class="filters list-tools" id="list-tools-planned" data-list-tools="planned"></div>
+    <div class="list-tools" id="list-tools-planned" data-list-tools="planned"></div>
     <div class="db-status" id="list-status-planned" aria-live="polite"></div>
     <div class="tierlist" id="tiers-planned"></div>
   </section>
@@ -4526,7 +4577,7 @@ body.mobile-app .update-card-actions .btn { min-height: 34px; font-size: 12px; }
         <div class="search">
           <input id="upcoming-search" type="search" placeholder="Поиск премьеры: название, жанр, студия" autocomplete="off" aria-label="Поиск премьеры">
         </div>
-        <button class="btn btn-ghost" type="button" id="upcoming-mine" data-action="toggle-upcoming-mine" aria-pressed="false">Только мои серии</button>
+        <button class="btn btn-ghost" type="button" id="upcoming-mine" data-action="toggle-upcoming-mine" aria-pressed="false"><span class="when-wide">Только мои серии</span><span class="when-narrow">Мои серии</span></button>
         <button class="btn btn-ghost filter-toggle" type="button" data-action="toggle-upcoming-filters" aria-expanded="false" aria-controls="upcoming-filters">
           Фильтры <b class="filter-count" id="upcoming-filter-count" hidden>0</b>
         </button>
@@ -6502,6 +6553,17 @@ window.AniTierTitlesRu = {
 'use strict';
 
 window.AniTierChangelog = [
+  {
+    version: '1.40.2',
+    date: '7 ноября 2026',
+    title: 'Фильтры списков — под кнопкой',
+    items: [
+      '«Просмотрено» и «Запланировано»: сверху остались поиск и «Фильтры», а тип, жанр, год, рейтинг и порядок раскрываются в панели.',
+      '«Что посмотреть?» в «Запланировано» переехало в меню «⋯».',
+      'Сводка по тирам на телефоне листается одной строкой и больше не занимает пол-экрана.',
+      '«Скоро выйдут»: «Мои серии», «Фильтры» и «⋯» выстроены в одну строку, а меню больше не открывается за краем экрана.',
+    ],
+  },
   {
     version: '1.40.1',
     date: '7 ноября 2026',
@@ -8496,7 +8558,7 @@ window.AniTierChangelog = [
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.40.1';
+  const APP_VERSION = '1.40.2';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -13097,31 +13159,37 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       .map(item => `<option value="${esc(item.value)}">${esc(item.label)}</option>`).join('');
     const sortOptions = C.LIST_SORTS
       .map(item => `<option value="${esc(item.value)}">${esc(item.label)}</option>`).join('');
-    return `<div class="search">
-        <input id="${name}-search" type="search" data-list-search="${name}" placeholder="Поиск: название, жанр, студия" autocomplete="off" aria-label="Поиск в списке">
+    return `<div class="list-bar">
+        <div class="search">
+          <input id="${name}-search" type="search" data-list-search="${name}" placeholder="Поиск: название, жанр, студия" autocomplete="off" aria-label="Поиск в списке">
+        </div>
+        <button class="btn btn-ghost filter-toggle" type="button" data-action="toggle-list-filters" data-list="${name}" aria-expanded="false" aria-controls="list-filters-${name}">
+          Фильтры <b class="filter-count" id="list-filter-count-${name}" hidden>0</b>
+        </button>
       </div>
-      <label class="filter-field">
-        <span>Тип</span>
-        <select id="${name}-type" data-list-filter="type" aria-label="Тип"><option value="">Любой</option>${typeOptions}</select>
-      </label>
-      <label class="filter-field">
-        <span>Жанр</span>
-        <select id="${name}-genre" data-list-filter="genre" aria-label="Жанр"><option value="">Любой</option></select>
-      </label>
-      <label class="filter-field">
-        <span>Год</span>
-        <select id="${name}-year" data-list-filter="year" aria-label="Год"><option value="">Любой</option></select>
-      </label>
-      <label class="filter-field">
-        <span>Рейтинг</span>
-        <select id="${name}-score" data-list-filter="minScore" aria-label="Рейтинг"><option value="">Любой</option>${scoreOptions}</select>
-      </label>
-      <label class="filter-field">
-        <span>Порядок</span>
-        <select id="${name}-sort" data-list-sort="${name}" aria-label="Порядок карточек">${sortOptions}</select>
-      </label>
-      ${name === 'planned' ? '<button class="btn btn-primary random-btn" type="button" data-action="random-planned" data-list="planned">Что посмотреть?</button>' : ''}
-      <button class="btn btn-ghost filter-reset" type="button" data-action="reset-list" data-list="${name}">Сбросить</button>`;
+      <div class="filters list-filters" id="list-filters-${name}" hidden>
+        <label class="filter-field">
+          <span>Тип</span>
+          <select id="${name}-type" data-list-filter="type" aria-label="Тип"><option value="">Любой</option>${typeOptions}</select>
+        </label>
+        <label class="filter-field">
+          <span>Жанр</span>
+          <select id="${name}-genre" data-list-filter="genre" aria-label="Жанр"><option value="">Любой</option></select>
+        </label>
+        <label class="filter-field">
+          <span>Год</span>
+          <select id="${name}-year" data-list-filter="year" aria-label="Год"><option value="">Любой</option></select>
+        </label>
+        <label class="filter-field">
+          <span>Рейтинг</span>
+          <select id="${name}-score" data-list-filter="minScore" aria-label="Рейтинг"><option value="">Любой</option>${scoreOptions}</select>
+        </label>
+        <label class="filter-field">
+          <span>Порядок</span>
+          <select id="${name}-sort" data-list-sort="${name}" aria-label="Порядок карточек">${sortOptions}</select>
+        </label>
+        <button class="btn btn-ghost filter-reset" type="button" data-action="reset-list" data-list="${name}">Сбросить</button>
+      </div>`;
   }
 
   /* Панель поиска и фильтров строится один раз: при вводе перерисовывается
@@ -13144,6 +13212,21 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     if (score) score.value = view.filters.minScore || '';
     const sort = tools.querySelector(`#${name}-sort`);
     if (sort) sort.value = view.sort;
+
+    /* Счётчик активных фильтров на кнопке и её состояние. */
+    const active = C.countActiveFilters(view.filters);
+    const badge = tools.querySelector(`#list-filter-count-${name}`);
+    if (badge) {
+      badge.textContent = String(active);
+      badge.hidden = active === 0;
+    }
+    const panel = tools.querySelector(`#list-filters-${name}`);
+    const toggle = tools.querySelector(`[data-action="toggle-list-filters"]`);
+    if (panel && toggle) {
+      const open = !panel.hidden;
+      toggle.classList.toggle('is-active', active > 0 || open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
 
     const options = C.listFilterOptions(items);
 
@@ -18025,6 +18108,16 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
           const text = C.buildIcs(items);
           downloadText(text, 'anitier-episodes.ics', 'text/calendar');
           toast(`Календарь сохранён: ${items.length} ${plural(items.length, 'серия', 'серии', 'серий')}`);
+          break;
+        }
+
+        case 'toggle-list-filters': {
+          const name = el.dataset.list === 'planned' ? 'planned' : 'watched';
+          const panel = document.getElementById('list-filters-' + name);
+          if (!panel) break;
+          panel.hidden = !panel.hidden;
+          el.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
+          el.classList.toggle('is-active', !panel.hidden || C.countActiveFilters(C.normalizeFilters((state.listViews[name] || {}).filters)) > 0);
           break;
         }
 

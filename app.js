@@ -2952,6 +2952,16 @@
           break;
         }
 
+        case 'toggle-list-filters': {
+          const name = el.dataset.list === 'planned' ? 'planned' : 'watched';
+          const panel = document.getElementById('list-filters-' + name);
+          if (!panel) break;
+          panel.hidden = !panel.hidden;
+          el.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
+          el.classList.toggle('is-active', !panel.hidden || C.countActiveFilters(C.normalizeFilters((state.listViews[name] || {}).filters)) > 0);
+          break;
+        }
+
         case 'reset-list': {
           const name = el.dataset.list === 'planned' ? 'planned' : 'watched';
           const previous = state.listViews[name] || {};

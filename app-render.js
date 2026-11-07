@@ -1014,31 +1014,37 @@
       .map(item => `<option value="${esc(item.value)}">${esc(item.label)}</option>`).join('');
     const sortOptions = C.LIST_SORTS
       .map(item => `<option value="${esc(item.value)}">${esc(item.label)}</option>`).join('');
-    return `<div class="search">
-        <input id="${name}-search" type="search" data-list-search="${name}" placeholder="Поиск: название, жанр, студия" autocomplete="off" aria-label="Поиск в списке">
+    return `<div class="list-bar">
+        <div class="search">
+          <input id="${name}-search" type="search" data-list-search="${name}" placeholder="Поиск: название, жанр, студия" autocomplete="off" aria-label="Поиск в списке">
+        </div>
+        <button class="btn btn-ghost filter-toggle" type="button" data-action="toggle-list-filters" data-list="${name}" aria-expanded="false" aria-controls="list-filters-${name}">
+          Фильтры <b class="filter-count" id="list-filter-count-${name}" hidden>0</b>
+        </button>
       </div>
-      <label class="filter-field">
-        <span>Тип</span>
-        <select id="${name}-type" data-list-filter="type" aria-label="Тип"><option value="">Любой</option>${typeOptions}</select>
-      </label>
-      <label class="filter-field">
-        <span>Жанр</span>
-        <select id="${name}-genre" data-list-filter="genre" aria-label="Жанр"><option value="">Любой</option></select>
-      </label>
-      <label class="filter-field">
-        <span>Год</span>
-        <select id="${name}-year" data-list-filter="year" aria-label="Год"><option value="">Любой</option></select>
-      </label>
-      <label class="filter-field">
-        <span>Рейтинг</span>
-        <select id="${name}-score" data-list-filter="minScore" aria-label="Рейтинг"><option value="">Любой</option>${scoreOptions}</select>
-      </label>
-      <label class="filter-field">
-        <span>Порядок</span>
-        <select id="${name}-sort" data-list-sort="${name}" aria-label="Порядок карточек">${sortOptions}</select>
-      </label>
-      ${name === 'planned' ? '<button class="btn btn-primary random-btn" type="button" data-action="random-planned" data-list="planned">Что посмотреть?</button>' : ''}
-      <button class="btn btn-ghost filter-reset" type="button" data-action="reset-list" data-list="${name}">Сбросить</button>`;
+      <div class="filters list-filters" id="list-filters-${name}" hidden>
+        <label class="filter-field">
+          <span>Тип</span>
+          <select id="${name}-type" data-list-filter="type" aria-label="Тип"><option value="">Любой</option>${typeOptions}</select>
+        </label>
+        <label class="filter-field">
+          <span>Жанр</span>
+          <select id="${name}-genre" data-list-filter="genre" aria-label="Жанр"><option value="">Любой</option></select>
+        </label>
+        <label class="filter-field">
+          <span>Год</span>
+          <select id="${name}-year" data-list-filter="year" aria-label="Год"><option value="">Любой</option></select>
+        </label>
+        <label class="filter-field">
+          <span>Рейтинг</span>
+          <select id="${name}-score" data-list-filter="minScore" aria-label="Рейтинг"><option value="">Любой</option>${scoreOptions}</select>
+        </label>
+        <label class="filter-field">
+          <span>Порядок</span>
+          <select id="${name}-sort" data-list-sort="${name}" aria-label="Порядок карточек">${sortOptions}</select>
+        </label>
+        <button class="btn btn-ghost filter-reset" type="button" data-action="reset-list" data-list="${name}">Сбросить</button>
+      </div>`;
   }
 
   /* Панель поиска и фильтров строится один раз: при вводе перерисовывается
@@ -1061,6 +1067,21 @@
     if (score) score.value = view.filters.minScore || '';
     const sort = tools.querySelector(`#${name}-sort`);
     if (sort) sort.value = view.sort;
+
+    /* Счётчик активных фильтров на кнопке и её состояние. */
+    const active = C.countActiveFilters(view.filters);
+    const badge = tools.querySelector(`#list-filter-count-${name}`);
+    if (badge) {
+      badge.textContent = String(active);
+      badge.hidden = active === 0;
+    }
+    const panel = tools.querySelector(`#list-filters-${name}`);
+    const toggle = tools.querySelector(`[data-action="toggle-list-filters"]`);
+    if (panel && toggle) {
+      const open = !panel.hidden;
+      toggle.classList.toggle('is-active', active > 0 || open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
 
     const options = C.listFilterOptions(items);
 

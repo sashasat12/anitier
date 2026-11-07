@@ -2686,4 +2686,59 @@
       T.eq(panel.hidden, true, 'Панель снова свёрнута');
     } finally { app.close(); }
   });
+
+  T.test('app: фильтры списков раскрываются кнопкой и считают активные', async () => {
+    const app = await T.mountApp({ query: '?test=1' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      const doc = win.document;
+      await win.__anitierTest.init();
+
+      const make = (id, title, extra = {}) => App.mapAniList(rawAniList(id, title, {
+        idMal: id, genres: extra.genres || ['Action'], seasonYear: extra.year || 2020,
+        ...extra,
+      }));
+      App.addToList('planned', make(9701, 'Первый'), 'S', true);
+      App.addToList('planned', make(9702, 'Второй', { genres: ['Drama'], year: 2021 }), 'A', true);
+      App.switchTab('planned');
+
+      const tools = doc.querySelector('#list-tools-planned');
+      T.assert(tools, 'Панель списка на месте');
+      T.assert(tools.querySelector('.list-bar'), 'Поиск и кнопка фильтров в верхней строке');
+      const panel = doc.querySelector('#list-filters-planned');
+      T.assert(panel, 'Панель фильтров существует');
+      T.eq(panel.hidden, true, 'Фильтры свёрнуты по умолчанию');
+      const toggle = tools.querySelector('[data-action="toggle-list-filters"]');
+      T.includes(toggle.textContent, 'Фильтры');
+      const badge = doc.querySelector('#list-filter-count-planned');
+      T.eq(badge.hidden, true, 'Пустой счётчик скрыт');
+
+      toggle.click();
+      T.eq(panel.hidden, false, 'Фильтры раскрылись');
+      T.eq(toggle.getAttribute('aria-expanded'), 'true', 'aria-expanded обновлён');
+      T.assert(panel.querySelector('[data-list-filter="type"]'), 'Тип внутри панели');
+      T.assert(panel.querySelector('[data-list-sort]'), 'Порядок внутри панели');
+      T.eq(panel.querySelector('[data-action="random-planned"]'), null, '«Что посмотреть?» не в панели фильтров');
+      const random = doc.querySelector('#view-planned [data-action="random-planned"]');
+      T.assert(random, '«Что посмотреть?» лежит в меню «⋯»');
+      T.eq(random.closest('.list-more-menu') !== null, true, 'Кнопка находится внутри меню');
+
+      const genre = panel.querySelector('[data-list-filter="genre"]');
+      genre.value = genre.options[1].value;
+      genre.dispatchEvent(new win.Event('change', { bubbles: true }));
+      T.eq(badge.hidden, false, 'Счётчик появился после выбора жанра');
+      T.eq(badge.textContent, '1', 'Счётчик показывает один фильтр');
+      T.eq(toggle.classList.contains('is-active'), true, 'Кнопка подсвечена');
+
+      panel.querySelector('[data-action="reset-list"]').click();
+      T.eq(badge.hidden, true, 'После сброса счётчик скрыт');
+      T.eq(panel.querySelector('[data-list-filter="genre"]').value, '', 'Жанр сброшен');
+
+      toggle.click();
+      T.eq(panel.hidden, true, 'Повторный клик сворачивает фильтры');
+    } finally {
+      app.close();
+    }
+  });
 })();
