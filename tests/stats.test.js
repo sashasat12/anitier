@@ -73,13 +73,13 @@
 
   T.test('stats: время просмотра показывается по-русски', () => {
     const C = core();
-    T.eq(C.formatWatchTime(0), '0 мин');
+    T.eq(C.formatWatchTime(0), '—');
     T.eq(C.formatWatchTime(45), '45 мин');
     T.eq(C.formatWatchTime(60), '1 ч');
     T.eq(C.formatWatchTime(150), '2 ч 30 мин');
     T.eq(C.formatWatchTime(1440), '1 день');
     T.eq(C.formatWatchTime(1500), '1 день 1 ч');
-    T.eq(C.formatWatchTime(-10), '0 мин');
+    T.eq(C.formatWatchTime(-10), '—');
   });
 
   T.test('stats: серии, завершённость, оценки и топы считаются из списков', () => {

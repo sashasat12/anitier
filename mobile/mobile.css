@@ -46,6 +46,37 @@ body.mobile-app .icon-btn {
   border-radius: 12px;
 }
 
+/* ����� ��� ��������� �������� ��� ������� ��������� */
+body.mobile-app .filter-menu {
+  z-index: 95;
+}
+
+body.mobile-app .filter-menu-wide {
+  left: 12px;
+  right: 12px;
+  width: auto;
+  max-height: min(56dvh, 420px);
+}
+
+body.mobile-app .filter-menu-scroll {
+  max-height: min(48dvh, 340px);
+}
+
+/* ����� ���� ������ */
+body.mobile-app #toasts {
+  right: 12px;
+  left: 12px;
+  bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+  max-width: none;
+  align-items: stretch;
+}
+
+body.mobile-app .toast {
+  width: 100%;
+  font-size: 12px;
+  padding: 10px 12px;
+}
+
 body.mobile-app .install-btn {
   background: linear-gradient(135deg, rgba(255, 77, 141, .22), rgba(138, 92, 255, .22));
   border-color: rgba(255, 77, 141, .4);
@@ -288,11 +319,22 @@ body.mobile-app .modal {
 body.mobile-app .modal-panel {
   width: 100%;
   min-width: 0;
-  max-height: 92dvh;
+  max-height: 94dvh;
   overflow-x: hidden;
   border-radius: 22px 22px 0 0;
   padding-bottom: env(safe-area-inset-bottom);
   animation: none;
+}
+
+body.mobile-app .modal-close {
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  right: 10px;
+  width: 38px;
+  height: 38px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: rgba(9, 11, 18, 0.7);
+  z-index: 5;
 }
 
 body.mobile-app .synopsis-toolbar { justify-content: flex-start; gap: 8px; }
@@ -416,4 +458,198 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     padding-top: calc(10px + env(safe-area-inset-top));
   }
   body.mobile-app .install-btn { display: none !important; }
+}
+
+/* ---------- ""Скоро выйдут"" ---------- */
+body.mobile-app .upcoming-tools {
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+body.mobile-app .upcoming-tools .search {
+  grid-column: 1 / -1;
+}
+body.mobile-app .upcoming-tools .filter-field {
+  min-width: 0;
+}
+body.mobile-app .upcoming-tools .filter-multi-btn {
+  font-size: 11.5px;
+  padding: 6px 8px;
+  min-height: 34px;
+}
+
+body.mobile-app .notif-tools {
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 0 2px;
+}
+body.mobile-app .notif-tools::-webkit-scrollbar { display: none; }
+body.mobile-app .notif-tools .btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+body.mobile-app .db-sort-row {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+body.mobile-app .db-sort-field {
+  flex: 1 1 45%;
+  min-width: 0;
+}
+body.mobile-app .db-sort-field select {
+  width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+
+body.mobile-app .update-card {
+  margin: 10px 12px 0;
+  border-radius: 14px;
+}
+body.mobile-app .update-card-body {
+  padding: 12px 14px;
+}
+body.mobile-app .update-card-actions {
+  gap: 6px;
+}
+body.mobile-app .update-card-actions .btn {
+  min-height: 34px;
+  font-size: 11.5px;
+  padding: 6px 10px;
+}
+
+body.mobile-app .tag {
+  font-size: 12px;
+  padding: 6px 11px;
+}
+body.mobile-app .modal-genres .tags {
+  gap: 8px;
+}
+
+body.mobile-app .filter-option {
+  min-height: 38px;
+  font-size: 13px;
+  padding: 8px 10px;
+}
+body.mobile-app .filter-menu-group {
+  font-size: 10.5px;
+}
+
+body.mobile-app .exchange-code {
+  font-size: 11px;
+  word-break: break-all;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+body.mobile-app .exchange-content {
+  padding: 18px 12px 20px;
+}
+body.mobile-app .exchange-actions {
+  flex-direction: column;
+  align-items: stretch;
+}
+body.mobile-app .exchange-actions .btn {
+  width: 100%;
+}
+
+body.mobile-app .notif-tools {
+  position: relative;
+}
+body.mobile-app .notif-tools::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 24px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--bg));
+}
+
+body.mobile-app #db-more {
+  width: calc(100% - 24px);
+  justify-content: center;
+  margin-top: 18px;
+}
+
+body.mobile-app .modal-panel::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
+  z-index: 6;
+}
+body.mobile-app .modal-panel {
+  padding-top: 18px;
+}
+
+.ptr-indicator {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%) translateY(-40px);
+  z-index: 200;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(17, 21, 31, 0.95);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11.5px;
+  transition: transform .2s, color .2s;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.ptr-indicator.is-active {
+  color: var(--text);
+}
+
+body.mobile-app .topbar {
+  padding: 8px 12px;
+  gap: 8px;
+}
+body.mobile-app .brand-name {
+  font-size: 14px;
+}
+body.mobile-app .tabs {
+  gap: 2px;
+}
+body.mobile-app .tab {
+  padding: 8px 10px;
+  font-size: 12px;
+}
+body.mobile-app .tab-ico {
+  font-size: 14px;
+}
+
+body.mobile-app .wrap {
+  padding: 16px 12px 90px;
+}
+body.mobile-app .section-head {
+  margin-bottom: 14px;
+}
+body.mobile-app .grid {
+  gap: 12px;
+}
+
+body.mobile-app .tab:active {
+  transform: scale(0.96);
+}
+body.mobile-app .tab {
+  transition: background .15s, color .15s, transform .1s;
+}
+
+body.mobile-app {
+  font-size: 14px;
+  line-height: 1.6;
+}
+body.mobile-app .card-title {
+  font-size: 13px;
+  line-height: 1.4;
 }

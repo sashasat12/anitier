@@ -737,4 +737,37 @@
     T.eq(dbOnly.length, 1);
     T.eq(dbOnly[0].where, 'db');
   });
+
+  T.test('core: у всех категорий тегов есть русская подпись', () => {
+    const C = core();
+    const categories = [...new Set(C.TAGS.map(tag => tag.category).filter(Boolean))];
+    T.assert(categories.length > 20, 'Категории тегов загружены из tags.js');
+
+    for (const category of categories) {
+      const label = C.tagCategoryLabel(category);
+      T.assert(label, `Нет подписи для категории ${category}`);
+      T.assert(label !== category, `Категория не переведена: ${category}`);
+      T.assert(!/[A-Za-z]/.test(label), `В подписи осталась латиница: ${category} → ${label}`);
+    }
+
+    T.eq(C.tagCategoryLabel(''), 'Теги', 'Пустая категория — общая подпись');
+    T.eq(C.tagCategoryLabel(null), 'Теги');
+    T.eq(C.tagCategoryLabel('Unknown-Cat'), 'Unknown-Cat', 'Неизвестная категория остаётся как есть');
+  });
+
+  T.test('core: жанр по названию превращается в id фильтра', () => {
+    const C = core();
+    T.eq(C.genreIdByName('Action'), '1');
+    T.eq(C.genreIdByName('  action '), '1', 'Регистр и пробелы не важны');
+    T.eq(C.genreIdByName('Sci-Fi'), '24');
+    T.eq(C.genreIdByName('Драма'), '8', 'Русское название из своей карточки');
+    T.eq(C.genreIdByName('Boys Love'), '', 'Неизвестный жанр не подменяется');
+    T.eq(C.genreIdByName(''), '');
+    T.eq(C.genreIdByName(null), '');
+
+    for (const genre of C.GENRES) {
+      T.eq(C.genreIdByName(genre.label), String(genre.id), `Русская подпись ${genre.label}`);
+      T.eq(C.genreIdByName(genre.names[1]), String(genre.id), `Английское имя ${genre.names[1]}`);
+    }
+  });
 })();

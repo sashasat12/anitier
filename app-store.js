@@ -366,31 +366,42 @@
     const key = String(id) + '|' + title;
     if (posterCache.has(key)) return posterCache.get(key);
     const h = hash(key) % 360;
-    const h2 = (h + 48) % 360;
-    const letter = (String(title || '?').trim().charAt(0) || '?').toUpperCase();
-    const label = escXml(String(title || '').slice(0, 34));
+    const h2 = (h + 42) % 360;
+    const h3 = (h + 84) % 360;
+    const raw = String(title || '?').replace(/\s+/g, ' ').trim();
+    const letter = (raw.charAt(0) || '?').toUpperCase();
+    const words = raw.split(' ').filter(Boolean);
+    const line1 = escXml(words.slice(0, 4).join(' ').slice(0, 36));
+    const line2 = escXml(words.slice(4, 8).join(' ').slice(0, 36));
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="360" height="540" viewBox="0 0 360 540">
 <defs>
 <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-<stop offset="0" stop-color="hsl(${h},68%,30%)"/>
-<stop offset="1" stop-color="hsl(${h2},72%,10%)"/>
+<stop offset="0" stop-color="hsl(${h},72%,34%)"/>
+<stop offset="0.55" stop-color="hsl(${h2},68%,16%)"/>
+<stop offset="1" stop-color="hsl(${h3},74%,10%)"/>
 </linearGradient>
+<radialGradient id="r" cx="0.8" cy="0.2" r="0.7">
+<stop offset="0" stop-color="hsl(${h2},95%,68%)" stop-opacity=".18"/>
+<stop offset="1" stop-color="hsl(${h2},95%,68%)" stop-opacity="0"/>
+</radialGradient>
 <linearGradient id="f" x1="0" y1="0" x2="0" y2="1">
 <stop offset="0" stop-color="#000" stop-opacity="0"/>
-<stop offset="1" stop-color="#000" stop-opacity=".78"/>
+<stop offset="0.7" stop-color="#000" stop-opacity=".5"/>
+<stop offset="1" stop-color="#000" stop-opacity=".88"/>
 </linearGradient>
 </defs>
 <rect width="360" height="540" fill="url(#g)"/>
-<circle cx="310" cy="80" r="130" fill="hsl(${h2},90%,62%)" opacity=".16"/>
-<circle cx="40" cy="470" r="170" fill="hsl(${h},90%,60%)" opacity=".13"/>
-<g opacity=".07" stroke="#fff" stroke-width="1">
-<path d="M0 90h360M0 180h360M0 270h360M0 360h360M0 450h360"/>
-<path d="M60 0v540M140 0v540M220 0v540M300 0v540"/>
+<rect width="360" height="540" fill="url(#r)"/>
+<circle cx="46" cy="486" r="148" fill="hsl(${h},92%,62%)" opacity=".12"/>
+<g opacity=".06" stroke="#fff" stroke-width="1">
+<path d="M0 108h360M0 216h360M0 324h360M0 432h360"/>
+<path d="M72 0v540M144 0v540M216 0v540M288 0v540"/>
 </g>
-<text x="180" y="318" font-family="Segoe UI, Arial, sans-serif" font-size="190" font-weight="700" fill="#ffffff" fill-opacity=".9" text-anchor="middle">${escXml(letter)}</text>
-<rect y="360" width="360" height="180" fill="url(#f)"/>
-<text x="180" y="492" font-family="Segoe UI, Arial, sans-serif" font-size="17" font-weight="600" fill="#ffffff" fill-opacity=".85" text-anchor="middle">${label}</text>
-<text x="180" y="516" font-family="Segoe UI, Arial, sans-serif" font-size="10" letter-spacing="3" fill="#ffffff" fill-opacity=".5" text-anchor="middle">ANITIER</text>
+<text x="180" y="292" font-family="Manrope,Segoe UI,Arial,sans-serif" font-size="156" font-weight="800" fill="#ffffff" fill-opacity=".92" text-anchor="middle">${escXml(letter)}</text>
+<rect y="356" width="360" height="184" fill="url(#f)"/>
+${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif" font-size="15" font-weight="700" fill="#ffffff" fill-opacity=".88" text-anchor="middle">${line2}</text>` : ''}
+<text x="180" y="${line2 ? 500 : 488}" font-family="Manrope,Segoe UI,Arial,sans-serif" font-size="${line2 ? 15 : 16}" font-weight="800" fill="#ffffff" text-anchor="middle">${line1}</text>
+<text x="180" y="522" font-family="Manrope,Segoe UI,Arial,sans-serif" font-size="9" letter-spacing="6" fill="#ffffff" fill-opacity=".42" text-anchor="middle">ANITIER</text>
 </svg>`;
     const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
     posterCache.set(key, url);

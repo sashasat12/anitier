@@ -562,10 +562,13 @@
       const tagButton = doc.querySelector('[data-action="find-tag"]');
       T.assert(tagButton, 'В карточке есть кликабельные теги');
       T.includes(tagButton.textContent, 'Сёнэн');
+      api.state.db.query = 'наруто';
+      doc.getElementById('search-input').value = 'наруто';
       tagButton.click();
 
       T.eq(api.state.tab, 'db');
       T.eq(api.state.db.filters.tags, ['Shounen']);
+      T.eq(api.state.db.query, '', 'Поиск по тегу не сужается названием');
       T.eq(doc.getElementById('modal').hidden, true, 'Карточка закрылась');
 
       api.state.db.items = [{
@@ -576,6 +579,55 @@
       app.win.AniTier.openModal(1);
       doc.querySelector('[data-action="find-similar"]').click();
       T.eq(api.state.db.filters.tags, ['Shounen', 'Isekai'], 'Похожие ищутся по двум тегам');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: жанр в карточке открывает тайтлы этого жанра', async () => {
+    const calls = [];
+    const app = await T.mountApp({
+      query: '?test=1',
+      setup(win) { win.fetch = baseFetch(calls); },
+    });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const doc = app.win.document;
+
+      api.state.db.loading = false;
+      api.state.db.error = null;
+      api.state.db.query = 'наруто';
+      doc.getElementById('search-input').value = 'наруто';
+      api.state.db.items = [{
+        id: 1, malId: 1, title: 'Жанр-тайтл', titleRu: '', originalTitle: 'Жанр-тайтл',
+        altTitle: '', image: '', episodes: 12, type: 'TV', status: 'Завершено', score: 8,
+        year: 2020, genres: ['Action', 'Drama'], tags: [],
+      }];
+      app.win.AniTier.renderDB();
+      doc.querySelector('#db-grid .card').click();
+
+      const genreSection = doc.querySelector('.modal-genres');
+      T.assert(genreSection, 'В карточке есть раздел жанров');
+      T.eq(genreSection.querySelector('.modal-label').textContent, 'Жанры');
+      const genreButton = genreSection.querySelector('[data-action="find-genre"]');
+      T.assert(genreButton, 'Жанры в карточке кликабельны');
+      T.eq(genreButton.tagName, 'BUTTON');
+      T.includes(genreButton.textContent, 'Экшен');
+      genreButton.click();
+
+      T.eq(api.state.tab, 'db', 'Открылась база');
+      T.eq(api.state.db.filters.genre, ['1'], 'В фильтр попал id жанра');
+      T.eq(api.state.db.query, '', 'Текстовый поиск сброшен');
+      T.eq(doc.getElementById('search-input').value, '', 'Поле поиска очищено');
+      T.eq(doc.getElementById('modal').hidden, true, 'Карточка закрылась');
+      T.eq(doc.querySelector('[data-filter-value="genre"]').textContent, 'Экшен');
+      T.eq(doc.querySelector('#filter-count').textContent, '1');
+
+      await T.waitFor(
+        () => calls.some(call => call.vars && Array.isArray(call.vars.genre_in) && call.vars.genre_in.includes('Action')),
+        'Запрос с genre_in=Action не выполнился',
+      );
     } finally {
       app.close();
     }

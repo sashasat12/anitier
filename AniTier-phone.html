@@ -544,6 +544,7 @@ button { font-family: inherit; }
   text-transform: uppercase;
 }
 .filter-option[hidden] { display: none; }
+.filter-menu-group[hidden] { display: none; }
 
 /* ---------- фильтры «Скоро выйдут» ---------- */
 .upcoming-tools .search { grid-column: 1 / -1; }
@@ -3114,6 +3115,37 @@ body.mobile-app .icon-btn {
   border-radius: 12px;
 }
 
+/* ����� ��� ��������� �������� ��� ������� ��������� */
+body.mobile-app .filter-menu {
+  z-index: 95;
+}
+
+body.mobile-app .filter-menu-wide {
+  left: 12px;
+  right: 12px;
+  width: auto;
+  max-height: min(56dvh, 420px);
+}
+
+body.mobile-app .filter-menu-scroll {
+  max-height: min(48dvh, 340px);
+}
+
+/* ����� ���� ������ */
+body.mobile-app #toasts {
+  right: 12px;
+  left: 12px;
+  bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+  max-width: none;
+  align-items: stretch;
+}
+
+body.mobile-app .toast {
+  width: 100%;
+  font-size: 12px;
+  padding: 10px 12px;
+}
+
 body.mobile-app .install-btn {
   background: linear-gradient(135deg, rgba(255, 77, 141, .22), rgba(138, 92, 255, .22));
   border-color: rgba(255, 77, 141, .4);
@@ -3356,11 +3388,22 @@ body.mobile-app .modal {
 body.mobile-app .modal-panel {
   width: 100%;
   min-width: 0;
-  max-height: 92dvh;
+  max-height: 94dvh;
   overflow-x: hidden;
   border-radius: 22px 22px 0 0;
   padding-bottom: env(safe-area-inset-bottom);
   animation: none;
+}
+
+body.mobile-app .modal-close {
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  right: 10px;
+  width: 38px;
+  height: 38px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: rgba(9, 11, 18, 0.7);
+  z-index: 5;
 }
 
 body.mobile-app .synopsis-toolbar { justify-content: flex-start; gap: 8px; }
@@ -3484,6 +3527,83 @@ body.mobile-app .toast-action { min-height: 32px; padding: 4px 10px; font-size: 
     padding-top: calc(10px + env(safe-area-inset-top));
   }
   body.mobile-app .install-btn { display: none !important; }
+}
+
+/* ---------- ""Скоро выйдут"" ---------- */
+body.mobile-app .upcoming-tools {
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+body.mobile-app .upcoming-tools .search {
+  grid-column: 1 / -1;
+}
+body.mobile-app .upcoming-tools .filter-field {
+  min-width: 0;
+}
+body.mobile-app .upcoming-tools .filter-multi-btn {
+  font-size: 11.5px;
+  padding: 6px 8px;
+  min-height: 34px;
+}
+
+body.mobile-app .notif-tools {
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 0 2px;
+}
+body.mobile-app .notif-tools::-webkit-scrollbar { display: none; }
+body.mobile-app .notif-tools .btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+body.mobile-app .db-sort-row {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+body.mobile-app .db-sort-field {
+  flex: 1 1 45%;
+  min-width: 0;
+}
+body.mobile-app .db-sort-field select {
+  width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+
+body.mobile-app .update-card {
+  margin: 10px 12px 0;
+  border-radius: 14px;
+}
+body.mobile-app .update-card-body {
+  padding: 12px 14px;
+}
+body.mobile-app .update-card-actions {
+  gap: 6px;
+}
+body.mobile-app .update-card-actions .btn {
+  min-height: 34px;
+  font-size: 11.5px;
+  padding: 6px 10px;
+}
+
+body.mobile-app .tag {
+  font-size: 12px;
+  padding: 6px 11px;
+}
+body.mobile-app .modal-genres .tags {
+  gap: 8px;
+}
+
+body.mobile-app .filter-option {
+  min-height: 38px;
+  font-size: 13px;
+  padding: 8px 10px;
+}
+body.mobile-app .filter-menu-group {
+  font-size: 10.5px;
 }
 
 </style>
@@ -5680,6 +5800,41 @@ window.AniTierTitlesRu = {
 
 window.AniTierChangelog = [
   {
+    version: '1.38.1',
+    date: '5 ноября 2026',
+    title: 'Мобильная полировка и удобство',
+    items: [
+      'Меню тегов на телефоне больше не прячется под нижнюю навигацию.',
+      'Тосты компактнее на мобильных: не больше двух за раз, выше навбара с учётом выреза экрана.',
+      'Кнопка закрытия карточки тайтла стала крупнее и не теряется при длинном описании.',
+      'Кликабельные жанры и теги сбрасывают поиск по названию для чистого результата.',
+      'Фильтры на «Скоро выйдут», вкладки уведомлений, сортировка и чипы лучше вмещаются на узком экране.',
+      'Демо-постеры стали нагляднее: градиент, название и буква читаются лучше.',
+      'Пустое время просмотра в статистике теперь «—» вместо «0 мин».',
+    ],
+  },
+  {
+    version: '1.38.0',
+    date: '5 ноября 2026',
+    title: 'Жанры в карточке ведут в поиск',
+    items: [
+      'Жанры в карточке тайтла стали кнопками: нажмите «Экшен» или «Драма» — база покажет все тайтлы этого жанра.',
+      'Переход по жанру и тегу сбрасывает текстовый поиск, чтобы выдача не сужалась до названия, с которого вы пришли.',
+      'Жанры вынесены в отдельный блок «Жанры» с подсказкой при наведении.',
+    ],
+  },
+  {
+    version: '1.37.1',
+    date: '5 ноября 2026',
+    title: 'Выбор тегов и стабильное меню фильтров',
+    items: [
+      'Меню тегов больше не закрывается само: клавиатура на телефоне и мерцание при открытии поиска не мешают выбирать теги.',
+      'Все категории тегов подписаны по-русски: «Фэнтези», «Романтика», «Повседневность» вместо английских слагов.',
+      'Поиск по тегам сбрасывается при повторном открытии меню, пустые заголовки категорий не показываются.',
+      'Поворот экрана закрывает открытые меню фильтров, а появление клавиатуры — нет.',
+    ],
+  },
+  {
     version: '1.37.0',
     date: '2 ноября 2026',
     title: 'Удаление моментов и поворот экрана',
@@ -6141,6 +6296,48 @@ window.AniTierChangelog = [
   /* Теги (демография, сеттинг, темы) лежат отдельно в tags.js. */
   const TAGS = (typeof window !== 'undefined' && Array.isArray(window.AniTierTags)) ? window.AniTierTags : [];
 
+  /* Категории тегов приходят слагами AniList: «Theme-Fantasy», «Cast-Traits».
+     В меню фильтра показываем русские подписи, а не английские слаги. */
+  const TAG_CATEGORY_LABELS = Object.freeze({
+    'Cast-Main Cast': 'Главные герои',
+    'Cast-Supporting Cast': 'Второстепенные герои',
+    'Cast-Traits': 'Черты персонажей',
+    'Character': 'Персонажи',
+    'Content': 'Содержание',
+    'Demographic': 'Аудитория',
+    'Narrative': 'Повествование',
+    'Setting': 'Сеттинг',
+    'Setting-Scene': 'Место действия',
+    'Setting-Time': 'Время действия',
+    'Setting-Universe': 'Вселенная',
+    'Style': 'Стиль',
+    'Technical': 'Техническое',
+    'Theme': 'Темы',
+    'Theme-Action': 'Экшен',
+    'Theme-Arts': 'Искусство',
+    'Theme-Arts-Music': 'Музыка',
+    'Theme-Comedy': 'Комедия',
+    'Theme-Drama': 'Драма',
+    'Theme-Fantasy': 'Фэнтези',
+    'Theme-Game': 'Игры',
+    'Theme-Game-Card & Board Game': 'Настольные игры',
+    'Theme-Game-Sport': 'Спорт',
+    'Theme-Other': 'Другое',
+    'Theme-Other-Organisations': 'Организации',
+    'Theme-Other-Vehicle': 'Транспорт',
+    'Theme-Romance': 'Романтика',
+    'Theme-Sci-Fi': 'Фантастика',
+    'Theme-Sci-Fi-Mecha': 'Меха',
+    'Theme-Slice of Life': 'Повседневность',
+    'Time': 'Время',
+  });
+
+  function tagCategoryLabel(category) {
+    const key = String(category == null ? '' : category).trim();
+    if (!key) return 'Теги';
+    return TAG_CATEGORY_LABELS[key] || key;
+  }
+
   const SEARCH_LANGS = [
     { value: 'auto', label: 'Авто' },
     { value: 'ru', label: 'Русский' },
@@ -6414,6 +6611,16 @@ window.AniTierChangelog = [
 
   function genreById(id) {
     return GENRES.find(item => String(item.id) === String(id)) || null;
+  }
+
+  /* Жанр приходит строкой AniList/Kitsu или из своей карточки: «Action», «Драма».
+     Возвращаем id фильтра, чтобы поиск шёл через genre_in, а не текстом. */
+  function genreIdByName(name) {
+    const key = String(name == null ? '' : name).trim().toLowerCase();
+    if (!key) return '';
+    const genre = GENRES.find(item => String(item.label).toLowerCase() === key
+      || item.names.some(alias => String(alias).toLowerCase() === key));
+    return genre ? String(genre.id) : '';
   }
 
   function matchesFilters(anime, filters) {
@@ -7510,7 +7717,7 @@ window.AniTierChangelog = [
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.37.0';
+  const APP_VERSION = '1.38.1';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -7842,6 +8049,7 @@ window.AniTierChangelog = [
   /** Минуты просмотра в человеческий вид: «3 дня 4 ч», «12 ч 30 мин», «45 мин». */
   function formatWatchTime(minutes) {
     const total = Math.max(0, Math.round(Number(minutes) || 0));
+    if (total === 0) return '—';
     const days = Math.floor(total / 1440);
     const hours = Math.floor((total % 1440) / 60);
     const mins = total % 60;
@@ -7849,7 +8057,7 @@ window.AniTierChangelog = [
     if (days) parts.push(`${days} ${pluralRu(days, 'день', 'дня', 'дней')}`);
     if (hours) parts.push(`${hours} ч`);
     if (!days && mins) parts.push(`${mins} мин`);
-    return parts.length ? parts.join(' ') : '0 мин';
+    return parts.length ? parts.join(' ') : '—';
   }
 
   /**
@@ -8088,6 +8296,8 @@ window.AniTierChangelog = [
     dragScrollDelta,
     GENRES,
     TAGS,
+    TAG_CATEGORY_LABELS,
+    tagCategoryLabel,
     DB_SORTS,
     normalizeDBSort,
     sortCatalogItems,
@@ -8100,6 +8310,7 @@ window.AniTierChangelog = [
     hasActiveFilters,
     countActiveFilters,
     genreById,
+    genreIdByName,
     genreRu,
     hasCyrillic,
     hasJapanese,
@@ -8495,31 +8706,42 @@ window.AniTierChangelog = [
     const key = String(id) + '|' + title;
     if (posterCache.has(key)) return posterCache.get(key);
     const h = hash(key) % 360;
-    const h2 = (h + 48) % 360;
-    const letter = (String(title || '?').trim().charAt(0) || '?').toUpperCase();
-    const label = escXml(String(title || '').slice(0, 34));
+    const h2 = (h + 42) % 360;
+    const h3 = (h + 84) % 360;
+    const raw = String(title || '?').replace(/\s+/g, ' ').trim();
+    const letter = (raw.charAt(0) || '?').toUpperCase();
+    const words = raw.split(' ').filter(Boolean);
+    const line1 = escXml(words.slice(0, 4).join(' ').slice(0, 36));
+    const line2 = escXml(words.slice(4, 8).join(' ').slice(0, 36));
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="360" height="540" viewBox="0 0 360 540">
 <defs>
 <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-<stop offset="0" stop-color="hsl(${h},68%,30%)"/>
-<stop offset="1" stop-color="hsl(${h2},72%,10%)"/>
+<stop offset="0" stop-color="hsl(${h},72%,34%)"/>
+<stop offset="0.55" stop-color="hsl(${h2},68%,16%)"/>
+<stop offset="1" stop-color="hsl(${h3},74%,10%)"/>
 </linearGradient>
+<radialGradient id="r" cx="0.8" cy="0.2" r="0.7">
+<stop offset="0" stop-color="hsl(${h2},95%,68%)" stop-opacity=".18"/>
+<stop offset="1" stop-color="hsl(${h2},95%,68%)" stop-opacity="0"/>
+</radialGradient>
 <linearGradient id="f" x1="0" y1="0" x2="0" y2="1">
 <stop offset="0" stop-color="#000" stop-opacity="0"/>
-<stop offset="1" stop-color="#000" stop-opacity=".78"/>
+<stop offset="0.7" stop-color="#000" stop-opacity=".5"/>
+<stop offset="1" stop-color="#000" stop-opacity=".88"/>
 </linearGradient>
 </defs>
 <rect width="360" height="540" fill="url(#g)"/>
-<circle cx="310" cy="80" r="130" fill="hsl(${h2},90%,62%)" opacity=".16"/>
-<circle cx="40" cy="470" r="170" fill="hsl(${h},90%,60%)" opacity=".13"/>
-<g opacity=".07" stroke="#fff" stroke-width="1">
-<path d="M0 90h360M0 180h360M0 270h360M0 360h360M0 450h360"/>
-<path d="M60 0v540M140 0v540M220 0v540M300 0v540"/>
+<rect width="360" height="540" fill="url(#r)"/>
+<circle cx="46" cy="486" r="148" fill="hsl(${h},92%,62%)" opacity=".12"/>
+<g opacity=".06" stroke="#fff" stroke-width="1">
+<path d="M0 108h360M0 216h360M0 324h360M0 432h360"/>
+<path d="M72 0v540M144 0v540M216 0v540M288 0v540"/>
 </g>
-<text x="180" y="318" font-family="Segoe UI, Arial, sans-serif" font-size="190" font-weight="700" fill="#ffffff" fill-opacity=".9" text-anchor="middle">${escXml(letter)}</text>
-<rect y="360" width="360" height="180" fill="url(#f)"/>
-<text x="180" y="492" font-family="Segoe UI, Arial, sans-serif" font-size="17" font-weight="600" fill="#ffffff" fill-opacity=".85" text-anchor="middle">${label}</text>
-<text x="180" y="516" font-family="Segoe UI, Arial, sans-serif" font-size="10" letter-spacing="3" fill="#ffffff" fill-opacity=".5" text-anchor="middle">ANITIER</text>
+<text x="180" y="292" font-family="Manrope,Segoe UI,Arial,sans-serif" font-size="156" font-weight="800" fill="#ffffff" fill-opacity=".92" text-anchor="middle">${escXml(letter)}</text>
+<rect y="356" width="360" height="184" fill="url(#f)"/>
+${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif" font-size="15" font-weight="700" fill="#ffffff" fill-opacity=".88" text-anchor="middle">${line2}</text>` : ''}
+<text x="180" y="${line2 ? 500 : 488}" font-family="Manrope,Segoe UI,Arial,sans-serif" font-size="${line2 ? 15 : 16}" font-weight="800" fill="#ffffff" text-anchor="middle">${line1}</text>
+<text x="180" y="522" font-family="Manrope,Segoe UI,Arial,sans-serif" font-size="9" letter-spacing="6" fill="#ffffff" fill-opacity=".42" text-anchor="middle">ANITIER</text>
 </svg>`;
     const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
     posterCache.set(key, url);
@@ -11193,20 +11415,6 @@ window.AniTierChangelog = [
   /* ---------------- фильтры и отрисовка базы ---------------- */
   const FILTER_MENU_KEYS = ['type', 'status', 'year', 'genre', 'tags'];
 
-  const TAG_CATEGORY_RU = {
-    'Cast-Main Cast': 'Главные герои',
-    'Cast-Supporting Cast': 'Второстепенные герои',
-    'Character': 'Персонажи',
-    'Content': 'Содержание',
-    'Demographic': 'Аудитория',
-    'Narrative': 'Повествование',
-    'Setting': 'Сеттинг',
-    'Style': 'Стиль',
-    'Technical': 'Техническое',
-    'Theme': 'Темы',
-    'Time': 'Время',
-  };
-
   function filterFieldOptions(key) {
     if (key === 'type') return C.TYPES.map(item => ({ value: item.value, label: item.label }));
     if (key === 'status') return C.STATUSES.map(item => ({ value: item.value, label: item.label }));
@@ -11236,7 +11444,7 @@ window.AniTierChangelog = [
     if (key === 'tags') {
       const groups = new Map();
       for (const option of filterFieldOptions('tags')) {
-        const category = TAG_CATEGORY_RU[option.category] || option.category || 'Теги';
+        const category = C.tagCategoryLabel(option.category);
         if (!groups.has(category)) groups.set(category, []);
         groups.get(category).push(option);
       }
@@ -13602,7 +13810,9 @@ window.AniTierChangelog = [
     ].filter(Boolean).join('');
 
     const tiers = TIERS.map(t => `<button class="tier-pick tier-${t.id} ${curTier === t.id ? 'is-active' : ''}" data-action="set-tier" data-id="${a.id}" data-tier="${t.id}" title="${esc(t.name)}" aria-label="Тир ${esc(t.name)}">${t.label}</button>`).join('');
-    const genres = (a.genres || []).map(g => `<span class="tag">${esc(C.genreRu(g))}</span>`).join('');
+    const genres = (a.genres || []).map(g => (
+      `<button type="button" class="tag tag-link" data-action="find-genre" data-genre="${esc(g)}" title="Найти аниме в жанре «${esc(C.genreRu(g))}»">${esc(C.genreRu(g))}</button>`
+    )).join('');
     const spoilerTags = new Set(Array.isArray(a.spoilerTags) ? a.spoilerTags : []);
     const tagChips = (Array.isArray(a.tags) ? a.tags : []).slice(0, 18).map(tag => (
       `<button type="button" class="tag tag-link${spoilerTags.has(tag) ? ' tag-spoiler' : ''}" data-action="find-tag" data-tag="${esc(tag)}"${spoilerTags.has(tag) ? ' title="Может содержать спойлер"' : ''}>${esc(C.genreRu(tag))}</button>`
@@ -13680,7 +13890,10 @@ window.AniTierChangelog = [
             <div class="tags">${tagChips}</div>
             <button class="btn btn-ghost" type="button" data-action="find-similar" data-id="${a.id}">Найти похожие</button>
           </section>` : ''}
-          ${genres ? `<div class="tags">${genres}</div>` : ''}
+          ${genres ? `<section class="modal-section modal-genres">
+            <div class="modal-label">Жанры</div>
+            <div class="tags">${genres}</div>
+          </section>` : ''}
           ${sourceLine}
         </div>
       </div>`;
@@ -13746,7 +13959,8 @@ window.AniTierChangelog = [
   function toast(message, options = {}) {
     const box = $('#toasts');
     if (!box) return;
-    while (box.children.length >= 4) box.firstElementChild.remove();
+    const max = document.body && document.body.classList.contains('mobile-app') ? 2 : 4;
+    while (box.children.length >= max) box.firstElementChild.remove();
     const el = document.createElement('div');
     el.className = 'toast';
     const text = document.createElement('span');
@@ -16286,7 +16500,24 @@ window.AniTierChangelog = [
     }, { passive: true });
   }
 
-  /* ---------------- похожие по тегам ---------------- */
+  /* ---------------- похожие по жанрам и тегам ---------------- */
+
+  /* Переход из карточки в базу: ставим фильтр и чистим текстовый поиск,
+     иначе выдача сузится до названия, с которого пользователь пришёл. */
+  function focusDBWithFilters(patch, message) {
+    if (state.modalId != null) closeModal();
+    state.db.filters = C.normalizeFilters({ ...state.db.filters, ...patch });
+    state.db.query = '';
+    state.db.touched = true;
+    const input = $('#search-input');
+    if (input) input.value = '';
+    switchTab('db');
+    syncFilterUI();
+    persistCatalogPreferences();
+    fetchDB(true);
+    if (message) toast(message);
+  }
+
   function findSimilarByTags(tags) {
     const list = Array.isArray(tags) ? tags : [];
     const clean = [...new Set(list
@@ -16296,13 +16527,29 @@ window.AniTierChangelog = [
       toast('У этого тайтла пока нет тегов');
       return;
     }
-    if (state.modalId != null) closeModal();
-    state.db.filters = C.normalizeFilters({ ...state.db.filters, tags: clean });
-    switchTab('db');
-    syncFilterUI();
-    persistCatalogPreferences();
-    fetchDB(true);
-    toast(clean.length === 1 ? 'Показаны тайтлы с этим тегом' : 'Показаны тайтлы с этими тегами');
+    focusDBWithFilters(
+      { tags: clean },
+      clean.length === 1 ? 'Показаны тайтлы с этим тегом' : 'Показаны тайтлы с этими тегами',
+    );
+  }
+
+  function findSimilarByGenre(genre) {
+    const raw = String(genre || '').trim();
+    if (!raw) return;
+    const id = C.genreIdByName(raw);
+    if (!id) {
+      /* Жанра нет в фильтре AniList — пробуем одноимённый тег. */
+      if (C.TAGS.some(tag => tag.name === raw)) {
+        findSimilarByTags([raw]);
+        return;
+      }
+      toast(`Жанр «${C.genreRu(raw)}» пока недоступен для поиска`);
+      return;
+    }
+    focusDBWithFilters(
+      { genre: [id] },
+      `Показаны тайтлы в жанре «${C.genreRu(raw)}»`,
+    );
   }
 
   let eventsBound = false;
@@ -16544,6 +16791,14 @@ window.AniTierChangelog = [
             menu.hidden = false;
             el.setAttribute('aria-expanded', 'true');
             if (key === 'tags') {
+              /* Поиск и скрытые пункты — состояние прошлого открытия,
+                 поэтому меню каждый раз начинается с полного списка. */
+              const search = menu.querySelector('.filter-menu-search input');
+              if (search) search.value = '';
+              menu.querySelectorAll('.filter-option, .filter-menu-group').forEach(item => { item.hidden = false; });
+              const scroll = menu.querySelector('.filter-menu-scroll');
+              if (scroll) scroll.scrollTop = 0;
+
               const field = el.closest('.filter-field');
               if (field) {
                 const rect = field.getBoundingClientRect();
@@ -16554,8 +16809,10 @@ window.AniTierChangelog = [
                 menu.style.right = 'auto';
               }
             }
-            const first = menu.querySelector('input');
-            if (first) first.focus({ preventScroll: true });
+            if (key !== 'tags') {
+              const first = menu.querySelector('input:not([type="hidden"])');
+              if (first) first.focus({ preventScroll: true });
+            }
           }
           break;
         }
@@ -16886,6 +17143,10 @@ window.AniTierChangelog = [
           findSimilarByTags([el.dataset.tag]);
           break;
 
+        case 'find-genre':
+          findSimilarByGenre(el.dataset.genre);
+          break;
+
         case 'find-similar': {
           const anime = getAnime(id);
           findSimilarByTags(anime && Array.isArray(anime.tags) ? anime.tags.slice(0, 2) : []);
@@ -17000,6 +17261,18 @@ window.AniTierChangelog = [
             const haystack = option.dataset.search || option.textContent.toLowerCase();
             option.hidden = Boolean(query) && !haystack.includes(query);
           });
+          /* Пустые заголовки категорий не должны висеть над отфильтрованным списком. */
+          panel.querySelectorAll('.filter-menu-group').forEach(group => {
+            let node = group.nextElementSibling;
+            let visible = false;
+            while (node && !node.classList.contains('filter-menu-group')) {
+              if (node.classList.contains('filter-option') && !node.hidden) { visible = true; break; }
+              node = node.nextElementSibling;
+            }
+            group.hidden = !visible;
+          });
+          const scroll = panel.querySelector('.filter-menu-scroll');
+          if (scroll) scroll.scrollTop = 0;
           return;
         }
         if (!event.target || event.target.id !== 'filter-score') return;
@@ -17014,7 +17287,15 @@ window.AniTierChangelog = [
       closeFilterMenus();
     });
 
-    window.addEventListener('resize', closeFilterMenus, { passive: true });
+    /* На телефоне клавиатура тоже присылает resize (высота), но меню
+       с выбранными фильтрами из-за этого закрываться не должно.
+       Закрываем только при смене ширины — это поворот экрана. */
+    let filterMenusWidth = window.innerWidth;
+    window.addEventListener('resize', () => {
+      if (window.innerWidth === filterMenusWidth) return;
+      filterMenusWidth = window.innerWidth;
+      closeFilterMenus();
+    }, { passive: true });
 
     const upcomingSearch = $('#upcoming-search');
     if (upcomingSearch) {

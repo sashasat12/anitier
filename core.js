@@ -38,6 +38,48 @@
   /* Теги (демография, сеттинг, темы) лежат отдельно в tags.js. */
   const TAGS = (typeof window !== 'undefined' && Array.isArray(window.AniTierTags)) ? window.AniTierTags : [];
 
+  /* Категории тегов приходят слагами AniList: «Theme-Fantasy», «Cast-Traits».
+     В меню фильтра показываем русские подписи, а не английские слаги. */
+  const TAG_CATEGORY_LABELS = Object.freeze({
+    'Cast-Main Cast': 'Главные герои',
+    'Cast-Supporting Cast': 'Второстепенные герои',
+    'Cast-Traits': 'Черты персонажей',
+    'Character': 'Персонажи',
+    'Content': 'Содержание',
+    'Demographic': 'Аудитория',
+    'Narrative': 'Повествование',
+    'Setting': 'Сеттинг',
+    'Setting-Scene': 'Место действия',
+    'Setting-Time': 'Время действия',
+    'Setting-Universe': 'Вселенная',
+    'Style': 'Стиль',
+    'Technical': 'Техническое',
+    'Theme': 'Темы',
+    'Theme-Action': 'Экшен',
+    'Theme-Arts': 'Искусство',
+    'Theme-Arts-Music': 'Музыка',
+    'Theme-Comedy': 'Комедия',
+    'Theme-Drama': 'Драма',
+    'Theme-Fantasy': 'Фэнтези',
+    'Theme-Game': 'Игры',
+    'Theme-Game-Card & Board Game': 'Настольные игры',
+    'Theme-Game-Sport': 'Спорт',
+    'Theme-Other': 'Другое',
+    'Theme-Other-Organisations': 'Организации',
+    'Theme-Other-Vehicle': 'Транспорт',
+    'Theme-Romance': 'Романтика',
+    'Theme-Sci-Fi': 'Фантастика',
+    'Theme-Sci-Fi-Mecha': 'Меха',
+    'Theme-Slice of Life': 'Повседневность',
+    'Time': 'Время',
+  });
+
+  function tagCategoryLabel(category) {
+    const key = String(category == null ? '' : category).trim();
+    if (!key) return 'Теги';
+    return TAG_CATEGORY_LABELS[key] || key;
+  }
+
   const SEARCH_LANGS = [
     { value: 'auto', label: 'Авто' },
     { value: 'ru', label: 'Русский' },
@@ -311,6 +353,16 @@
 
   function genreById(id) {
     return GENRES.find(item => String(item.id) === String(id)) || null;
+  }
+
+  /* Жанр приходит строкой AniList/Kitsu или из своей карточки: «Action», «Драма».
+     Возвращаем id фильтра, чтобы поиск шёл через genre_in, а не текстом. */
+  function genreIdByName(name) {
+    const key = String(name == null ? '' : name).trim().toLowerCase();
+    if (!key) return '';
+    const genre = GENRES.find(item => String(item.label).toLowerCase() === key
+      || item.names.some(alias => String(alias).toLowerCase() === key));
+    return genre ? String(genre.id) : '';
   }
 
   function matchesFilters(anime, filters) {
@@ -1407,7 +1459,7 @@
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.37.0';
+  const APP_VERSION = '1.38.16';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -1739,6 +1791,7 @@
   /** Минуты просмотра в человеческий вид: «3 дня 4 ч», «12 ч 30 мин», «45 мин». */
   function formatWatchTime(minutes) {
     const total = Math.max(0, Math.round(Number(minutes) || 0));
+    if (total === 0) return '—';
     const days = Math.floor(total / 1440);
     const hours = Math.floor((total % 1440) / 60);
     const mins = total % 60;
@@ -1746,7 +1799,7 @@
     if (days) parts.push(`${days} ${pluralRu(days, 'день', 'дня', 'дней')}`);
     if (hours) parts.push(`${hours} ч`);
     if (!days && mins) parts.push(`${mins} мин`);
-    return parts.length ? parts.join(' ') : '0 мин';
+    return parts.length ? parts.join(' ') : '—';
   }
 
   /**
@@ -1985,6 +2038,8 @@
     dragScrollDelta,
     GENRES,
     TAGS,
+    TAG_CATEGORY_LABELS,
+    tagCategoryLabel,
     DB_SORTS,
     normalizeDBSort,
     sortCatalogItems,
@@ -1997,6 +2052,7 @@
     hasActiveFilters,
     countActiveFilters,
     genreById,
+    genreIdByName,
     genreRu,
     hasCyrillic,
     hasJapanese,

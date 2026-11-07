@@ -152,20 +152,6 @@
   /* ---------------- фильтры и отрисовка базы ---------------- */
   const FILTER_MENU_KEYS = ['type', 'status', 'year', 'genre', 'tags'];
 
-  const TAG_CATEGORY_RU = {
-    'Cast-Main Cast': 'Главные герои',
-    'Cast-Supporting Cast': 'Второстепенные герои',
-    'Character': 'Персонажи',
-    'Content': 'Содержание',
-    'Demographic': 'Аудитория',
-    'Narrative': 'Повествование',
-    'Setting': 'Сеттинг',
-    'Style': 'Стиль',
-    'Technical': 'Техническое',
-    'Theme': 'Темы',
-    'Time': 'Время',
-  };
-
   function filterFieldOptions(key) {
     if (key === 'type') return C.TYPES.map(item => ({ value: item.value, label: item.label }));
     if (key === 'status') return C.STATUSES.map(item => ({ value: item.value, label: item.label }));
@@ -195,7 +181,7 @@
     if (key === 'tags') {
       const groups = new Map();
       for (const option of filterFieldOptions('tags')) {
-        const category = TAG_CATEGORY_RU[option.category] || option.category || 'Теги';
+        const category = C.tagCategoryLabel(option.category);
         if (!groups.has(category)) groups.set(category, []);
         groups.get(category).push(option);
       }
@@ -1708,10 +1694,10 @@
     const time = C.formatWatchTime(stats.minutes);
     const avg = stats.averageScore == null ? '—' : String(stats.averageScore);
     const genres = stats.topGenres.length
-      ? stats.topGenres.map(genre => `<span class="stats-chip">${esc(genre.name)} <b>${genre.count}</b></span>`).join('')
+      ? stats.topGenres.map(genre => `<button type="button" class="stats-chip stats-chip-btn" data-action="stats-find-genre" data-genre="${esc(genre.name)}">${esc(genre.name)} <b>${genre.count}</b></button>`).join('')
       : '<span class="stats-muted">Жанры появятся, когда в списке будут тайтлы с жанрами.</span>';
     const tags = Array.isArray(stats.topTags) && stats.topTags.length
-      ? stats.topTags.map(tag => `<span class="stats-chip">${esc(tag.name)} <b>${tag.count}</b></span>`).join('')
+      ? stats.topTags.map(tag => `<button type="button" class="stats-chip stats-chip-btn" data-action="stats-find-tag" data-tag="${esc(tag.name)}">${esc(tag.name)} <b>${tag.count}</b></button>`).join('')
       : '';
     const studios = stats.topStudios.length
       ? stats.topStudios.map(studio => `<li><span>${esc(studio.name)}</span><b>${studio.count}</b></li>`).join('')
@@ -2453,6 +2439,7 @@
     if (panel) { panel.scrollTop = 0; panel.focus({ preventScroll: true }); }
     if (a.custom && App.hydrateCustomImage) App.hydrateCustomImage(id);
     if (!opts.fromHash) writeLocationHash();
+    if (typeof bindModalSwipe === 'function') bindModalSwipe();
   }
 
   function franchiseRelationLabel(type) {
@@ -2561,7 +2548,9 @@
     ].filter(Boolean).join('');
 
     const tiers = TIERS.map(t => `<button class="tier-pick tier-${t.id} ${curTier === t.id ? 'is-active' : ''}" data-action="set-tier" data-id="${a.id}" data-tier="${t.id}" title="${esc(t.name)}" aria-label="Тир ${esc(t.name)}">${t.label}</button>`).join('');
-    const genres = (a.genres || []).map(g => `<span class="tag">${esc(C.genreRu(g))}</span>`).join('');
+    const genres = (a.genres || []).map(g => (
+      `<button type="button" class="tag tag-link" data-action="find-genre" data-genre="${esc(g)}" title="Найти аниме в жанре «${esc(C.genreRu(g))}»">${esc(C.genreRu(g))}</button>`
+    )).join('');
     const spoilerTags = new Set(Array.isArray(a.spoilerTags) ? a.spoilerTags : []);
     const tagChips = (Array.isArray(a.tags) ? a.tags : []).slice(0, 18).map(tag => (
       `<button type="button" class="tag tag-link${spoilerTags.has(tag) ? ' tag-spoiler' : ''}" data-action="find-tag" data-tag="${esc(tag)}"${spoilerTags.has(tag) ? ' title="Может содержать спойлер"' : ''}>${esc(C.genreRu(tag))}</button>`
@@ -2639,7 +2628,10 @@
             <div class="tags">${tagChips}</div>
             <button class="btn btn-ghost" type="button" data-action="find-similar" data-id="${a.id}">Найти похожие</button>
           </section>` : ''}
-          ${genres ? `<div class="tags">${genres}</div>` : ''}
+          ${genres ? `<section class="modal-section modal-genres">
+            <div class="modal-label">Жанры</div>
+            <div class="tags">${genres}</div>
+          </section>` : ''}
           ${sourceLine}
         </div>
       </div>`;
@@ -2705,7 +2697,8 @@
   function toast(message, options = {}) {
     const box = $('#toasts');
     if (!box) return;
-    while (box.children.length >= 4) box.firstElementChild.remove();
+    const max = document.body && document.body.classList.contains('mobile-app') ? 2 : 4;
+    while (box.children.length >= max) box.firstElementChild.remove();
     const el = document.createElement('div');
     el.className = 'toast';
     const text = document.createElement('span');

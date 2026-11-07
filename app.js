@@ -2406,7 +2406,24 @@
     }, { passive: true });
   }
 
-  /* ---------------- похожие по тегам ---------------- */
+  /* ---------------- похожие по жанрам и тегам ---------------- */
+
+  /* Переход из карточки в базу: ставим фильтр и чистим текстовый поиск,
+     иначе выдача сузится до названия, с которого пользователь пришёл. */
+  function focusDBWithFilters(patch, message) {
+    if (state.modalId != null) closeModal();
+    state.db.filters = C.normalizeFilters({ ...state.db.filters, ...patch });
+    state.db.query = '';
+    state.db.touched = true;
+    const input = $('#search-input');
+    if (input) input.value = '';
+    switchTab('db');
+    syncFilterUI();
+    persistCatalogPreferences();
+    fetchDB(true);
+    if (message) toast(message);
+  }
+
   function findSimilarByTags(tags) {
     const list = Array.isArray(tags) ? tags : [];
     const clean = [...new Set(list
@@ -2416,20 +2433,128 @@
       toast('У этого тайтла пока нет тегов');
       return;
     }
-    if (state.modalId != null) closeModal();
-    state.db.filters = C.normalizeFilters({ ...state.db.filters, tags: clean });
-    switchTab('db');
-    syncFilterUI();
-    persistCatalogPreferences();
-    fetchDB(true);
-    toast(clean.length === 1 ? 'Показаны тайтлы с этим тегом' : 'Показаны тайтлы с этими тегами');
+    focusDBWithFilters(
+      { tags: clean },
+      clean.length === 1 ? 'Показаны тайтлы с этим тегом' : 'Показаны тайтлы с этими тегами',
+    );
+  }
+
+  function findSimilarByGenre(genre) {
+    const raw = String(genre || '').trim();
+    if (!raw) return;
+    const id = C.genreIdByName(raw);
+    if (!id) {
+      /* Жанра нет в фильтре AniList — пробуем одноимённый тег. */
+      if (C.TAGS.some(tag => tag.name === raw)) {
+        findSimilarByTags([raw]);
+        return;
+      }
+      toast(`Жанр «${C.genreRu(raw)}» пока недоступен для поиска`);
+      return;
+    }
+    focusDBWithFilters(
+      { genre: [id] },
+      `Показаны тайтлы в жанре «${C.genreRu(raw)}»`,
+    );
   }
 
   let eventsBound = false;
+  let modalTouch = null;
+
+  function bindModalSwipe() {
+    const modal = document.getElementById('modal');
+    const panel = document.querySelector('.modal-panel');
+    if (!modal || !panel) return;
+    if (modal.dataset.swipeBound) return;
+    modal.dataset.swipeBound = '1';
+
+    panel.addEventListener('touchstart', (e) => {
+      if (window.innerWidth > 720) return;
+      if (panel.scrollTop > 0) return;
+      const t = e.changedTouches[0];
+      modalTouch = { y: t.clientY, time: Date.now() };
+    }, { passive: true });
+
+    panel.addEventListener('touchmove', (e) => {
+      if (!modalTouch) return;
+      if (window.innerWidth > 720) return;
+      const t = e.changedTouches[0];
+      const dy = t.clientY - modalTouch.y;
+      if (dy > 0 && panel.scrollTop <= 0) {
+        panel.style.transform = `translateY(${Math.min(dy * 0.4, 80)}px)`;
+        panel.style.opacity = String(Math.max(0.7, 1 - dy / 400));
+      }
+    }, { passive: true });
+
+    panel.addEventListener('touchend', (e) => {
+      if (!modalTouch) return;
+      if (window.innerWidth > 720) { modalTouch = null; return; }
+      const t = e.changedTouches[0];
+      const dy = t.clientY - modalTouch.y;
+      const dt = Date.now() - modalTouch.time;
+      panel.style.transform = '';
+      panel.style.opacity = '';
+      if (dy > 80 && dt < 400 && panel.scrollTop <= 0) {
+        if (typeof closeModal === 'function') closeModal();
+      }
+      modalTouch = null;
+    }, { passive: true });
+  }
+  window.bindModalSwipe = bindModalSwipe;
 
   function bindEvents() {
     if (eventsBound) return;
     eventsBound = true;
+
+    let ptr = null;
+    let ptrStart = 0;
+    let ptrDistance = 0;
+    if (document.body.classList.contains('mobile-app')) {
+      document.addEventListener('touchstart', (e) => {
+        if (window.scrollY > 5) return;
+        if (e.touches.length !== 1) return;
+        ptrStart = e.touches[0].clientY;
+        ptrDistance = 0;
+      }, { passive: true });
+      document.addEventListener('touchmove', (e) => {
+        if (ptrStart === 0 || window.scrollY > 5) return;
+        const dy = e.touches[0].clientY - ptrStart;
+        if (dy > 60) {
+          ptrDistance = Math.min(dy, 90);
+          if (!ptr) {
+            ptr = document.createElement('div');
+            ptr.className = 'ptr-indicator';
+            ptr.innerHTML = '<span>↓ Обновить</span>';
+            document.body.appendChild(ptr);
+          }
+          ptr.style.transform = `translateX(-50%) translateY(${ptrDistance - 40}px)`;
+        }
+      }, { passive: true });
+      document.addEventListener('touchend', () => {
+        if (ptrDistance > 70 && window.scrollY <= 5) {
+          if (ptr) { ptr.classList.add('is-active'); ptr.querySelector('span').textContent = 'Обновление...'; }
+          setTimeout(() => {
+            if (typeof refreshCurrent === 'function') refreshCurrent();
+            else if (typeof fetchDB === 'function' && state.tab === 'db') fetchDB(true);
+            if (ptr) { ptr.remove(); ptr = null; }
+          }, 400);
+        } else if (ptr) { ptr.remove(); ptr = null; }
+        ptrStart = 0;
+        ptrDistance = 0;
+      }, { passive: true });
+    }
+
+    const scrollTopBtn = document.getElementById('scroll-top');
+    if (scrollTopBtn && !scrollTopBtn.dataset.bound) {
+      scrollTopBtn.dataset.bound = '1';
+      scrollTopBtn.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 400) scrollTopBtn.classList.add('is-visible');
+        else scrollTopBtn.classList.remove('is-visible');
+      }, { passive: true });
+    }
     let tierLayoutTimer = 0;
     window.addEventListener('resize', () => {
       clearTimeout(tierLayoutTimer);
@@ -2664,6 +2789,14 @@
             menu.hidden = false;
             el.setAttribute('aria-expanded', 'true');
             if (key === 'tags') {
+              /* Поиск и скрытые пункты — состояние прошлого открытия,
+                 поэтому меню каждый раз начинается с полного списка. */
+              const search = menu.querySelector('.filter-menu-search input');
+              if (search) search.value = '';
+              menu.querySelectorAll('.filter-option, .filter-menu-group').forEach(item => { item.hidden = false; });
+              const scroll = menu.querySelector('.filter-menu-scroll');
+              if (scroll) scroll.scrollTop = 0;
+
               const field = el.closest('.filter-field');
               if (field) {
                 const rect = field.getBoundingClientRect();
@@ -2674,8 +2807,10 @@
                 menu.style.right = 'auto';
               }
             }
-            const first = menu.querySelector('input');
-            if (first) first.focus({ preventScroll: true });
+            if (key !== 'tags') {
+              const first = menu.querySelector('input:not([type="hidden"])');
+              if (first) first.focus({ preventScroll: true });
+            }
           }
           break;
         }
@@ -3006,6 +3141,29 @@
           findSimilarByTags([el.dataset.tag]);
           break;
 
+        case 'find-genre':
+          findSimilarByGenre(el.dataset.genre);
+          break;
+
+        case 'clear-tag-filter':
+          state.db.filters = C.normalizeFilters({ ...state.db.filters, tags: [] });
+          state.db.touched = true;
+          syncFilterUI();
+          persistCatalogPreferences();
+          fetchDB(true);
+          closeFilterMenus();
+          break;
+
+        case 'stats-find-genre':
+          if (typeof closeStats === 'function') closeStats();
+          findSimilarByGenre(el.dataset.genre);
+          break;
+
+        case 'stats-find-tag':
+          if (typeof closeStats === 'function') closeStats();
+          findSimilarByTags([el.dataset.tag]);
+          break;
+
         case 'find-similar': {
           const anime = getAnime(id);
           findSimilarByTags(anime && Array.isArray(anime.tags) ? anime.tags.slice(0, 2) : []);
@@ -3120,6 +3278,18 @@
             const haystack = option.dataset.search || option.textContent.toLowerCase();
             option.hidden = Boolean(query) && !haystack.includes(query);
           });
+          /* Пустые заголовки категорий не должны висеть над отфильтрованным списком. */
+          panel.querySelectorAll('.filter-menu-group').forEach(group => {
+            let node = group.nextElementSibling;
+            let visible = false;
+            while (node && !node.classList.contains('filter-menu-group')) {
+              if (node.classList.contains('filter-option') && !node.hidden) { visible = true; break; }
+              node = node.nextElementSibling;
+            }
+            group.hidden = !visible;
+          });
+          const scroll = panel.querySelector('.filter-menu-scroll');
+          if (scroll) scroll.scrollTop = 0;
           return;
         }
         if (!event.target || event.target.id !== 'filter-score') return;
@@ -3134,7 +3304,15 @@
       closeFilterMenus();
     });
 
-    window.addEventListener('resize', closeFilterMenus, { passive: true });
+    /* На телефоне клавиатура тоже присылает resize (высота), но меню
+       с выбранными фильтрами из-за этого закрываться не должно.
+       Закрываем только при смене ширины — это поворот экрана. */
+    let filterMenusWidth = window.innerWidth;
+    window.addEventListener('resize', () => {
+      if (window.innerWidth === filterMenusWidth) return;
+      filterMenusWidth = window.innerWidth;
+      closeFilterMenus();
+    }, { passive: true });
 
     const upcomingSearch = $('#upcoming-search');
     if (upcomingSearch) {

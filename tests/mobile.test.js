@@ -141,4 +141,58 @@
       frame.remove();
     }
   });
+
+  T.test('mobile: меню тегов помещается в экран и не закрывается от клавиатуры', async () => {
+    const frame = document.createElement('iframe');
+    frame.style.cssText = 'position:fixed;left:-20000px;top:0;width:390px;height:844px;border:0;';
+    frame.src = '../mobile/index.html?demo=1&test=1';
+
+    const loaded = new Promise((resolve, reject) => {
+      frame.onload = resolve;
+      frame.onerror = reject;
+    });
+
+    document.body.appendChild(frame);
+    await loaded;
+
+    const win = frame.contentWindow;
+    const doc = frame.contentDocument;
+
+    try {
+      await T.waitFor(() => win.__anitierTest, 'Мобильная оболочка не выставила тестовый API', 4000);
+      const api = win.__anitierTest;
+      await api.init();
+
+      doc.querySelector('[data-action="toggle-filters"]').click();
+      doc.querySelector('[data-filter-menu="tags"]').click();
+      const panel = doc.querySelector('[data-filter-panel="tags"]');
+      T.eq(panel.hidden, false, 'Меню тегов открылось');
+
+      const rect = panel.getBoundingClientRect();
+      T.assert(rect.width <= win.innerWidth + 1, 'Меню шире экрана');
+      T.assert(rect.left >= -1, 'Меню уехало за левый край');
+      T.assert(rect.right <= win.innerWidth + 1, 'Меню уехало за правый край');
+
+      const search = panel.querySelector('.filter-menu-search input');
+      T.assert(doc.activeElement !== search, 'Фокус не должен попадать в поиск тегов');
+
+      const groups = [...panel.querySelectorAll('.filter-menu-group')].map(group => group.textContent.trim());
+      T.assert(groups.length > 1, 'Теги разбиты на группы');
+      T.assert(groups.every(label => !/[A-Za-z]/.test(label)), 'Категории тегов без латиницы');
+
+      const box = panel.querySelector('input[value="Shounen"]');
+      T.assert(box, 'Есть тег Shounen');
+      box.checked = true;
+      box.dispatchEvent(new win.Event('change', { bubbles: true }));
+      T.eq(api.state.db.filters.tags, ['Shounen'], 'Тег выбран на телефоне');
+      T.eq(doc.querySelector('[data-filter-value="tags"]').textContent, 'Сёнэн');
+
+      /* Клавиатура меняет только высоту — меню должно остаться открытым. */
+      win.dispatchEvent(new win.Event('resize'));
+      T.eq(panel.hidden, false, 'Resize без смены ширины не закрывает меню');
+      T.assert(doc.documentElement.scrollWidth <= win.innerWidth + 1, 'Появился горизонтальный скролл');
+    } finally {
+      frame.remove();
+    }
+  });
 })();
