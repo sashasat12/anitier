@@ -602,9 +602,9 @@ button { font-family: inherit; }
   transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
 }
 .card:hover, .card:focus-visible {
-  transform: translateY(-4px);
-  border-color: rgba(255, 77, 141, .4);
-  box-shadow: 0 20px 44px rgba(0, 0, 0, .5);
+  transform: translateY(-6px);
+  border-color: rgba(255, 77, 141, 0.5);
+  box-shadow: 0 28px 54px rgba(8, 10, 18, .62), 0 0 0 1px rgba(255, 77, 141, 0.18);
 }
 .card .poster {
   position: relative;
@@ -731,7 +731,7 @@ button { font-family: inherit; }
   color: var(--text);
   background: transparent;
   cursor: pointer;
-  transition: .18s;
+  transition: background .2s, border-color .2s, color .2s, transform .15s, box-shadow .2s;
   white-space: nowrap;
 }
 .btn:disabled { opacity: .6; cursor: default; }
@@ -1183,6 +1183,8 @@ button { font-family: inherit; }
 .stats-tier-row b { text-align: right; font-size: 12.5px; }
 .stats-chips { display: flex; flex-wrap: wrap; gap: 7px; }
 .stats-chip {
+  display: inline-flex;
+  align-items: center;
   padding: 6px 10px;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -1190,8 +1192,18 @@ button { font-family: inherit; }
   color: #d7deef;
   font-size: 11.5px;
   font-weight: 600;
+  font-family: inherit;
 }
 .stats-chip b { margin-left: 4px; color: #ff9dbc; }
+.stats-chip-btn {
+  cursor: pointer;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.stats-chip-btn:hover {
+  border-color: rgba(255, 77, 141, .5);
+  color: #fff;
+  background: rgba(255, 77, 141, .12);
+}
 .stats-studio-list {
   margin: 0;
   padding: 0;
@@ -1515,9 +1527,9 @@ button { font-family: inherit; }
 .modal-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(3, 4, 8, .78);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: radial-gradient(800px 400px at 50% 0%, rgba(255, 77, 141, 0.12), transparent 60%), rgba(3, 4, 8, .82);
+  backdrop-filter: blur(12px) saturate(1.1);
+  -webkit-backdrop-filter: blur(12px) saturate(1.1);
 }
 .modal-panel {
   position: relative;
@@ -3067,6 +3079,273 @@ html[data-density="compact"] .upcoming-grid { gap: 12px; }
 .empty-cta .btn { margin-top: 6px; }
 
 
+/* ������ ������� */
+:focus-visible {
+  outline: 2px solid rgba(255, 77, 141, 0.8);
+  outline-offset: 2px;
+}
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  box-shadow: 0 0 0 3px rgba(255, 77, 141, 0.12);
+}
+
+#db-more {
+  margin: 22px auto 0;
+  display: flex;
+  min-height: 42px;
+  padding: 10px 26px;
+  border-radius: 999px;
+}
+#db-more[hidden] { display: none !important; }
+
+.filter-menu-footer {
+  flex: none;
+  padding: 6px 6px 2px;
+  border-top: 1px solid var(--line);
+  background: #11151f;
+}
+.filter-menu-footer .btn {
+  width: 100%;
+  justify-content: center;
+}
+body.mobile-app .filter-menu-footer {
+  padding: 6px;
+}
+
+.scroll-top {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 150;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: rgba(17, 21, 31, 0.9);
+  color: var(--text);
+  font-size: 18px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(10px);
+  transition: opacity .2s, transform .2s, background .2s;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.scroll-top.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+.scroll-top:hover {
+  background: rgba(255, 77, 141, 0.2);
+  border-color: rgba(255, 77, 141, 0.5);
+}
+body.mobile-app .scroll-top {
+  right: 12px;
+  bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+  width: 40px;
+  height: 40px;
+}
+
+.card.is-skeleton {
+  pointer-events: none;
+  position: relative;
+  overflow: hidden;
+}
+.card.is-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent);
+  transform: translateX(-100%);
+  animation: shimmer 1.6s infinite;
+}
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+.card-skel-poster {
+  width: 100%;
+  aspect-ratio: 2/3;
+  background: rgba(255,255,255,0.04);
+}
+.card-skel-line {
+  height: 10px;
+  margin: 8px 10px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.05);
+}
+.card-skel-line.short { width: 60%; }
+
+html {
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.view {
+  animation: fadeIn .2s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+body {
+  background: radial-gradient(1200px 800px at 20% -10%, rgba(255, 77, 141, 0.08), transparent 60%),
+              radial-gradient(1000px 600px at 80% 0%, rgba(138, 92, 255, 0.06), transparent 55%),
+              var(--bg);
+}
+
+.modal-panel {
+  animation: modalIn .25s ease;
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+body.mobile-app .modal-panel {
+  animation: modalSheetIn .3s ease;
+}
+@keyframes modalSheetIn {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: none; }
+}
+
+.topbar {
+  box-shadow: 0 1px 0 var(--line), 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+body.mobile-app .topbar {
+  box-shadow: 0 1px 0 var(--line);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 77, 141, 0.4);
+  background-clip: padding-box;
+}
+
+.tab {
+  transition: background .15s, color .15s, border-color .15s;
+}
+.tab:hover:not(.is-active) {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.brand {
+  text-shadow: 0 0 40px rgba(255, 77, 141, 0.3);
+}
+body.mobile-app .tabs {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: rgba(7, 8, 14, 0.9);
+}
+.modal-close {
+  transition: background .2s, border-color .2s, transform .2s, color .2s;
+}
+.chip {
+  transition: background .2s, border-color .2s, color .2s;
+}
+.chip:hover {
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+html {
+  scroll-padding-top: 90px;
+}
+body.mobile-app {
+  scroll-padding-top: 70px;
+}
+
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 0 0 1px rgba(255, 77, 141, 0.3), 0 16px 40px rgba(255, 77, 141, 0.4);
+}
+
+.filter-menu {
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.card {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+.card:hover {
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 77, 141, 0.2);
+}
+
+::selection {
+  background: rgba(255, 77, 141, 0.3);
+  color: #fff;
+}
+
+
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: rgba(255, 77, 141, 0.6) !important;
+  box-shadow: 0 0 0 3px rgba(255, 77, 141, 0.12) !important;
+  outline: none;
+}
+
+.icon-btn:focus-visible,
+.tab:focus-visible {
+  outline: 2px solid rgba(255, 77, 141, 0.8);
+  outline-offset: 2px;
+}
+
+.tag-link {
+  transition: background .2s, border-color .2s, color .2s, transform .15s;
+}
+.tag-link:hover {
+  transform: scale(1.02);
+}
+.chip {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* polish */
+img { image-rendering: auto; }
+
 /* ============================================================
    AniTier Mobile — мобильная оболочка
    Подключается после styles.css и только для /mobile/
@@ -3604,6 +3883,109 @@ body.mobile-app .filter-option {
 }
 body.mobile-app .filter-menu-group {
   font-size: 10.5px;
+}
+
+body.mobile-app .exchange-code {
+  font-size: 11px;
+  word-break: break-all;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+body.mobile-app .exchange-content {
+  padding: 18px 12px 20px;
+}
+body.mobile-app .exchange-actions {
+  flex-direction: column;
+  align-items: stretch;
+}
+body.mobile-app .exchange-actions .btn {
+  width: 100%;
+}
+
+body.mobile-app .notif-tools {
+  position: relative;
+}
+body.mobile-app .notif-tools::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 24px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--bg));
+}
+
+body.mobile-app #db-more {
+  width: calc(100% - 24px);
+  justify-content: center;
+  margin-top: 18px;
+}
+
+body.mobile-app .modal-panel::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
+  z-index: 6;
+}
+body.mobile-app .modal-panel {
+  padding-top: 18px;
+}
+
+.ptr-indicator {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%) translateY(-40px);
+  z-index: 200;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(17, 21, 31, 0.95);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11.5px;
+  transition: transform .2s, color .2s;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.ptr-indicator.is-active {
+  color: var(--text);
+}
+
+body.mobile-app .tab-ico {
+  font-size: 14px;
+}
+
+body.mobile-app .wrap {
+  padding: 16px 12px 90px;
+}
+body.mobile-app .section-head {
+  margin-bottom: 14px;
+}
+body.mobile-app .grid {
+  gap: 12px;
+}
+
+body.mobile-app .tab:active {
+  transform: scale(0.96);
+}
+body.mobile-app .tab {
+  transition: background .15s, color .15s, transform .1s;
+}
+
+body.mobile-app {
+  font-size: 14px;
+  line-height: 1.6;
+}
+body.mobile-app .card-title {
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 </style>
@@ -5800,6 +6182,20 @@ window.AniTierTitlesRu = {
 
 window.AniTierChangelog = [
   {
+    version: '1.38.16',
+    date: '7 ноября 2026',
+    title: 'Живее интерфейс и быстрее поиск',
+    items: [
+      'Жанры и теги в статистике стали кнопками: нажмите — база сразу покажет тайтлы этого жанра.',
+      'В меню тегов появилась кнопка «Сбросить теги», а сами строки на телефоне крупнее.',
+      'Карточку на телефоне можно закрыть свайпом вниз, у шторки появилась ручка.',
+      'Кнопка «Наверх» появляется при прокрутке длинных списков.',
+      'Копирование кода обмена подтверждается прямо на кнопке.',
+      'Тосты на телефоне не больше двух и не перекрывают нижнюю навигацию.',
+      'Мягче анимации, тени карточек и подсветка фокуса для клавиатуры.',
+    ],
+  },
+  {
     version: '1.38.1',
     date: '5 ноября 2026',
     title: 'Мобильная полировка и удобство',
@@ -7717,7 +8113,7 @@ window.AniTierChangelog = [
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.38.1';
+  const APP_VERSION = '1.38.16';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -12957,10 +13353,10 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     const time = C.formatWatchTime(stats.minutes);
     const avg = stats.averageScore == null ? '—' : String(stats.averageScore);
     const genres = stats.topGenres.length
-      ? stats.topGenres.map(genre => `<span class="stats-chip">${esc(genre.name)} <b>${genre.count}</b></span>`).join('')
+      ? stats.topGenres.map(genre => `<button type="button" class="stats-chip stats-chip-btn" data-action="stats-find-genre" data-genre="${esc(genre.name)}">${esc(genre.name)} <b>${genre.count}</b></button>`).join('')
       : '<span class="stats-muted">Жанры появятся, когда в списке будут тайтлы с жанрами.</span>';
     const tags = Array.isArray(stats.topTags) && stats.topTags.length
-      ? stats.topTags.map(tag => `<span class="stats-chip">${esc(tag.name)} <b>${tag.count}</b></span>`).join('')
+      ? stats.topTags.map(tag => `<button type="button" class="stats-chip stats-chip-btn" data-action="stats-find-tag" data-tag="${esc(tag.name)}">${esc(tag.name)} <b>${tag.count}</b></button>`).join('')
       : '';
     const studios = stats.topStudios.length
       ? stats.topStudios.map(studio => `<li><span>${esc(studio.name)}</span><b>${studio.count}</b></li>`).join('')
@@ -13702,6 +14098,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     if (panel) { panel.scrollTop = 0; panel.focus({ preventScroll: true }); }
     if (a.custom && App.hydrateCustomImage) App.hydrateCustomImage(id);
     if (!opts.fromHash) writeLocationHash();
+    if (typeof bindModalSwipe === 'function') bindModalSwipe();
   }
 
   function franchiseRelationLabel(type) {
@@ -16553,10 +16950,102 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
   }
 
   let eventsBound = false;
+  let modalTouch = null;
+
+  function bindModalSwipe() {
+    const modal = document.getElementById('modal');
+    const panel = document.querySelector('.modal-panel');
+    if (!modal || !panel) return;
+    if (modal.dataset.swipeBound) return;
+    modal.dataset.swipeBound = '1';
+
+    panel.addEventListener('touchstart', (e) => {
+      if (window.innerWidth > 720) return;
+      if (panel.scrollTop > 0) return;
+      const t = e.changedTouches[0];
+      modalTouch = { y: t.clientY, time: Date.now() };
+    }, { passive: true });
+
+    panel.addEventListener('touchmove', (e) => {
+      if (!modalTouch) return;
+      if (window.innerWidth > 720) return;
+      const t = e.changedTouches[0];
+      const dy = t.clientY - modalTouch.y;
+      if (dy > 0 && panel.scrollTop <= 0) {
+        panel.style.transform = `translateY(${Math.min(dy * 0.4, 80)}px)`;
+        panel.style.opacity = String(Math.max(0.7, 1 - dy / 400));
+      }
+    }, { passive: true });
+
+    panel.addEventListener('touchend', (e) => {
+      if (!modalTouch) return;
+      if (window.innerWidth > 720) { modalTouch = null; return; }
+      const t = e.changedTouches[0];
+      const dy = t.clientY - modalTouch.y;
+      const dt = Date.now() - modalTouch.time;
+      panel.style.transform = '';
+      panel.style.opacity = '';
+      if (dy > 80 && dt < 400 && panel.scrollTop <= 0) {
+        if (typeof closeModal === 'function') closeModal();
+      }
+      modalTouch = null;
+    }, { passive: true });
+  }
+  window.bindModalSwipe = bindModalSwipe;
 
   function bindEvents() {
     if (eventsBound) return;
     eventsBound = true;
+
+    let ptr = null;
+    let ptrStart = 0;
+    let ptrDistance = 0;
+    if (document.body.classList.contains('mobile-app')) {
+      document.addEventListener('touchstart', (e) => {
+        if (window.scrollY > 5) return;
+        if (e.touches.length !== 1) return;
+        ptrStart = e.touches[0].clientY;
+        ptrDistance = 0;
+      }, { passive: true });
+      document.addEventListener('touchmove', (e) => {
+        if (ptrStart === 0 || window.scrollY > 5) return;
+        const dy = e.touches[0].clientY - ptrStart;
+        if (dy > 60) {
+          ptrDistance = Math.min(dy, 90);
+          if (!ptr) {
+            ptr = document.createElement('div');
+            ptr.className = 'ptr-indicator';
+            ptr.innerHTML = '<span>↓ Обновить</span>';
+            document.body.appendChild(ptr);
+          }
+          ptr.style.transform = `translateX(-50%) translateY(${ptrDistance - 40}px)`;
+        }
+      }, { passive: true });
+      document.addEventListener('touchend', () => {
+        if (ptrDistance > 70 && window.scrollY <= 5) {
+          if (ptr) { ptr.classList.add('is-active'); ptr.querySelector('span').textContent = 'Обновление...'; }
+          setTimeout(() => {
+            if (typeof refreshCurrent === 'function') refreshCurrent();
+            else if (typeof fetchDB === 'function' && state.tab === 'db') fetchDB(true);
+            if (ptr) { ptr.remove(); ptr = null; }
+          }, 400);
+        } else if (ptr) { ptr.remove(); ptr = null; }
+        ptrStart = 0;
+        ptrDistance = 0;
+      }, { passive: true });
+    }
+
+    const scrollTopBtn = document.getElementById('scroll-top');
+    if (scrollTopBtn && !scrollTopBtn.dataset.bound) {
+      scrollTopBtn.dataset.bound = '1';
+      scrollTopBtn.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 400) scrollTopBtn.classList.add('is-visible');
+        else scrollTopBtn.classList.remove('is-visible');
+      }, { passive: true });
+    }
     let tierLayoutTimer = 0;
     window.addEventListener('resize', () => {
       clearTimeout(tierLayoutTimer);
@@ -17145,6 +17634,25 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
 
         case 'find-genre':
           findSimilarByGenre(el.dataset.genre);
+          break;
+
+        case 'clear-tag-filter':
+          state.db.filters = C.normalizeFilters({ ...state.db.filters, tags: [] });
+          state.db.touched = true;
+          syncFilterUI();
+          persistCatalogPreferences();
+          fetchDB(true);
+          closeFilterMenus();
+          break;
+
+        case 'stats-find-genre':
+          if (typeof closeStats === 'function') closeStats();
+          findSimilarByGenre(el.dataset.genre);
+          break;
+
+        case 'stats-find-tag':
+          if (typeof closeStats === 'function') closeStats();
+          findSimilarByTags([el.dataset.tag]);
           break;
 
         case 'find-similar': {
@@ -18069,5 +18577,6 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
 })(window.AniTier);
 
 </script>
+<button class="scroll-top" id="scroll-top" type="button" aria-label="Наверх" title="Наверх">↑</button>
 </body>
 </html>

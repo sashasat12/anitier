@@ -610,20 +610,6 @@ body.mobile-app .modal-panel {
   color: var(--text);
 }
 
-body.mobile-app .topbar {
-  padding: 8px 12px;
-  gap: 8px;
-}
-body.mobile-app .brand-name {
-  font-size: 14px;
-}
-body.mobile-app .tabs {
-  gap: 2px;
-}
-body.mobile-app .tab {
-  padding: 8px 10px;
-  font-size: 12px;
-}
 body.mobile-app .tab-ico {
   font-size: 14px;
 }

@@ -3303,11 +3303,7 @@ body.mobile-app {
   color: #fff;
 }
 
-.topbar {
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  background: rgba(7, 8, 14, 0.85);
-}
+
 
 input:focus,
 select:focus,
