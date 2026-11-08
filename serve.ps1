@@ -65,7 +65,15 @@ $mimeMap = @{
 while ($true) {
   $client = $listener.AcceptTcpClient()
   try {
+    # Браузер открывает «предсоединения» и молчит в них. Не ждём такой
+    # сокет: если за 100 мс не пришло ни байта, закрываем и берём следующий.
+    if (-not $client.Client.Poll(100000, [System.Net.Sockets.SelectMode]::SelectRead)) {
+      $client.Close()
+      continue
+    }
     $stream = $client.GetStream()
+    $stream.ReadTimeout = 1500
+    $stream.WriteTimeout = 5000
     $reader = New-Object System.IO.StreamReader($stream, [System.Text.Encoding]::ASCII, $false, 1024, $true)
     $requestLine = $reader.ReadLine()
     if ([string]::IsNullOrWhiteSpace($requestLine)) { $client.Close(); continue }
