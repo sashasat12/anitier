@@ -32,11 +32,14 @@
 | `app-store.js` | состояние, `localStorage`, списки, прогресс, операции со списками | без сетевых запросов; экспорт в `window.AniTier` |
 | `app-api.js` | AniList/Kitsu, поиск, кэш, демо-данные | без DOM; экспорт в `window.AniTier` |
 | `app-render.js` | отрисовка интерфейса, модалки, обмен тир-листами | без сетевых запросов; экспорт в `window.AniTier` |
+| `app-render-cards.js`, `app-render-lists.js`, `app-render-screens.js`, `app-render-modals.js` | модули рендера, подключаемые в обеих оболочках | часть пока заглушки; при переносе логики соблюдать границы рендера |
 | `app.js` | контроллер, события, drag & drop, запуск | бизнес-логику выносить в `core.js` или `app-store.js` |
+| `app-ctrl-catalog.js`, `app-ctrl-notifications.js`, `app-ctrl-upcoming.js`, `app-ctrl-backup.js` | контроллеры каталога, уведомлений, премьер, копий | экспорт в `window.AniTier`/через `App` по принятому паттерну |
+| `app-ctrl-moments.js`, `app-ctrl-settings.js` | контроллеры моментов и настроек | часть пока заглушки; при переносе логики соблюдать границы контроллера |
 | `index.html` | разметка и вкладки десктопа | без инлайн-стилей и инлайн-скриптов |
 | `styles.css` | тёмная тема десктопа | |
 | `mobile/` | мобильная PWA: `index.html`, `mobile.css`, `mobile.js`, `manifest.webmanifest`, `sw.js` | логика та же, что на десктопе; не дублировать её без нужды |
-| `tests/` | браузерные тесты и раннер | |
+| `tests/` | браузерные тесты и раннер | включая `tests/visual-compare.html` и эталоны `tests/visual/baseline/` (визуальная регрессия) |
 | `*.ps1` | сервер, тесты, сборки | Windows PowerShell, без внешних утилит, кроме JDK/SDK для APK |
 
 Ключ хранилища — `anitier.v1`. Схему данных менять только обратно совместимо: старые сохранения пользователя не должны ломаться.
@@ -49,6 +52,8 @@ powershell -ExecutionPolicy Bypass -File .\serve.ps1
 
 # тесты (headless Edge/Chrome, порт 8099)
 powershell -ExecutionPolicy Bypass -File .\test.ps1
+powershell -ExecutionPolicy Bypass -File .\test.ps1 -UpdateVisual   # обновить эталоны визуальной регрессии
+powershell -ExecutionPolicy Bypass -File .\test.ps1 -SkipVisual     # только функциональные тесты
 
 # проверка живого контракта AniList (нужен интернет, ключи не нужны)
 powershell -ExecutionPolicy Bypass -File .\smoke-api.ps1
@@ -85,7 +90,7 @@ powershell -ExecutionPolicy Bypass -File .\graph-versions.ps1 -Diff v1.8.1 v1.9.
 ## Сборка и артефакты
 
 `AniTier-phone.html`, `android/assets/index.html`, `AniTier.apk`, `AniTier.apk.idsig` — **генерируемые**.
-После правок в `app-store.js`, `app-api.js`, `app-render.js`, `app.js`, `core.js`, `changelog.js`, `titles-ru.js`, `titles-ru-anilist.js`, `tags.js`, `styles.css`, `index.html` или `mobile/`:
+После правок в `app-store.js`, `app-api.js`, `app-render.js`, `app-render-*.js`, `app.js`, `app-ctrl-*.js`, `core.js`, `changelog.js`, `titles-ru.js`, `titles-ru-anilist.js`, `tags.js`, `styles.css`, `index.html` или `mobile/`:
 
 1. `build-phone.ps1` — обновляет `AniTier-phone.html`;
 2. `android/build-apk.ps1` — обновляет `AniTier.apk` (сначала `build-phone.ps1`).

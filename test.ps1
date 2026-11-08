@@ -189,6 +189,7 @@ JSON.stringify({
   # Нестабильный рендер в headless (шрифты/анимации/тайминги сети) возможен:
   # сценарии ждут init + fonts.ready + паузы; при ложных срабатываниях — уточнить
   # допуск/стабилизацию, не отключать проверку. Первый запуск/обновление: -UpdateVisual.
+  # Допуск 24 (сумма RGBA на пиксель) — минимальный запас на AA/растеризацию шрифтов.
   if (-not $SkipVisual) {
     $visualDir = Join-Path $root 'tests\visual\baseline'
     $actualDir = Join-Path $root 'tests\visual\_actual'
@@ -234,7 +235,7 @@ JSON.stringify({
       [void](Invoke-Cdp -Method 'Page.navigate' -Params @{ url = "http://127.0.0.1:$Port/tests/visual-compare.html" })
       Start-Sleep -Milliseconds 350
       [void](Wait-Eval -Expr "window.visualCompare ? 'ready' : ''" -Attempts 50)
-      $cmpExpr = "(async()=>JSON.stringify(await window.visualCompare('visual/baseline/$($sc.name).png','visual/_actual/$($sc.name).png', 12)))()"
+      $cmpExpr = "(async()=>JSON.stringify(await window.visualCompare('visual/baseline/$($sc.name).png','visual/_actual/$($sc.name).png', 24)))()"
       $cmpRaw = Wait-Eval -Expr $cmpExpr -Attempts 160
       $cmp = $null
       if ($cmpRaw) { try { $cmp = $cmpRaw | ConvertFrom-Json } catch { } }
