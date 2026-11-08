@@ -2857,4 +2857,80 @@
       app.close();
     }
   });
+
+  T.test('api: полная франшиза обходит связи на два шага', async () => {
+    const calls = [];
+    const app = await T.mountApp({
+      query: '?test=1',
+      setup(win) {
+        win.fetch = async (url, fetchOptions = {}) => {
+          const body = JSON.parse(fetchOptions.body || '{}');
+          const vars = body.variables || {};
+          calls.push({ vars, query: body.query || '' });
+          const id = Number(vars.id);
+          const answers = {
+            1000: [{ relationType: 'SEQUEL', node: rawAniList(1001, 'Второй сезон', { seasonYear: 2021 }) }],
+            1001: [
+              { relationType: 'SEQUEL', node: rawAniList(1002, 'Третий сезон', { seasonYear: 2023 }) },
+              { relationType: 'SIDE_STORY', node: rawAniList(1003, 'Фильм', { seasonYear: 2022, format: 'MOVIE' }) },
+            ],
+          };
+          const edges = answers[id] || [];
+          const node = rawAniList(id, 'Сезон ' + id, { relations: { edges } });
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ data: { Page: { pageInfo: { hasNextPage: false }, media: [node] } } }),
+          };
+        };
+      },
+    });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const anime = { id: 1000, anilistId: 1000, title: 'Сезон 1000', type: 'TV', year: 2020, airedFrom: '2020-01-01' };
+      const links = await app.win.AniTier.fetchAnimeFranchise(anime, { depth: 2 });
+      const ids = links.map(link => link.anime.id);
+      T.eq(ids.join(','), '1001,1002,1003', 'В список попали части со второго шага');
+      T.eq(links.find(link => link.anime.id === 1002).relationType, 'SEQUEL', 'Тип связи второго шага сохранён');
+      T.eq(links.find(link => link.anime.id === 1003).relationType, 'SIDE_STORY', 'Побочная история второго шага не потерялась');
+      T.eq(calls.filter(call => call.vars.id === 1000).length, 1, 'Корень запрошен один раз');
+      T.eq(calls.filter(call => call.vars.id === 1001).length, 1, 'Промежуточный сезон запрошен один раз');
+      T.eq(anime.relations.length, 1, 'Связи корня закэшированы');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: кнопка «Показать всю франшизу» догружает части', async () => {
+    const calls = [];
+    const app = await T.mountApp({ query: '?test=1', setup(win) { win.fetch = baseFetch(calls); } });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const doc = app.win.document;
+      doc.querySelector('#db-grid .card').click();
+      await T.waitFor(() => doc.querySelector('.franchise-link[data-id="1001"]'), 'Сезоны не появились');
+      doc.querySelector('.modal-tab[data-tab="seasons"]').click();
+
+      const fullButton = doc.querySelector('[data-action="franchise-full"]');
+      T.assert(fullButton, 'Есть кнопка «Показать всю франшизу»');
+      T.includes(fullButton.textContent, 'Показать всю франшизу');
+      fullButton.click();
+
+      await T.waitFor(
+        () => Array.isArray(api.state.franchiseFullById.get(1000)),
+        'Полная франшиза не догрузилась',
+        6000,
+      );
+      const links = api.state.franchiseFullById.get(1000);
+      T.eq(links.length, 2, 'В полной франшизе обе связанные части');
+      T.assert(links.some(link => link.anime.id === 1001), 'Продолжение в полном списке');
+      T.assert(calls.some(call => call.query && call.query.includes('AnimeFranchise') && call.vars.id === 1001),
+        'Полная франшиза опрашивает промежуточные части');
+      T.eq(doc.querySelector('[data-action="franchise-full"]'), null, 'После загрузки кнопка убирается');
+    } finally {
+      app.close();
+    }
+  });
 })();
