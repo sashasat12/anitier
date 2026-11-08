@@ -124,4 +124,30 @@
     const scriptSrc = (csp.match(/script-src([^;]*)/i) || [])[1] || '';
     T.includes(scriptSrc, "'unsafe-inline'", 'AniTier-phone.html: CSP блокирует встроенные скрипты');
   });
+
+  /* CSP не должна отрезать сетевые запросы приложения: проверка обновлений
+     ходит на api.github.com, каталог — в AniList и Kitsu. */
+  T.test('shell: CSP разрешает сетевые запросы приложения', async () => {
+    const [index, mobile] = await Promise.all([
+      fetch('../index.html').then(r => r.text()),
+      fetch('../mobile/index.html').then(r => r.text()),
+    ]);
+    const hosts = [
+      'https://graphql.anilist.co',
+      'https://kitsu.io',
+      'https://api.github.com',
+      'https://translate.googleapis.com',
+      'https://www.googleapis.com',
+      'https://oauth2.googleapis.com',
+    ];
+    for (const [name, html] of [['index.html', index], ['mobile/index.html', mobile]]) {
+      const meta = html.match(/<meta[^>]+Content-Security-Policy[^>]*>/i);
+      const csp = meta ? ((meta[0].match(/content="([^"]*)"/i) || [])[1] || '') : '';
+      T.assert(csp, name + ': не найдена CSP');
+      const connect = (csp.match(/connect-src([^;]*)/i) || [])[1] || '';
+      for (const host of hosts) {
+        T.includes(connect, host, name + ': CSP connect-src без ' + host);
+      }
+    }
+  });
 })();
