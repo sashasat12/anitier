@@ -66,4 +66,30 @@
       app.close();
     }
   });
+
+  T.test('app: PNG использует язык названий и ограничивает параллелизм', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const anime = { title: 'English', titleRu: 'Русское', altTitle: 'Original', originalTitle: 'Native' };
+      api.state.settings.titleLang = 'ru';
+      T.eq(api.tierPngTitle(anime), 'Русское', 'По умолчанию берётся русское название');
+      api.state.settings.titleLang = 'original';
+      T.eq(api.tierPngTitle(anime), 'Native', 'В режиме оригинала берётся оригинальное название');
+
+      let active = 0;
+      let maxActive = 0;
+      await api.mapWithLimit([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 3, async (value) => {
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        await new Promise(r => setTimeout(r, 15));
+        active -= 1;
+        return value;
+      });
+      T.assert(maxActive <= 3, `Параллелизм превысил лимит: ${maxActive}`);
+    } finally {
+      app.close();
+    }
+  });
 })();

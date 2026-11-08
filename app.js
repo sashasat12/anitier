@@ -1658,6 +1658,26 @@
     return `AniTier-${listName === 'planned' ? 'planned' : 'watched'}-${stamp}.png`;
   }
 
+  async function mapWithLimit(items, limit, fn) {
+    const list = Array.isArray(items) ? items : [];
+    const max = Math.max(1, Number(limit) || 1);
+    const out = new Array(list.length);
+    let next = 0;
+    async function worker() {
+      while (next < list.length) {
+        const i = next++;
+        out[i] = await fn(list[i], i);
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(max, list.length) }, () => worker()));
+    return out;
+  }
+
+  function tierPngTitle(anime) {
+    if (App.displayTitle) return App.displayTitle(anime) || anime.altTitle || anime.title || '';
+    return anime.titleRu || anime.title || anime.altTitle || anime.originalTitle || '';
+  }
+
   async function buildTierListPngBlob(listName) {
     const name = listName === 'planned' ? 'planned' : 'watched';
     const groups = TIERS.map(tier => ({
@@ -1706,15 +1726,20 @@
     ctx.textAlign = 'left';
 
     const tiles = layout.tiers.flatMap(tier => tier.items);
-    await Promise.all(tiles.map(async tile => {
-      let image = await loadCanvasImage(tile.anime.image);
-      if (!image && /^https?:\/\//i.test(String(tile.anime.image || ''))) {
-        const cached = await posterCachedUrl(tile.anime.image);
+    await mapWithLimit(tiles, 8, async tile => {
+      const src = String(tile.anime.image || '');
+      let image = null;
+      if (/^https?:\/\//i.test(src)) {
+        /* Сначала кэш: не создаём лишних запросов к AniList/Kitsu. */
+        const cached = await posterCachedUrl(src);
         if (cached) image = await loadCanvasImage(cached);
+        if (!image) image = await loadCanvasImage(src);
+      } else if (src) {
+        image = await loadCanvasImage(src);
       }
-      if (!image) image = await loadCanvasImage(makePoster(tile.anime.title, tile.anime.id));
+      if (!image) image = await loadCanvasImage(makePoster(tierPngTitle(tile.anime), tile.anime.id));
       tile.poster = image;
-    }));
+    });
 
     for (const tier of layout.tiers) {
       ctx.fillStyle = 'rgba(255, 255, 255, .035)';
@@ -1759,7 +1784,7 @@
         }
         ctx.fillStyle = '#c8d1e5';
         ctx.font = '600 11.5px "Segoe UI", Arial, sans-serif';
-        drawWrappedText(ctx, tile.anime.title || tile.anime.altTitle, tile.x, tile.y + layout.posterHeight + 15, layout.posterWidth, 2, 13.5);
+        drawWrappedText(ctx, tierPngTitle(tile.anime), tile.x, tile.y + layout.posterHeight + 15, layout.posterWidth, 2, 13.5);
       }
     }
 
@@ -4338,6 +4363,8 @@
       androidSaveMedia,
       buildTierListPngBlob,
       exportTierPng,
+      tierPngTitle,
+      mapWithLimit,
       cachePosterImage,
       shrinkPoster,
       queuePosterCache,
