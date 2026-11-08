@@ -758,6 +758,14 @@
     T.eq(dbOnly[0].where, 'db');
   });
 
+  T.test('core: теги имеют русские подписи, кроме явных исключений', () => {
+    const tags = (typeof window !== 'undefined' && window.AniTierTags) || [];
+    T.assert(tags.length >= 300, 'Список тегов загружен');
+    const allow = new Set(['CGI']);
+    const same = tags.filter(tag => tag && tag.name === tag.ru && !allow.has(tag.name)).map(tag => tag.name);
+    T.eq(same, [], 'У тегов нет ru === name, кроме исключений: ' + same.slice(0, 12).join(', '));
+  });
+
   T.test('core: у всех категорий тегов есть русская подпись', () => {
     const C = core();
     const categories = [...new Set(C.TAGS.map(tag => tag.category).filter(Boolean))];

@@ -18535,6 +18535,10 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
           break;
 
         case 'dismiss-update':
+          if (state.updateCard && state.updateCard.mode === 'ask') {
+            state.settings.updateCheck = 'off';
+            saveState();
+          }
           state.updateCard = null;
           renderUpdateCard();
           break;
@@ -19616,6 +19620,10 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     if (state.exchange.open) { closeExchange(); return true; }
     if (state.modalId != null) { closeModal(); return true; }
     if (state.updateCard) {
+      if (state.updateCard.mode === 'ask') {
+        state.settings.updateCheck = 'off';
+        saveState();
+      }
       state.updateCard = null;
       renderUpdateCard();
       return true;
