@@ -7286,10 +7286,16 @@ window.AniTierChangelog = [
     const raw = String(name == null ? '' : name).trim();
     if (genreCache.has(raw)) return genreCache.get(raw);
     let result = raw;
-    if (raw && !hasCyrillic(raw)) {
-      const tag = TAGS.find(item => String(item.name).toLowerCase() === raw.toLowerCase());
-      if (tag && tag.ru && tag.ru !== tag.name) result = tag.ru;
-      else result = GENRE_RU[raw.toLowerCase()] || EXTRA_GENRE_RU[raw.toLowerCase()] || raw;
+    if (raw) {
+      const canonicalId = genreIdByName(raw);
+      if (canonicalId) {
+        const genre = genreById(canonicalId);
+        result = genre ? genre.label : raw;
+      } else if (!hasCyrillic(raw)) {
+        const tag = TAGS.find(item => String(item.name).toLowerCase() === raw.toLowerCase());
+        if (tag && tag.ru && tag.ru !== tag.name) result = tag.ru;
+        else result = GENRE_RU[raw.toLowerCase()] || EXTRA_GENRE_RU[raw.toLowerCase()] || raw;
+      }
     }
     if (genreCache.size >= GENRE_CACHE_LIMIT) genreCache.delete(genreCache.keys().next().value);
     genreCache.set(raw, result);
@@ -7317,11 +7323,69 @@ window.AniTierChangelog = [
     { value: 'special', label: 'Спешл' },
   ];
 
-  const STATUSES = [
-    { value: 'airing', label: 'В эфире' },
-    { value: 'complete', label: 'Завершено' },
-    { value: 'upcoming', label: 'Анонс' },
+  /* Коды статусов — единая модель для логики и фильтров. Русские строки
+     из старых сохранений и внешних данных нормализуются через statusCode. */
+  const STATUS_CODES = Object.freeze({
+    airing: 'airing',
+    finished: 'finished',
+    upcoming: 'upcoming',
+    cancelled: 'cancelled',
+    hiatus: 'hiatus',
+    unknown: 'unknown',
+  });
+
+  const STATUS_FILTERS = [
+    { value: 'airing', label: 'В эфире', code: 'airing' },
+    { value: 'complete', label: 'Завершено', code: 'finished' },
+    { value: 'upcoming', label: 'Анонс', code: 'upcoming' },
   ];
+
+  const STATUSES = STATUS_FILTERS.map(item => ({ value: item.value, label: item.label }));
+
+  const STATUS_LABELS = Object.freeze({
+    airing: 'В эфире',
+    finished: 'Завершено',
+    upcoming: 'Анонс',
+    cancelled: 'Отменено',
+    hiatus: 'Пауза',
+    unknown: 'Неизвестно',
+  });
+
+  function normalizeStatusCode(value) {
+    const raw = String(value == null ? '' : value).trim();
+    if (!raw) return 'unknown';
+    const key = raw.toLowerCase().replace(/[\s_-]+/g, '');
+    if (['airing', 'releasing', 'currentlyairing', 'current', 'ongoing', 'вэфире', 'онгоинг', 'выходит'].includes(key)) return 'airing';
+    if (['finished', 'complete', 'completed', 'finishedairing', 'завершено', 'завершён', 'вышло', 'закончен'].includes(key)) return 'finished';
+    if (['upcoming', 'notyetreleased', 'notyetaired', 'tba', 'unreleased', 'announced', 'анонс', 'скоровыйдет', 'анонсировано'].includes(key)) return 'upcoming';
+    if (['cancelled', 'canceled', 'отменено', 'отменён'].includes(key)) return 'cancelled';
+    if (['hiatus', 'onhiatus', 'пауза', 'приостановлено'].includes(key)) return 'hiatus';
+    return 'unknown';
+  }
+
+  function statusCodeFromFilter(value) {
+    const raw = String(value == null ? '' : value).trim().toLowerCase();
+    if (raw === 'complete' || raw === 'finished') return 'finished';
+    if (raw === 'airing') return 'airing';
+    if (raw === 'upcoming') return 'upcoming';
+    return normalizeStatusCode(raw);
+  }
+
+  function statusLabel(code) {
+    const normalized = normalizeStatusCode(code);
+    return STATUS_LABELS[normalized] || STATUS_LABELS.unknown;
+  }
+
+  function isOngoingStatus(code) {
+    const normalized = normalizeStatusCode(code);
+    return normalized === 'airing' || normalized === 'hiatus';
+  }
+
+  function animeStatusCode(anime) {
+    if (!anime || typeof anime !== 'object') return 'unknown';
+    if (anime.statusCode) return normalizeStatusCode(anime.statusCode);
+    return normalizeStatusCode(anime.status);
+  }
 
   const SCORES = [
     { value: '6', label: 'от 6' },
@@ -7385,10 +7449,11 @@ window.AniTierChangelog = [
     return list[Math.floor(safe * list.length)] || null;
   }
 
+  /* Совместимость: старый код ожидает русские подписи по ключам фильтра. */
   const STATUS_NAMES = {
-    airing: 'В эфире',
-    complete: 'Завершено',
-    upcoming: 'Анонс',
+    airing: STATUS_LABELS.airing,
+    complete: STATUS_LABELS.finished,
+    upcoming: STATUS_LABELS.upcoming,
   };
 
   const DEFAULT_FILTERS = Object.freeze({
@@ -7434,12 +7499,14 @@ window.AniTierChangelog = [
 
     return {
       type: uniqueList(filterList(source.type), value => {
-        const item = string(value);
+        const item = string(value).toLowerCase();
         return typeValues.includes(item) ? item : '';
       }),
       status: uniqueList(filterList(source.status), value => {
-        const item = string(value);
-        return statusValues.includes(item) ? item : '';
+        const item = string(value).toLowerCase();
+        if (statusValues.includes(item)) return item;
+        if (item === 'finished') return 'complete';
+        return '';
       }),
       year: uniqueList(filterList(source.year), value => {
         const item = string(value);
@@ -7447,7 +7514,9 @@ window.AniTierChangelog = [
       }),
       genre: uniqueList(filterList(source.genre), value => {
         const item = string(value);
-        return genreValues.includes(item) ? item : '';
+        if (genreValues.includes(item)) return item;
+        const byName = genreIdByName(item);
+        return byName || '';
       }),
       tags: uniqueList(filterList(source.tags), value => {
         const item = string(value);
@@ -7479,14 +7548,63 @@ window.AniTierChangelog = [
     return GENRES.find(item => String(item.id) === String(id)) || null;
   }
 
-  /* Жанр приходит строкой AniList/Kitsu или из своей карточки: «Action», «Драма».
-     Возвращаем id фильтра, чтобы поиск шёл через genre_in, а не текстом. */
+  const GENRE_SYNONYMS = Object.freeze({
+    'science fiction': 'Sci-Fi',
+    'scifi': 'Sci-Fi',
+    'sci fi': 'Sci-Fi',
+    'sf': 'Sci-Fi',
+    'action & adventure': 'Action',
+    'action-adventure': 'Action',
+    'martial arts': 'Action',
+    'boys love': 'Romance',
+    'girls love': 'Romance',
+    'shoujo ai': 'Romance',
+    'shounen ai': 'Romance',
+    'slice of life': 'Slice of Life',
+    'suspense': 'Thriller',
+    'avant garde': 'Psychological',
+    'gourmet': 'Slice of Life',
+    'award winning': '',
+  });
+
+  function normalizeGenreName(name) {
+    const raw = String(name == null ? '' : name).trim();
+    if (!raw) return '';
+    const key = raw.toLowerCase().replace(/\s+/g, ' ');
+    if (Object.prototype.hasOwnProperty.call(GENRE_SYNONYMS, key)) return GENRE_SYNONYMS[key] || '';
+    return raw;
+  }
+
+  function genreMatchesName(genre, name) {
+    if (!genre) return false;
+    const normalized = normalizeGenreName(name);
+    const key = String(normalized || name || '').trim().toLowerCase();
+    if (!key) return false;
+    if (String(genre.label).toLowerCase() === key) return true;
+    return genre.names.some(alias => String(alias).toLowerCase() === key);
+  }
+
+  function canonicalGenreName(name) {
+    const normalized = normalizeGenreName(name);
+    const id = genreIdByName(normalized || name);
+    if (!id) return normalized || String(name == null ? '' : name).trim();
+    const genre = genreById(id);
+    return genre ? genre.label : (normalized || String(name == null ? '' : name).trim());
+  }
+
+  /* Жанр приходит строкой AniList/Kitsu или из своей карточки: «Action», «Драма»,
+     «Science Fiction». Возвращаем id фильтра для genre_in и локального поиска. */
   function genreIdByName(name) {
-    const key = String(name == null ? '' : name).trim().toLowerCase();
-    if (!key) return '';
-    const genre = GENRES.find(item => String(item.label).toLowerCase() === key
-      || item.names.some(alias => String(alias).toLowerCase() === key));
-    return genre ? String(genre.id) : '';
+    const raw = String(name == null ? '' : name).trim();
+    if (!raw) return '';
+    const candidates = [raw, normalizeGenreName(raw)].filter(Boolean);
+    for (const candidate of candidates) {
+      const key = candidate.toLowerCase();
+      const genre = GENRES.find(item => String(item.label).toLowerCase() === key
+        || item.names.some(alias => String(alias).toLowerCase() === key));
+      if (genre) return String(genre.id);
+    }
+    return '';
   }
 
   function matchesFilters(anime, filters) {
@@ -7494,8 +7612,9 @@ window.AniTierChangelog = [
 
     if (normalized.type.length && !normalized.type.includes(String(anime.type || '').toLowerCase())) return false;
     if (normalized.status.length) {
-      const names = normalized.status.map(value => STATUS_NAMES[value]);
-      if (!names.includes(String(anime.status || ''))) return false;
+      const code = animeStatusCode(anime);
+      const allowed = normalized.status.map(statusCodeFromFilter);
+      if (!allowed.includes(code)) return false;
     }
     if (normalized.year.length && !normalized.year.map(Number).includes(Number(anime.year))) return false;
     if (normalized.minScore) {
@@ -7505,7 +7624,8 @@ window.AniTierChangelog = [
       const names = Array.isArray(anime.genres) ? anime.genres : [];
       const hit = normalized.genre.some(value => {
         const genre = genreById(value);
-        return genre ? names.some(name => genre.names.includes(name)) : false;
+        if (!genre) return false;
+        return names.some(name => genreMatchesName(genre, name));
       });
       if (!hit) return false;
     }
@@ -7628,6 +7748,7 @@ window.AniTierChangelog = [
   const ANILIST_STATUSES = {
     airing: 'RELEASING',
     complete: 'FINISHED',
+    finished: 'FINISHED',
     upcoming: 'NOT_YET_RELEASED',
   };
 
@@ -8362,11 +8483,12 @@ window.AniTierChangelog = [
         const isSequel = type === 'SEQUEL';
         const isFilmSideStory = type === 'SIDE_STORY' && sequel.type === 'Movie';
         if (!isSequel && !isFilmSideStory) continue;
-        if (!['В эфире', 'Анонс', 'Завершено'].includes(sequel.status)) continue;
+        const code = animeStatusCode(sequel);
+        if (!['airing', 'upcoming', 'finished', 'hiatus'].includes(code)) continue;
 
         const date = sequel.airedTo || sequel.airedFrom || null;
         const timestamp = date ? new Date(date).getTime() : 0;
-        if (sequel.status === 'Завершено' && (!timestamp || timestamp < cutoff || timestamp > now)) continue;
+        if (code === 'finished' && (!timestamp || timestamp < cutoff || timestamp > now)) continue;
 
         const key = String(sequel.id);
         if (found.has(key)) continue;
@@ -8374,16 +8496,17 @@ window.AniTierChangelog = [
           anime: media,
           sequel,
           relationType: type,
-          status: sequel.status,
+          status: sequel.status || statusLabel(code),
+          statusCode: code,
           date,
         });
       }
     }
 
-    const priority = { 'В эфире': 0, 'Анонс': 1, 'Завершено': 2 };
+    const priority = { airing: 0, hiatus: 0, upcoming: 1, finished: 2 };
     return [...found.values()].sort((a, b) => {
-      const pa = priority[a.status] == null ? 9 : priority[a.status];
-      const pb = priority[b.status] == null ? 9 : priority[b.status];
+      const pa = priority[a.statusCode || animeStatusCode(a)] == null ? 9 : priority[a.statusCode || animeStatusCode(a)];
+      const pb = priority[b.statusCode || animeStatusCode(b)] == null ? 9 : priority[b.statusCode || animeStatusCode(b)];
       if (pa !== pb) return pa - pb;
       const at = a.date ? new Date(a.date).getTime() : 0;
       const bt = b.date ? new Date(b.date).getTime() : 0;
@@ -9279,6 +9402,15 @@ window.AniTierChangelog = [
     SEARCH_LANGS,
     TYPES,
     STATUSES,
+    STATUS_CODES,
+    STATUS_FILTERS,
+    STATUS_LABELS,
+    STATUS_NAMES,
+    normalizeStatusCode,
+    statusCodeFromFilter,
+    statusLabel,
+    isOngoingStatus,
+    animeStatusCode,
     SCORES,
     DEFAULT_FILTERS,
     normalizeFilters,
@@ -9286,6 +9418,9 @@ window.AniTierChangelog = [
     countActiveFilters,
     genreById,
     genreIdByName,
+    normalizeGenreName,
+    genreMatchesName,
+    canonicalGenreName,
     genreRu,
     GENRE_CACHE_LIMIT,
     TITLE_KEY_CACHE_LIMIT,
@@ -10048,6 +10183,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
         : null,
       type: a.type || '',
       status: a.status || '',
+      statusCode: a.statusCode || animeStatusCodeLocal(a),
       score: typeof a.score === 'number' ? a.score : null,
       year: a.year || null,
       airedFrom: a.airedFrom || null,
@@ -10917,14 +11053,25 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     updateEpisodeUI(id);
   }
 
+  function animeStatusCodeLocal(a) {
+    if (!a) return 'unknown';
+    if (C && typeof C.animeStatusCode === 'function') return C.animeStatusCode(a);
+    const raw = String(a.statusCode || a.status || '').trim();
+    if (raw === 'airing' || raw === 'В эфире') return 'airing';
+    if (raw === 'finished' || raw === 'complete' || raw === 'Завершено') return 'finished';
+    if (raw === 'upcoming' || raw === 'Анонс') return 'upcoming';
+    return 'unknown';
+  }
+
   function episodeStats(a) {
-    const info = state.epInfo[a.id] || null;
-    const planned = Number(a.episodes) || Number(info?.total) || null;
-    const ongoing = a.status === 'В эфире';
+    const info = state.epInfo[a && a.id] || null;
+    const planned = Number(a && a.episodes) || Number(info?.total) || null;
+    const code = animeStatusCodeLocal(a);
+    const ongoing = code === 'airing' || code === 'hiatus';
     let available = 0;
     if (ongoing) available = info ? Math.max(0, Number(info.count) || 0) : 0;
     else available = planned || (info ? Math.max(0, Number(info.count) || 0) : 0);
-    return { info, total: planned, available, ongoing };
+    return { info, total: planned, available, ongoing, statusCode: code };
   }
 
   const epWord = (n) => plural(n, 'серия', 'серии', 'серий');
@@ -11349,11 +11496,24 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     return '';
   }
 
-  function altStatus(value) {
+  function altStatusCode(value) {
     const key = String(value || '').toUpperCase();
-    if (key === 'RELEASING' || key === 'CURRENT' || key === 'HIATUS') return 'В эфире';
-    if (key === 'NOT_YET_RELEASED' || key === 'TBA' || key === 'UPCOMING') return 'Анонс';
-    return 'Завершено';
+    if (key === 'RELEASING' || key === 'CURRENT') return 'airing';
+    if (key === 'HIATUS') return 'hiatus';
+    if (key === 'NOT_YET_RELEASED' || key === 'TBA' || key === 'UPCOMING' || key === 'UNRELEASED') return 'upcoming';
+    if (key === 'CANCELLED' || key === 'CANCELED') return 'cancelled';
+    if (key === 'FINISHED') return 'finished';
+    return C.normalizeStatusCode ? C.normalizeStatusCode(value) : 'unknown';
+  }
+
+  function altStatus(value) {
+    const code = altStatusCode(value);
+    return C.statusLabel ? C.statusLabel(code) : (
+      code === 'airing' || code === 'hiatus' ? 'В эфире'
+        : code === 'upcoming' ? 'Анонс'
+        : code === 'cancelled' ? 'Отменено'
+        : 'Завершено'
+    );
   }
 
   function stripHtml(value) {
@@ -11406,6 +11566,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       ? Math.max(0, (Number(nextEpisode.n) || 1) - 1)
       : (raw.status === 'FINISHED' && raw.episodes != null ? Number(raw.episodes) : null);
 
+    const statusCode = altStatusCode(raw.status);
     const a = {
       id: malId || -(2000000 + Number(raw.id)),
       malId,
@@ -11417,6 +11578,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       episodes: raw.episodes ?? null,
       type: altType(raw.format),
       status: altStatus(raw.status),
+      statusCode,
       score: Number.isFinite(score) ? Math.round(score) / 10 : null,
       popularity: Number(raw.popularity) || 0,
       year: raw.seasonYear || null,
@@ -11720,9 +11882,21 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     else if (titles.ja_jp && titles.ja_jp !== title) altTitle = titles.ja_jp;
 
     const categoryIds = (raw.relationships?.categories?.data || []).map(ref => ref.id);
-    const genres = [...new Set(categoryIds.map(id => categories.get(id)).filter(Boolean))];
+    const categoryNames = [...new Set(categoryIds.map(id => categories.get(id)).filter(Boolean))];
+    /* Категории Kitsu — это и жанры, и темы. В genres оставляем только то,
+       что матчится с каноническими жанрами; все категории — в tags. */
+    const genres = [];
+    for (const name of categoryNames) {
+      const id = C.genreIdByName ? C.genreIdByName(name) : '';
+      if (!id) continue;
+      const genre = C.genreById ? C.genreById(id) : null;
+      const canonical = genre && genre.names ? genre.names[genre.names.length - 1] || genre.label : name;
+      if (!genres.includes(canonical)) genres.push(canonical);
+    }
+    const tags = categoryNames.slice();
     const rating = attrs.averageRating == null ? null : Number(attrs.averageRating);
     const year = altYear(attrs.startDate);
+    const statusCode = altStatusCode(attrs.status);
 
     const a = {
       id: malId || -(1000000 + Number(raw.id)),
@@ -11735,13 +11909,14 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       episodes: attrs.episodeCount ?? null,
       type: altType(attrs.subtype),
       status: altStatus(attrs.status),
+      statusCode,
       score: Number.isFinite(rating) ? Math.round((rating / 10) * 10) / 10 : null,
       year,
       airedFrom: attrs.startDate || null,
       airedTo: attrs.endDate || null,
       synopsis: stripHtml(attrs.synopsis),
       genres,
-      tags: genres.slice(),
+      tags,
       studios: [],
       url: `https://kitsu.io/anime/${attrs.slug || raw.id}`,
       source: 'Kitsu',
@@ -12496,7 +12671,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       image: makePoster(title, id),
       episodes: eps,
       type,
-      status: 'Завершено',
+      status: 'Завершено', statusCode: 'finished',
       score,
       year,
       airedFrom: `${year}-04-02T00:00:00+00:00`,
@@ -12530,7 +12705,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       {
         anime: {
           ...base[0],
-          status: 'В эфире',
+          status: 'В эфире', statusCode: 'airing',
           episodes: 28,
           airedFrom: new Date(Date.now() - 90 * 86400000).toISOString(),
           airedTo: null,
@@ -12547,7 +12722,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       {
         anime: {
           ...base[1],
-          status: 'В эфире',
+          status: 'В эфире', statusCode: 'airing',
           episodes: 64,
           airedFrom: new Date(Date.now() - 120 * 86400000).toISOString(),
           airedTo: null,
@@ -12564,7 +12739,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       {
         anime: {
           ...base[6],
-          status: 'В эфире',
+          status: 'В эфире', statusCode: 'airing',
           episodes: 12,
           airedFrom: new Date(Date.now() - 70 * 86400000).toISOString(),
           airedTo: null,
@@ -12587,7 +12762,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       malId: null,
       title: 'Фрирен: сезон 2',
       altTitle: 'Sousou no Frieren 2nd Season',
-      status: 'Анонс',
+      status: 'Анонс', statusCode: 'upcoming',
       episodes: 12,
       year: 2027,
       airedFrom: new Date(Date.now() + 120 * 86400000).toISOString(),
@@ -12601,7 +12776,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       malId: null,
       title: 'Боччи на рок-концерте! Сезон 2',
       altTitle: 'Bocchi the Rock! 2nd Season',
-      status: 'В эфире',
+      status: 'В эфире', statusCode: 'airing',
       episodes: 12,
       year: 2026,
       airedFrom: new Date(Date.now() - 20 * 86400000).toISOString(),
@@ -12615,7 +12790,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       malId: null,
       title: 'Магическая битва: фильм',
       altTitle: 'Jujutsu Kaisen: Movie',
-      status: 'Завершено',
+      status: 'Завершено', statusCode: 'finished',
       type: 'Movie',
       episodes: 1,
       year: 2026,
@@ -12626,9 +12801,9 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     };
 
     const trackedSeasons = [
-      { anime: base[0], sequel: sequelFrieren, relationType: 'SEQUEL', status: 'Анонс', date: sequelFrieren.airedFrom },
-      { anime: base[6], sequel: sequelBocchi, relationType: 'SEQUEL', status: 'В эфире', date: sequelBocchi.airedFrom },
-      { anime: base[11], sequel: filmJujutsu, relationType: 'SIDE_STORY', status: 'Завершено', date: filmJujutsu.airedTo },
+      { anime: base[0], sequel: sequelFrieren, relationType: 'SEQUEL', status: 'Анонс', statusCode: 'upcoming', date: sequelFrieren.airedFrom },
+      { anime: base[6], sequel: sequelBocchi, relationType: 'SEQUEL', status: 'В эфире', statusCode: 'airing', date: sequelBocchi.airedFrom },
+      { anime: base[11], sequel: filmJujutsu, relationType: 'SIDE_STORY', status: 'Завершено', statusCode: 'finished', date: filmJujutsu.airedTo },
     ];
 
     const recentEpisodes = [
@@ -12640,15 +12815,15 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     ];
 
     const recentFilms = [
-      { ...base[4], status: 'Завершено', airedTo: new Date(Date.now() - 20 * 86400000).toISOString() },
-      { ...base[5], status: 'Завершено', airedTo: new Date(Date.now() - 60 * 86400000).toISOString() },
+      { ...base[4], status: 'Завершено', statusCode: 'finished', airedTo: new Date(Date.now() - 20 * 86400000).toISOString() },
+      { ...base[5], status: 'Завершено', statusCode: 'finished', airedTo: new Date(Date.now() - 60 * 86400000).toISOString() },
       {
         ...base[0],
         id: 9004,
         malId: null,
         title: 'Фрирен: фильм',
         altTitle: 'Sousou no Frieren Movie',
-        status: 'Завершено',
+        status: 'Завершено', statusCode: 'finished',
         type: 'Movie',
         episodes: 1,
         year: 2026,
@@ -12659,10 +12834,10 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     ];
 
     const completed = [
-      { ...base[3], status: 'Завершено', airedTo: new Date(Date.now() - 2 * 86400000).toISOString() },
-      { ...base[8], status: 'Завершено', airedTo: new Date(Date.now() - 9 * 86400000).toISOString() },
-      { ...base[12], status: 'Завершено', airedTo: new Date(Date.now() - 20 * 86400000).toISOString() },
-      { ...base[14], status: 'Завершено', airedTo: new Date(Date.now() - 27 * 86400000).toISOString() },
+      { ...base[3], status: 'Завершено', statusCode: 'finished', airedTo: new Date(Date.now() - 2 * 86400000).toISOString() },
+      { ...base[8], status: 'Завершено', statusCode: 'finished', airedTo: new Date(Date.now() - 9 * 86400000).toISOString() },
+      { ...base[12], status: 'Завершено', statusCode: 'finished', airedTo: new Date(Date.now() - 20 * 86400000).toISOString() },
+      { ...base[14], status: 'Завершено', statusCode: 'finished', airedTo: new Date(Date.now() - 27 * 86400000).toISOString() },
     ];
 
     const all = [
@@ -12719,7 +12894,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     const offsets = [1, 3, 6, 10, 15, 22, 30, 41, 52, 63, 75, 86];
     return demoAll().slice(8, 20).map((a, i) => ({
       ...a,
-      status: 'Анонс',
+      status: 'Анонс', statusCode: 'upcoming',
       score: null,
       airedFrom: addDays(startOfToday(), offsets[i] || 30).toISOString(),
     }));
@@ -13402,8 +13577,12 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       </div>`;
   }
 
+  function animeStatusCodeView(a) {
+    return C.animeStatusCode ? C.animeStatusCode(a) : String((a && (a.statusCode || a.status)) || '');
+  }
+
   function renderEpisodeBlock(a, variant = 'notif') {
-    if (a.status === 'Анонс') {
+    if (animeStatusCodeView(a) === 'upcoming') {
       return `<div class="ep-block ep-${variant}" data-ep-block="${a.id}" data-variant="${variant}">
         <p class="ep-note">Аниме ещё не вышло — отмечать серии пока нельзя.</p>
       </div>`;
@@ -13501,7 +13680,8 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     const demoCacheInLiveMode = cached && cached.source === 'demo' && !state.forceDemo && !a.demo;
     /* Нулевой прогресс «В эфире» — это не данные, а отсутствие данных:
        такой кэш нельзя держать два часа, иначе серии не появятся. */
-    const emptyAiring = cached && a.status === 'В эфире' && !Number(cached.count) && !cached.next;
+    const code = animeStatusCodeView(a);
+    const emptyAiring = cached && (code === 'airing' || code === 'hiatus') && !Number(cached.count) && !cached.next;
     if (fresh && !demoCacheInLiveMode && !emptyAiring) return cached;
 
     if (state.forceDemo || a.demo) {
@@ -13521,7 +13701,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     }
 
     const info = episodeInfoFromAnime(a);
-    if (a.status === 'В эфире' && !info.count && !info.next) return null;
+    if ((code === 'airing' || code === 'hiatus') && !info.count && !info.next) return null;
     state.epInfo[a.id] = info;
     if (options.save !== false) saveState();
     if (options.ui !== false) updateEpisodeUI(a.id);
@@ -13541,7 +13721,8 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       const demoCacheInLiveMode = info && info.source === 'demo' && !state.forceDemo && !a.demo;
       const fresh = info && Date.now() - Number(info.fetchedAt || 0) < 2 * 3600000;
       if (fresh && !demoCacheInLiveMode) continue;
-      const needsInfo = a.status === 'В эфире' || !a.episodes;
+      const code = animeStatusCodeView(a);
+      const needsInfo = code === 'airing' || code === 'hiatus' || !a.episodes;
       if (needsInfo) {
         const before = state.epInfo[a.id];
         ensureEpisodeInfo(a, { save: false, ui: false });
@@ -16224,7 +16405,8 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
         return at && at.getTime() >= cutoff && at.getTime() <= now && !watched.has(event.episode);
       });
 
-      if (!events.length && anime.status === 'В эфире' && anime.nextEpisode) {
+      const statusCode = C.animeStatusCode ? C.animeStatusCode(anime) : String(anime.status || '');
+      if (!events.length && (statusCode === 'airing' || statusCode === 'hiatus') && anime.nextEpisode) {
         const nextN = Number(anime.nextEpisode.n);
         const nextDate = App.parseDate(anime.nextEpisode.date);
         if (nextN > 1 && nextDate) {

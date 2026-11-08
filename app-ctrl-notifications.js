@@ -48,7 +48,8 @@
         return at && at.getTime() >= cutoff && at.getTime() <= now && !watched.has(event.episode);
       });
 
-      if (!events.length && anime.status === 'В эфире' && anime.nextEpisode) {
+      const statusCode = C.animeStatusCode ? C.animeStatusCode(anime) : String(anime.status || '');
+      if (!events.length && (statusCode === 'airing' || statusCode === 'hiatus') && anime.nextEpisode) {
         const nextN = Number(anime.nextEpisode.n);
         const nextDate = App.parseDate(anime.nextEpisode.date);
         if (nextN > 1 && nextDate) {

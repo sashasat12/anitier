@@ -559,8 +559,12 @@
       </div>`;
   }
 
+  function animeStatusCodeView(a) {
+    return C.animeStatusCode ? C.animeStatusCode(a) : String((a && (a.statusCode || a.status)) || '');
+  }
+
   function renderEpisodeBlock(a, variant = 'notif') {
-    if (a.status === 'Анонс') {
+    if (animeStatusCodeView(a) === 'upcoming') {
       return `<div class="ep-block ep-${variant}" data-ep-block="${a.id}" data-variant="${variant}">
         <p class="ep-note">Аниме ещё не вышло — отмечать серии пока нельзя.</p>
       </div>`;
@@ -658,7 +662,8 @@
     const demoCacheInLiveMode = cached && cached.source === 'demo' && !state.forceDemo && !a.demo;
     /* Нулевой прогресс «В эфире» — это не данные, а отсутствие данных:
        такой кэш нельзя держать два часа, иначе серии не появятся. */
-    const emptyAiring = cached && a.status === 'В эфире' && !Number(cached.count) && !cached.next;
+    const code = animeStatusCodeView(a);
+    const emptyAiring = cached && (code === 'airing' || code === 'hiatus') && !Number(cached.count) && !cached.next;
     if (fresh && !demoCacheInLiveMode && !emptyAiring) return cached;
 
     if (state.forceDemo || a.demo) {
@@ -678,7 +683,7 @@
     }
 
     const info = episodeInfoFromAnime(a);
-    if (a.status === 'В эфире' && !info.count && !info.next) return null;
+    if ((code === 'airing' || code === 'hiatus') && !info.count && !info.next) return null;
     state.epInfo[a.id] = info;
     if (options.save !== false) saveState();
     if (options.ui !== false) updateEpisodeUI(a.id);
@@ -698,7 +703,8 @@
       const demoCacheInLiveMode = info && info.source === 'demo' && !state.forceDemo && !a.demo;
       const fresh = info && Date.now() - Number(info.fetchedAt || 0) < 2 * 3600000;
       if (fresh && !demoCacheInLiveMode) continue;
-      const needsInfo = a.status === 'В эфире' || !a.episodes;
+      const code = animeStatusCodeView(a);
+      const needsInfo = code === 'airing' || code === 'hiatus' || !a.episodes;
       if (needsInfo) {
         const before = state.epInfo[a.id];
         ensureEpisodeInfo(a, { save: false, ui: false });

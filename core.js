@@ -173,10 +173,16 @@
     const raw = String(name == null ? '' : name).trim();
     if (genreCache.has(raw)) return genreCache.get(raw);
     let result = raw;
-    if (raw && !hasCyrillic(raw)) {
-      const tag = TAGS.find(item => String(item.name).toLowerCase() === raw.toLowerCase());
-      if (tag && tag.ru && tag.ru !== tag.name) result = tag.ru;
-      else result = GENRE_RU[raw.toLowerCase()] || EXTRA_GENRE_RU[raw.toLowerCase()] || raw;
+    if (raw) {
+      const canonicalId = genreIdByName(raw);
+      if (canonicalId) {
+        const genre = genreById(canonicalId);
+        result = genre ? genre.label : raw;
+      } else if (!hasCyrillic(raw)) {
+        const tag = TAGS.find(item => String(item.name).toLowerCase() === raw.toLowerCase());
+        if (tag && tag.ru && tag.ru !== tag.name) result = tag.ru;
+        else result = GENRE_RU[raw.toLowerCase()] || EXTRA_GENRE_RU[raw.toLowerCase()] || raw;
+      }
     }
     if (genreCache.size >= GENRE_CACHE_LIMIT) genreCache.delete(genreCache.keys().next().value);
     genreCache.set(raw, result);
@@ -204,11 +210,69 @@
     { value: 'special', label: 'Спешл' },
   ];
 
-  const STATUSES = [
-    { value: 'airing', label: 'В эфире' },
-    { value: 'complete', label: 'Завершено' },
-    { value: 'upcoming', label: 'Анонс' },
+  /* Коды статусов — единая модель для логики и фильтров. Русские строки
+     из старых сохранений и внешних данных нормализуются через statusCode. */
+  const STATUS_CODES = Object.freeze({
+    airing: 'airing',
+    finished: 'finished',
+    upcoming: 'upcoming',
+    cancelled: 'cancelled',
+    hiatus: 'hiatus',
+    unknown: 'unknown',
+  });
+
+  const STATUS_FILTERS = [
+    { value: 'airing', label: 'В эфире', code: 'airing' },
+    { value: 'complete', label: 'Завершено', code: 'finished' },
+    { value: 'upcoming', label: 'Анонс', code: 'upcoming' },
   ];
+
+  const STATUSES = STATUS_FILTERS.map(item => ({ value: item.value, label: item.label }));
+
+  const STATUS_LABELS = Object.freeze({
+    airing: 'В эфире',
+    finished: 'Завершено',
+    upcoming: 'Анонс',
+    cancelled: 'Отменено',
+    hiatus: 'Пауза',
+    unknown: 'Неизвестно',
+  });
+
+  function normalizeStatusCode(value) {
+    const raw = String(value == null ? '' : value).trim();
+    if (!raw) return 'unknown';
+    const key = raw.toLowerCase().replace(/[\s_-]+/g, '');
+    if (['airing', 'releasing', 'currentlyairing', 'current', 'ongoing', 'вэфире', 'онгоинг', 'выходит'].includes(key)) return 'airing';
+    if (['finished', 'complete', 'completed', 'finishedairing', 'завершено', 'завершён', 'вышло', 'закончен'].includes(key)) return 'finished';
+    if (['upcoming', 'notyetreleased', 'notyetaired', 'tba', 'unreleased', 'announced', 'анонс', 'скоровыйдет', 'анонсировано'].includes(key)) return 'upcoming';
+    if (['cancelled', 'canceled', 'отменено', 'отменён'].includes(key)) return 'cancelled';
+    if (['hiatus', 'onhiatus', 'пауза', 'приостановлено'].includes(key)) return 'hiatus';
+    return 'unknown';
+  }
+
+  function statusCodeFromFilter(value) {
+    const raw = String(value == null ? '' : value).trim().toLowerCase();
+    if (raw === 'complete' || raw === 'finished') return 'finished';
+    if (raw === 'airing') return 'airing';
+    if (raw === 'upcoming') return 'upcoming';
+    return normalizeStatusCode(raw);
+  }
+
+  function statusLabel(code) {
+    const normalized = normalizeStatusCode(code);
+    return STATUS_LABELS[normalized] || STATUS_LABELS.unknown;
+  }
+
+  function isOngoingStatus(code) {
+    const normalized = normalizeStatusCode(code);
+    return normalized === 'airing' || normalized === 'hiatus';
+  }
+
+  function animeStatusCode(anime) {
+    if (!anime || typeof anime !== 'object') return 'unknown';
+    if (anime.statusCode) return normalizeStatusCode(anime.statusCode);
+    return normalizeStatusCode(anime.status);
+  }
 
   const SCORES = [
     { value: '6', label: 'от 6' },
@@ -272,10 +336,11 @@
     return list[Math.floor(safe * list.length)] || null;
   }
 
+  /* Совместимость: старый код ожидает русские подписи по ключам фильтра. */
   const STATUS_NAMES = {
-    airing: 'В эфире',
-    complete: 'Завершено',
-    upcoming: 'Анонс',
+    airing: STATUS_LABELS.airing,
+    complete: STATUS_LABELS.finished,
+    upcoming: STATUS_LABELS.upcoming,
   };
 
   const DEFAULT_FILTERS = Object.freeze({
@@ -321,12 +386,14 @@
 
     return {
       type: uniqueList(filterList(source.type), value => {
-        const item = string(value);
+        const item = string(value).toLowerCase();
         return typeValues.includes(item) ? item : '';
       }),
       status: uniqueList(filterList(source.status), value => {
-        const item = string(value);
-        return statusValues.includes(item) ? item : '';
+        const item = string(value).toLowerCase();
+        if (statusValues.includes(item)) return item;
+        if (item === 'finished') return 'complete';
+        return '';
       }),
       year: uniqueList(filterList(source.year), value => {
         const item = string(value);
@@ -334,7 +401,9 @@
       }),
       genre: uniqueList(filterList(source.genre), value => {
         const item = string(value);
-        return genreValues.includes(item) ? item : '';
+        if (genreValues.includes(item)) return item;
+        const byName = genreIdByName(item);
+        return byName || '';
       }),
       tags: uniqueList(filterList(source.tags), value => {
         const item = string(value);
@@ -366,14 +435,63 @@
     return GENRES.find(item => String(item.id) === String(id)) || null;
   }
 
-  /* Жанр приходит строкой AniList/Kitsu или из своей карточки: «Action», «Драма».
-     Возвращаем id фильтра, чтобы поиск шёл через genre_in, а не текстом. */
+  const GENRE_SYNONYMS = Object.freeze({
+    'science fiction': 'Sci-Fi',
+    'scifi': 'Sci-Fi',
+    'sci fi': 'Sci-Fi',
+    'sf': 'Sci-Fi',
+    'action & adventure': 'Action',
+    'action-adventure': 'Action',
+    'martial arts': 'Action',
+    'boys love': 'Romance',
+    'girls love': 'Romance',
+    'shoujo ai': 'Romance',
+    'shounen ai': 'Romance',
+    'slice of life': 'Slice of Life',
+    'suspense': 'Thriller',
+    'avant garde': 'Psychological',
+    'gourmet': 'Slice of Life',
+    'award winning': '',
+  });
+
+  function normalizeGenreName(name) {
+    const raw = String(name == null ? '' : name).trim();
+    if (!raw) return '';
+    const key = raw.toLowerCase().replace(/\s+/g, ' ');
+    if (Object.prototype.hasOwnProperty.call(GENRE_SYNONYMS, key)) return GENRE_SYNONYMS[key] || '';
+    return raw;
+  }
+
+  function genreMatchesName(genre, name) {
+    if (!genre) return false;
+    const normalized = normalizeGenreName(name);
+    const key = String(normalized || name || '').trim().toLowerCase();
+    if (!key) return false;
+    if (String(genre.label).toLowerCase() === key) return true;
+    return genre.names.some(alias => String(alias).toLowerCase() === key);
+  }
+
+  function canonicalGenreName(name) {
+    const normalized = normalizeGenreName(name);
+    const id = genreIdByName(normalized || name);
+    if (!id) return normalized || String(name == null ? '' : name).trim();
+    const genre = genreById(id);
+    return genre ? genre.label : (normalized || String(name == null ? '' : name).trim());
+  }
+
+  /* Жанр приходит строкой AniList/Kitsu или из своей карточки: «Action», «Драма»,
+     «Science Fiction». Возвращаем id фильтра для genre_in и локального поиска. */
   function genreIdByName(name) {
-    const key = String(name == null ? '' : name).trim().toLowerCase();
-    if (!key) return '';
-    const genre = GENRES.find(item => String(item.label).toLowerCase() === key
-      || item.names.some(alias => String(alias).toLowerCase() === key));
-    return genre ? String(genre.id) : '';
+    const raw = String(name == null ? '' : name).trim();
+    if (!raw) return '';
+    const candidates = [raw, normalizeGenreName(raw)].filter(Boolean);
+    for (const candidate of candidates) {
+      const key = candidate.toLowerCase();
+      const genre = GENRES.find(item => String(item.label).toLowerCase() === key
+        || item.names.some(alias => String(alias).toLowerCase() === key));
+      if (genre) return String(genre.id);
+    }
+    return '';
   }
 
   function matchesFilters(anime, filters) {
@@ -381,8 +499,9 @@
 
     if (normalized.type.length && !normalized.type.includes(String(anime.type || '').toLowerCase())) return false;
     if (normalized.status.length) {
-      const names = normalized.status.map(value => STATUS_NAMES[value]);
-      if (!names.includes(String(anime.status || ''))) return false;
+      const code = animeStatusCode(anime);
+      const allowed = normalized.status.map(statusCodeFromFilter);
+      if (!allowed.includes(code)) return false;
     }
     if (normalized.year.length && !normalized.year.map(Number).includes(Number(anime.year))) return false;
     if (normalized.minScore) {
@@ -392,7 +511,8 @@
       const names = Array.isArray(anime.genres) ? anime.genres : [];
       const hit = normalized.genre.some(value => {
         const genre = genreById(value);
-        return genre ? names.some(name => genre.names.includes(name)) : false;
+        if (!genre) return false;
+        return names.some(name => genreMatchesName(genre, name));
       });
       if (!hit) return false;
     }
@@ -515,6 +635,7 @@
   const ANILIST_STATUSES = {
     airing: 'RELEASING',
     complete: 'FINISHED',
+    finished: 'FINISHED',
     upcoming: 'NOT_YET_RELEASED',
   };
 
@@ -1249,11 +1370,12 @@
         const isSequel = type === 'SEQUEL';
         const isFilmSideStory = type === 'SIDE_STORY' && sequel.type === 'Movie';
         if (!isSequel && !isFilmSideStory) continue;
-        if (!['В эфире', 'Анонс', 'Завершено'].includes(sequel.status)) continue;
+        const code = animeStatusCode(sequel);
+        if (!['airing', 'upcoming', 'finished', 'hiatus'].includes(code)) continue;
 
         const date = sequel.airedTo || sequel.airedFrom || null;
         const timestamp = date ? new Date(date).getTime() : 0;
-        if (sequel.status === 'Завершено' && (!timestamp || timestamp < cutoff || timestamp > now)) continue;
+        if (code === 'finished' && (!timestamp || timestamp < cutoff || timestamp > now)) continue;
 
         const key = String(sequel.id);
         if (found.has(key)) continue;
@@ -1261,16 +1383,17 @@
           anime: media,
           sequel,
           relationType: type,
-          status: sequel.status,
+          status: sequel.status || statusLabel(code),
+          statusCode: code,
           date,
         });
       }
     }
 
-    const priority = { 'В эфире': 0, 'Анонс': 1, 'Завершено': 2 };
+    const priority = { airing: 0, hiatus: 0, upcoming: 1, finished: 2 };
     return [...found.values()].sort((a, b) => {
-      const pa = priority[a.status] == null ? 9 : priority[a.status];
-      const pb = priority[b.status] == null ? 9 : priority[b.status];
+      const pa = priority[a.statusCode || animeStatusCode(a)] == null ? 9 : priority[a.statusCode || animeStatusCode(a)];
+      const pb = priority[b.statusCode || animeStatusCode(b)] == null ? 9 : priority[b.statusCode || animeStatusCode(b)];
       if (pa !== pb) return pa - pb;
       const at = a.date ? new Date(a.date).getTime() : 0;
       const bt = b.date ? new Date(b.date).getTime() : 0;
@@ -2166,6 +2289,15 @@
     SEARCH_LANGS,
     TYPES,
     STATUSES,
+    STATUS_CODES,
+    STATUS_FILTERS,
+    STATUS_LABELS,
+    STATUS_NAMES,
+    normalizeStatusCode,
+    statusCodeFromFilter,
+    statusLabel,
+    isOngoingStatus,
+    animeStatusCode,
     SCORES,
     DEFAULT_FILTERS,
     normalizeFilters,
@@ -2173,6 +2305,9 @@
     countActiveFilters,
     genreById,
     genreIdByName,
+    normalizeGenreName,
+    genreMatchesName,
+    canonicalGenreName,
     genreRu,
     GENRE_CACHE_LIMIT,
     TITLE_KEY_CACHE_LIMIT,

@@ -179,11 +179,24 @@
     return '';
   }
 
-  function altStatus(value) {
+  function altStatusCode(value) {
     const key = String(value || '').toUpperCase();
-    if (key === 'RELEASING' || key === 'CURRENT' || key === 'HIATUS') return 'В эфире';
-    if (key === 'NOT_YET_RELEASED' || key === 'TBA' || key === 'UPCOMING') return 'Анонс';
-    return 'Завершено';
+    if (key === 'RELEASING' || key === 'CURRENT') return 'airing';
+    if (key === 'HIATUS') return 'hiatus';
+    if (key === 'NOT_YET_RELEASED' || key === 'TBA' || key === 'UPCOMING' || key === 'UNRELEASED') return 'upcoming';
+    if (key === 'CANCELLED' || key === 'CANCELED') return 'cancelled';
+    if (key === 'FINISHED') return 'finished';
+    return C.normalizeStatusCode ? C.normalizeStatusCode(value) : 'unknown';
+  }
+
+  function altStatus(value) {
+    const code = altStatusCode(value);
+    return C.statusLabel ? C.statusLabel(code) : (
+      code === 'airing' || code === 'hiatus' ? 'В эфире'
+        : code === 'upcoming' ? 'Анонс'
+        : code === 'cancelled' ? 'Отменено'
+        : 'Завершено'
+    );
   }
 
   function stripHtml(value) {
@@ -236,6 +249,7 @@
       ? Math.max(0, (Number(nextEpisode.n) || 1) - 1)
       : (raw.status === 'FINISHED' && raw.episodes != null ? Number(raw.episodes) : null);
 
+    const statusCode = altStatusCode(raw.status);
     const a = {
       id: malId || -(2000000 + Number(raw.id)),
       malId,
@@ -247,6 +261,7 @@
       episodes: raw.episodes ?? null,
       type: altType(raw.format),
       status: altStatus(raw.status),
+      statusCode,
       score: Number.isFinite(score) ? Math.round(score) / 10 : null,
       popularity: Number(raw.popularity) || 0,
       year: raw.seasonYear || null,
@@ -550,9 +565,21 @@
     else if (titles.ja_jp && titles.ja_jp !== title) altTitle = titles.ja_jp;
 
     const categoryIds = (raw.relationships?.categories?.data || []).map(ref => ref.id);
-    const genres = [...new Set(categoryIds.map(id => categories.get(id)).filter(Boolean))];
+    const categoryNames = [...new Set(categoryIds.map(id => categories.get(id)).filter(Boolean))];
+    /* Категории Kitsu — это и жанры, и темы. В genres оставляем только то,
+       что матчится с каноническими жанрами; все категории — в tags. */
+    const genres = [];
+    for (const name of categoryNames) {
+      const id = C.genreIdByName ? C.genreIdByName(name) : '';
+      if (!id) continue;
+      const genre = C.genreById ? C.genreById(id) : null;
+      const canonical = genre && genre.names ? genre.names[genre.names.length - 1] || genre.label : name;
+      if (!genres.includes(canonical)) genres.push(canonical);
+    }
+    const tags = categoryNames.slice();
     const rating = attrs.averageRating == null ? null : Number(attrs.averageRating);
     const year = altYear(attrs.startDate);
+    const statusCode = altStatusCode(attrs.status);
 
     const a = {
       id: malId || -(1000000 + Number(raw.id)),
@@ -565,13 +592,14 @@
       episodes: attrs.episodeCount ?? null,
       type: altType(attrs.subtype),
       status: altStatus(attrs.status),
+      statusCode,
       score: Number.isFinite(rating) ? Math.round((rating / 10) * 10) / 10 : null,
       year,
       airedFrom: attrs.startDate || null,
       airedTo: attrs.endDate || null,
       synopsis: stripHtml(attrs.synopsis),
       genres,
-      tags: genres.slice(),
+      tags,
       studios: [],
       url: `https://kitsu.io/anime/${attrs.slug || raw.id}`,
       source: 'Kitsu',
@@ -1326,7 +1354,7 @@
       image: makePoster(title, id),
       episodes: eps,
       type,
-      status: 'Завершено',
+      status: 'Завершено', statusCode: 'finished',
       score,
       year,
       airedFrom: `${year}-04-02T00:00:00+00:00`,
@@ -1360,7 +1388,7 @@
       {
         anime: {
           ...base[0],
-          status: 'В эфире',
+          status: 'В эфире', statusCode: 'airing',
           episodes: 28,
           airedFrom: new Date(Date.now() - 90 * 86400000).toISOString(),
           airedTo: null,
@@ -1377,7 +1405,7 @@
       {
         anime: {
           ...base[1],
-          status: 'В эфире',
+          status: 'В эфире', statusCode: 'airing',
           episodes: 64,
           airedFrom: new Date(Date.now() - 120 * 86400000).toISOString(),
           airedTo: null,
@@ -1394,7 +1422,7 @@
       {
         anime: {
           ...base[6],
-          status: 'В эфире',
+          status: 'В эфире', statusCode: 'airing',
           episodes: 12,
           airedFrom: new Date(Date.now() - 70 * 86400000).toISOString(),
           airedTo: null,
@@ -1417,7 +1445,7 @@
       malId: null,
       title: 'Фрирен: сезон 2',
       altTitle: 'Sousou no Frieren 2nd Season',
-      status: 'Анонс',
+      status: 'Анонс', statusCode: 'upcoming',
       episodes: 12,
       year: 2027,
       airedFrom: new Date(Date.now() + 120 * 86400000).toISOString(),
@@ -1431,7 +1459,7 @@
       malId: null,
       title: 'Боччи на рок-концерте! Сезон 2',
       altTitle: 'Bocchi the Rock! 2nd Season',
-      status: 'В эфире',
+      status: 'В эфире', statusCode: 'airing',
       episodes: 12,
       year: 2026,
       airedFrom: new Date(Date.now() - 20 * 86400000).toISOString(),
@@ -1445,7 +1473,7 @@
       malId: null,
       title: 'Магическая битва: фильм',
       altTitle: 'Jujutsu Kaisen: Movie',
-      status: 'Завершено',
+      status: 'Завершено', statusCode: 'finished',
       type: 'Movie',
       episodes: 1,
       year: 2026,
@@ -1456,9 +1484,9 @@
     };
 
     const trackedSeasons = [
-      { anime: base[0], sequel: sequelFrieren, relationType: 'SEQUEL', status: 'Анонс', date: sequelFrieren.airedFrom },
-      { anime: base[6], sequel: sequelBocchi, relationType: 'SEQUEL', status: 'В эфире', date: sequelBocchi.airedFrom },
-      { anime: base[11], sequel: filmJujutsu, relationType: 'SIDE_STORY', status: 'Завершено', date: filmJujutsu.airedTo },
+      { anime: base[0], sequel: sequelFrieren, relationType: 'SEQUEL', status: 'Анонс', statusCode: 'upcoming', date: sequelFrieren.airedFrom },
+      { anime: base[6], sequel: sequelBocchi, relationType: 'SEQUEL', status: 'В эфире', statusCode: 'airing', date: sequelBocchi.airedFrom },
+      { anime: base[11], sequel: filmJujutsu, relationType: 'SIDE_STORY', status: 'Завершено', statusCode: 'finished', date: filmJujutsu.airedTo },
     ];
 
     const recentEpisodes = [
@@ -1470,15 +1498,15 @@
     ];
 
     const recentFilms = [
-      { ...base[4], status: 'Завершено', airedTo: new Date(Date.now() - 20 * 86400000).toISOString() },
-      { ...base[5], status: 'Завершено', airedTo: new Date(Date.now() - 60 * 86400000).toISOString() },
+      { ...base[4], status: 'Завершено', statusCode: 'finished', airedTo: new Date(Date.now() - 20 * 86400000).toISOString() },
+      { ...base[5], status: 'Завершено', statusCode: 'finished', airedTo: new Date(Date.now() - 60 * 86400000).toISOString() },
       {
         ...base[0],
         id: 9004,
         malId: null,
         title: 'Фрирен: фильм',
         altTitle: 'Sousou no Frieren Movie',
-        status: 'Завершено',
+        status: 'Завершено', statusCode: 'finished',
         type: 'Movie',
         episodes: 1,
         year: 2026,
@@ -1489,10 +1517,10 @@
     ];
 
     const completed = [
-      { ...base[3], status: 'Завершено', airedTo: new Date(Date.now() - 2 * 86400000).toISOString() },
-      { ...base[8], status: 'Завершено', airedTo: new Date(Date.now() - 9 * 86400000).toISOString() },
-      { ...base[12], status: 'Завершено', airedTo: new Date(Date.now() - 20 * 86400000).toISOString() },
-      { ...base[14], status: 'Завершено', airedTo: new Date(Date.now() - 27 * 86400000).toISOString() },
+      { ...base[3], status: 'Завершено', statusCode: 'finished', airedTo: new Date(Date.now() - 2 * 86400000).toISOString() },
+      { ...base[8], status: 'Завершено', statusCode: 'finished', airedTo: new Date(Date.now() - 9 * 86400000).toISOString() },
+      { ...base[12], status: 'Завершено', statusCode: 'finished', airedTo: new Date(Date.now() - 20 * 86400000).toISOString() },
+      { ...base[14], status: 'Завершено', statusCode: 'finished', airedTo: new Date(Date.now() - 27 * 86400000).toISOString() },
     ];
 
     const all = [
@@ -1549,7 +1577,7 @@
     const offsets = [1, 3, 6, 10, 15, 22, 30, 41, 52, 63, 75, 86];
     return demoAll().slice(8, 20).map((a, i) => ({
       ...a,
-      status: 'Анонс',
+      status: 'Анонс', statusCode: 'upcoming',
       score: null,
       airedFrom: addDays(startOfToday(), offsets[i] || 30).toISOString(),
     }));

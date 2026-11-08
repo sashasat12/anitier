@@ -805,7 +805,9 @@
     T.eq(C.genreIdByName('  action '), '1', 'Регистр и пробелы не важны');
     T.eq(C.genreIdByName('Sci-Fi'), '24');
     T.eq(C.genreIdByName('Драма'), '8', 'Русское название из своей карточки');
-    T.eq(C.genreIdByName('Boys Love'), '', 'Неизвестный жанр не подменяется');
+    T.eq(C.genreIdByName('Boys Love'), '22', 'Синоним жанра нормализуется');
+    T.eq(C.genreIdByName('Science Fiction'), '24', 'Синоним Sci-Fi');
+    T.eq(C.genreIdByName('Экшен'), '1', 'Русская подпись жанра');
     T.eq(C.genreIdByName(''), '');
     T.eq(C.genreIdByName(null), '');
 

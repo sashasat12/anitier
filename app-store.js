@@ -724,6 +724,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
         : null,
       type: a.type || '',
       status: a.status || '',
+      statusCode: a.statusCode || animeStatusCodeLocal(a),
       score: typeof a.score === 'number' ? a.score : null,
       year: a.year || null,
       airedFrom: a.airedFrom || null,
@@ -1593,14 +1594,25 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     updateEpisodeUI(id);
   }
 
+  function animeStatusCodeLocal(a) {
+    if (!a) return 'unknown';
+    if (C && typeof C.animeStatusCode === 'function') return C.animeStatusCode(a);
+    const raw = String(a.statusCode || a.status || '').trim();
+    if (raw === 'airing' || raw === 'В эфире') return 'airing';
+    if (raw === 'finished' || raw === 'complete' || raw === 'Завершено') return 'finished';
+    if (raw === 'upcoming' || raw === 'Анонс') return 'upcoming';
+    return 'unknown';
+  }
+
   function episodeStats(a) {
-    const info = state.epInfo[a.id] || null;
-    const planned = Number(a.episodes) || Number(info?.total) || null;
-    const ongoing = a.status === 'В эфире';
+    const info = state.epInfo[a && a.id] || null;
+    const planned = Number(a && a.episodes) || Number(info?.total) || null;
+    const code = animeStatusCodeLocal(a);
+    const ongoing = code === 'airing' || code === 'hiatus';
     let available = 0;
     if (ongoing) available = info ? Math.max(0, Number(info.count) || 0) : 0;
     else available = planned || (info ? Math.max(0, Number(info.count) || 0) : 0);
-    return { info, total: planned, available, ongoing };
+    return { info, total: planned, available, ongoing, statusCode: code };
   }
 
   const epWord = (n) => plural(n, 'серия', 'серии', 'серий');
