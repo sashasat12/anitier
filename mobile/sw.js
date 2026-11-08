@@ -35,6 +35,7 @@ const SHELL = [
   '../app-ctrl-moments.js',
   '../app-ctrl-settings.js',
   '../app-ctrl-diagnostics.js',
+  '../app-ctrl-gestures.js',
   '../app.js',
 ];
 

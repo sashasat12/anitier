@@ -25,15 +25,6 @@
 
 ## Пункты
 
-### 40. Вынести жесты и перетаскивание из app.js
-
-Кластеры drag & drop (`dragState`, `dragPointerY`, `dragAutoScrollFrame`, `dragGesture`, `dragGhost`, `suppressTierClickUntil`, `setInstantScroll`, `scrollPageBy`, `createDragGhost`, `moveDragGhost`, `removeDragGhost`, `updateDragTarget`, `activateDrag`, `runDragAutoScroll`, `cleanupDrag`, `bindDragEvents`) и быстрых жестов (`longPressTimer`, `touchGesture`, `pullDistance`, `suppressQuickClickUntil`, `isMobileShell`, `quickMenuHTML`, `openQuickMenu`, `closeQuickMenu`, `pullIndicator`, `resetPullIndicator`, `bindGestures`, `bindModalSwipe`).
-
-- Создать `app-ctrl-gestures.js`; `window.bindModalSwipe` продолжает выставляться (на него ссылается `openModal` через глобальный lookup).
-- Удалить кластеры из `app.js`, оставить ленивые алиасы для оставшихся вызовов.
-- Подключить модуль во всех пяти местах списка скриптов; обновить `AGENTS.md`.
-- Критерий готовности: `tests/gestures.test.js`, `tests/scroll.test.js`, `tests/mobile.test.js` зелёные; сценарии `mobile-*` без изменений; артефакты пересобраны.
-
 ### 41. Вынести настройки и статистику профиля из app-render-modals.js
 
 `app-render-modals.js` (71 КБ) смешивает формы, настройки, статистику, палитру команд и карточку тайтла. Первый шаг — экраны настроек и статистики: `changelogHTML`, `renderSettings`, `openSettings`, `closeSettings`, `renderUpdateCard`, `statsTierRows`, `renderStatsScreen`, `openStats`, `closeStats`.
