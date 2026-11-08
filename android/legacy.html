@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>AniTier — перенос данных</title>
+</head>
+<body>
+<script>
+/* Читает данные старой сборки (file:///android_asset/index.html) и отдаёт их
+   приложению. Ничего не меняет: только localStorage.getItem. */
+(function () {
+  var keys = ['anitier.v1', 'anitier.moments.v1', 'anitier.translations.v1'];
+  var out = {};
+  try {
+    for (var i = 0; i < keys.length; i++) {
+      var value = localStorage.getItem(keys[i]);
+      if (value) out[keys[i]] = value;
+    }
+  } catch (error) { /* приватный режим — отдаём пусто */ }
+  try {
+    if (window.AniTierAndroidLegacy && window.AniTierAndroidLegacy.report) {
+      window.AniTierAndroidLegacy.report(JSON.stringify(out));
+    }
+  } catch (error) { /* моста нет — приложение просто начнёт с чистого листа */ }
+})();
+</script>
+</body>
+</html>

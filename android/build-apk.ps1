@@ -41,6 +41,9 @@ $genDir = Join-Path $work 'gen'
 
 New-Item -ItemType Directory -Force -Path $work, $assets, $classesDir, $dexDir, $genDir | Out-Null
 Copy-Item $phoneFile (Join-Path $assets 'index.html') -Force
+$legacyFile = Join-Path $root 'legacy.html'
+if (-not (Test-Path $legacyFile)) { throw 'Нет android/legacy.html — страница переноса данных из старых сборок.' }
+Copy-Item $legacyFile (Join-Path $assets 'legacy.html') -Force
 
 $env:JAVA_HOME = $Jdk
 $env:Path = (Join-Path $Jdk 'bin') + ';' + $env:Path

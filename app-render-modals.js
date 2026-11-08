@@ -290,6 +290,34 @@
     const f = state.backup || {};
     const drive = App.driveAvailable ? App.driveAvailable() : false;
     const disabled = f.busy ? ' disabled' : '';
+    const safety = App.safetyAvailable ? App.safetyAvailable() : false;
+    const safetyInfo = safety && App.safetySnapshotInfo ? App.safetySnapshotInfo() : null;
+    const legacyInfo = safety && App.legacyBackupInfo ? App.legacyBackupInfo() : null;
+    const legacyBlock = legacyInfo
+      ? `<div class="backup-block">
+          <h3>Данные прошлой версии</h3>
+          <p>В старой сборке остались списки — ${legacyInfo.cards} ${legacyInfo.cards === 1 ? 'карточка' : 'карточек'}. Их можно вернуть: текущие списки, прогресс и настройки будут заменены.</p>
+          <div class="form-actions">
+            <button class="btn btn-primary" type="button" data-action="safety-legacy-restore"${disabled}>Вернуть списки</button>
+          </div>
+        </div>`
+      : '';
+    const safetyWhen = safetyInfo && safetyInfo.savedAt
+      ? new Date(safetyInfo.savedAt).toLocaleString('ru-RU')
+      : '';
+    const safetyBlock = safety
+      ? `<div class="backup-block">
+          <h3>Страховочная копия на устройстве</h3>
+          <p>Приложение само сохраняет списки, прогресс и настройки в свою память. Копия переживает обновление приложения и очистку данных страницы.</p>
+          <p class="form-note">${safetyWhen
+            ? `Последняя: ${esc(safetyWhen)}${safetyInfo.cards ? ` · карточек — ${safetyInfo.cards}` : ''}.`
+            : 'Пока не создана — сохраните вручную или подождите минуту после изменений.'}</p>
+          <div class="form-actions">
+            <button class="btn btn-primary" type="button" data-action="safety-save"${disabled}>${f.busy ? 'Подождите…' : 'Сохранить сейчас'}</button>
+            <button class="btn btn-ghost" type="button" data-action="safety-restore"${disabled}${safetyInfo && safetyInfo.cards ? '' : ' disabled'}>Восстановить</button>
+          </div>
+        </div>`
+      : '';
     const status = f.message
       ? `<p class="backup-status${f.error ? ' is-error' : ''}" role="status">${esc(f.message)}</p>`
       : '';
@@ -326,6 +354,8 @@
           </label>
         </div>
       </div>
+      ${safetyBlock}
+      ${legacyBlock}
       <div class="backup-block">
         <h3>Медиа отдельно</h3>
         <p>Перенесите полные постеры, видео и GIF в отдельном архиве до 500 МБ. Для переноса на другое устройство сначала восстановите JSON-копию, затем импортируйте этот архив.</p>

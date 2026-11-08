@@ -50,6 +50,7 @@
 | `app-ctrl-settings.js` | контроллер настроек, проверки обновлений, напоминаний релизов, кэша | экспорт в `window.AniTier`; без DOM-рендера, кроме вызовов рендера |
 | `app-ctrl-diagnostics.js` | локальная диагностика: перехват ошибок и запросов, отчёт для буфера обмена | без отправки данных наружу; экспорт в `window.AniTier` |
 | `app-ctrl-gestures.js` | drag & drop тир-листов, свайпы, pull-to-refresh, быстрое меню | экспорт в `window.AniTier`; `window.bindModalSwipe` для глобального lookup |
+| `app-ctrl-safety.js` | страховочная копия в памяти APK и перенос данных из прошлых сборок | только через мост `window.AniTierAndroid`; в браузере выключен |
 | `index.html` | разметка и вкладки десктопа | без инлайн-стилей и инлайн-скриптов |
 | `styles.css` | тёмная тема десктопа | |
 | `mobile/` | мобильная PWA: `index.html`, `mobile.css`, `mobile.js`, `manifest.webmanifest`, `sw.js` | логика та же, что на десктопе; не дублировать её без нужды |

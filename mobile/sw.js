@@ -4,7 +4,7 @@
    ============================================================ */
 'use strict';
 
-const CACHE = 'anitier-mobile-v1.42.1';
+const CACHE = 'anitier-mobile-v1.43.0';
 const SHELL = [
   './',
   './index.html',
@@ -38,6 +38,7 @@ const SHELL = [
   '../app-ctrl-settings.js',
   '../app-ctrl-diagnostics.js',
   '../app-ctrl-gestures.js',
+  '../app-ctrl-safety.js',
   '../app.js',
 ];
 

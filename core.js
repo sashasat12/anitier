@@ -1192,6 +1192,65 @@
     };
   }
 
+  /* ---------------- страховочная копия в памяти приложения ---------------- */
+  const SAFETY_KIND = 'anitier.safety';
+  const SAFETY_VERSION = 1;
+  const SAFETY_KEYS = ['anitier.v1', 'anitier.moments.v1', 'anitier.translations.v1'];
+
+  /* Снимок ключей localStorage: строки как есть, без разбора схемы. */
+  function makeSafetySnapshot(items, savedAt) {
+    const source = items && typeof items === 'object' ? items : {};
+    const out = {};
+    for (const key of SAFETY_KEYS) {
+      const value = source[key];
+      if (typeof value === 'string' && value) out[key] = value;
+    }
+    return {
+      kind: SAFETY_KIND,
+      version: SAFETY_VERSION,
+      savedAt: Number(savedAt) || Date.now(),
+      items: out,
+    };
+  }
+
+  function countSnapshotCards(stateJson) {
+    let data = null;
+    try { data = JSON.parse(String(stateJson == null ? '' : stateJson)); } catch { return 0; }
+    if (!data || typeof data !== 'object') return 0;
+    let total = 0;
+    for (const name of ['watched', 'planned']) {
+      const tiers = data[name];
+      if (!tiers || typeof tiers !== 'object') continue;
+      for (const key of Object.keys(tiers)) {
+        if (Array.isArray(tiers[key])) total += tiers[key].length;
+      }
+    }
+    if (Array.isArray(data.customCards)) total += data.customCards.length;
+    return total;
+  }
+
+  function parseSafetySnapshot(text) {
+    let payload = null;
+    try {
+      payload = typeof text === 'string' ? JSON.parse(text) : text;
+    } catch {
+      throw new Error('Страховочная копия повреждена.');
+    }
+    if (!payload || typeof payload !== 'object' || payload.kind !== SAFETY_KIND) {
+      throw new Error('Это не страховочная копия AniTier.');
+    }
+    if (Number(payload.version) !== SAFETY_VERSION) {
+      throw new Error('Версия страховочной копии не поддерживается.');
+    }
+    const items = payload.items && typeof payload.items === 'object' ? payload.items : {};
+    const state = typeof items[SAFETY_KEYS[0]] === 'string' ? items[SAFETY_KEYS[0]] : '';
+    return {
+      savedAt: Number(payload.savedAt) || 0,
+      items,
+      cards: countSnapshotCards(state),
+    };
+  }
+
   /* ---------------- резервные копии и моменты ---------------- */
   const BACKUP_KIND = 'anitier.backup';
   const BACKUP_VERSION = 2;
@@ -1609,7 +1668,7 @@
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.42.1';
+  const APP_VERSION = '1.43.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -2308,6 +2367,12 @@
     BACKUP_FILE,
     BACKUP_MAX_BYTES,
     isBackupSizeAllowed,
+    SAFETY_KIND,
+    SAFETY_VERSION,
+    SAFETY_KEYS,
+    makeSafetySnapshot,
+    countSnapshotCards,
+    parseSafetySnapshot,
     makeTierShare,
     encodeTierShare,
     parseTierShare,

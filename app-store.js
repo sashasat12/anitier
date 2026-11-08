@@ -1456,6 +1456,9 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     if (saveTimer) { clearTimeout(saveTimer); saveTimer = 0; }
     try {
       localStorage.setItem(LS_KEY, JSON.stringify(buildStatePayload()));
+      if (App && typeof App.onStatePersisted === 'function') {
+        try { App.onStatePersisted(); } catch (err) { console.warn('onStatePersisted', err); }
+      }
       return true;
     } catch (err) {
       reportSaveError(err);

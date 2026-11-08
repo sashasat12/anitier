@@ -1,0 +1,125 @@
+/* Страховочная копия в памяти APK и перенос данных из старых сборок. */
+(() => {
+  'use strict';
+  const T = window.AniTierTests;
+
+  function fakeBridge(win) {
+    const box = { snapshot: '', saves: 0 };
+    win.AniTierAndroid = {
+      saveSnapshot(json) {
+        if (typeof json !== 'string' || !json) return false;
+        box.snapshot = json;
+        box.saves++;
+        return true;
+      },
+      loadSnapshot() {
+        return box.snapshot;
+      },
+      snapshotSavedAt() {
+        return 0;
+      },
+    };
+    return box;
+  }
+
+  T.test('safety: данные старой сборки переносятся в текущее хранилище', async () => {
+    const app = await T.mountApp({ query: '?test=1' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      App._testNoReload = true;
+      win.localStorage.removeItem(App.LS_KEY);
+      fakeBridge(win);
+
+      const legacyState = {
+        schemaVersion: 1,
+        watched: { S: [{ id: 52991, title: 'Фрирен' }], A: [], B: [], C: [], D: [], F: [], N: [] },
+        planned: { S: [], A: [], B: [], C: [], D: [], F: [], N: [] },
+        settings: {},
+      };
+      const payload = JSON.stringify({ 'anitier.v1': JSON.stringify(legacyState) });
+      T.eq(App.receiveLegacyData(payload), true, 'данные приняты');
+
+      const saved = JSON.parse(win.localStorage.getItem(App.LS_KEY) || 'null');
+      T.assert(saved && saved.watched && saved.watched.S[0].title === 'Фрирен', 'список записан в хранилище');
+      T.eq(App.receiveLegacyData(payload), false, 'повторный перенос не затирает текущие данные');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('safety: пустое хранилище восстанавливается из копии', async () => {
+    const app = await T.mountApp({ query: '?test=1' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      App._testNoReload = true;
+      win.localStorage.removeItem(App.LS_KEY);
+      const box = fakeBridge(win);
+      const state = {
+        watched: { S: [{ id: 7, title: 'Блич' }], A: [], B: [], C: [], D: [], F: [], N: [] },
+        planned: { S: [], A: [], B: [], C: [], D: [], F: [], N: [] },
+      };
+      box.snapshot = JSON.stringify(win.AniTierCore.makeSafetySnapshot(
+        { 'anitier.v1': JSON.stringify(state) }, 1700000000000,
+      ));
+
+      T.eq(App.recoverOnBoot(), true, 'копия восстановлена');
+      const saved = JSON.parse(win.localStorage.getItem(App.LS_KEY) || 'null');
+      T.assert(saved && saved.watched && saved.watched.S[0].id === 7, 'данные вернулись в localStorage');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('safety: блоки копий рисуются в окне резервной копии', async () => {
+    const app = await T.mountApp({ query: '?test=1' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      const box = fakeBridge(win);
+      win.AniTierAndroid.loadLegacyData = () => JSON.stringify({
+        'anitier.v1': JSON.stringify({
+          watched: { S: [{ id: 7, title: 'Блич' }], A: [], B: [], C: [], D: [], F: [], N: [] },
+          planned: { S: [], A: [], B: [], C: [], D: [], F: [], N: [] },
+        }),
+      });
+      win.AniTierAndroid.clearLegacyData = () => true;
+      box.snapshot = JSON.stringify(win.AniTierCore.makeSafetySnapshot(
+        { 'anitier.v1': '{"watched":{"S":[{"id":1}]}}' }, 1700000000000,
+      ));
+
+      App.openBackup();
+      const doc = win.document;
+      const text = (doc.getElementById('backup-content') || {}).textContent || '';
+      T.includes(text, 'Страховочная копия на устройстве', 'блок страховочной копии показан');
+      T.includes(text, 'Данные прошлой версии', 'блок данных прошлой версии показан');
+      T.assert(doc.querySelector('[data-action="safety-save"]'), 'есть кнопка сохранения копии');
+      T.assert(doc.querySelector('[data-action="safety-legacy-restore"]'), 'есть кнопка возврата старых списков');
+      App.closeBackup();
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('safety: изменения списков попадают в страховочную копию', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      const box = fakeBridge(win);
+
+      App.addToList('watched', {
+        id: 52991, malId: 52991, title: 'Фрирен', image: '', episodes: 28, status: 'Завершено',
+      }, 'S');
+      App.flushStateSave();
+      T.eq(App.saveSnapshotNow(), true, 'копия записана через мост');
+
+      const parsed = win.AniTierCore.parseSafetySnapshot(box.snapshot);
+      T.assert(parsed.cards >= 1, 'в копии есть карточки: ' + parsed.cards);
+      T.assert(parsed.items[App.LS_KEY], 'в копии есть состояние списков');
+    } finally {
+      app.close();
+    }
+  });
+})();

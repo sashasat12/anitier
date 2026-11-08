@@ -10,6 +10,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
@@ -29,6 +31,10 @@ import java.util.regex.Pattern;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.nio.charset.StandardCharsets;
 import android.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
@@ -44,6 +50,18 @@ public class MainActivity extends Activity {
     private static final String APP_ASSET_ORIGIN = "https://appassets.androidplatform.net";
     private static final String APP_ASSET_BASE = APP_ASSET_ORIGIN + "/assets/";
     private static final String APP_START_URL = APP_ASSET_BASE + "index.html";
+    /* Страховочная копия в приватной памяти приложения: переживает смену
+       адреса страницы, обновление и очистку данных WebView. */
+    private static final String SNAPSHOT_FILE = "anitier-snapshot.json";
+    private static final long SNAPSHOT_MAX_BYTES = 32L * 1024 * 1024;
+    /* Старые сборки открывали file:///android_asset/index.html; их данные
+       лежат в localStorage другого адреса и переносятся один раз. */
+    private static final String LEGACY_PREFS = "anitier-legacy-storage";
+    private static final String LEGACY_DONE = "migrated";
+    private static final String LEGACY_URL = "file:///android_asset/legacy.html";
+    /* Найденные данные прошлой сборки: предлагаются вручную, если в текущем
+       хранилище уже что-то есть. */
+    private static final String LEGACY_FILE = "anitier-legacy.json";
 
     /* Пакеты TikTok: обычный, для Европы/Азии и китайская версия Douyin. */
     private static final String[] TIKTOK_PACKAGES = {
@@ -60,6 +78,8 @@ public class MainActivity extends Activity {
     private String pendingTikTokShare;
     private boolean pageReady;
     private boolean enablingReleaseNotifications;
+    private String pendingLegacyJson;
+    private WebView legacyView;
 
     @SuppressWarnings("deprecation")
     @Override
@@ -121,6 +141,7 @@ public class MainActivity extends Activity {
             public void onPageFinished(WebView view, String url) {
                 pageReady = true;
                 dispatchPendingTikTokShare();
+                dispatchLegacyData();
             }
 
             @Override
@@ -145,6 +166,7 @@ public class MainActivity extends Activity {
         });
 
         setContentView(webView);
+        migrateLegacyStorage();
         webView.loadUrl(APP_START_URL);
     }
 
@@ -412,6 +434,101 @@ public class MainActivity extends Activity {
         super.onActivityResult(requestCode, resultCode, data);
     }
 
+    /* Один раз читает localStorage старого адреса file:// и отдаёт данные приложению. */
+    private void migrateLegacyStorage() {
+        SharedPreferences prefs = getSharedPreferences(LEGACY_PREFS, MODE_PRIVATE);
+        if (prefs.getBoolean(LEGACY_DONE, false)) return;
+        try {
+            WebView reader = new WebView(this);
+            WebSettings settings = reader.getSettings();
+            settings.setJavaScriptEnabled(true);
+            settings.setDomStorageEnabled(true);
+            settings.setDatabaseEnabled(true);
+            settings.setAllowFileAccess(true);
+            reader.addJavascriptInterface(new LegacyBridge(), "AniTierAndroidLegacy");
+            reader.setWebViewClient(new WebViewClient() {
+                @Override
+                public void onPageFinished(WebView view, String url) {
+                    /* Если страница не отчиталась, не держим WebView в памяти. */
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> destroyLegacyView(view), 2000);
+                }
+            });
+            legacyView = reader;
+            reader.loadUrl(LEGACY_URL);
+        } catch (Exception error) {
+            /* Ничего не помечаем: попробуем ещё раз при следующем запуске. */
+        }
+    }
+
+    private class LegacyBridge {
+        @JavascriptInterface
+        public void report(final String json) {
+            SharedPreferences prefs = getSharedPreferences(LEGACY_PREFS, MODE_PRIVATE);
+            prefs.edit().putBoolean(LEGACY_DONE, true).apply();
+            if (json == null || json.isEmpty() || "{}".equals(json)) return;
+            if (!writePrivateFile(LEGACY_FILE, json)) return;
+            runOnUiThread(() -> {
+                pendingLegacyJson = json;
+                dispatchLegacyData();
+                destroyLegacyView(legacyView);
+            });
+        }
+    }
+
+    /* Данные прошлой сборки, сохранённые для ручного восстановления. */
+    private String readPrivateFile(String name) {
+        File file = new File(getFilesDir(), name);
+        if (!file.exists() || file.length() == 0 || file.length() > SNAPSHOT_MAX_BYTES) return "";
+        try {
+            byte[] data = new byte[(int) file.length()];
+            int offset = 0;
+            try (FileInputStream in = new FileInputStream(file)) {
+                while (offset < data.length) {
+                    int read = in.read(data, offset, data.length - offset);
+                    if (read < 0) break;
+                    offset += read;
+                }
+            }
+            return new String(data, 0, offset, StandardCharsets.UTF_8);
+        } catch (Exception error) {
+            return "";
+        }
+    }
+
+    private boolean writePrivateFile(String name, String text) {
+        File dir = getFilesDir();
+        File target = new File(dir, name);
+        File tmp = new File(dir, name + ".tmp");
+        try (FileOutputStream out = new FileOutputStream(tmp)) {
+            out.write(text.getBytes(StandardCharsets.UTF_8));
+            out.getFD().sync();
+        } catch (Exception error) {
+            return false;
+        }
+        if (tmp.renameTo(target)) return true;
+        /* Некоторые файловые системы не переименовывают поверх файла. */
+        return target.delete() && tmp.renameTo(target);
+    }
+
+    private void dispatchLegacyData() {
+        if (pendingLegacyJson == null || webView == null || !pageReady) return;
+        String payload = pendingLegacyJson;
+        pendingLegacyJson = null;
+        String script = "window.AniTier && window.AniTier.receiveLegacyData && window.AniTier.receiveLegacyData("
+                + JSONObject.quote(payload) + ")";
+        webView.evaluateJavascript(script, null);
+    }
+
+    private void destroyLegacyView(WebView view) {
+        if (view == null) return;
+        if (view == legacyView) legacyView = null;
+        try {
+            view.loadUrl("about:blank");
+            view.destroy();
+        } catch (Exception ignored) {
+        }
+    }
+
     private class BackupBridge {
         @JavascriptInterface
         public void openUrl(String url) {
@@ -474,6 +591,34 @@ public void scheduleReleaseNotifications(String json) {
         @JavascriptInterface
         public boolean openTikTok(String url) {
             return MainActivity.this.openTikTok(url);
+        }
+
+        @JavascriptInterface
+        public boolean saveSnapshot(String json) {
+            if (json == null || json.isEmpty() || json.length() > SNAPSHOT_MAX_BYTES) return false;
+            return writePrivateFile(SNAPSHOT_FILE, json);
+        }
+
+        @JavascriptInterface
+        public String loadSnapshot() {
+            return readPrivateFile(SNAPSHOT_FILE);
+        }
+
+        @JavascriptInterface
+        public long snapshotSavedAt() {
+            File file = new File(getFilesDir(), SNAPSHOT_FILE);
+            return file.exists() ? file.lastModified() : 0;
+        }
+
+        @JavascriptInterface
+        public String loadLegacyData() {
+            return readPrivateFile(LEGACY_FILE);
+        }
+
+        @JavascriptInterface
+        public boolean clearLegacyData() {
+            File file = new File(getFilesDir(), LEGACY_FILE);
+            return !file.exists() || file.delete();
         }
 
         @JavascriptInterface

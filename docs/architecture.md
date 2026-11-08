@@ -21,7 +21,7 @@
 2. Ядро: `core.js`
 3. Состояние и API: `app-store.js`, `app-api.js`
 4. Рендер: `app-render-cards.js`, `app-render-lists.js`, `app-render-screens.js`, `app-render-modals.js`, `app-render-exchange.js`, `app-render-png.js`, `app-render-settings.js`, `app-render-command.js`
-5. Контроллеры: `app-ctrl-catalog.js`, `app-ctrl-notifications.js`, `app-ctrl-upcoming.js`, `app-ctrl-backup.js`, `app-ctrl-posters.js`, `app-ctrl-moments.js`, `app-ctrl-settings.js`, `app-ctrl-diagnostics.js`, `app-ctrl-gestures.js`
+5. Контроллеры: `app-ctrl-catalog.js`, `app-ctrl-notifications.js`, `app-ctrl-upcoming.js`, `app-ctrl-backup.js`, `app-ctrl-posters.js`, `app-ctrl-moments.js`, `app-ctrl-settings.js`, `app-ctrl-diagnostics.js`, `app-ctrl-gestures.js`, `app-ctrl-safety.js`
 6. Запуск: `app.js`
 
 Только мобильная оболочка дополнительно подключает `mobile.js` после общих скриптов.

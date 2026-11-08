@@ -923,6 +923,49 @@
     return [...out].filter(v => !v.includes('${')).sort();
   }
 
+  T.test('core: страховочная копия хранит известные ключи и считает карточки', () => {
+    const C = core();
+    const state = {
+      watched: { S: [{ id: 1 }, { id: 2 }], A: [{ id: 3 }] },
+      planned: { B: [{ id: 4 }] },
+      customCards: [{ id: -1 }],
+    };
+    const snapshot = C.makeSafetySnapshot({
+      'anitier.v1': JSON.stringify(state),
+      'anitier.moments.v1': '{"-1":[]}',
+      'anitier.translations.v1': '',
+      'other.key': 'лишнее',
+    }, 1234);
+
+    T.eq(snapshot.kind, 'anitier.safety');
+    T.eq(snapshot.savedAt, 1234);
+    T.eq(Object.keys(snapshot.items).sort(), ['anitier.moments.v1', 'anitier.v1']);
+    T.eq(C.countSnapshotCards(snapshot.items['anitier.v1']), 5);
+
+    const parsed = C.parseSafetySnapshot(JSON.stringify(snapshot));
+    T.eq(parsed.cards, 5);
+    T.eq(parsed.savedAt, 1234);
+    T.eq(parsed.items['anitier.v1'], snapshot.items['anitier.v1']);
+  });
+
+  T.test('core: страховочная копия отвергает чужие и битые данные', () => {
+    const C = core();
+    let error = '';
+    try { C.parseSafetySnapshot('{'); } catch (err) { error = err.message; }
+    T.includes(error, 'повреждена');
+
+    error = '';
+    try { C.parseSafetySnapshot(JSON.stringify({ kind: 'other', version: 1, items: {} })); } catch (err) { error = err.message; }
+    T.includes(error, 'не страховочная');
+
+    error = '';
+    try { C.parseSafetySnapshot(JSON.stringify({ kind: 'anitier.safety', version: 99, items: {} })); } catch (err) { error = err.message; }
+    T.includes(error, 'не поддерживается');
+
+    T.eq(C.countSnapshotCards('{'), 0);
+    T.eq(C.countSnapshotCards('null'), 0);
+  });
+
   T.test('разметка: id и data-action совпадают между desktop и mobile', async () => {
     const [desktop, mobile] = await Promise.all([
       fetch('../index.html').then(r => r.text()),

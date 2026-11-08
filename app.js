@@ -1243,6 +1243,19 @@ try { window.onReleaseNotificationPermissionResult = onReleaseNotificationPermis
       saveBackupFile();
     },
 
+    'safety-save'() {
+      if (typeof App.saveSnapshotManually === 'function') App.saveSnapshotManually();
+      renderBackup();
+    },
+
+    'safety-restore'() {
+      if (typeof App.restoreSnapshotManually === 'function') App.restoreSnapshotManually();
+    },
+
+    'safety-legacy-restore'() {
+      if (typeof App.restoreLegacyManually === 'function') App.restoreLegacyManually();
+    },
+
     'media-export'() {
       exportMediaFile();
     },
@@ -2092,6 +2105,7 @@ try { window.onReleaseNotificationPermissionResult = onReleaseNotificationPermis
 
   async function init() {
     installDiagnostics();
+    if (typeof App.recoverOnBoot === 'function' && App.recoverOnBoot()) return;
     state.booting = true;
     if (!localStorage.getItem(DAILY_SYNC_KEY)) {
       const now = new Date();
@@ -2100,6 +2114,8 @@ try { window.onReleaseNotificationPermissionResult = onReleaseNotificationPermis
     }
     loadState();
     loadMoments();
+    if (typeof App.announceRestore === 'function') App.announceRestore();
+    if (typeof App.bindSafetyLifecycle === 'function') App.bindSafetyLifecycle();
     migrateLocalThumbnails().then((res) => {
       if (res && (res.migratedCards || res.migratedMoments)) refreshViews();
     }).catch((err) => console.warn('migrateLocalThumbnails', err));

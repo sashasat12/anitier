@@ -6539,6 +6539,17 @@ window.AniTierTitlesRu = {
 
 window.AniTierChangelog = [
   {
+    version: '1.43.0',
+    date: '9 ноября 2026',
+    title: 'Страховочная копия и возврат старых списков',
+    items: [
+      'Приложение само сохраняет списки, прогресс и настройки в свою память: копия переживает обновление приложения и очистку данных страницы.',
+      'В «Резервной копии» появился блок «Страховочная копия на устройстве»: видно дату и число карточек, есть кнопки сохранить и восстановить.',
+      'Если списки пропали после смены адреса страницы в 1.42.0, их можно вернуть: в «Резервной копии» есть блок «Данные прошлой версии».',
+      'Копия обновляется сама после изменений и при закрытии приложения; отдельные настройки не нужны.',
+    ],
+  },
+  {
     version: '1.42.1',
     date: '9 ноября 2026',
     title: 'Автономная версия снова запускается',
@@ -8326,6 +8337,65 @@ window.AniTierChangelog = [
     };
   }
 
+  /* ---------------- страховочная копия в памяти приложения ---------------- */
+  const SAFETY_KIND = 'anitier.safety';
+  const SAFETY_VERSION = 1;
+  const SAFETY_KEYS = ['anitier.v1', 'anitier.moments.v1', 'anitier.translations.v1'];
+
+  /* Снимок ключей localStorage: строки как есть, без разбора схемы. */
+  function makeSafetySnapshot(items, savedAt) {
+    const source = items && typeof items === 'object' ? items : {};
+    const out = {};
+    for (const key of SAFETY_KEYS) {
+      const value = source[key];
+      if (typeof value === 'string' && value) out[key] = value;
+    }
+    return {
+      kind: SAFETY_KIND,
+      version: SAFETY_VERSION,
+      savedAt: Number(savedAt) || Date.now(),
+      items: out,
+    };
+  }
+
+  function countSnapshotCards(stateJson) {
+    let data = null;
+    try { data = JSON.parse(String(stateJson == null ? '' : stateJson)); } catch { return 0; }
+    if (!data || typeof data !== 'object') return 0;
+    let total = 0;
+    for (const name of ['watched', 'planned']) {
+      const tiers = data[name];
+      if (!tiers || typeof tiers !== 'object') continue;
+      for (const key of Object.keys(tiers)) {
+        if (Array.isArray(tiers[key])) total += tiers[key].length;
+      }
+    }
+    if (Array.isArray(data.customCards)) total += data.customCards.length;
+    return total;
+  }
+
+  function parseSafetySnapshot(text) {
+    let payload = null;
+    try {
+      payload = typeof text === 'string' ? JSON.parse(text) : text;
+    } catch {
+      throw new Error('Страховочная копия повреждена.');
+    }
+    if (!payload || typeof payload !== 'object' || payload.kind !== SAFETY_KIND) {
+      throw new Error('Это не страховочная копия AniTier.');
+    }
+    if (Number(payload.version) !== SAFETY_VERSION) {
+      throw new Error('Версия страховочной копии не поддерживается.');
+    }
+    const items = payload.items && typeof payload.items === 'object' ? payload.items : {};
+    const state = typeof items[SAFETY_KEYS[0]] === 'string' ? items[SAFETY_KEYS[0]] : '';
+    return {
+      savedAt: Number(payload.savedAt) || 0,
+      items,
+      cards: countSnapshotCards(state),
+    };
+  }
+
   /* ---------------- резервные копии и моменты ---------------- */
   const BACKUP_KIND = 'anitier.backup';
   const BACKUP_VERSION = 2;
@@ -8743,7 +8813,7 @@ window.AniTierChangelog = [
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.42.1';
+  const APP_VERSION = '1.43.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -9442,6 +9512,12 @@ window.AniTierChangelog = [
     BACKUP_FILE,
     BACKUP_MAX_BYTES,
     isBackupSizeAllowed,
+    SAFETY_KIND,
+    SAFETY_VERSION,
+    SAFETY_KEYS,
+    makeSafetySnapshot,
+    countSnapshotCards,
+    parseSafetySnapshot,
     makeTierShare,
     encodeTierShare,
     parseTierShare,
@@ -11020,6 +11096,9 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     if (saveTimer) { clearTimeout(saveTimer); saveTimer = 0; }
     try {
       localStorage.setItem(LS_KEY, JSON.stringify(buildStatePayload()));
+      if (App && typeof App.onStatePersisted === 'function') {
+        try { App.onStatePersisted(); } catch (err) { console.warn('onStatePersisted', err); }
+      }
       return true;
     } catch (err) {
       reportSaveError(err);
@@ -15045,6 +15124,34 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     const f = state.backup || {};
     const drive = App.driveAvailable ? App.driveAvailable() : false;
     const disabled = f.busy ? ' disabled' : '';
+    const safety = App.safetyAvailable ? App.safetyAvailable() : false;
+    const safetyInfo = safety && App.safetySnapshotInfo ? App.safetySnapshotInfo() : null;
+    const legacyInfo = safety && App.legacyBackupInfo ? App.legacyBackupInfo() : null;
+    const legacyBlock = legacyInfo
+      ? `<div class="backup-block">
+          <h3>Данные прошлой версии</h3>
+          <p>В старой сборке остались списки — ${legacyInfo.cards} ${legacyInfo.cards === 1 ? 'карточка' : 'карточек'}. Их можно вернуть: текущие списки, прогресс и настройки будут заменены.</p>
+          <div class="form-actions">
+            <button class="btn btn-primary" type="button" data-action="safety-legacy-restore"${disabled}>Вернуть списки</button>
+          </div>
+        </div>`
+      : '';
+    const safetyWhen = safetyInfo && safetyInfo.savedAt
+      ? new Date(safetyInfo.savedAt).toLocaleString('ru-RU')
+      : '';
+    const safetyBlock = safety
+      ? `<div class="backup-block">
+          <h3>Страховочная копия на устройстве</h3>
+          <p>Приложение само сохраняет списки, прогресс и настройки в свою память. Копия переживает обновление приложения и очистку данных страницы.</p>
+          <p class="form-note">${safetyWhen
+            ? `Последняя: ${esc(safetyWhen)}${safetyInfo.cards ? ` · карточек — ${safetyInfo.cards}` : ''}.`
+            : 'Пока не создана — сохраните вручную или подождите минуту после изменений.'}</p>
+          <div class="form-actions">
+            <button class="btn btn-primary" type="button" data-action="safety-save"${disabled}>${f.busy ? 'Подождите…' : 'Сохранить сейчас'}</button>
+            <button class="btn btn-ghost" type="button" data-action="safety-restore"${disabled}${safetyInfo && safetyInfo.cards ? '' : ' disabled'}>Восстановить</button>
+          </div>
+        </div>`
+      : '';
     const status = f.message
       ? `<p class="backup-status${f.error ? ' is-error' : ''}" role="status">${esc(f.message)}</p>`
       : '';
@@ -15081,6 +15188,8 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
           </label>
         </div>
       </div>
+      ${safetyBlock}
+      ${legacyBlock}
       <div class="backup-block">
         <h3>Медиа отдельно</h3>
         <p>Перенесите полные постеры, видео и GIF в отдельном архиве до 500 МБ. Для переноса на другое устройство сначала восстановите JSON-копию, затем импортируйте этот архив.</p>
@@ -19371,6 +19480,268 @@ const {
 </script>
 <script>
 /* ============================================================
+   AniTier — страховочная копия в памяти приложения и перенос данных
+   из прошлых сборок. Работает только в APK: в браузере моста нет.
+   ============================================================ */
+(function (App) {
+  'use strict';
+  const C = window.AniTierCore;
+  const LS_KEY = 'anitier.v1';
+  const RESTORED_KEY = 'anitier.restored.v1';
+  const SAVE_GAP_MS = 4000;
+
+  let bridgeRef = null;
+  let saveTimer = 0;
+  let lastSavedAt = 0;
+  let infoCache = null;
+  let legacyInfoCache;
+
+  function bridge() {
+    if (bridgeRef) return bridgeRef;
+    const candidate = window.AniTierAndroid;
+    if (!candidate
+      || typeof candidate.saveSnapshot !== 'function'
+      || typeof candidate.loadSnapshot !== 'function') return null;
+    bridgeRef = candidate;
+    return bridgeRef;
+  }
+
+  function safetyAvailable() {
+    return Boolean(bridge());
+  }
+
+  function collectItems() {
+    const items = {};
+    for (const key of C.SAFETY_KEYS) {
+      const value = localStorage.getItem(key);
+      if (value) items[key] = value;
+    }
+    return items;
+  }
+
+  function snapshotCards(items) {
+    return C.countSnapshotCards(items && items[LS_KEY] ? items[LS_KEY] : '');
+  }
+
+  function saveSnapshotNow() {
+    const api = bridge();
+    if (!api) return false;
+    if (saveTimer) { clearTimeout(saveTimer); saveTimer = 0; }
+    try {
+      const snapshot = C.makeSafetySnapshot(collectItems(), Date.now());
+      if (!Object.keys(snapshot.items).length) return false;
+      if (!api.saveSnapshot(JSON.stringify(snapshot))) return false;
+      lastSavedAt = snapshot.savedAt;
+      infoCache = { savedAt: lastSavedAt, cards: snapshotCards(snapshot.items), bytes: 0 };
+      return true;
+    } catch (err) {
+      console.warn('saveSnapshot', err);
+      return false;
+    }
+  }
+
+  function saveSnapshotSoon() {
+    if (!bridge()) return;
+    if (saveTimer) return;
+    const wait = Math.max(0, SAVE_GAP_MS - (Date.now() - lastSavedAt));
+    saveTimer = setTimeout(() => {
+      saveTimer = 0;
+      saveSnapshotNow();
+    }, wait);
+  }
+
+  function readSnapshot() {
+    const api = bridge();
+    if (!api) return null;
+    try {
+      const text = api.loadSnapshot();
+      if (!text) return null;
+      return C.parseSafetySnapshot(text);
+    } catch (err) {
+      console.warn('loadSnapshot', err);
+      return null;
+    }
+  }
+
+  /* Дата и число карточек для карточки в настройках. */
+  function safetySnapshotInfo() {
+    if (!bridge()) return null;
+    if (infoCache) return infoCache;
+    const snapshot = readSnapshot();
+    infoCache = snapshot
+      ? { savedAt: snapshot.savedAt, cards: snapshot.cards, bytes: 0 }
+      : { savedAt: 0, cards: 0, bytes: 0 };
+    return infoCache;
+  }
+
+  function writeItems(items) {
+    let written = 0;
+    for (const key of C.SAFETY_KEYS) {
+      const value = items && items[key];
+      if (typeof value !== 'string' || !value) continue;
+      try {
+        localStorage.setItem(key, value);
+        written++;
+      } catch (err) {
+        console.warn('restore', err);
+      }
+    }
+    return written;
+  }
+
+  function markRestored(kind) {
+    try { localStorage.setItem(RESTORED_KEY, kind); } catch { /* не критично */ }
+    infoCache = null;
+    if (!App._testNoReload) location.reload();
+    return true;
+  }
+
+  /* До загрузки состояния: сохранения нет, а копия есть — возвращаем копию. */
+  function recoverOnBoot() {
+    if (!bridge()) return false;
+    try {
+      if (localStorage.getItem(LS_KEY)) return false;
+    } catch {
+      return false;
+    }
+    const snapshot = readSnapshot();
+    if (!snapshot || !snapshot.cards) return false;
+    if (!writeItems(snapshot.items)) return false;
+    return markRestored('snapshot');
+  }
+
+  /* Данные из старой сборки (адрес file://) присылает MainActivity. */
+  function receiveLegacyData(json) {
+    if (!json) return false;
+    let items = null;
+    try { items = JSON.parse(json); } catch { return false; }
+    if (!items || typeof items !== 'object' || !snapshotCards(items)) return false;
+    let empty = false;
+    try { empty = !localStorage.getItem(LS_KEY); } catch { empty = false; }
+    if (!empty) {
+      /* В текущем хранилище уже есть данные — предлагаем вернуть старые вручную. */
+      if (typeof App.toast === 'function') {
+        App.toast('Нашли данные прошлой версии — их можно вернуть в «Резервной копии»');
+      }
+      return false;
+    }
+    if (!writeItems(items)) return false;
+    clearLegacyFile();
+    legacyInfoCache = null;
+    return markRestored('legacy');
+  }
+
+  function readLegacyItems() {
+    const api = bridge();
+    if (!api || typeof api.loadLegacyData !== 'function') return null;
+    try {
+      const text = api.loadLegacyData();
+      if (!text) return null;
+      const items = JSON.parse(text);
+      if (!items || typeof items !== 'object') return null;
+      return snapshotCards(items) ? items : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function clearLegacyFile() {
+    const api = bridge();
+    if (!api || typeof api.clearLegacyData !== 'function') return;
+    try { api.clearLegacyData(); } catch { /* не критично */ }
+  }
+
+  /* Для карточки в резервной копии: есть ли что возвращать из прошлой сборки. */
+  function legacyBackupInfo() {
+    if (!bridge()) return null;
+    if (legacyInfoCache !== undefined) return legacyInfoCache;
+    const items = readLegacyItems();
+    legacyInfoCache = items ? { cards: snapshotCards(items) } : null;
+    return legacyInfoCache;
+  }
+
+  function restoreLegacyManually() {
+    const items = readLegacyItems();
+    if (!items) {
+      if (typeof App.setBackupMessage === 'function') App.setBackupMessage('Данных прошлой версии больше нет.', true);
+      return false;
+    }
+    if (!window.confirm('Вернуть списки из прошлой версии приложения? Текущие списки, прогресс и настройки будут заменены.')) {
+      return false;
+    }
+    if (!writeItems(items)) return false;
+    clearLegacyFile();
+    legacyInfoCache = null;
+    return markRestored('legacy');
+  }
+
+  /* Сообщение после перезагрузки: откуда вернулись данные. */
+  function announceRestore() {
+    let kind = '';
+    try { kind = localStorage.getItem(RESTORED_KEY) || ''; } catch { return; }
+    if (!kind) return;
+    try { localStorage.removeItem(RESTORED_KEY); } catch { /* не критично */ }
+    if (typeof App.toast !== 'function') return;
+    App.toast(kind === 'legacy'
+      ? 'Вернули списки из прошлой версии приложения'
+      : 'Восстановили данные из страховочной копии');
+  }
+
+  function saveSnapshotManually() {
+    const ok = saveSnapshotNow();
+    if (typeof App.setBackupMessage === 'function') {
+      App.setBackupMessage(ok ? 'Страховочная копия обновлена.' : 'Не удалось сохранить страховочную копию.', !ok);
+    }
+    return ok;
+  }
+
+  function restoreSnapshotManually() {
+    const snapshot = readSnapshot();
+    if (!snapshot || !snapshot.cards) {
+      if (typeof App.setBackupMessage === 'function') App.setBackupMessage('Страховочная копия пуста.', true);
+      return false;
+    }
+    if (!window.confirm('Восстановить страховочную копию? Текущие списки, прогресс и настройки будут заменены.')) {
+      return false;
+    }
+    if (!writeItems(snapshot.items)) return false;
+    return markRestored('snapshot');
+  }
+
+  function bindSafetyLifecycle() {
+    if (!bridge()) return;
+    saveSnapshotSoon();
+    window.addEventListener('pagehide', () => { saveSnapshotNow(); });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') saveSnapshotNow();
+    });
+  }
+
+  /* Вызывается после каждой записи состояния в localStorage. */
+  function onStatePersisted() {
+    saveSnapshotSoon();
+  }
+
+  Object.assign(App, {
+    safetyAvailable,
+    safetySnapshotInfo,
+    saveSnapshotNow,
+    saveSnapshotSoon,
+    saveSnapshotManually,
+    restoreSnapshotManually,
+    recoverOnBoot,
+    receiveLegacyData,
+    legacyBackupInfo,
+    restoreLegacyManually,
+    announceRestore,
+    bindSafetyLifecycle,
+    onStatePersisted,
+  });
+})(window.AniTier);
+
+</script>
+<script>
+/* ============================================================
    AniTier — контроллер, события и запуск
    Загружается последним, после app-store.js, app-api.js и app-render.js.
    ============================================================ */
@@ -20615,6 +20986,19 @@ try { window.onReleaseNotificationPermissionResult = onReleaseNotificationPermis
       saveBackupFile();
     },
 
+    'safety-save'() {
+      if (typeof App.saveSnapshotManually === 'function') App.saveSnapshotManually();
+      renderBackup();
+    },
+
+    'safety-restore'() {
+      if (typeof App.restoreSnapshotManually === 'function') App.restoreSnapshotManually();
+    },
+
+    'safety-legacy-restore'() {
+      if (typeof App.restoreLegacyManually === 'function') App.restoreLegacyManually();
+    },
+
     'media-export'() {
       exportMediaFile();
     },
@@ -21464,6 +21848,7 @@ try { window.onReleaseNotificationPermissionResult = onReleaseNotificationPermis
 
   async function init() {
     installDiagnostics();
+    if (typeof App.recoverOnBoot === 'function' && App.recoverOnBoot()) return;
     state.booting = true;
     if (!localStorage.getItem(DAILY_SYNC_KEY)) {
       const now = new Date();
@@ -21472,6 +21857,8 @@ try { window.onReleaseNotificationPermissionResult = onReleaseNotificationPermis
     }
     loadState();
     loadMoments();
+    if (typeof App.announceRestore === 'function') App.announceRestore();
+    if (typeof App.bindSafetyLifecycle === 'function') App.bindSafetyLifecycle();
     migrateLocalThumbnails().then((res) => {
       if (res && (res.migratedCards || res.migratedMoments)) refreshViews();
     }).catch((err) => console.warn('migrateLocalThumbnails', err));
