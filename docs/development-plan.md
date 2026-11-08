@@ -17,13 +17,6 @@
 ## Пункты
 
 
-### 31. P1 — Починить precache PWA и закрепить список модулей тестом
-
-Файлы: `mobile/sw.js`, `tests/shell.test.js` (новый), `tests/index.html`.
-
-`mobile/sw.js` кеширует оболочку, но в `SHELL` нет 10 модулей, которые загружает `mobile/index.html`: `app-render-cards/lists/screens/modals.js` и `app-ctrl-catalog/notifications/upcoming/backup/moments/settings.js`. Список скриптов продублирован в `index.html`, `mobile/index.html`, `build-phone.ps1` и `mobile/sw.js`, поэтому рассинхрон повторится.
-
-Готово, когда: `SHELL` содержит все скрипты и стили мобильной оболочки; новый тест сравнивает списки в четырёх местах и падает при расхождении; версия кеша поднята (например, `anitier-mobile-v1.41.0-r2`), `release.ps1` проходит проверку версий, `test.ps1` зелёный.
 
 ### 32. P2 — Автоматизировать подъём версии
 
