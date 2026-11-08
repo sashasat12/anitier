@@ -13,6 +13,15 @@ function Read-Text([string]$relative) {
 $html = Read-Text 'mobile\index.html'
 # Версия в ссылках сбрасывает кэш на сайте; в автономном файле параметры не нужны.
 $html = [regex]::Replace($html, '\?v=[0-9A-Za-z.\-]+', '')
+
+# В автономном файле все модули лежат внутри страницы, а CSP оболочки
+# запрещает inline-скрипты — без этой правки приложение не запускается.
+$cspBefore = "script-src 'self' https://accounts.google.com;"
+$cspAfter = "script-src 'self' 'unsafe-inline' https://accounts.google.com;"
+if (-not $html.Contains($cspBefore)) {
+  throw "В mobile/index.html не найден script-src для автономной сборки: $cspBefore"
+}
+$html = $html.Replace($cspBefore, $cspAfter)
 $styles = Read-Text 'styles.css'
 $mobileStyles = Read-Text 'mobile\mobile.css'
 $core = Read-Text 'core.js'

@@ -109,4 +109,19 @@
     T.assert(cache, 'mobile/sw.js: CACHE не найден');
     T.includes(cache, C.APP_VERSION, 'mobile/sw.js: CACHE не содержит APP_VERSION');
   });
+
+  /* Автономный файл вшивает модули внутрь страницы. Если CSP оболочки это
+     запрещает, приложение не запускается: пустой экран вместо каталога. */
+  T.test('shell: автономный файл разрешает свои встроенные скрипты', async () => {
+    const html = await fetch('../AniTier-phone.html').then(r => r.text());
+    const inline = (html.match(/<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/gi) || []).length;
+    T.assert(inline > 0, 'AniTier-phone.html: нет встроенных скриптов — файл не автономный');
+    T.eq(extractScriptSrcs(html).length, 0, 'AniTier-phone.html: остались внешние скрипты');
+
+    const meta = html.match(/<meta[^>]+Content-Security-Policy[^>]*>/i);
+    const csp = meta ? ((meta[0].match(/content="([^"]*)"/i) || [])[1] || '') : '';
+    T.assert(csp, 'AniTier-phone.html: не найдена CSP');
+    const scriptSrc = (csp.match(/script-src([^;]*)/i) || [])[1] || '';
+    T.includes(scriptSrc, "'unsafe-inline'", 'AniTier-phone.html: CSP блокирует встроенные скрипты');
+  });
 })();
