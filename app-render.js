@@ -1783,6 +1783,14 @@
         <button class="btn btn-ghost" type="button" data-action="open-changelog">История изменений</button>
       </div>
       <div class="backup-block">
+        <h3>Диагностика</h3>
+        <p>Локальный журнал ошибок и счётчик запросов. Названия тайтлов и прогресс не записываются, данные никуда не отправляются.</p>
+        <p class="backup-status" role="status">Запросов: ${App.diagState ? App.diagState.requestTotal : 0}, ошибок: ${App.diagState ? App.diagState.requestFailures : 0} · записей в журнале: ${App.diagState ? App.diagState.errors.length : 0}</p>
+        <div class="form-actions">
+          <button class="btn btn-ghost" type="button" data-action="copy-diagnostics">Скопировать диагностику</button>
+        </div>
+      </div>
+      <div class="backup-block">
         <h3>О приложении</h3>
         <p>Версия ${esc(version)}. Исходники и новости — на GitHub.</p>
         <label class="settings-field">
