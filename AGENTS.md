@@ -53,6 +53,10 @@ powershell -ExecutionPolicy Bypass -File .\build-phone.ps1
 powershell -ExecutionPolicy Bypass -File .\android\setup-tools.ps1
 powershell -ExecutionPolicy Bypass -File .\android\build-apk.ps1
 
+# релиз одной командой: сверка версий → тесты → сборка → (по флагам) коммит, пуш, GitHub-релиз
+powershell -ExecutionPolicy Bypass -File .\release.ps1
+powershell -ExecutionPolicy Bypass -File .\release.ps1 -Release   # полный цикл с тегом и APK
+
 # граф знаний Graphify (локально, без API-ключей)
 graphify extract . --code-only
 graphify cluster-only . --no-label
@@ -99,10 +103,12 @@ powershell -ExecutionPolicy Bypass -File .\graph-versions.ps1 -Diff v1.8.1 v1.9.
 Каждый релиз — это не только коммит в `main`, но и тег с артефактом. Порядок:
 
 1. поднять `APP_VERSION` в `core.js`, добавить запись сверху в `changelog.js`, `versionCode`/`versionName` в `android/AndroidManifest.xml`, версию кеша в `mobile/sw.js`, `?v=` в `index.html` и `mobile/index.html`;
-2. `test.ps1` — все тесты зелёные;
-3. `build-phone.ps1`, затем `android/build-apk.ps1`;
+2. `release.ps1` — сверяет версии по всем файлам, гоняет `test.ps1` и пересобирает `AniTier-phone.html` с `AniTier.apk` (шаги 2–3 ниже);
+3. ручной вариант: `test.ps1`, затем `build-phone.ps1` и `android/build-apk.ps1`;
 4. `git push origin main` — GitHub Pages обновляется сам;
 5. `gh release create vX.Y.Z AniTier.apk --title "AniTier X.Y.Z — ..." --notes-file notes.md` — APK прикрепляется к релизу, по нему работает проверка обновлений в приложении.
+
+`release.ps1 -Release` выполняет шаги 2, 4 и 5 разом: проверяет версии, тестирует, собирает, коммитит, пушит и создаёт GitHub-релиз с заметками из `changelog.js`.
 
 Проверка после выкладки: `gh api repos/sashasat12/anitier/pages/builds/latest` (статус `built`) и версия в живом `index.html`.
 
