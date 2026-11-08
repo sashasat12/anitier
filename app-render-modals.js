@@ -1,7 +1,1644 @@
 /* ============================================================
-   AniTier — рендер модалок (выделено из app-render.js)
+   AniTier — модалки, формы, настройки, статистика, обмен (выделено из app-render.js)
    ============================================================ */
 (function (App) {
   'use strict';
+
   const C = window.AniTierCore;
+  const {
+    state,
+    TIERS,
+    TIER_IDS,
+    LIST_LABELS,
+    EXCHANGE_FILTERS,
+    TYPE_RU,
+    typeRu,
+    normalizeUpdateCheck,
+    MONTHS_SHORT,
+    MONTHS_FULL,
+    VIEW_TABS,
+    LONG_TITLE_EPS,
+    $,
+    $$,
+    esc,
+    escXml,
+    plural,
+    epWord,
+    startOfToday,
+    endOfToday,
+    startOfTomorrow,
+    addDays,
+    daysBetween,
+    parseDate,
+    fuzzyDateInt,
+    monthLabel,
+    dateShort,
+    countdownLabel,
+    relativePast,
+    makePoster,
+    hasIn,
+    findTier,
+    getAnime,
+    pruneAnimeCache,
+    allIn,
+    addToList,
+    removeFromList,
+    moveToTier,
+    saveState,
+    momentsFor,
+    watchedSet,
+    watchedCount,
+    episodeStats,
+    toggleEpisode,
+    setWatchedUpTo,
+    clearProgress,
+  } = App;
+  /* Перекрёстные вызовы */
+  const displayTitle = (...a) => App.displayTitle(...a);
+  const imgAttrs = (...a) => App.imgAttrs(...a);
+  const tierShort = (...a) => App.tierShort(...a);
+  const renderEpisodeBlock = (...a) => App.renderEpisodeBlock(...a);
+  const ensureEpisodeInfo = (...a) => App.ensureEpisodeInfo(...a);
+  const syncBodyScroll = (...a) => App.syncBodyScroll(...a);
+  const renderDB = (...a) => App.renderDB(...a);
+  const renderTierList = (...a) => App.renderTierList(...a);
+  const toast = (...a) => App.toast(...a);
+  const writeLocationHash = (...a) => (App.writeLocationHash || (() => {}))(...a);
+  /* ---------------- формы, моменты, настройки, статистика, обмен, карточка ---------------- */
+  /* ---------------- свои карточки и моменты: формы ---------------- */
+  const CUSTOM_TYPES = [
+    { value: '', label: 'Не указан' },
+    { value: 'TV', label: 'ТВ-сериал' },
+    { value: 'Movie', label: 'Фильм' },
+    { value: 'OVA', label: 'OVA' },
+    { value: 'ONA', label: 'ONA' },
+    { value: 'Special', label: 'Спешл' },
+  ];
+
+  function openCustomForm(id = null) {
+    const editingId = id == null ? null : Number(id);
+    if (editingId != null && !getAnime(editingId)) return;
+    if (state.modalId != null) closeModal();
+    state.customForm = { open: true, editingId, error: '', busy: false };
+    renderCustomForm();
+    const modal = $('#custom-modal');
+    if (modal) modal.hidden = false;
+    syncBodyScroll();
+    const panel = $('#custom-panel');
+    if (panel) { panel.scrollTop = 0; panel.focus({ preventScroll: true }); }
+    const field = $('#custom-form input[name="title"]');
+    if (field) field.focus({ preventScroll: true });
+  }
+
+  function closeCustomForm(reopen = true) {
+    const editingId = state.customForm.editingId;
+    state.customForm = { open: false, editingId: null, error: '', busy: false };
+    const modal = $('#custom-modal');
+    if (modal) modal.hidden = true;
+    syncBodyScroll();
+    if (reopen && editingId != null && getAnime(editingId)) openModal(editingId);
+  }
+
+  function renderCustomForm() {
+    const box = $('#custom-content');
+    if (!box) return;
+    const editingId = state.customForm.editingId;
+    const card = editingId != null ? getAnime(editingId) : null;
+    const val = (key) => esc(card && card[key] != null ? card[key] : '');
+    const typeOptions = CUSTOM_TYPES.map(item => (
+      `<option value="${esc(item.value)}"${card && (card.type || '') === item.value ? ' selected' : ''}>${esc(item.label)}</option>`
+    )).join('');
+    const preview = card && card.image
+      ? `<img src="${esc(card.image)}" alt="Постер">`
+      : '<span>Без постера — будет заглушка</span>';
+    box.innerHTML = `<form class="custom-form" id="custom-form" novalidate>
+      <h2 id="custom-title">${card ? 'Редактировать карточку' : 'Своя карточка'}</h2>
+      <p class="custom-sub">Тайтл, которого нет в AniList или Kitsu. Он попадёт в «Мои карточки» и сможет жить в тир-листах.</p>
+      <label class="form-field"><span>Название *</span><input name="title" required maxlength="300" value="${val('title')}" autocomplete="off"></label>
+      <label class="form-field"><span>Оригинальное название</span><input name="altTitle" maxlength="300" value="${val('altTitle')}" autocomplete="off"></label>
+      <div class="form-row">
+        <label class="form-field"><span>Год</span><input name="year" type="number" min="1900" max="2100" value="${card && card.year ? card.year : ''}"></label>
+        <label class="form-field"><span>Серии</span><input name="episodes" type="number" min="1" max="9999" value="${card && card.episodes ? card.episodes : ''}"></label>
+        <label class="form-field"><span>Тип</span><select name="type">${typeOptions}</select></label>
+      </div>
+      <label class="form-field"><span>Жанры</span><input name="genres" maxlength="300" value="${esc(card && card.genres ? card.genres.join(', ') : '')}" placeholder="Драма, Фэнтези"></label>
+      <label class="form-field"><span>Описание</span><textarea name="synopsis" rows="4" maxlength="2000">${val('synopsis')}</textarea></label>
+      <label class="form-field form-file"><span>Постер</span><input name="poster" type="file" accept="image/*"><small>JPG, PNG или WebP до ${C.formatBytes(App.CUSTOM_IMAGE_MAX)}. Полная картинка хранится в браузере.</small></label>
+      <div class="custom-poster-preview" id="custom-poster-preview">${preview}</div>
+      ${state.customForm.error ? `<p class="form-error">${esc(state.customForm.error)}</p>` : ''}
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit"${state.customForm.busy ? ' disabled' : ''}>${state.customForm.busy ? 'Сохраняем…' : 'Сохранить'}</button>
+        <button class="btn btn-ghost" type="button" data-action="close-custom">Отмена</button>
+      </div>
+    </form>`;
+  }
+
+  function momentLabel(m) {
+    return m.title || (m.kind === 'tiktok' ? 'TikTok' : m.kind === 'gif' ? 'GIF' : 'Видео');
+  }
+
+  function momentCardHTML(animeId, m) {
+    const thumb = m.thumb
+      ? `<img src="${esc(m.thumb)}" alt="" loading="lazy">`
+      : `<span class="moment-fallback">${m.kind === 'tiktok' ? 'TikTok' : m.kind === 'gif' ? 'GIF' : '▶'}</span>`;
+    const meta = m.kind === 'tiktok' ? 'TikTok' : m.kind === 'gif' ? 'GIF' : 'Видео';
+    return `<article class="moment-card" data-moment-card="${esc(m.id)}">
+      <button class="moment-remove" type="button" data-action="moment-delete" data-id="${animeId}" data-moment="${esc(m.id)}" title="Удалить момент" aria-label="Удалить момент: ${esc(momentLabel(m))}">✕</button>
+      <button class="moment-preview" type="button" data-action="moment-play" data-id="${animeId}" data-moment="${esc(m.id)}" aria-label="Открыть момент: ${esc(momentLabel(m))}">
+        ${thumb}<span class="moment-play-icon">▶</span>
+      </button>
+      <div class="moment-body">
+        <div class="moment-title" title="${esc(momentLabel(m))}">${esc(momentLabel(m))}</div>
+        <div class="moment-meta">${esc(meta)}${m.size ? ` · ${esc(C.formatBytes(m.size))}` : ''}</div>
+        <div class="moment-actions">
+          ${m.kind === 'tiktok' ? `<button class="ep-link" type="button" data-action="moment-open-tiktok" data-id="${animeId}" data-moment="${esc(m.id)}">Открыть в TikTok ↗</button>` : ''}
+          <button class="ep-link" type="button" data-action="moment-share" data-id="${animeId}" data-moment="${esc(m.id)}">Поделиться</button>
+          <button class="ep-link moment-delete-link" type="button" data-action="moment-delete" data-id="${animeId}" data-moment="${esc(m.id)}">Удалить</button>
+        </div>
+      </div>
+    </article>`;
+  }
+
+  function momentsHTML(a) {
+    const items = momentsFor(a.id);
+    return `<div class="modal-section modal-moments">
+      <div class="modal-label modal-label-row"><span>Моменты</span><button class="ep-link" type="button" data-action="moment-add" data-id="${a.id}">+ Добавить</button></div>
+      ${items.length
+        ? `<div class="moments-grid">${items.map(m => momentCardHTML(a.id, m)).join('')}</div>`
+        : '<p class="ep-note">Сохранённых моментов пока нет. Добавьте ссылку TikTok или видео/GIF.</p>'}
+    </div>`;
+  }
+
+  function openMomentForm(animeId) {
+    const a = getAnime(animeId);
+    if (!a) return;
+    if (state.modalId != null) closeModal();
+    state.momentForm = { open: true, animeId, mode: 'tiktok', error: '', busy: false, url: '', title: '' };
+    renderMomentForm();
+    const modal = $('#moment-modal');
+    if (modal) modal.hidden = false;
+    syncBodyScroll();
+    const panel = $('#moment-panel');
+    if (panel) { panel.scrollTop = 0; panel.focus({ preventScroll: true }); }
+  }
+
+  function closeMomentForm(reopen = true) {
+    const animeId = state.momentForm.animeId;
+    state.momentForm = { open: false, animeId: null, mode: 'tiktok', error: '', busy: false, url: '', title: '' };
+    const modal = $('#moment-modal');
+    if (modal) modal.hidden = true;
+    syncBodyScroll();
+    if (reopen && animeId != null && getAnime(animeId)) openModal(animeId);
+  }
+
+  function renderMomentForm() {
+    const box = $('#moment-content');
+    if (!box) return;
+    const f = state.momentForm;
+    const a = getAnime(f.animeId);
+    if (!a) return;
+    const mode = f.mode;    box.innerHTML = `<form class="custom-form moment-form" id="moment-form" novalidate>
+      <h2 id="moment-title">Момент из «${esc(displayTitle(a))}»</h2>
+      <div class="moment-tabs">
+        <button type="button" class="chip ${mode === 'tiktok' ? 'is-active' : ''}" data-action="moment-mode" data-mode="tiktok">TikTok</button>
+        <button type="button" class="chip ${mode === 'file' ? 'is-active' : ''}" data-action="moment-mode" data-mode="file">Видео или GIF</button>
+      </div>
+      ${mode === 'tiktok' ? `
+        <label class="form-field"><span>Ссылка на TikTok *</span><input name="url" type="url" required placeholder="https://www.tiktok.com/@.../video/..." value="${esc(f.url || '')}" autocomplete="off"></label>
+        <label class="form-field"><span>Подпись</span><input name="title" maxlength="200" value="${esc(f.title || '')}" placeholder="Например: любимая сцена"></label>
+        <p class="form-note">Плеер TikTok загрузится только после нажатия на момент.</p>
+      ` : `
+        <label class="form-field form-file"><span>Видео или GIF *</span><input name="file" type="file" accept="video/mp4,video/webm,image/gif"><small>MP4/WebM до ${C.formatBytes(App.MOMENT_VIDEO_MAX)} или GIF до ${C.formatBytes(App.MOMENT_GIF_MAX)}.</small></label>
+        <label class="form-field"><span>Подпись</span><input name="title" maxlength="200" value="${esc(f.title || '')}" placeholder="Например: любимая сцена"></label>
+        <p class="form-note">Файл хранится в этом браузере. В резервную копию попадут только подпись и миниатюра.</p>
+      `}
+      ${f.error ? `<p class="form-error">${esc(f.error)}</p>` : ''}
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit"${f.busy ? ' disabled' : ''}>${f.busy ? 'Сохраняем…' : 'Добавить момент'}</button>
+        <button class="btn btn-ghost" type="button" data-action="close-moment">Отмена</button>
+      </div>
+    </form>`;
+  }
+
+  function tiktokImportOptions() {
+    const unique = new Map();
+    const add = anime => { if (anime && Number.isFinite(Number(anime.id)) && anime.title) unique.set(Number(anime.id), anime); };
+    state.byId.forEach(add);
+    for (const list of ['watched', 'planned']) allIn(list).forEach(add);
+    (state.db.items || []).forEach(add);
+    (state.upcoming.items || []).forEach(add);
+    const query = C.normalizeTitleKey(state.tiktokImport.query);
+    let items = [...unique.values()];
+    if (query) {
+      items = items.filter(anime => [anime.title, anime.altTitle, ...(anime.aliases || [])]
+        .some(title => C.normalizeTitleKey(title).includes(query)));
+    } else {
+      const tracked = new Set([...allIn('watched'), ...allIn('planned')].map(anime => anime.id));
+      items = items.filter(anime => tracked.has(anime.id));
+    }
+    return items.slice(0, 16);
+  }
+
+  function renderTikTokImport() {
+    const model = state.tiktokImport;
+    if (!model || !model.open) return;
+    let modal = $('#tiktok-import-modal');
+    if (!modal) {
+      document.body.insertAdjacentHTML('beforeend', `<div class="modal" id="tiktok-import-modal" hidden>
+        <div class="modal-backdrop" data-action="close-tiktok-import"></div>
+        <section class="modal-panel tiktok-import-panel" role="dialog" aria-modal="true" aria-labelledby="tiktok-import-title" aria-describedby="tiktok-import-content" tabindex="-1">
+          <button class="modal-close" data-action="close-tiktok-import" aria-label="Закрыть">✕</button>
+          <div class="custom-content" id="tiktok-import-content"></div>
+        </section>
+      </div>`);
+      modal = $('#tiktok-import-modal');
+    }
+    const inputFocused = document.activeElement && document.activeElement.id === 'tiktok-import-search';
+    const selection = inputFocused ? document.activeElement.selectionStart : null;
+    const items = tiktokImportOptions();
+    const rows = items.map(anime => `<button type="button" class="tiktok-import-result" data-action="tiktok-import-save" data-id="${anime.id}">
+      <img ${imgAttrs(anime, '')}><span><b>${esc(displayTitle(anime))}</b><small>${esc([anime.altTitle, anime.year, typeRu(anime.type)].filter(Boolean).join(' · '))}</small></span><strong>Добавить</strong>
+    </button>`).join('');
+    const hint = items.length ? '' : model.query
+      ? '<p class="ep-note">В загруженном каталоге такого аниме нет. Сначала найдите его во вкладке «База».</p>'
+      : '<p class="ep-note">Введите название аниме или выберите его из своих списков ниже.</p>';
+    $('#tiktok-import-content').innerHTML = `<h2 id="tiktok-import-title">Добавить видео TikTok к аниме</h2>
+      <p class="form-note">Откройте понравившееся видео в TikTok, нажмите «Поделиться» и выберите AniTier. Затем укажите карточку аниме.</p>
+      <div class="tiktok-import-preview">${model.thumb ? `<img src="${esc(model.thumb)}" alt="">` : '<span class="moment-fallback">TikTok</span>'}
+        <div><b>${esc(model.title || 'Видео TikTok')}</b><button class="ep-link" type="button" data-action="tiktok-import-open-video">Открыть видео в TikTok ↗</button></div></div>
+      <label class="form-field"><span>Аниме</span><input id="tiktok-import-search" type="search" value="${esc(model.query)}" placeholder="Например, Фрирен или Bleach" autocomplete="off"></label>
+      <div class="tiktok-import-results">${rows || hint}</div>
+      <p class="form-note">Видео появится в разделе «Моменты» выбранной карточки. Добавляйте понравившиеся видео по одному через системное меню «Поделиться».</p>`;
+    modal.hidden = false;
+    const input = $('#tiktok-import-search');
+    if (inputFocused && input) {
+      input.focus({ preventScroll: true });
+      if (selection != null) input.setSelectionRange(selection, selection);
+    }
+  }
+
+  function renderBackup() {
+    const box = $('#backup-content');
+    if (!box) return;
+    const f = state.backup || {};
+    const drive = App.driveAvailable ? App.driveAvailable() : false;
+    const disabled = f.busy ? ' disabled' : '';
+    const status = f.message
+      ? `<p class="backup-status${f.error ? ' is-error' : ''}" role="status">${esc(f.message)}</p>`
+      : '';
+    const driveBlock = drive
+      ? `<div class="backup-block">
+          <h3>Google Drive</h3>
+          <p>Копия сохраняется в файл <code>anitier-backup.json</code> в вашем Google Drive. Приложение видит только файлы, созданные им самим.</p>
+          <label class="settings-field">
+            <span>Авто-бэкап</span>
+            <select data-action="settings-drive-auto" aria-label="Авто-бэкап в Google Drive"${disabled}>
+              <option value="off"${state.settings.driveAutoBackup ? '' : ' selected'}>Выключен</option>
+              <option value="on"${state.settings.driveAutoBackup ? ' selected' : ''}>Раз в сутки</option>
+            </select>
+          </label>
+          <p class="form-note">Копия сохраняется при открытии приложения, если прошли сутки. Для тихой записи нужен действующий вход в Google; иначе сохраните вручную.</p>
+          <div class="form-actions">
+            <button class="btn btn-primary" type="button" data-action="backup-drive-save"${disabled}>${f.busy ? 'Подождите…' : 'Сохранить в Google Drive'}</button>
+            <button class="btn btn-ghost" type="button" data-action="backup-drive-load"${disabled}>Восстановить последнюю версию</button>
+          </div>
+        </div>`
+      : `<div class="backup-block">
+          <h3>Google Drive</h3>
+          <p class="form-note">Google Drive доступен на сайте и в PWA. В APK используйте файл — он сохраняется через системный диалог.</p>
+        </div>`;
+    box.innerHTML = `<h2 id="backup-title">Резервная копия</h2>
+      <p class="custom-sub">Списки, прогресс, свои карточки, моменты, настройки и кэш переводов. В копию входят миниатюры, но не полные постеры, видео и GIF — они остаются в этом браузере.</p>
+      <div class="backup-block">
+        <h3>Файл</h3>
+        <p>Скачайте JSON-файл и храните его где удобно. Восстановление заменит текущие списки, прогресс и настройки.</p>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="button" data-action="backup-download"${disabled}>Скачать файл</button>
+          <label class="btn btn-ghost file-btn${f.busy ? ' is-disabled' : ''}">Восстановить из файла
+            <input type="file" accept=".json,application/json" data-action="backup-file"${disabled} hidden>
+          </label>
+        </div>
+      </div>
+      <div class="backup-block">
+        <h3>Медиа отдельно</h3>
+        <p>Перенесите полные постеры, видео и GIF в отдельном архиве до 500 МБ. Для переноса на другое устройство сначала восстановите JSON-копию, затем импортируйте этот архив.</p>
+        <div class="form-actions">
+          <button class="btn btn-ghost" type="button" data-action="media-export"${disabled}>${f.busy ? 'Подождите…' : 'Экспортировать медиа'}</button>
+          <label class="btn btn-ghost file-btn${f.busy ? ' is-disabled' : ''}">Импортировать медиа
+            <input type="file" accept=".bin,application/octet-stream" data-action="media-file"${disabled} hidden>
+          </label>
+        </div>
+      </div>
+      ${driveBlock}
+      ${status}
+      <p class="form-note backup-note">В JSON входят подписи, ссылки TikTok и миниатюры. Полные постеры, видео и GIF переносите отдельным медиаархивом.</p>`;
+  }
+
+  function openBackup() {
+    if (state.modalId != null) closeModal();
+    if (state.customForm && state.customForm.open) closeCustomForm(false);
+    if (state.momentForm && state.momentForm.open) closeMomentForm(false);
+    state.backup = { open: true, busy: false, message: '', error: false };
+    renderBackup();
+    const modal = $('#backup-modal');
+    if (modal) modal.hidden = false;
+    syncBodyScroll();
+    const panel = $('#backup-panel');
+    if (panel) { panel.scrollTop = 0; panel.focus({ preventScroll: true }); }
+  }
+
+  function closeBackup() {
+    state.backup = { open: false, busy: false, message: '', error: false };
+    const modal = $('#backup-modal');
+    if (modal) modal.hidden = true;
+    syncBodyScroll();
+  }
+  /* ---------------- карточка обновления ---------------- */
+  function renderUpdateCard() {
+    const el = $('#update-card');
+    if (!el) return;
+    const card = state.updateCard;
+    if (!card) {
+      el.hidden = true;
+      el.innerHTML = '';
+      return;
+    }
+
+    if (card.mode === 'ask') {
+      el.innerHTML = `<div class="update-card-body">
+        <button class="update-card-close" type="button" data-action="dismiss-update" aria-label="Скрыть">✕</button>
+        <span class="update-card-kicker">Обновления</span>
+        <h3>Проверять обновления при запуске?</h3>
+        <p>AniTier сможет сразу предлагать новую версию. Проверка обращается только к GitHub и не отправляет ваши списки.</p>
+        <div class="update-card-actions">
+          <button class="btn btn-primary" type="button" data-action="update-allow">Разрешить</button>
+          <button class="btn btn-ghost" type="button" data-action="update-deny">Не проверять</button>
+        </div>
+      </div>`;
+      el.hidden = false;
+      return;
+    }
+
+    const release = card.release || {};
+    const version = release.version || '';
+    el.innerHTML = `<div class="update-card-body">
+      <button class="update-card-close" type="button" data-action="dismiss-update" aria-label="Скрыть">✕</button>
+      <span class="update-card-kicker">Доступно обновление</span>
+      <h3>AniTier ${esc(version)}</h3>
+      <p>У вас ${esc(C.APP_VERSION)}. ${card.apk
+        ? 'Скачайте APK и установите поверх — списки и настройки сохранятся.'
+        : 'Откройте релиз на GitHub и установите свежую версию.'}</p>
+      <div class="update-card-actions">
+        <button class="btn btn-primary" type="button" data-action="open-update">${card.apk ? 'Скачать APK' : 'Открыть релиз'}</button>
+        <button class="btn btn-ghost" type="button" data-action="dismiss-update">Позже</button>
+      </div>
+    </div>`;
+    el.hidden = false;
+  }
+  /* ---------------- настройки ---------------- */
+  function changelogHTML(current) {
+    const list = Array.isArray(C.CHANGELOG) ? C.CHANGELOG : [];
+    if (!list.length) return '<p class="custom-sub">История изменений пока пуста.</p>';
+    return `<div class="changelog">${list.map(entry => `
+      <article class="changelog-release" data-search="${esc([entry.version, entry.title, ...(entry.items || [])].join(' ').toLowerCase())}">
+        <header class="changelog-head">
+          <h3>${esc(entry.version)}${entry.version === current ? '<span class="changelog-badge">текущая</span>' : ''}</h3>
+          ${entry.date ? `<span class="changelog-date">${esc(entry.date)}</span>` : ''}
+        </header>
+        ${entry.title ? `<p class="changelog-title">${esc(entry.title)}</p>` : ''}
+        <ul class="changelog-list">
+          ${(entry.items || []).map(item => `<li>${esc(item)}</li>`).join('')}
+        </ul>
+      </article>`).join('')}</div>`;
+  }
+
+  function renderSettings() {
+    const box = $('#settings-content');
+    if (!box) return;
+    const screen = state.settingsScreen || {};
+    const version = C.APP_VERSION || '—';
+    const bridge = typeof window !== 'undefined' ? window.AniTierAndroid : null;
+    const remindersSupported = Boolean(bridge && typeof bridge.setReleaseNotificationsEnabled === 'function');
+    const remindersOn = remindersSupported
+      && Boolean(App.releaseNotificationsEnabled && App.releaseNotificationsEnabled());
+    const searchLang = C.normalizeSearchLang(state.settings.searchLang);
+    const titleLang = state.settings.titleLang === 'original' ? 'original' : 'ru';
+    const synopsisLang = state.settings.synopsisLang === 'original' ? 'original' : 'translated';
+    const provider = state.settings.translationProvider || 'auto';
+    const updateCheck = normalizeUpdateCheck(state.settings.updateCheck);
+    const theme = state.settings.theme === 'amoled' ? 'amoled' : 'dark';
+    const density = state.settings.density === 'compact' ? 'compact' : 'comfortable';
+    const fontSize = ['small', 'large'].includes(state.settings.fontSize) ? state.settings.fontSize : 'normal';
+    const github = C.GITHUB_URL || '';
+
+    if (screen.view === 'changelog') {
+      box.innerHTML = `<div class="changelog-screen-head">
+          <button class="btn btn-ghost" type="button" data-action="settings-back">← Назад</button>
+          <h2 id="settings-title">История изменений</h2>
+        </div>
+        <p class="custom-sub">Версия ${esc(version)} · что появилось в приложении.</p>
+        <div class="changelog-search">
+          <input id="changelog-search" type="search" placeholder="Найти версию или изменение" autocomplete="off" aria-label="Поиск по истории изменений">
+        </div>
+        ${changelogHTML(version)}`;
+      return;
+    }
+
+    const reminders = remindersSupported
+      ? `<div class="backup-block">
+          <h3>Напоминания о сериях</h3>
+          <p>Телефон пришлёт уведомление, когда выходит новая серия отслеживаемого тайтла. Расписание обновляется при каждом открытии «Событий».</p>
+          <button class="btn ${remindersOn ? 'btn-primary' : 'btn-ghost'} settings-toggle" type="button" data-action="release-notifications" id="release-notif-toggle" aria-pressed="${remindersOn ? 'true' : 'false'}">${remindersOn ? '✓ Напоминания включены' : 'Включить напоминания'}</button>
+        </div>`
+      : `<div class="backup-block">
+          <h3>Напоминания о сериях</h3>
+          <p class="form-note">Работают в приложении для Android. На сайте и в PWA напоминания не приходят.</p>
+        </div>`;
+
+    let updateStatus = '';
+    if (screen.message) {
+      updateStatus = `<p class="backup-status${screen.error ? ' is-error' : ''}" role="status">${esc(screen.message)}</p>`;
+    }
+    const release = screen.latest;
+    const releaseLink = release && release.url && C.compareVersions(release.version, version) > 0
+      ? `<button class="btn btn-ghost" type="button" data-action="open-link" data-url="${esc(release.url)}">Открыть релиз ${esc(release.version)}</button>`
+      : '';
+
+    box.innerHTML = `<h2 id="settings-title">Настройки</h2>
+      <p class="custom-sub">AniTier ${esc(version)} · данные хранятся только на этом устройстве.</p>
+      ${reminders}
+      <div class="backup-block">
+        <h3>Язык контента</h3>
+        <label class="settings-field">
+          <span>Названия тайтлов</span>
+          <select data-action="settings-title-lang" aria-label="Язык названий">
+            <option value="ru"${titleLang === 'ru' ? ' selected' : ''}>Русские, если есть</option>
+            <option value="original"${titleLang === 'original' ? ' selected' : ''}>Оригинальные</option>
+          </select>
+        </label>
+        <label class="settings-field">
+          <span>Описания</span>
+          <select data-action="settings-synopsis-lang" aria-label="Язык описаний">
+            <option value="translated"${synopsisLang === 'translated' ? ' selected' : ''}>Перевод на русский</option>
+            <option value="original"${synopsisLang === 'original' ? ' selected' : ''}>Оригинал</option>
+          </select>
+        </label>
+        <label class="settings-field">
+          <span>Язык поиска</span>
+          <select data-action="settings-search-lang" aria-label="Язык поиска">
+            <option value="auto"${searchLang === 'auto' ? ' selected' : ''}>Авто</option>
+            <option value="ru"${searchLang === 'ru' ? ' selected' : ''}>Русский</option>
+            <option value="en"${searchLang === 'en' ? ' selected' : ''}>English</option>
+            <option value="ja"${searchLang === 'ja' ? ' selected' : ''}>日本語</option>
+          </select>
+        </label>
+        <label class="settings-field">
+          <span>Перевод описаний</span>
+          <select data-action="settings-translation" aria-label="Провайдер перевода">
+            <option value="auto"${provider === 'auto' ? ' selected' : ''}>Авто: MyMemory → Google</option>
+            <option value="mymemory"${provider === 'mymemory' ? ' selected' : ''}>MyMemory</option>
+            <option value="google"${provider === 'google' ? ' selected' : ''}>Google Переводчик</option>
+          </select>
+        </label>
+      </div>
+      <div class="backup-block">
+        <h3>Оформление</h3>
+        <label class="settings-field">
+          <span>Тема</span>
+          <select data-action="settings-theme" aria-label="Тема">
+            <option value="dark"${theme === 'dark' ? ' selected' : ''}>Тёмная</option>
+            <option value="amoled"${theme === 'amoled' ? ' selected' : ''}>AMOLED — чёрная</option>
+          </select>
+        </label>
+        <label class="settings-field">
+          <span>Плотность</span>
+          <select data-action="settings-density" aria-label="Плотность карточек">
+            <option value="comfortable"${density === 'comfortable' ? ' selected' : ''}>Обычная</option>
+            <option value="compact"${density === 'compact' ? ' selected' : ''}>Компактная</option>
+          </select>
+        </label>
+        <label class="settings-field">
+          <span>Размер шрифта</span>
+          <select data-action="settings-font" aria-label="Размер шрифта">
+            <option value="small"${fontSize === 'small' ? ' selected' : ''}>Мелкий</option>
+            <option value="normal"${fontSize === 'normal' ? ' selected' : ''}>Обычный</option>
+            <option value="large"${fontSize === 'large' ? ' selected' : ''}>Крупный</option>
+          </select>
+        </label>
+      </div>
+      <div class="backup-block">
+        <h3>Данные</h3>
+        <p>Списки, прогресс, свои карточки, моменты и настройки. Импорт и экспорт — в резервной копии.</p>
+        <div class="form-actions">
+          <button class="btn btn-ghost" type="button" data-action="open-backup">Резервная копия и перенос</button>
+          <button class="btn btn-ghost" type="button" data-action="open-exchange">Обмен тир-листом</button>
+        </div>
+      </div>
+      <div class="backup-block">
+        <h3>Хранилище и кэш</h3>
+        <p>Занято устройством: <strong id="storage-usage">${esc(screen.storageText || 'проверяем…')}</strong>. Можно очистить кэш API и постеров — списки, прогресс, карточки и моменты не затрагиваются.</p>
+        ${screen.cacheMessage ? `<p class="backup-status${screen.cacheError ? ' is-error' : ''}" role="status">${esc(screen.cacheMessage)}</p>` : ''}
+        <div class="form-actions">
+          <button class="btn btn-ghost" type="button" data-action="settings-refresh-storage"${screen.storageBusy ? ' disabled' : ''}>${screen.storageBusy ? 'Проверяем…' : 'Обновить'}</button>
+          <button class="btn btn-ghost" type="button" data-action="settings-clear-cache"${screen.cacheBusy ? ' disabled' : ''}>${screen.cacheBusy ? 'Очищаем…' : 'Очистить кэш'}</button>
+        </div>
+      </div>
+      <div class="backup-block">
+        <h3>Что нового</h3>
+        <p>История изменений по версиям: что появилось, что исправили и что стало удобнее.</p>
+        <button class="btn btn-ghost" type="button" data-action="open-changelog">История изменений</button>
+      </div>
+      <div class="backup-block">
+        <h3>Диагностика</h3>
+        <p>Локальный журнал ошибок и счётчик запросов. Названия тайтлов и прогресс не записываются, данные никуда не отправляются.</p>
+        <p class="backup-status" role="status">Запросов: ${App.diagState ? App.diagState.requestTotal : 0}, ошибок: ${App.diagState ? App.diagState.requestFailures : 0} · записей в журнале: ${App.diagState ? App.diagState.errors.length : 0}</p>
+        <div class="form-actions">
+          <button class="btn btn-ghost" type="button" data-action="copy-diagnostics">Скопировать диагностику</button>
+        </div>
+      </div>
+      <div class="backup-block">
+        <h3>О приложении</h3>
+        <p>Версия ${esc(version)}. Исходники и новости — на GitHub.</p>
+        <label class="settings-field">
+          <span>Проверка обновлений</span>
+          <select data-action="settings-update-check" aria-label="Проверка обновлений при запуске">
+            <option value="on"${updateCheck === 'on' ? ' selected' : ''}>Проверять при запуске</option>
+            <option value="ask"${updateCheck === 'ask' ? ' selected' : ''}>Спрашивать при запуске</option>
+            <option value="off"${updateCheck === 'off' ? ' selected' : ''}>Не проверять</option>
+          </select>
+        </label>
+        <div class="form-actions">
+          <button class="btn btn-ghost" type="button" data-action="open-link" data-url="${esc(github)}">GitHub</button>
+          <button class="btn btn-primary" type="button" data-action="check-updates"${screen.checking ? ' disabled' : ''}>${screen.checking ? 'Проверяем…' : 'Проверить обновления'}</button>
+          ${releaseLink}
+        </div>
+        ${updateStatus}
+      </div>`;
+  }
+
+  /* ---------------- статистика профиля ---------------- */
+  function statsTierRows(stats) {
+    const max = Math.max(1, ...TIER_IDS.map(tier => stats.tierCounts[tier] || 0));
+    return TIERS.map(tier => {
+      const count = stats.tierCounts[tier.id] || 0;
+      const width = Math.round((count / max) * 100);
+      return `<div class="stats-tier-row">
+        <span class="stats-tier-badge tier-${tier.id}">${esc(tier.label)}</span>
+        <span class="stats-tier-name">${esc(tier.name)}</span>
+        <span class="stats-tier-track"><span class="stats-tier-fill tier-${tier.id}" style="width:${width}%"></span></span>
+        <b>${count}</b>
+      </div>`;
+    }).join('');
+  }
+
+  function renderStatsScreen() {
+    const box = $('#stats-content');
+    if (!box) return;
+    const stats = C.buildProfileStats(state.lists, state.progress);
+    if (!stats.watched && !stats.planned) {
+      box.innerHTML = `<section class="stats-screen">
+        <header class="stats-head">
+          <div class="exchange-eyebrow">Профиль</div>
+          <h2 id="stats-title">Статистика</h2>
+          <p class="exchange-sub">Здесь появятся часы за экраном, любимые жанры и распределение по тирам.</p>
+        </header>
+        <div class="exchange-empty">Пока пусто. Добавьте первый тайтл в «Просмотрено» — статистика соберётся сама.</div>
+      </section>`;
+      return;
+    }
+
+    const time = C.formatWatchTime(stats.minutes);
+    const avg = stats.averageScore == null ? '—' : String(stats.averageScore);
+    const genres = stats.topGenres.length
+      ? stats.topGenres.map(genre => `<button type="button" class="stats-chip stats-chip-btn" data-action="stats-find-genre" data-genre="${esc(genre.name)}">${esc(genre.name)} <b>${genre.count}</b></button>`).join('')
+      : '<span class="stats-muted">Жанры появятся, когда в списке будут тайтлы с жанрами.</span>';
+    const tags = Array.isArray(stats.topTags) && stats.topTags.length
+      ? stats.topTags.map(tag => `<button type="button" class="stats-chip stats-chip-btn" data-action="stats-find-tag" data-tag="${esc(tag.name)}">${esc(tag.name)} <b>${tag.count}</b></button>`).join('')
+      : '';
+    const studios = stats.topStudios.length
+      ? stats.topStudios.map(studio => `<li><span>${esc(studio.name)}</span><b>${studio.count}</b></li>`).join('')
+      : '';
+    const years = stats.years.length
+      ? stats.years.slice(0, 8).map(year => `<span class="stats-chip">${year.year} <b>${year.count}</b></span>`).join('')
+      : '';
+    const completionWidth = Math.max(0, Math.min(100, stats.completion));
+
+    box.innerHTML = `<section class="stats-screen">
+      <header class="stats-head">
+        <div class="exchange-eyebrow">Профиль</div>
+        <h2 id="stats-title">Статистика</h2>
+        <p class="exchange-sub">Собрана из ваших списков и отмеченных серий. По 24 минуты на серию.</p>
+      </header>
+
+      <div class="stats-hero">
+        <div class="stats-hero-time">
+          <b>${esc(time)}</b>
+          <span>за экраном</span>
+        </div>
+        <div class="stats-hero-grid">
+          <div><b>${stats.episodesWatched}</b><span>серий просмотрено</span></div>
+          <div><b>${stats.watched}</b><span>тайтлов в «Просмотрено»</span></div>
+          <div><b>${avg}</b><span>средняя оценка</span></div>
+          <div><b>${stats.planned}</b><span>в планах</span></div>
+        </div>
+      </div>
+
+      <div class="stats-progress-card">
+        <div class="stats-progress-head">
+          <b>Завершено ${stats.completed} из ${stats.watched}</b>
+          <span>${stats.completion}%</span>
+        </div>
+        <div class="stats-progress-track"><span style="width:${completionWidth}%"></span></div>
+        <p class="stats-muted">Смотрю ${stats.inProgress} · не начато ${stats.notStarted} · известно серий ${stats.knownEpisodes}</p>
+      </div>
+
+      <h3 class="stats-subtitle">По тирам</h3>
+      <div class="stats-tier-list">${statsTierRows(stats)}</div>
+
+      <h3 class="stats-subtitle">Любимые жанры</h3>
+      <div class="stats-chips">${genres}</div>
+
+      ${tags ? `<h3 class="stats-subtitle">Любимые теги</h3>
+      <div class="stats-chips">${tags}</div>` : ''}
+
+      ${studios ? `<h3 class="stats-subtitle">Студии</h3>
+      <ul class="stats-studio-list">${studios}</ul>` : ''}
+
+      ${years ? `<h3 class="stats-subtitle">Годы выхода</h3>
+      <div class="stats-chips">${years}</div>` : ''}
+    </section>`;
+  }
+
+  function openStats() {
+    if (state.modalId != null) closeModal();
+    if (state.settingsScreen && state.settingsScreen.open) closeSettings();
+    state.statsScreen = { open: true };
+    renderStatsScreen();
+    const modal = $('#stats-modal');
+    if (modal) modal.hidden = false;
+    syncBodyScroll();
+    const panel = $('#stats-panel');
+    if (panel) {
+      panel.scrollTop = 0;
+      panel.focus({ preventScroll: true });
+    }
+  }
+
+  function closeStats() {
+    state.statsScreen = { open: false };
+    const modal = $('#stats-modal');
+    if (modal) modal.hidden = true;
+    syncBodyScroll();
+  }
+  /* ---------------- глобальный поиск ---------------- */
+  let commandReturnFocus = null;
+
+  function commandWhereLabel(result) {
+    if (result.where === 'watched') return `Просмотрено · ${tierShort(result.tier)}`;
+    if (result.where === 'planned') return `Планы · ${tierShort(result.tier)}`;
+    if (result.where === 'custom') return 'Своя карточка';
+    return 'База';
+  }
+
+  /* Поле остаётся в фокусе, а выбранную строку озвучивает aria-activedescendant.
+     Прокручиваем только список, страница под окном не дёргается. */
+  function syncCommandSelection() {
+    const input = $('#command-input');
+    const box = $('#command-results');
+    if (!input || !box) return;
+    const active = state.command.results.length ? state.command.index : -1;
+    if (active >= 0) input.setAttribute('aria-activedescendant', `command-row-${active}`);
+    else input.removeAttribute('aria-activedescendant');
+
+    const rows = box.querySelectorAll('.command-row');
+    rows.forEach((row, index) => {
+      const on = index === active;
+      row.classList.toggle('is-active', on);
+      row.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+
+    const row = box.querySelector('.command-row.is-active');
+    if (!row) return;
+    const boxRect = box.getBoundingClientRect();
+    const rowRect = row.getBoundingClientRect();
+    if (rowRect.top < boxRect.top) box.scrollTop -= boxRect.top - rowRect.top;
+    else if (rowRect.bottom > boxRect.bottom) box.scrollTop += rowRect.bottom - boxRect.bottom;
+  }
+
+  function renderCommandResults() {
+    const box = $('#command-results');
+    if (!box) return;
+    const query = state.command.query.trim();
+    if (!query) {
+      state.command.results = [];
+      state.command.index = 0;
+      box.innerHTML = '<div class="command-empty">Начните вводить название — поиск идёт по спискам, своим карточкам и загруженной базе.</div>';
+      syncCommandSelection();
+      return;
+    }
+
+    const results = C.searchGlobal({
+      lists: state.lists,
+      customCards: state.customCards,
+      dbItems: state.db.items,
+    }, query, { limit: 8 });
+
+    state.command.results = results;
+    state.command.index = Math.max(0, Math.min(state.command.index, Math.max(0, results.length - 1)));
+
+    if (!results.length) {
+      box.innerHTML = '<div class="command-empty">Ничего не нашлось. Проверьте раскладку или попробуйте English.</div>';
+      syncCommandSelection();
+      return;
+    }
+
+    box.innerHTML = results.map((result, index) => {
+      const a = result.anime;
+      const meta = [a.year, typeRu(a.type), a.score ? `★ ${a.score.toFixed(1)}` : '']
+        .filter(Boolean)
+        .map(item => esc(item))
+        .join(' · ');
+      return `<button type="button" class="command-row ${index === state.command.index ? 'is-active' : ''}" id="command-row-${index}" role="option" aria-selected="${index === state.command.index}" data-action="command-open" data-id="${a.id}" data-index="${index}" tabindex="-1">
+        <img class="command-poster" ${imgAttrs(a, '')}>
+        <span class="command-main">
+          <b>${esc(displayTitle(a))}</b>
+          <small>${meta || 'Без года'}</small>
+        </span>
+        <span class="command-badge command-badge-${result.where}">${esc(commandWhereLabel(result))}</span>
+      </button>`;
+    }).join('');
+    syncCommandSelection();
+  }
+
+  function openCommand(initialQuery = '') {
+    if (state.modalId != null) closeModal();
+    if (state.statsScreen && state.statsScreen.open) closeStats();
+    if (state.settingsScreen && state.settingsScreen.open) closeSettings();
+    if (state.backup && state.backup.open) closeBackup();
+    if (state.exchange && state.exchange.open) closeExchange();
+    if (state.customForm && state.customForm.open) closeCustomForm(false);
+    if (state.momentForm && state.momentForm.open) closeMomentForm(false);
+    if (state.tiktokImport && state.tiktokImport.open && typeof App.closeTikTokImport === 'function') App.closeTikTokImport();
+    const active = document.activeElement;
+    commandReturnFocus = active && active !== document.body ? active : null;
+    state.command = { open: true, query: String(initialQuery || ''), index: 0, results: [] };
+    const modal = $('#command-modal');
+    if (modal) modal.hidden = false;
+    const input = $('#command-input');
+    if (input) input.value = state.command.query;
+    renderCommandResults();
+    syncBodyScroll();
+    if (input) {
+      input.focus({ preventScroll: true });
+      input.select();
+    }
+  }
+
+  /* Возвращаем фокус туда, откуда открыли поиск. Если элемент исчез
+     (например, перерисовался список) или скрыт, ведём на кнопку в шапке. */
+  function canRestoreFocus(el) {
+    if (!el || !el.isConnected || typeof el.focus !== 'function') return false;
+    return typeof el.getClientRects !== 'function' || el.getClientRects().length > 0;
+  }
+
+  function closeCommand(options = {}) {
+    const restoreFocus = options.restoreFocus !== false;
+    state.command = { open: false, query: '', index: 0, results: [] };
+    const modal = $('#command-modal');
+    if (modal) modal.hidden = true;
+    syncBodyScroll();
+    if (!restoreFocus) {
+      commandReturnFocus = null;
+      return;
+    }
+    const fallback = document.querySelector('[data-action="open-command"]');
+    const target = canRestoreFocus(commandReturnFocus) ? commandReturnFocus : fallback;
+    commandReturnFocus = null;
+    if (canRestoreFocus(target)) target.focus({ preventScroll: true });
+  }
+
+  function setCommandQuery(value) {
+    state.command.query = String(value || '');
+    state.command.index = 0;
+    renderCommandResults();
+  }
+
+  function moveCommand(delta) {
+    const total = state.command.results.length;
+    if (!total) return;
+    state.command.index = (state.command.index + delta + total) % total;
+    /* Без перерисовки: подчёркиваем другую строку на месте, иначе постеры
+       пересоздаются и список мигает при каждом нажатии. */
+    syncCommandSelection();
+  }
+
+  /** Переход к первому или последнему результату для клавиш Home/End. */
+  function jumpCommand(edge) {
+    const total = state.command.results.length;
+    if (!total) return;
+    state.command.index = edge === 'last' ? total - 1 : 0;
+    syncCommandSelection();
+  }
+
+  function openCommandResult(index) {
+    const result = state.command.results[index];
+    if (!result) return;
+    closeCommand({ restoreFocus: false });
+    openModal(result.anime.id);
+  }
+  function openSettings() {
+    if (state.modalId != null) closeModal();
+    if (state.statsScreen && state.statsScreen.open) closeStats();
+    if (state.backup && state.backup.open) closeBackup();
+    state.settingsScreen = {
+      open: true, view: 'main', checking: false, message: '', error: false, latest: null,
+      storageText: 'проверяем…', storageBusy: false, cacheBusy: false, cacheMessage: '', cacheError: false,
+    };
+    renderSettings();
+    const modal = $('#settings-modal');
+    if (modal) modal.hidden = false;
+    syncBodyScroll();
+    const panel = $('#settings-panel');
+    if (panel) { panel.scrollTop = 0; panel.focus({ preventScroll: true }); }
+    if (App.refreshStorageInfo) App.refreshStorageInfo();
+  }
+
+  function closeSettings() {
+    state.settingsScreen = { open: false, view: 'main', checking: false, message: '', error: false, latest: null };
+    const modal = $('#settings-modal');
+    if (modal) modal.hidden = true;
+    syncBodyScroll();
+  }
+  function openExchange(mode, list) {
+    if (state.modalId != null) closeModal();
+    const exportList = list === 'planned' ? 'planned' : 'watched';
+    state.exchange = {
+      open: true,
+      mode: mode === 'import' ? 'import' : 'export',
+      list: exportList,
+      code: '',
+      parsed: null,
+      comparison: null,
+      filter: 'all',
+      error: '',
+      importBusy: false,
+      importError: '',
+      importPlan: null,
+      importResult: null,
+      importSource: '',
+      importToken: 0,
+      pngBusy: false,
+    };
+    if (state.exchange.mode === 'export') {
+      state.exchange.code = C.encodeTierShare(C.makeTierShare(exportList, state.lists[exportList], { tierIds: TIER_IDS }));
+    }
+    const modal = $('#exchange-modal');
+    if (modal) modal.hidden = false;
+    renderExchange();
+    syncBodyScroll();
+    const panel = $('#exchange-panel');
+    if (panel) {
+      panel.scrollTop = 0;
+      panel.focus({ preventScroll: true });
+    }
+  }
+
+  function closeExchange() {
+    state.exchange.open = false;
+    const modal = $('#exchange-modal');
+    if (modal) modal.hidden = true;
+    syncBodyScroll();
+  }
+
+  function setExchangeMode(mode) {
+    const ex = state.exchange;
+    if (!ex.open) return;
+    ex.mode = mode === 'import' ? 'import' : 'export';
+    ex.parsed = null;
+    ex.comparison = null;
+    ex.error = '';
+    ex.filter = 'all';
+    ex.importBusy = false;
+    ex.importError = '';
+    ex.importPlan = null;
+    ex.importResult = null;
+    ex.importSource = '';
+    ex.importToken += 1;
+    ex.pngBusy = false;
+    if (ex.mode === 'export') {
+      ex.code = C.encodeTierShare(C.makeTierShare(ex.list, state.lists[ex.list], { tierIds: TIER_IDS }));
+    }
+    renderExchange();
+    const panel = $('#exchange-panel');
+    if (panel) panel.scrollTop = 0;
+  }
+
+  function switchExchangeList(list) {
+    const ex = state.exchange;
+    if (!ex.open || ex.mode !== 'export') return;
+    ex.list = list === 'planned' ? 'planned' : 'watched';
+    ex.code = C.encodeTierShare(C.makeTierShare(ex.list, state.lists[ex.list], { tierIds: TIER_IDS }));
+    renderExchange();
+  }
+
+  function parseImportCode() {
+    const ex = state.exchange;
+    if (!ex.open || ex.mode !== 'import') return;
+    const field = $('#import-code');
+    const code = field ? field.value : ex.code;
+    ex.code = code;
+    ex.parsed = null;
+    ex.comparison = null;
+    ex.error = '';
+    ex.filter = 'all';
+
+    if (!code.trim()) {
+      ex.error = 'Вставьте код тир-листа.';
+      renderExchange();
+      return;
+    }
+
+    try {
+      const parsed = C.parseTierShare(code, { tierIds: TIER_IDS });
+      ex.parsed = parsed;
+      ex.comparison = C.compareTierLists(parsed.tiers, state.lists, { tierIds: TIER_IDS });
+    } catch (err) {
+      ex.error = err && err.message ? err.message : 'Не удалось прочитать код тир-листа.';
+    }
+    renderExchange();
+  }
+
+  function clearExchangeCode() {
+    const ex = state.exchange;
+    ex.code = '';
+    ex.parsed = null;
+    ex.comparison = null;
+    ex.error = '';
+    ex.filter = 'all';
+    renderExchange();
+    const field = $('#import-code');
+    if (field) field.focus();
+  }
+
+  async function copyShareCode() {
+    const field = $('#share-code');
+    const text = field ? field.value : state.exchange.code;
+    let copied = false;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        copied = true;
+      }
+    } catch {
+      copied = false;
+    }
+    if (!copied && field) {
+      field.focus();
+      field.select();
+      field.setSelectionRange(0, field.value.length);
+      try { copied = document.execCommand('copy'); } catch { copied = false; }
+    }
+    toast(copied ? 'Код тир-листа скопирован' : 'Выделите код и скопируйте вручную');
+  }
+
+  function addExchangeItem(id) {
+    const ex = state.exchange;
+    if (!ex.open || !ex.parsed || !ex.comparison) return;
+    const row = ex.comparison.rows.find(item => item.anime.id === id);
+    if (!row) return;
+    if (row.match || hasIn('watched', id) || hasIn('planned', id)) {
+      toast('Этот тайтл уже есть в ваших списках');
+      renderExchange();
+      return;
+    }
+
+    addToList('planned', row.anime, 'N', true);
+    ex.comparison = C.compareTierLists(ex.parsed.tiers, state.lists, { tierIds: TIER_IDS });
+    renderExchange();
+    toast(`«${displayTitle(row.anime)}» → Запланировано · Без оценки`);
+  }
+
+  function exchangeRowHTML(row) {
+    const anime = row.anime;
+    const match = row.match;
+    const meta = [
+      anime.year || '',
+      anime.episodes ? `${anime.episodes} эп.` : '',
+      anime.score ? `★ ${anime.score.toFixed(1)}` : '',
+    ].filter(Boolean).join(' · ');
+    const status = match
+      ? `<span class="exchange-badge you ${row.sameTier ? 'same' : 'different'}">${match.list === 'watched' ? 'Просмотрено' : 'В планах'}: ${esc(tierShort(match.tier))}</span>`
+      : '<span class="exchange-badge new">Нет у вас</span>';
+    const diff = match && !row.sameTier ? '<span class="exchange-badge diff">Другой тир</span>' : '';
+    const add = match
+      ? ''
+      : `<button class="btn btn-tiny btn-primary exchange-add" data-action="exchange-add" data-id="${anime.id}">+ В планы</button>`;
+
+    return `<article class="exchange-row">
+      <img class="exchange-poster" ${imgAttrs(anime, '')}>
+      <div class="exchange-row-main">
+        <div class="exchange-row-title">${esc(displayTitle(anime))}</div>
+        <div class="exchange-row-meta">${esc(meta || 'данные неполные')}</div>
+        <div class="exchange-row-badges">
+          <span class="exchange-badge friend">Друг: ${esc(tierShort(row.tier))}</span>
+          ${status}${diff}
+        </div>
+      </div>
+      ${add}
+    </article>`;
+  }
+
+  function renderExchangeComparison(parsed, comparison, filter) {
+    const summary = comparison.summary;
+    const listLabel = LIST_LABELS[parsed.list] || parsed.list;
+    const filters = EXCHANGE_FILTERS.map(item => {
+      const count = item.id === 'all'
+        ? summary.total
+        : item.id === 'new'
+          ? summary.newCount
+          : summary.differentTier;
+      return `<button class="exchange-chip ${filter === item.id ? 'is-active' : ''}" data-action="exchange-filter" data-filter="${item.id}">${item.label}<b>${count}</b></button>`;
+    }).join('');
+
+    const rows = comparison.rows.filter(row => {
+      if (filter === 'new') return !row.match;
+      if (filter === 'diff') return Boolean(row.match) && !row.sameTier;
+      return true;
+    });
+    const byTier = {};
+    for (const row of rows) {
+      if (!byTier[row.tier]) byTier[row.tier] = [];
+      byTier[row.tier].push(row);
+    }
+    const groups = TIERS.filter(tier => (byTier[tier.id] || []).length).map(tier => {
+      const items = byTier[tier.id];
+      return `<section class="exchange-tier">
+        <div class="exchange-tier-head">
+          <span class="exchange-tier-badge tier-${tier.id}">${esc(tier.label)}</span>
+          <b>${esc(tier.name)}</b>
+          <em>${items.length}</em>
+        </div>
+        <div class="exchange-rows">${items.map(exchangeRowHTML).join('')}</div>
+      </section>`;
+    }).join('');
+
+    const emptyText = filter === 'new'
+      ? 'Новых тайтлов нет — всё из этого списка уже есть у вас.'
+      : filter === 'diff'
+        ? 'Расхождений по тирам нет.'
+        : 'В этом тир-листе нет тайтлов.';
+
+    const moves = Array.isArray(summary.tierMoves)
+      ? summary.tierMoves.map(item => `<span class="exchange-move">${esc(tierShort(item.friend))} → ${esc(tierShort(item.yours))}<b>${item.count}</b></span>`).join('')
+      : '';
+    const taste = summary.common
+      ? `<div class="exchange-taste">
+          <div class="exchange-taste-score"><b>${summary.tasteMatch}%</b><span>Совпадение тиров</span></div>
+          <div class="exchange-taste-details">
+            <span>Тот же тир: <b>${summary.sameTier}</b></span>
+            <span>Разный тир: <b>${summary.differentTier}</b></span>
+          </div>
+          ${moves ? `<div class="exchange-moves"><span class="exchange-moves-label">Расхождения:</span>${moves}</div>` : ''}
+        </div>`
+      : '';
+
+    return `<div class="exchange-compare">
+      <div class="exchange-summary">
+        <div class="exchange-summary-main">
+          <span class="exchange-summary-label">Тир-лист друга</span>
+          <b>${esc(listLabel)}</b>
+        </div>
+        <div class="exchange-stats">
+          <span><b>${summary.total}</b> всего</span>
+          <span><b>${summary.common}</b> общих</span>
+          <span><b>${summary.newCount}</b> новых</span>
+          <span><b>${summary.yoursOnly}</b> только у вас</span>
+        </div>
+      </div>
+      ${taste}
+      <div class="exchange-filters" role="group" aria-label="Фильтр сравнения">${filters}</div>
+      ${groups || `<div class="exchange-empty">${esc(emptyText)}</div>`}
+    </div>`;
+  }
+
+  function renderImportBlock(ex) {
+    const pick = `<div class="exchange-pick">
+      <button class="btn btn-ghost" data-action="exchange-import-pick" data-source="mal">MyAnimeList (.xml)</button>
+      <button class="btn btn-ghost" data-action="exchange-import-pick" data-source="shikimori">Shikimori (.json)</button>
+      <button class="btn btn-ghost" data-action="exchange-import-pick" data-source="anilist">AniList (.json.gz)</button>
+      <input type="file" id="import-list-file" data-action="import-list-file" accept=".xml,.json,.json.gz,.gz,text/xml,application/xml,application/json,application/gzip" hidden>
+    </div>`;
+
+    if (ex.importBusy) {
+      return `<section class="exchange-import">
+        <div class="exchange-import-head">
+          <div class="exchange-eyebrow">Импорт списка</div>
+          <p class="exchange-sub">Файл читается в браузере и никуда не отправляется.</p>
+        </div>
+        <div class="exchange-import-status" role="status">Читаем файл и сверяем с AniList…</div>
+        ${pick}
+      </section>`;
+    }
+
+    const plan = ex.importPlan;
+    const result = ex.importResult;
+    let preview = '';
+    if (plan) {
+      const summary = plan.summary;
+      const tiers = TIERS
+        .filter(tier => summary.tierCounts[tier.id])
+        .map(tier => `${tier.id} ${summary.tierCounts[tier.id]}`)
+        .join(' · ');
+      const missing = plan.unmatched.slice(0, 8).map(row => (
+        `<li>${esc(row.title || `MAL #${row.malId || '?'}`)}</li>`
+      )).join('');
+      const moreMissing = plan.unmatched.length > 8
+        ? `<li>и ещё ${plan.unmatched.length - 8}</li>`
+        : '';
+      const addLabel = summary.newCount
+        ? `Добавить ${summary.newCount} ${plural(summary.newCount, 'тайтл', 'тайтла', 'тайтлов')}`
+        : 'Новых тайтлов нет';
+      preview = `<div class="exchange-import-plan">
+        <div class="exchange-import-summary">
+          <span><b>${summary.total}</b> в файле</span>
+          <span><b>${summary.newCount}</b> новых</span>
+          <span><b>${summary.already}</b> уже у вас</span>
+          <span><b>${summary.unmatched}</b> не найдено</span>
+        </div>
+        <div class="exchange-import-lists">
+          <span>Просмотрено: <b>${summary.watched}</b></span>
+          <span>Запланировано: <b>${summary.planned}</b></span>
+          ${tiers ? `<span>Тиры: <b>${esc(tiers)}</b></span>` : ''}
+        </div>
+        ${plan.unmatched.length ? `<details class="exchange-import-missing">
+          <summary>${plan.unmatched.length} ${plural(plan.unmatched.length, 'тайтл', 'тайтла', 'тайтлов')} не нашлись в AniList</summary>
+          <ul>${missing}${moreMissing}</ul>
+        </details>` : ''}
+        <div class="exchange-actions">
+          <button class="btn btn-primary" data-action="exchange-import-confirm" ${summary.newCount ? '' : 'disabled'}>${esc(addLabel)}</button>
+          <button class="btn btn-ghost" data-action="exchange-import-cancel">Отменить импорт</button>
+        </div>
+        <p class="exchange-note">Существующие тайтлы и их тиры не меняются. Прогресс серий восстановится из файла.</p>
+      </div>`;
+    } else if (result) {
+      preview = `<div class="exchange-import-result" role="status">
+        <b>Импорт завершён.</b> Добавлено: ${result.added}. Пропущено как уже существующие: ${result.skipped}.
+        ${result.unmatched ? ` Не найдено в AniList: ${result.unmatched}.` : ''}
+      </div>`;
+    }
+
+    return `<section class="exchange-import">
+      <div class="exchange-import-head">
+        <div class="exchange-eyebrow">Импорт списка</div>
+        <p class="exchange-sub">Перенесите оценки из MyAnimeList, Shikimori или AniList: файл читается в браузере и никуда не отправляется.</p>
+      </div>
+      ${pick}
+      ${ex.importError ? `<div class="exchange-error" role="alert">${esc(ex.importError)}</div>` : ''}
+      ${preview}
+    </section>`;
+  }
+
+  function renderExchange() {
+    const content = $('#exchange-content');
+    const ex = state.exchange;
+    if (!content || !ex.open) return;
+    const isExport = ex.mode === 'export';
+    const listLabel = LIST_LABELS[ex.list] || LIST_LABELS.watched;
+    let body = '';
+
+    if (isExport) {
+      const count = allIn(ex.list).length;
+      const switchHTML = ['watched', 'planned'].map(name => (
+        `<button class="exchange-tab ${ex.list === name ? 'is-active' : ''}" data-action="exchange-list" data-list="${name}">${LIST_LABELS[name]}</button>`
+      )).join('');
+      body = `<div class="exchange-head">
+          <div>
+            <div class="exchange-eyebrow">Обмен тир-листом</div>
+            <h2 id="exchange-title">Экспорт</h2>
+            <p class="exchange-sub">Скопируйте код и отправьте другу. Внутри — список «${esc(listLabel)}»: ${count} ${plural(count, 'тайтл', 'тайтла', 'тайтлов')}.</p>
+          </div>
+          <div class="exchange-switch" role="group" aria-label="Какой список экспортировать">${switchHTML}</div>
+        </div>
+        ${count ? `<label class="exchange-field">
+          <span>Код тир-листа</span>
+          <textarea class="exchange-code" id="share-code" readonly rows="7">${esc(ex.code)}</textarea>
+        </label>
+        <div class="exchange-actions">
+          <button class="btn btn-primary" data-action="exchange-copy">Скопировать код</button>
+          <button class="btn btn-ghost" data-action="tier-png" data-list="${esc(ex.list)}" ${ex.pngBusy ? 'disabled' : ''}>${ex.pngBusy ? 'Готовим PNG…' : 'Скачать PNG'}</button>
+          <button class="btn btn-ghost" data-action="exchange-mode" data-mode="import">Перейти к импорту</button>
+        </div>
+        <p class="exchange-note">Код начинается с <code>${esc(C.SHARE_PREFIX)}</code>. Его можно отправить в мессенджере — файл не нужен.</p>`
+          : `<div class="exchange-empty">В списке «${esc(listLabel)}» пока нет тайтлов. Добавьте хотя бы один — и код появится здесь.</div>
+        <div class="exchange-actions">
+          <button class="btn btn-ghost" data-action="exchange-mode" data-mode="import">Перейти к импорту</button>
+        </div>`}
+        <div class="exchange-footer">
+          <span>Ничего не меняется, пока вы не добавите тайтлы в планы.</span>
+          <button class="btn btn-ghost" data-action="close-exchange">Закрыть</button>
+        </div>`;
+    } else {
+      const parsed = ex.parsed;
+      const comparison = ex.comparison;
+      body = `<div class="exchange-head">
+          <div>
+            <div class="exchange-eyebrow">Обмен тир-листом</div>
+            <h2 id="exchange-title">Импорт и сравнение</h2>
+            <p class="exchange-sub">Перенесите свой список из MyAnimeList или Shikimori либо вставьте код друга. Перед добавлением покажем, что изменится.</p>
+          </div>
+          <button class="exchange-link" data-action="exchange-mode" data-mode="export">Экспорт →</button>
+        </div>
+        ${renderImportBlock(ex)}
+        <div class="exchange-divider"><span>или код друга</span></div>
+        <label class="exchange-field">
+          <span>Код тир-листа</span>
+          <textarea class="exchange-code" id="import-code" rows="6" placeholder="Вставьте сюда ANITIER-TIER-1:…">${esc(ex.code)}</textarea>
+        </label>
+        ${ex.error ? `<div class="exchange-error" role="alert">${esc(ex.error)}</div>` : ''}
+        <div class="exchange-actions">
+          <button class="btn btn-primary" data-action="exchange-parse">Сравнить</button>
+          ${parsed ? '<button class="btn btn-ghost" data-action="exchange-clear">Очистить</button>' : ''}
+        </div>
+        ${parsed && comparison ? renderExchangeComparison(parsed, comparison, ex.filter) : ''}
+        <div class="exchange-footer">
+          <span>Импорт не перезаписывает существующие тиры и не добавляет всё сразу.</span>
+          <button class="btn btn-ghost" data-action="close-exchange">Ничего не добавлять</button>
+        </div>`;
+    }
+
+    content.innerHTML = body;
+  }
+  function openModal(id, opts = {}) {
+    const a = getAnime(id);
+    if (!a) { toast('Не удалось открыть карточку'); return; }
+    state.modalId = id;
+    state.modalTab = 'overview';
+    renderModal();
+    const modal = $('#modal');
+    modal.hidden = false;
+    syncBodyScroll();
+    const panel = $('.modal-panel');
+    if (panel) { panel.scrollTop = 0; panel.focus({ preventScroll: true }); }
+    if (a.custom && App.hydrateCustomImage) App.hydrateCustomImage(id);
+    if (!opts.fromHash) writeLocationHash();
+    if (typeof bindModalSwipe === 'function') bindModalSwipe();
+    /* Автоперевод при любом открытии, если пользователь не выбрал оригинал. */
+    const synopsisMode = state.synopsisModes && state.synopsisModes.get(id);
+    const wantsTranslation = synopsisMode !== 'original'
+      && !(state.settings && state.settings.synopsisLang === 'original');
+    if (wantsTranslation && a.synopsis && C.hasCyrillic && !C.hasCyrillic(a.synopsis)
+      && typeof App.translateModalSynopsis === 'function') {
+      App.translateModalSynopsis(id);
+    }
+  }
+
+  function franchiseRelationLabel(type) {
+    if (type === 'PREQUEL' || type === 'PARENT') return 'Смотреть раньше';
+    if (type === 'CURRENT') return 'Текущая часть';
+    if (type === 'SEQUEL') return 'Следующий сезон';
+    if (type === 'SIDE_STORY') return 'Побочная история';
+    if (type === 'SPIN_OFF') return 'Спин-офф';
+    if (type === 'SUMMARY') return 'Пересказ';
+    if (type === 'ALTERNATIVE') return 'Альтернатива';
+    if (type === 'ADAPTATION') return 'Адаптация';
+    if (type === 'CHARACTER') return 'С участием героев';
+    return 'Связанная история';
+  }
+
+  /* Дата выхода связи: по ней строится порядок просмотра. */
+  function franchiseDate(link) {
+    const stamp = Date.parse((link.anime && link.anime.airedFrom) || '');
+    if (Number.isFinite(stamp)) return stamp;
+    const year = Number(link.anime && link.anime.year) || 0;
+    return year ? Date.parse(`${year}-01-01`) : Number.MAX_SAFE_INTEGER;
+  }
+
+  const FRANCHISE_PREVIEW = 8;
+  const FRANCHISE_MAIN = new Set(['PREQUEL', 'PARENT', 'SEQUEL']);
+  const MODAL_TABS = ['overview', 'seasons', 'episodes', 'moments'];
+
+  function franchiseCardHTML(link, opts = {}) {
+    const item = link.anime;
+    const tier = findTier('watched', item.id) || findTier('planned', item.id);
+    const progress = watchedCount(item.id);
+    const isCurrent = link.relationType === 'CURRENT';
+    const meta = [typeRu(item.type) || '', item.year || '', item.episodes ? `${item.episodes} серий` : ''].filter(Boolean).join(' · ');
+    const listStatus = tier ? `В тире ${tier}` : 'Не в тир-листе';
+    const progressStatus = progress ? `Просмотрено ${progress}${item.episodes ? ` из ${item.episodes}` : ''}` : '';
+    const order = Number.isFinite(opts.order)
+      ? `<span class="franchise-order" aria-hidden="true">${opts.order}</span>`
+      : '';
+    const here = isCurrent ? '<span class="franchise-here">Вы здесь</span>' : '';
+    return `<article class="franchise-link${isCurrent ? ' franchise-current' : ''}" data-action="open" data-id="${item.id}" tabindex="0" role="button"${isCurrent ? ' aria-current="true"' : ''} aria-label="${isCurrent ? 'Текущая часть: ' : 'Открыть: '}${esc(displayTitle(item))}">
+      <span class="franchise-poster"><img ${imgAttrs(item)}>${item.score ? `<span class="franchise-score">★ ${item.score.toFixed(1)}</span>` : ''}<span class="franchise-link-arrow" aria-hidden="true">›</span></span>
+      <span class="franchise-link-main">
+        <span class="franchise-link-kind">${order}${esc(franchiseRelationLabel(link.relationType))}${here}</span>
+        <b>${esc(displayTitle(item))}</b>
+        <small>${esc(meta || 'Данные уточняются')}</small>
+        <span class="franchise-link-status">${esc(listStatus)}${progressStatus ? ` · ${esc(progressStatus)}` : ''}</span>
+      </span>
+    </article>`;
+  }
+
+  function renderFranchiseSection(anime) {
+    if (anime.custom) return '';
+    const related = state.franchiseById.get(anime.id);
+    const label = '<div class="modal-label">Сезоны и порядок просмотра</div>';
+    if (state.franchiseLoading.has(anime.id)) {
+      return `<div class="modal-section franchise-section">${label}<p class="hint">Загружаем связанные сезоны…</p></div>`;
+    }
+    if (state.franchiseErrors.has(anime.id)) {
+      return `<div class="modal-section franchise-section">${label}<p class="hint">${esc(state.franchiseErrors.get(anime.id))}</p><button class="btn btn-ghost" data-action="retry-franchise" data-id="${anime.id}">Повторить</button></div>`;
+    }
+    if (!related) return `<div class="modal-section franchise-section">${label}<p class="hint">Проверяем, есть ли связанные сезоны…</p></div>`;
+    if (!related.length) return `<div class="modal-section franchise-section">${label}<p class="hint">Связанные сезоны и продолжения не найдены.</p></div>`;
+
+    const full = state.franchiseFullById.get(anime.id);
+    const fullLoading = state.franchiseFullLoading && state.franchiseFullLoading.has(anime.id);
+    const useRelated = full || related;
+    const built = (window.AniTierCore && typeof window.AniTierCore.buildFranchiseGroups === 'function')
+      ? window.AniTierCore.buildFranchiseGroups(useRelated, anime)
+      : null;
+    let groups = built && Array.isArray(built.groups) ? built.groups : [];
+    if (!groups.length) {
+      groups = [{ id: 'empty', title: 'Порядок просмотра', list: [], numbered: false }];
+    }
+    const hidden = groups.reduce((total, group) => total + Math.max(0, (group.list ? group.list.length : 0) - FRANCHISE_PREVIEW), 0);
+    const expanded = Boolean(state.franchiseExpanded && state.franchiseExpanded.has(anime.id));
+    const sections = groups.map(group => {
+      if (!group.list || !group.list.length) return '';
+      const shown = expanded ? group.list : group.list.slice(0, FRANCHISE_PREVIEW);
+      const rows = shown.map((link, index) => franchiseCardHTML(link, {
+        order: group.numbered ? index + 1 : undefined,
+      })).join('');
+      return `<div class="franchise-group">
+        <h4 class="franchise-group-title">${esc(group.title)}<span>${group.list.length}</span></h4>
+        <div class="franchise-list">${rows}</div>
+      </div>`;
+    }).join('');
+
+    return `<div class="modal-section franchise-section">
+      ${label}
+      <p class="franchise-intro">Основной сюжет — по дате выхода. Фильмы, спешлы и пересказы собраны отдельно.</p>
+      ${sections}
+      <div class="franchise-actions">
+        ${(hidden > 0 || expanded)
+          ? `<button class="btn btn-ghost btn-small franchise-more" type="button" data-action="franchise-more" data-id="${anime.id}">${expanded ? 'Свернуть список' : `Показать все (${built.total || useRelated.length + 1})`}</button>`
+          : ''}
+        ${!full && !fullLoading
+          ? `<button class="btn btn-ghost btn-small franchise-full" type="button" data-action="franchise-full" data-id="${anime.id}">Показать всю франшизу</button>`
+          : fullLoading ? `<span class="hint">Собираем всю франшизу…</span>` : `<span class="hint">Показана вся доступная франшиза</span>`}
+      </div>
+      <p class="hint">У каждого тайтла свой тир-лист и прогресс серий.</p>
+    </div>`;
+  }
+
+  function loadFranchise(anime) {
+    if (!anime || state.franchiseById.has(anime.id) || state.franchiseLoading.has(anime.id)) return;
+    if (anime.custom) { state.franchiseById.set(anime.id, []); return; }
+    state.franchiseLoading.add(anime.id);
+    state.franchiseErrors.delete(anime.id);
+    Promise.resolve(App.fetchAnimeRelations(anime)).then(relations => {
+      const allowed = new Set(['PREQUEL', 'SEQUEL', 'PARENT', 'SIDE_STORY', 'SPIN_OFF']);
+      const seen = new Set();
+      const links = [];
+      for (const relation of Array.isArray(relations) ? relations : []) {
+        if (!relation || !allowed.has(relation.relationType) || !relation.anime || relation.anime.id === anime.id || seen.has(relation.anime.id)) continue;
+        seen.add(relation.anime.id);
+        links.push(relation);
+      }
+      /* Только хронология: иначе фильмы и OVA прыгают в конец списка. */
+      links.sort((a, b) => (franchiseDate(a) - franchiseDate(b)) || (a.anime.id - b.anime.id));
+      state.franchiseById.set(anime.id, links);
+    }).catch(error => {
+      state.franchiseErrors.set(anime.id, error && error.message ? error.message : 'Не удалось загрузить порядок просмотра');
+    }).finally(() => {
+      state.franchiseLoading.delete(anime.id);
+      if (state.modalId === anime.id) renderModal();
+    });
+  }
+
+  function closeModal(opts = {}) {
+    state.modalId = null;
+    state.modalTab = 'overview';
+    const modal = $('#modal');
+    if (modal) modal.hidden = true;
+    if (App.revokeMomentUrls) App.revokeMomentUrls();
+    syncBodyScroll();
+    if (state.tab === 'db') renderDB();
+    else if (state.tab === 'watched' || state.tab === 'planned') renderTierList(state.tab);
+    if (!opts.fromHash) writeLocationHash();
+  }
+
+  /* Переключение разделов карточки без перерисовки: изображения и прогресс
+     остаются на месте, меняются только видимые панели. */
+  function switchModalTab(tab, opts = {}) {
+    if (!MODAL_TABS.includes(tab)) return;
+    state.modalTab = tab;
+    $$('.modal-tab').forEach(node => {
+      const on = node.dataset.tab === tab;
+      node.classList.toggle('is-active', on);
+      node.setAttribute('aria-selected', on ? 'true' : 'false');
+      node.tabIndex = on ? 0 : -1;
+    });
+    $$('.modal-pane').forEach(node => {
+      node.hidden = node.id !== 'modal-pane-' + tab;
+    });
+    const panel = $('.modal-panel');
+    if (panel) panel.scrollTop = 0;
+    if (opts.focus) {
+      const active = $('.modal-tab.is-active');
+      if (active) active.focus({ preventScroll: true });
+    }
+  }
+
+  function renderModal() {
+    if (state.modalId == null) return;
+    const a = getAnime(state.modalId);
+    const content = $('#modal-content');
+    const panel = $('.modal-panel');
+    if (!a || !content) { closeModal(); return; }
+
+    const scrollTop = panel ? panel.scrollTop : 0;
+    const inW = hasIn('watched', a.id);
+    const inP = hasIn('planned', a.id);
+    const curTier = findTier('watched', a.id) || findTier('planned', a.id);
+    const status = a.status || '';
+    const sourceName = a.source === 'Kitsu' ? 'Kitsu' : a.source === 'AniList' ? 'AniList' : 'MyAnimeList';
+    const sourceUrl = a.url || (a.malId ? `https://myanimelist.net/anime/${a.malId}` : '');
+    const sourceLine = a.custom
+      ? '<span class="modal-source">Своя карточка</span>'
+      : sourceUrl ? `<a class="mal-link" href="${esc(sourceUrl)}" target="_blank" rel="noopener">Открыть на ${esc(sourceName)} ↗</a>` : '';
+    const customActions = a.custom ? `<div class="modal-custom-actions">
+      <button class="btn btn-ghost" data-action="edit-custom" data-id="${a.id}">Редактировать</button>
+      <button class="btn btn-ghost btn-danger" data-action="delete-custom" data-id="${a.id}">Удалить карточку</button>
+    </div>` : '';
+    const facts = [
+      a.type ? `<span class="fact"><span>Тип:</span> ${esc(typeRu(a.type))}</span>` : '',
+      a.episodes ? `<span class="fact"><span>Серии:</span> ${a.episodes}</span>` : '<span class="fact"><span>Серии:</span> ?</span>',
+      a.year ? `<span class="fact"><span>Год:</span> ${a.year}</span>` : '',
+      status ? `<span class="fact"><span>Статус:</span> ${esc(status)}</span>` : '',
+      a.airedFrom ? `<span class="fact"><span>Старт:</span> ${esc(dateShort(a.airedFrom))}</span>` : '',
+    ].filter(Boolean).join('');
+
+    const tiers = TIERS.map(t => `<button class="tier-pick tier-${t.id} ${curTier === t.id ? 'is-active' : ''}" data-action="set-tier" data-id="${a.id}" data-tier="${t.id}" title="${esc(t.name)}" aria-label="Тир ${esc(t.name)}">${t.label}</button>`).join('');
+    const genres = (a.genres || []).map(g => (
+      `<button type="button" class="tag tag-link" data-action="find-genre" data-genre="${esc(g)}" title="Найти аниме в жанре «${esc(C.genreRu(g))}»">${esc(C.genreRu(g))}</button>`
+    )).join('');
+    const spoilerTags = new Set(Array.isArray(a.spoilerTags) ? a.spoilerTags : []);
+    const tagChips = (Array.isArray(a.tags) ? a.tags : []).slice(0, 18).map(tag => (
+      `<button type="button" class="tag tag-link${spoilerTags.has(tag) ? ' tag-spoiler' : ''}" data-action="find-tag" data-tag="${esc(tag)}"${spoilerTags.has(tag) ? ' title="Может содержать спойлер"' : ''}>${esc(C.genreRu(tag))}</button>`
+    )).join('');
+    const poster = a.image || makePoster(a.title, a.id);
+    const mainTitle = displayTitle(a);
+    const secondaryTitle = mainTitle === (a.titleRu || '')
+      ? (a.originalTitle || a.altTitle || '')
+      : (a.titleRu || a.altTitle || '');
+    const translationProvider = state.settings.translationProvider || 'auto';
+    const translatedSynopsis = App.cachedTranslation ? App.cachedTranslation(a.synopsis, translationProvider) : '';
+    const translatedVia = App.cachedTranslationProvider ? App.cachedTranslationProvider(a.synopsis, translationProvider) : '';
+    const translationRequestKey = `${a.id}:${translationProvider}`;
+    const canTranslateSynopsis = Boolean(a.synopsis && !C.hasCyrillic(a.synopsis));
+    const synopsisMode = state.synopsisModes.get(a.id)
+      || (state.settings.synopsisLang === 'original' ? 'original' : 'translated');
+    const showTranslatedSynopsis = Boolean(canTranslateSynopsis && translatedSynopsis && synopsisMode !== 'original');
+    const synopsis = (showTranslatedSynopsis ? translatedSynopsis : a.synopsis) || 'Описание пока недоступно.';
+    const translating = state.synopsisTranslating.has(translationRequestKey);
+    const synopsisControls = canTranslateSynopsis
+      ? `<div class="synopsis-toolbar">
+          <label class="synopsis-provider">Переводчик
+            <select data-action="synopsis-provider" aria-label="Переводчик описания">
+              <option value="auto"${translationProvider === 'auto' ? ' selected' : ''}>Авто: MyMemory → Google</option>
+              <option value="mymemory"${translationProvider === 'mymemory' ? ' selected' : ''}>MyMemory</option>
+              <option value="google"${translationProvider === 'google' ? ' selected' : ''}>Google Переводчик</option>
+            </select>
+          </label>
+          <span class="synopsis-translation-status" role="status">${translatedSynopsis ? (showTranslatedSynopsis ? `Перевод: ${translatedVia === 'google' ? 'Google' : 'MyMemory'}` : 'Оригинал') : (translating ? 'Переводим…' : 'Перевод пока недоступен')}</span>
+          ${!translatedSynopsis && !translating ? `<button type="button" class="ep-link" data-action="translate-synopsis" data-id="${a.id}">Перевести</button>` : ''}
+          <div class="synopsis-switch" role="group" aria-label="Язык описания">
+            <button type="button" data-action="synopsis-mode" data-id="${a.id}" data-mode="translated" aria-pressed="${showTranslatedSynopsis ? 'true' : 'false'}"${translatedSynopsis ? '' : ' disabled'}>Перевод</button>
+            <button type="button" data-action="synopsis-mode" data-id="${a.id}" data-mode="original" aria-pressed="${!showTranslatedSynopsis ? 'true' : 'false'}">Оригинал</button>
+          </div>
+        </div>`
+      : '';
+
+    const related = state.franchiseById.get(a.id) || [];
+    const ownProgress = watchedCount(a.id);
+    const momentsCount = momentsFor(a.id).length;
+    const episodesCount = a.episodes ? `${ownProgress}/${a.episodes}` : (ownProgress ? String(ownProgress) : '');
+    const activeTab = ['overview', 'seasons', 'episodes', 'moments'].includes(state.modalTab) ? state.modalTab : 'overview';
+    const tabButton = (id, label, count) => `<button type="button" class="modal-tab${activeTab === id ? ' is-active' : ''}" role="tab" id="modal-tab-${id}" aria-selected="${activeTab === id ? 'true' : 'false'}" aria-controls="modal-pane-${id}" tabindex="${activeTab === id ? '0' : '-1'}" data-action="modal-tab" data-tab="${id}">${label}${count ? `<b>${esc(String(count))}</b>` : ''}</button>`;
+    const pane = (id, inner) => `<div class="modal-pane" id="modal-pane-${id}" role="tabpanel" aria-labelledby="modal-tab-${id}"${activeTab === id ? '' : ' hidden'}>${inner}</div>`;
+
+    content.innerHTML = `
+      <div class="modal-grid">
+        <div class="modal-poster">
+          <div class="modal-poster-wrap">
+            <img src="${esc(poster)}" alt="${esc(displayTitle(a))}" data-title="${esc(displayTitle(a))}" data-id="${a.id}"${/^https?:\/\//i.test(poster) ? ` data-poster-src="${esc(poster)}"` : ''}>
+            <div class="modal-side-score">${a.score ? `★ ${a.score.toFixed(2)}` : '★ —'}<small>рейтинг</small></div>
+          </div>
+        </div>
+        <div class="modal-info">
+          <div class="modal-eyebrow">${esc(typeRu(a.type) || 'Аниме')}${a.year ? ' · ' + a.year : ''}</div>
+          <h2 id="modal-title">${esc(mainTitle)}</h2>
+          ${secondaryTitle ? `<p class="modal-alt">${esc(secondaryTitle)}</p>` : ''}
+          <div class="modal-facts">${facts}</div>
+          <div class="modal-actions">
+            <button class="btn ${inW ? 'is-on' : 'btn-primary'}" data-action="add-watched" data-id="${a.id}">${inW ? '✓ В просмотрено' : 'Отметить просмотренным'}</button>
+            <button class="btn btn-ghost ${inP ? 'is-on' : ''}" data-action="add-planned" data-id="${a.id}">${inP ? '◷ В планах' : 'Запланировать'}</button>
+            ${!a.custom ? `<button class="btn btn-ghost" data-action="tiktok-search" data-id="${a.id}">Искать в TikTok</button>` : ''}
+          </div>
+          ${customActions}
+          <div class="modal-tabs" role="tablist" aria-label="Разделы карточки">
+            ${tabButton('overview', 'Обзор')}
+            ${a.custom ? '' : tabButton('seasons', 'Сезоны', related.length ? related.length + 1 : '')}
+            ${tabButton('episodes', 'Серии', episodesCount)}
+            ${tabButton('moments', 'Моменты', momentsCount || '')}
+          </div>
+          ${pane('overview', `
+            <div class="modal-section">
+              <div class="modal-label">Тир-лист</div>
+              <div class="tier-picker">${tiers}</div>
+              <p class="hint">${inW || inP
+                ? 'Выберите уровень — карточка переедет в выбранный тир.'
+                : 'Выберите тир, чтобы сразу добавить тайтл в «Просмотрено».'}</p>
+            </div>
+            <section class="modal-section modal-synopsis-section">
+              <div class="modal-label">Описание</div>
+              ${synopsisControls}
+              <p class="modal-synopsis"${showTranslatedSynopsis ? ' data-translated="1" title="Автоматический перевод"' : ''}>${esc(synopsis)}</p>
+            </section>
+            ${genres ? `<section class="modal-section modal-genres">
+              <div class="modal-label">Жанры</div>
+              <div class="tags">${genres}</div>
+            </section>` : ''}
+            ${tagChips ? `<section class="modal-section modal-tags">
+              <div class="modal-label">Теги</div>
+              <div class="tags">${tagChips}</div>
+              <button class="btn btn-ghost" type="button" data-action="find-similar" data-id="${a.id}">Найти похожие</button>
+            </section>` : ''}
+            ${sourceLine}
+          `)}
+          ${a.custom ? '' : pane('seasons', renderFranchiseSection(a))}
+          ${pane('episodes', `<div class="modal-section modal-episodes">
+            <div class="modal-label">Серии и прогресс</div>
+            ${renderEpisodeBlock(a, 'modal')}
+          </div>`)}
+          ${pane('moments', momentsHTML(a))}
+        </div>      </div>`;
+
+    const fresh = $('.modal-panel');
+    if (fresh) fresh.scrollTop = scrollTop;
+
+    if (!state.franchiseById.has(a.id) && !state.franchiseLoading.has(a.id) && !state.franchiseErrors.has(a.id)) loadFranchise(a);
+
+    if (!a.custom && (!state.epInfo[a.id] || Date.now() - Number(state.epInfo[a.id].fetchedAt || 0) > 2 * 3600000)) {
+      if (a.status === 'В эфире' || !a.episodes) ensureEpisodeInfo(a);
+    }
+  }
+  Object.assign(App, {
+    openCustomForm,
+    closeCustomForm,
+    renderCustomForm,
+    momentLabel,
+    momentCardHTML,
+    momentsHTML,
+    openMomentForm,
+    closeMomentForm,
+    renderMomentForm,
+    renderTikTokImport,
+    renderBackup,
+    openBackup,
+    closeBackup,
+    renderUpdateCard,
+    renderSettings,
+    renderStatsScreen,
+    openStats,
+    closeStats,
+    renderCommandResults,
+    openCommand,
+    closeCommand,
+    setCommandQuery,
+    moveCommand,
+    jumpCommand,
+    openCommandResult,
+    openSettings,
+    closeSettings,
+    openExchange,
+    closeExchange,
+    setExchangeMode,
+    switchExchangeList,
+    parseImportCode,
+    clearExchangeCode,
+    copyShareCode,
+    addExchangeItem,
+    exchangeRowHTML,
+    renderExchangeComparison,
+    renderExchange,
+    renderFranchiseSection,
+    openModal,
+    closeModal,
+    renderModal,
+    switchModalTab,
+  });
 })(window.AniTier);

@@ -7,6 +7,40 @@
   try {
 
   const C = window.AniTierCore;
+
+// Ленивая привязка к функциям, перенесённым в app-ctrl-moments/settings (п.35)
+const readImageFile = (...a) => App.readImageFile(...a);
+const loadImageElement = (...a) => App.loadImageElement(...a);
+const makeImageThumbnail = (...a) => App.makeImageThumbnail(...a);
+const makeVideoThumbnail = (...a) => App.makeVideoThumbnail(...a);
+const makeFileThumbnail = (...a) => App.makeFileThumbnail(...a);
+const openTikTokUrl = (...a) => App.openTikTokUrl(...a);
+const openTikTokSearch = (...a) => App.openTikTokSearch(...a);
+const closeTikTokImport = (...a) => App.closeTikTokImport(...a);
+const openTikTokImport = (...a) => App.openTikTokImport(...a);
+const consumeSharedLink = (...a) => App.consumeSharedLink(...a);
+const receiveSharedTikTok = (...a) => App.receiveSharedTikTok(...a);
+const saveSharedTikTok = (...a) => App.saveSharedTikTok(...a);
+const captureMomentDraft = (...a) => App.captureMomentDraft(...a);
+const saveMomentForm = (...a) => App.saveMomentForm(...a);
+const revokeMomentUrls = (...a) => App.revokeMomentUrls(...a);
+const playMoment = (...a) => App.playMoment(...a);
+const safeFileName = (...a) => App.safeFileName(...a);
+const shareMoment = (...a) => App.shareMoment(...a);
+const removeMomentAction = (...a) => App.removeMomentAction(...a);
+const releaseBridge = (...a) => App.releaseBridge(...a);
+const releaseNotificationsEnabled = (...a) => App.releaseNotificationsEnabled(...a);
+const syncReleaseNotifications = (...a) => App.syncReleaseNotifications(...a);
+const toggleReleaseNotifications = (...a) => App.toggleReleaseNotifications(...a);
+const onReleaseNotificationPermissionResult = (...a) => App.onReleaseNotificationPermissionResult(...a);
+const showUpdateAvailable = (...a) => App.showUpdateAvailable(...a);
+const autoCheckUpdates = (...a) => App.autoCheckUpdates(...a);
+const checkForUpdates = (...a) => App.checkForUpdates(...a);
+const openExternalLink = (...a) => App.openExternalLink(...a);
+const applySettingsChange = (...a) => App.applySettingsChange(...a);
+const refreshStorageInfo = (...a) => App.refreshStorageInfo(...a);
+const clearAppCache = (...a) => App.clearAppCache(...a);
+try { window.onReleaseNotificationPermissionResult = onReleaseNotificationPermissionResult; } catch (_) {}
   const {
     state,
     LS_KEY,
@@ -522,88 +556,10 @@
   }
 
   /* ---------------- свои карточки: сохранение ---------------- */
-  function readImageFile(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ''));
-      reader.onerror = () => reject(reader.error || new Error('Не удалось прочитать файл'));
-      reader.readAsDataURL(file);
-    });
-  }
 
-  function loadImageElement(src) {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error('Не удалось открыть изображение'));
-      img.src = src;
-    });
-  }
 
-  async function makeImageThumbnail(file, max = 480, quality = 0.78) {
-    const url = URL.createObjectURL(file);
-    try {
-      const img = await loadImageElement(url);
-      const width = img.naturalWidth || img.width || 1;
-      const height = img.naturalHeight || img.height || 1;
-      const scale = Math.min(1, max / Math.max(width, height));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, Math.round(width * scale));
-      canvas.height = Math.max(1, Math.round(height * scale));
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Canvas недоступен');
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      let data = canvas.toDataURL('image/jpeg', quality);
-      if (data.length > 450000) data = canvas.toDataURL('image/jpeg', 0.55);
-      return data;
-    } finally {
-      URL.revokeObjectURL(url);
-    }
-  }
 
-  async function makeVideoThumbnail(file) {
-    const url = URL.createObjectURL(file);
-    const video = document.createElement('video');
-    video.preload = 'metadata';
-    video.muted = true;
-    video.playsInline = true;
-    try {
-      await new Promise((resolve, reject) => {
-        video.onloadedmetadata = resolve;
-        video.onerror = () => reject(new Error('Не удалось прочитать видео'));
-        video.src = url;
-      });
-      if (Number.isFinite(video.duration) && video.duration > 0) {
-        await new Promise(resolve => {
-          const timer = setTimeout(resolve, 2500);
-          video.onseeked = () => { clearTimeout(timer); resolve(); };
-          try { video.currentTime = Math.min(1, video.duration / 3); } catch { clearTimeout(timer); resolve(); }
-        });
-      }
-      const width = video.videoWidth || 640;
-      const height = video.videoHeight || 360;
-      const scale = Math.min(1, 480 / Math.max(width, height));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, Math.round(width * scale));
-      canvas.height = Math.max(1, Math.round(height * scale));
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Canvas недоступен');
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      let data = canvas.toDataURL('image/jpeg', 0.72);
-      if (data.length > 450000) data = canvas.toDataURL('image/jpeg', 0.55);
-      return data;
-    } finally {
-      URL.revokeObjectURL(url);
-      video.removeAttribute('src');
-      try { video.load(); } catch { /* noop */ }
-    }
-  }
 
-  async function makeFileThumbnail(file) {
-    if (file.type === 'image/gif' || file.type.startsWith('image/')) return makeImageThumbnail(file);
-    if (file.type.startsWith('video/')) return makeVideoThumbnail(file);
-    return '';
-  }
 
   async function saveCustomForm(form) {
     if (state.customForm.busy) return;
@@ -729,311 +685,20 @@
   }
 
   /* ---------------- моменты ---------------- */
-  function openTikTokUrl(url) {
-    const target = String(url || '');
-    if (!C.isTikTokUrl(target)) { toast('Ссылка TikTok недействительна'); return false; }
-    try {
-      if (window.AniTierAndroid && typeof window.AniTierAndroid.openTikTok === 'function') {
-        return window.AniTierAndroid.openTikTok(target);
-      }
-      const opened = window.open(target, '_blank', 'noopener');
-      if (!opened) window.location.href = target;
-      return true;
-    } catch {
-      window.location.href = target;
-      return true;
-    }
-  }
 
   /* Поиск: в APK сначала открываем приложение TikTok, если его нет — браузер. */
-  function openTikTokSearch(query) {
-    const text = String(query == null ? '' : query).trim();
-    if (!text) return false;
-    const bridge = typeof window !== 'undefined' ? window.AniTierAndroid : null;
-    if (bridge && typeof bridge.openTikTokSearch === 'function') {
-      try {
-        return bridge.openTikTokSearch(text);
-      } catch { /* ниже обычный путь через ссылку */ }
-    }
-    const url = C.tiktokSearchUrl(text);
-    return url ? openTikTokUrl(url) : false;
-  }
 
-  function closeTikTokImport() {
-    state.tiktokImport = { open: false, url: '', title: '', thumb: '', query: '', loading: false };
-    const modal = $('#tiktok-import-modal');
-    if (modal) modal.hidden = true;
-    App.syncBodyScroll();
-  }
 
-  function openTikTokImport(url) {
-    const target = String(url || '').trim();
-    if (!C.isTikTokUrl(target)) { toast('Не удалось прочитать ссылку TikTok'); return false; }
-    if (state.modalId != null) closeModal();
-    state.tiktokImport = { open: true, url: target, title: '', thumb: '', videoId: '', query: '', loading: true };
-    App.renderTikTokImport();
-    App.syncBodyScroll();
-    const panel = $('#tiktok-import-modal .modal-panel');
-    if (panel) { panel.scrollTop = 0; panel.focus({ preventScroll: true }); }
-    fetchTikTokMeta(target).then(meta => {
-      if (!state.tiktokImport.open || state.tiktokImport.url !== target) return;
-      state.tiktokImport.title = meta.title || '';
-      state.tiktokImport.thumb = meta.thumb || '';
-      state.tiktokImport.videoId = meta.videoId || C.extractTikTokId(target) || '';
-      state.tiktokImport.loading = false;
-      App.renderTikTokImport();
-    });
-    return true;
-  }
 
-  /* PWA share_target: Android делится ссылкой на TikTok прямо в приложение. */
-  function consumeSharedLink() {
-    if (typeof location === 'undefined') return false;
-    let params = null;
-    try { params = new URLSearchParams(location.search); } catch { return false; }
-    const text = [params.get('text'), params.get('url'), params.get('title')]
-      .filter(Boolean)
-      .join(' ');
-    if (!text || !/tiktok\.com/i.test(text)) return false;
-    try {
-      history.replaceState(null, '', location.pathname + location.hash);
-    } catch { /* не критично */ }
-    return receiveSharedTikTok(text);
-  }
 
-  function receiveSharedTikTok(text) {
-    const links = String(text || '').match(/https?:\/\/[^\s<>"']+/gi) || [String(text || '').trim()];
-    const url = links.map(link => link.replace(/[),.;!?\]}]+$/g, '')).find(C.isTikTokUrl);
-    if (!url) { toast('В полученном сообщении нет ссылки TikTok'); return false; }
-    return openTikTokImport(url);
-  }
 
-  function saveSharedTikTok(animeId) {
-    const anime = getAnime(animeId);
-    const imported = state.tiktokImport;
-    if (!anime || !imported || !imported.url) return;
-    const existing = momentsFor(animeId).find(moment => moment.kind === 'tiktok' && moment.url === imported.url);
-    if (existing) {
-      closeTikTokImport();
-      toast(`Это видео уже есть в карточке «${anime.title}»`);
-      return;
-    }
-    addMoment(animeId, {
-      id: C.extractTikTokId(imported.url) || newUid(),
-      kind: 'tiktok',
-      url: imported.url,
-      title: imported.title || anime.title,
-      thumb: imported.thumb,
-      videoId: imported.videoId || C.extractTikTokId(imported.url) || '',
-      createdAt: Date.now(),
-    });
-    closeTikTokImport();
-    openModal(animeId);
-    toast(`Видео TikTok добавлено к «${anime.title}»`);
-  }
 
-  function captureMomentDraft() {
-    const form = $('#moment-form');
-    if (!form) return;
-    const url = form.querySelector('input[name="url"]');
-    const title = form.querySelector('input[name="title"]');
-    if (url) state.momentForm.url = url.value;
-    if (title) state.momentForm.title = title.value;
-  }
 
-  async function saveMomentForm(form) {
-    const f = state.momentForm;
-    if (!f.open || f.busy) return;
-    const animeId = f.animeId;
-    const a = getAnime(animeId);
-    if (!a) return;
-    const data = new FormData(form);
-    const title = String(data.get('title') || '').trim();
 
-    if (f.mode === 'tiktok') {
-      const url = String(data.get('url') || '').trim();
-      if (!C.isTikTokUrl(url)) {
-        f.error = 'Нужна ссылка на TikTok.';
-        renderMomentForm();
-        return;
-      }
-      f.busy = true;
-      f.error = '';
-      renderMomentForm();
-      try {
-        const meta = await fetchTikTokMeta(url);
-        const videoId = meta.videoId || C.extractTikTokId(url);
-        if (!videoId) {
-          throw new Error('Не удалось найти видео в ссылке. Скопируйте полную ссылку на ролик из TikTok.');
-        }
-        addMoment(animeId, {
-          id: newUid(),
-          kind: 'tiktok',
-          title: title || meta.title || '',
-          url,
-          videoId,
-          thumb: meta.thumb || '',
-          createdAt: Date.now(),
-        });
-        closeMomentForm(true);
-        toast('Момент добавлен');
-      } catch (err) {
-        f.busy = false;
-        f.error = err && err.message ? err.message : 'Не удалось добавить момент.';
-        renderMomentForm();
-      }
-      return;
-    }
 
-    const fileInput = form.querySelector('input[name="file"]');
-    const file = fileInput && fileInput.files ? fileInput.files[0] : null;
-    if (!file) {
-      f.error = 'Выберите видео или GIF.';
-      renderMomentForm();
-      return;
-    }
-    const isGif = file.type === 'image/gif' || /\.gif$/i.test(file.name || '');
-    const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|mov|m4v)$/i.test(file.name || '');
-    if (!isGif && !isVideo) {
-      f.error = 'Подойдёт MP4, WebM или GIF.';
-      renderMomentForm();
-      return;
-    }
-    const limit = isGif ? MOMENT_GIF_MAX : MOMENT_VIDEO_MAX;
-    if (file.size > limit) {
-      f.error = `Файл больше ${C.formatBytes(limit)}.`;
-      renderMomentForm();
-      return;
-    }
 
-    f.busy = true;
-    f.error = '';
-    renderMomentForm();
-    try {
-      const mediaKey = newUid();
-      const stored = await mediaPut('media', mediaKey, file);
-      if (!stored) throw new Error('Браузер не смог сохранить файл. Попробуйте файл меньше.');
-      let thumb = '';
-      let thumbKey = '';
-      try { thumb = await makeFileThumbnail(file); } catch { thumb = ''; }
-      if (thumb && isDataImageUrl(thumb)) {
-        thumbKey = momentThumbKey({ id: mediaKey }) || `moment:${mediaKey}:thumb`;
-        try {
-          const thumbBlob = await dataUrlToBlob(thumb);
-          await mediaPut('images', thumbKey, thumbBlob);
-          setLocalImageUrl(thumbKey, thumb);
-        } catch { thumbKey = ''; }
-      }
-      addMoment(animeId, {
-        id: mediaKey,
-        kind: isGif ? 'gif' : 'video',
-        title,
-        mediaKey,
-        thumb,
-        thumbKey,
-        mime: file.type || '',
-        size: file.size,
-        createdAt: Date.now(),
-      });
-      closeMomentForm(true);
-      toast('Момент добавлен');
-    } catch (err) {
-      f.busy = false;
-      f.error = err && err.message ? err.message : 'Не удалось добавить момент.';
-      renderMomentForm();
-    }
-  }
 
-  const momentObjectUrls = new Set();
 
-  function revokeMomentUrls() {
-    for (const url of momentObjectUrls) URL.revokeObjectURL(url);
-    momentObjectUrls.clear();
-  }
-
-  async function playMoment(animeId, momentId, button) {
-    if (!button || button.dataset.loaded === '1') return;
-    const moment = findMoment(animeId, momentId);
-    if (!moment) return;
-
-    if (moment.kind === 'tiktok') {
-      const videoId = moment.videoId || C.extractTikTokId(moment.url);
-      if (!videoId) { toast('Не удалось открыть TikTok'); return; }
-      button.innerHTML = `<iframe class="moment-frame" src="${C.tiktokPlayerUrl(videoId)}" title="TikTok" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
-      button.dataset.loaded = '1';
-      button.classList.add('is-playing');
-      return;
-    }
-
-    const blob = await mediaGet('media', moment.mediaKey);
-    if (!blob) { toast('Файл не найден в этом браузере'); return; }
-    revokeMomentUrls();
-    const url = URL.createObjectURL(blob);
-    momentObjectUrls.add(url);
-    if (moment.kind === 'gif') {
-      button.innerHTML = `<img class="moment-gif" src="${url}" alt="">`;
-    } else {
-      button.innerHTML = `<video class="moment-video" src="${url}" controls autoplay playsinline></video>`;
-    }
-    button.dataset.loaded = '1';
-    button.classList.add('is-playing');
-  }
-
-  function safeFileName(value) {
-    return String(value || 'moment')
-      .replace(/[\\/:*?"<>|]+/g, ' ')
-      .trim()
-      .slice(0, 80) || 'moment';
-  }
-
-  async function shareMoment(animeId, momentId) {
-    const moment = findMoment(animeId, momentId);
-    if (!moment) return;
-    const anime = getAnime(animeId);
-    const title = moment.title || (anime ? anime.title : 'Момент AniTier');
-
-    if (moment.kind === 'tiktok') {
-      if (navigator.share) {
-        try { await navigator.share({ title, url: moment.url }); return; }
-        catch (err) { if (err && err.name === 'AbortError') return; }
-      }
-      try {
-        await navigator.clipboard.writeText(moment.url);
-        toast('Ссылка на TikTok скопирована');
-      } catch {
-        toast('Не удалось поделиться ссылкой');
-      }
-      return;
-    }
-
-    const blob = await mediaGet('media', moment.mediaKey);
-    if (!blob) { toast('Файл не найден в этом браузере'); return; }
-    const ext = moment.kind === 'gif' ? 'gif' : (moment.mime && moment.mime.includes('webm') ? 'webm' : 'mp4');
-    const mime = moment.mime || blob.type || 'application/octet-stream';
-    let file = null;
-    try { file = new File([blob], `${safeFileName(title)}.${ext}`, { type: mime }); } catch { file = null; }
-
-    if (file && navigator.canShare) {
-      try {
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title });
-          return;
-        }
-      } catch (err) {
-        if (err && err.name === 'AbortError') return;
-      }
-    }
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = file ? file.name : `${safeFileName(title)}.${ext}`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    toast('Файл сохранён — отправьте его через мессенджер');
-  }
 
   /* ---------------- PNG тир-листа ---------------- */
   const TIER_IMAGE_GRADIENTS = {
@@ -1402,16 +1067,6 @@
     }
   }
 
-  async function removeMomentAction(animeId, momentId) {
-    const moment = findMoment(animeId, momentId);
-    if (!moment) return;
-    if (!window.confirm('Удалить этот момент?')) return;
-    if (moment.mediaKey) await mediaDelete('media', moment.mediaKey);
-    if (moment.thumbKey) await mediaDelete('images', moment.thumbKey);
-    removeMoment(animeId, momentId);
-    renderModal();
-    toast('Момент удалён');
-  }
 
   /* ---------------- резервные копии и Google Drive ---------------- */
   const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
@@ -2175,45 +1830,7 @@
   }
   window.bindModalSwipe = bindModalSwipe;
 
-  async function refreshStorageInfo() {
-    const screen = state.settingsScreen;
-    if (!screen || !screen.open) return;
-    screen.storageBusy = true;
-    renderSettings();
-    try {
-      let text = 'недоступно';
-      if (navigator.storage && navigator.storage.estimate) {
-        const est = await navigator.storage.estimate();
-        const used = Number(est.usage) || 0;
-        const quota = Number(est.quota) || 0;
-        text = quota ? `${C.formatBytes(used)} из ${C.formatBytes(quota)}` : C.formatBytes(used);
-      }
-      screen.storageText = text;
-    } catch {
-      screen.storageText = 'не удалось определить';
-    } finally {
-      screen.storageBusy = false;
-      if (screen.open) renderSettings();
-    }
-  }
 
-  async function clearAppCache() {
-    const screen = state.settingsScreen;
-    if (!window.confirm('Очистить кэш API и постеров? Списки, прогресс, карточки и моменты останутся.')) return;
-    if (screen) { screen.cacheBusy = true; screen.cacheMessage = ''; screen.cacheError = false; renderSettings(); }
-    try {
-      if (App.clearAniListCache) App.clearAniListCache();
-      if (App.clearPersistentApiCache) await App.clearPersistentApiCache();
-      if (clearPosterStore) await clearPosterStore();
-      if (screen) { screen.cacheMessage = 'Кэш очищен. Данные списков и прогресс сохранены.'; screen.cacheError = false; }
-      toast('Кэш очищен');
-    } catch (err) {
-      if (screen) { screen.cacheMessage = (err && err.message) ? err.message : 'Не удалось очистить кэш.'; screen.cacheError = true; }
-    } finally {
-      if (screen) { screen.cacheBusy = false; if (screen.open) renderSettings(); }
-      refreshStorageInfo();
-    }
-  }
 
   /* Реестр действий: data-action → обработчик. Новое действие — одна строка. */
 
@@ -3804,165 +3421,21 @@
   }
 
   /* ---------------- напоминания на телефоне ---------------- */
-  function releaseBridge() {
-    return typeof window !== 'undefined' ? window.AniTierAndroid : null;
-  }
 
-  function releaseNotificationsEnabled() {
-    const bridge = releaseBridge();
-    if (!bridge || typeof bridge.areReleaseNotificationsEnabled !== 'function') return false;
-    try {
-      return Boolean(bridge.areReleaseNotificationsEnabled());
-    } catch (_) {
-      return false;
-    }
-  }
 
-  function syncReleaseNotifications() {
-    const bridge = releaseBridge();
-    if (!bridge || typeof bridge.scheduleReleaseNotifications !== 'function') return;
-    const items = C.buildReleaseNotificationItems(state.notifications, state.epInfo);
-    try {
-      bridge.scheduleReleaseNotifications(JSON.stringify(items));
-    } catch (err) {
-      console.warn('AniTier: не удалось запланировать напоминания', err);
-    }
-  }
 
-  function toggleReleaseNotifications() {
-    const bridge = releaseBridge();
-    if (!bridge || typeof bridge.setReleaseNotificationsEnabled !== 'function') {
-      toast('Напоминания работают только в приложении для Android');
-      return;
-    }
-    bridge.setReleaseNotificationsEnabled(!releaseNotificationsEnabled());
-    if (state.settingsScreen && state.settingsScreen.open) renderSettings();
-  }
 
   /* Вызывается из MainActivity после ответа на запрос разрешений. */
-  function onReleaseNotificationPermissionResult(enabled) {
-    if (state.tab === 'notifications') renderNotifications();
-    if (state.settingsScreen && state.settingsScreen.open) renderSettings();
-    toast(enabled ? 'Напоминания о сериях включены' : 'Напоминания о сериях выключены');
-    if (enabled) syncReleaseNotifications();
-  }
 
   /* ---------------- проверка обновлений ---------------- */
-  const UPDATE_CHECK_INTERVAL = 12 * 3600000;
 
   /* Карточка «доступно обновление»: в APK ведём сразу на APK, в браузере — на релиз. */
-  function showUpdateAvailable(release) {
-    const bridge = releaseBridge();
-    const apk = Boolean(bridge && typeof bridge.openUrl === 'function');
-    const base = String(C.GITHUB_URL || '').replace(/\/+$/, '');
-    state.updateCard = {
-      mode: 'available',
-      release,
-      apk,
-      url: apk ? `${base}/releases/latest/download/AniTier.apk` : (release.url || base),
-    };
-    renderUpdateCard();
-  }
 
   /* При запуске: спросить разрешение один раз или проверить молча. */
-  async function autoCheckUpdates(options) {
-    const announce = Boolean(options && options.announce);
-    const mode = normalizeUpdateCheck(state.settings.updateCheck);
-    if (mode === 'ask') {
-      state.updateCard = { mode: 'ask' };
-      renderUpdateCard();
-      return;
-    }
-    if (mode !== 'on') return;
 
-    const last = Number(state.settings.lastUpdateCheck) || 0;
-    if (!announce && Date.now() - last < UPDATE_CHECK_INTERVAL) return;
-    state.settings.lastUpdateCheck = Date.now();
-    saveState();
-
-    try {
-      if (typeof App.fetchLatestRelease !== 'function') return;
-      const release = await App.fetchLatestRelease();
-      if (C.compareVersions(release.version, C.APP_VERSION) > 0) showUpdateAvailable(release);
-      else if (announce) toast(`У вас последняя версия ${C.APP_VERSION}.`);
-    } catch (err) {
-      if (announce) toast(err && err.message ? err.message : 'Не удалось проверить обновления');
-      /* нет сети или GitHub недоступен — молча ждём следующего запуска */
-    }
-  }
-
-  async function checkForUpdates() {
-    const screen = state.settingsScreen;
-    if (!screen || screen.checking) return;
-    screen.checking = true;
-    screen.message = '';
-    screen.error = false;
-    screen.latest = null;
-    if (screen.open) renderSettings();
-
-    try {
-      if (typeof App.fetchLatestRelease !== 'function') throw new Error('Проверка обновлений недоступна');
-      const release = await App.fetchLatestRelease();
-      const current = C.APP_VERSION;
-      screen.latest = release;
-      const diff = C.compareVersions(release.version, current);
-      if (diff > 0) {
-        screen.message = `Доступна версия ${release.version}, у вас ${current}.`;
-        showUpdateAvailable(release);
-      } else if (diff < 0) screen.message = `У вас версия ${current}, на GitHub опубликована ${release.version}.`;
-      else screen.message = `У вас последняя версия ${current}.`;
-    } catch (err) {
-      screen.error = true;
-      screen.message = err && err.message ? err.message : 'Не удалось проверить обновления';
-    } finally {
-      screen.checking = false;
-      if (screen.open) renderSettings();
-    }
-  }
 
   /* Ссылки: в APK открываем системным браузером через мост, в браузере — новой вкладкой. */
-  function openExternalLink(url) {
-    if (!/^https?:\/\//i.test(String(url || ''))) return;
-    const bridge = releaseBridge();
-    if (bridge && typeof bridge.openUrl === 'function') {
-      try {
-        bridge.openUrl(url);
-        return;
-      } catch (_) { /* падаем в обычное окно */ }
-    }
-    if (typeof window !== 'undefined' && typeof window.open === 'function') {
-      window.open(url, '_blank', 'noopener');
-    }
-  }
 
-  function applySettingsChange(kind, value) {
-    if (kind === 'searchLang') {
-      state.settings.searchLang = C.normalizeSearchLang(value);
-      syncLangUI();
-    } else if (kind === 'titleLang') {
-      state.settings.titleLang = value === 'original' ? 'original' : 'ru';
-      if (typeof App.refreshViews === 'function') App.refreshViews();
-    } else if (kind === 'synopsisLang') {
-      state.settings.synopsisLang = value === 'original' ? 'original' : 'translated';
-      if (state.modalId != null) renderModal();
-    } else if (kind === 'theme') {
-      state.settings.theme = value === 'amoled' ? 'amoled' : 'dark';
-      if (typeof App.applyAppearance === 'function') App.applyAppearance();
-    } else if (kind === 'density') {
-      state.settings.density = value === 'compact' ? 'compact' : 'comfortable';
-      if (typeof App.applyAppearance === 'function') App.applyAppearance();
-      if (typeof App.refreshViews === 'function') App.refreshViews();
-    } else if (kind === 'fontSize') {
-      state.settings.fontSize = ['small', 'large'].includes(value) ? value : 'normal';
-      if (typeof App.applyAppearance === 'function') App.applyAppearance();
-    } else if (kind === 'translationProvider') {
-      state.settings.translationProvider = ['mymemory', 'google'].includes(value) ? value : 'auto';
-    } else {
-      return;
-    }
-    saveState();
-    if (state.settingsScreen && state.settingsScreen.open) renderSettings();
-  }
 
   /* Системная кнопка «назад» в Android: сначала закрываем слои интерфейса. */
   function handleAndroidBack() {
@@ -4024,18 +3497,18 @@
     saveCustomForm,
     removeCustomCard,
     hydrateCustomImage,
-    saveMomentForm,
-    receiveSharedTikTok,
-    openTikTokSearch,
-    playMoment,
-    shareMoment,
-    removeMomentAction,
+
+
+
+
+
+
     openCustomForm,
     closeCustomForm,
     openMomentForm,
     closeMomentForm,
-    captureMomentDraft,
-    revokeMomentUrls,
+
+
     openBackup,
     closeBackup,
     saveBackupFile,
@@ -4054,16 +3527,16 @@
     buildBackupPayload,
     applyBackupData,
     handleAndroidBack,
-    onReleaseNotificationPermissionResult,
-    syncReleaseNotifications,
-    toggleReleaseNotifications,
-    releaseNotificationsEnabled,
-    checkForUpdates,
-    autoCheckUpdates,
-    showUpdateAvailable,
+
+
+
+
+
+
+
     renderUpdateCard,
-    refreshStorageInfo,
-    clearAppCache,
+
+
     openSettings,
     closeSettings,
     openStats,
@@ -4076,7 +3549,7 @@
     openCommandResult,
     renderSettings,
     scrollPageBy,
-    openExternalLink,
+
     renderSearchHistory,
     translateModalSynopsis,
     init,

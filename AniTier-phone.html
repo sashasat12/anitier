@@ -13061,48 +13061,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
 </script>
 <script>
 /* ============================================================
-   AniTier — рендер карточек (выделено из app-render.js)
-   ============================================================ */
-(function (App) {
-  'use strict';
-  const C = window.AniTierCore;
-})(window.AniTier);
-
-</script>
-<script>
-/* ============================================================
-   AniTier — рендер списков (выделено из app-render.js)
-   ============================================================ */
-(function (App) {
-  'use strict';
-  const C = window.AniTierCore;
-})(window.AniTier);
-
-</script>
-<script>
-/* ============================================================
-   AniTier — рендер экранов (выделено из app-render.js)
-   ============================================================ */
-(function (App) {
-  'use strict';
-  const C = window.AniTierCore;
-})(window.AniTier);
-
-</script>
-<script>
-/* ============================================================
-   AniTier — рендер модалок (выделено из app-render.js)
-   ============================================================ */
-(function (App) {
-  'use strict';
-  const C = window.AniTierCore;
-})(window.AniTier);
-
-</script>
-<script>
-/* ============================================================
-   AniTier — отрисовка интерфейса
-   Загружается после app-store.js и app-api.js, до app.js.
+   AniTier — карточки и общие куски рендера (выделено из app-render.js)
    ============================================================ */
 (function (App) {
   'use strict';
@@ -13156,32 +13115,9 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     setWatchedUpTo,
     clearProgress,
   } = App;
-
-  /* Контроллер загружается после отрисовки: вызовы идут во время работы. */
-  const fetchDB = (...args) => App.fetchDB(...args);
-  const fetchNotifications = (...args) => App.fetchNotifications(...args);
-  const fetchUpcoming = (...args) => App.fetchUpcoming(...args);
-
-  /** Название для интерфейса: русское по умолчанию, оригинальное — по настройке. */
-  function displayTitle(a) {
-    if (!a) return '';
-    if (state.settings && state.settings.titleLang === 'original') {
-      return a.originalTitle || a.altTitle || a.titleRu || a.title || '';
-    }
-    return a.titleRu || a.title || a.originalTitle || '';
-  }
-
-  /** Тема, плотность и размер шрифта: классы на <html>, стили — в styles.css. */
-  function applyAppearance() {
-    const root = document.documentElement;
-    const theme = state.settings.theme === 'amoled' ? 'amoled' : 'dark';
-    const density = state.settings.density === 'compact' ? 'compact' : 'comfortable';
-    const font = ['small', 'large'].includes(state.settings.fontSize) ? state.settings.fontSize : 'normal';
-    root.dataset.theme = theme;
-    root.dataset.density = density;
-    root.dataset.font = font;
-  }
-
+  /* Перекрёстные вызовы */
+  const displayTitle = (...a) => App.displayTitle(...a);
+  /* ---------------- карточки и общие куски ---------------- */
   function imgAttrs(a, alt) {
     const image = String(a.image || '');
     const src = image || makePoster(a.title, a.id);
@@ -13252,89 +13188,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     </div>`;
   }
 
-  /* ---------------- фильтры и отрисовка базы ---------------- */
-  const FILTER_MENU_KEYS = ['type', 'status', 'year', 'genre', 'tags'];
-
-  function filterFieldOptions(key) {
-    if (key === 'type') return C.TYPES.map(item => ({ value: item.value, label: item.label }));
-    if (key === 'status') return C.STATUSES.map(item => ({ value: item.value, label: item.label }));
-    if (key === 'year') {
-      const maxYear = new Date().getFullYear() + 1;
-      const years = [];
-      for (let year = maxYear; year >= 1990; year -= 1) {
-        years.push({ value: String(year), label: String(year) });
-      }
-      return years;
-    }
-    if (key === 'genre') return C.GENRES.map(genre => ({ value: String(genre.id), label: genre.label }));
-    if (key === 'tags') {
-      return C.TAGS.map(tag => ({
-        value: tag.name,
-        label: tag.ru && tag.ru !== tag.name ? tag.ru : tag.name,
-        category: tag.category || '',
-      }));
-    }
-    return [];
-  }
-
-  function renderFilterMenu(key) {
-    const panel = document.querySelector(`[data-filter-panel="${key}"]`);
-    if (!panel || panel.childElementCount) return;
-
-    if (key === 'tags') {
-      const groups = new Map();
-      for (const option of filterFieldOptions('tags')) {
-        const category = C.tagCategoryLabel(option.category);
-        if (!groups.has(category)) groups.set(category, []);
-        groups.get(category).push(option);
-      }
-      const sections = [...groups.entries()].map(([category, options]) => (
-        `<div class="filter-menu-group">${esc(category)}</div>${
-          options.map(option => (
-            `<label class="filter-option" data-search="${esc((option.value + ' ' + option.label).toLowerCase())}"><input type="checkbox" data-filter="tags" value="${esc(option.value)}"><span>${esc(option.label)}</span></label>`
-          )).join('')
-        }`
-      )).join('');
-      panel.innerHTML = `<div class="filter-menu-search"><input type="search" placeholder="Найти тег" aria-label="Поиск тега" autocomplete="off"></div><div class="filter-menu-scroll">${sections}</div><div class="filter-menu-footer"><button type="button" class="btn btn-ghost btn-small" data-action="clear-tag-filter">Сбросить теги</button></div>`;
-      return;
-    }
-
-    panel.innerHTML = filterFieldOptions(key).map(option => (
-      `<label class="filter-option"><input type="checkbox" data-filter="${key}" value="${esc(option.value)}"><span>${esc(option.label)}</span></label>`
-    )).join('');
-  }
-
-  function initFilterOptions() {
-    FILTER_MENU_KEYS.forEach(renderFilterMenu);
-  }
-
-  function closeFilterMenus() {
-    $$('#db-filters [data-filter-panel]').forEach(panel => { panel.hidden = true; });
-    $$('#db-filters [data-filter-menu]').forEach(button => button.setAttribute('aria-expanded', 'false'));
-  }
-
-  /* Меню «⋯» на вкладке «База»: язык поиска, своя карточка, случайное. */
-  function closeDBMoreMenu() {
-    const menu = $('#db-more-menu');
-    if (!menu || menu.hidden) return;
-    menu.hidden = true;
-    const btn = menu.parentElement ? menu.parentElement.querySelector('.db-more-btn') : null;
-    if (btn) btn.setAttribute('aria-expanded', 'false');
-  }
-
-  function toggleDBMoreMenu() {
-    const menu = $('#db-more-menu');
-    if (!menu) return;
-    const willOpen = menu.hidden;
-    closeDBMoreMenu();
-    if (willOpen) {
-      menu.hidden = false;
-      const btn = menu.parentElement ? menu.parentElement.querySelector('.db-more-btn') : null;
-      if (btn) btn.setAttribute('aria-expanded', 'true');
-    }
-  }
-
-  /* «Продолжить просмотр» сворачивается кнопкой в шапке блока. */
+  /* Переключатель строки «Продолжить» */
   function syncContinueToggle() {
     const block = $('#continue-block');
     const row = $('#continue-row');
@@ -13346,117 +13200,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     toggle.setAttribute('aria-expanded', state.continueCollapsed ? 'false' : 'true');
   }
 
-  function filterMenuLabel(key, values) {
-    const labels = values.map(value => {
-      const option = filterFieldOptions(key).find(item => item.value === value);
-      return option ? option.label : value;
-    });
-    if (!labels.length) return 'Любой';
-    if (labels.length <= 2) return labels.join(', ');
-    return `${labels.length} выбрано`;
-  }
-
-  function syncFilterUI() {
-    const filters = C.normalizeFilters(state.db.filters);
-
-    for (const key of FILTER_MENU_KEYS) {
-      const values = filters[key];
-      $$(`#db-filters input[type="checkbox"][data-filter="${key}"]`).forEach(box => {
-        box.checked = values.includes(box.value);
-      });
-      const label = document.querySelector(`[data-filter-value="${key}"]`);
-      if (label) {
-        label.textContent = filterMenuLabel(key, values);
-        label.title = filterMenuLabel(key, values);
-      }
-      const button = document.querySelector(`[data-filter-menu="${key}"]`);
-      if (button) button.classList.toggle('has-value', values.length > 0);
-    }
-
-    const score = $('#filter-score');
-    if (score) score.value = filters.minScore || '0';
-    const scoreValue = $('#filter-score-value');
-    if (scoreValue) scoreValue.textContent = filters.minScore ? `от ${filters.minScore}` : 'Любой';
-
-    const count = C.countActiveFilters(filters);
-    const badge = $('#filter-count');
-    if (badge) {
-      badge.textContent = String(count);
-      badge.hidden = count === 0;
-    }
-    const toggle = $('[data-action="toggle-filters"]');
-    if (toggle) toggle.classList.toggle('is-active', count > 0);
-  }
-
-  function syncModeChips() {
-    $$('#db-modes .chip').forEach(chip => chip.classList.toggle('is-active', chip.dataset.mode === state.db.mode));
-  }
-
-  const SEARCH_PLACEHOLDERS = {
-    auto: 'Поиск: «Фрирен», «Jujutsu Kaisen»…',
-    ru: 'Поиск: «Фрирен», «Атака титанов»…',
-    en: 'Search: “Frieren”, “Jujutsu Kaisen”…',
-    ja: '検索: 「葬送のフリーレン」…',
-  };
-
-  function syncLangUI() {
-    const lang = C.normalizeSearchLang(state.settings && state.settings.searchLang);
-    const select = $('#search-lang');
-    if (select) select.value = lang;
-    const input = $('#search-input');
-    if (input) input.placeholder = SEARCH_PLACEHOLDERS[lang] || SEARCH_PLACEHOLDERS.auto;
-  }
-
-  function readFiltersFromUI() {
-    const raw = { type: [], status: [], year: [], genre: [], tags: [], minScore: '' };
-    $$('#db-filters input[type="checkbox"][data-filter]').forEach(field => {
-      if (!field.checked) return;
-      const key = field.dataset.filter;
-      if (Array.isArray(raw[key])) raw[key].push(field.value);
-    });
-    const score = $('#filter-score');
-    if (score) raw.minScore = String(score.value || '0');
-    return C.normalizeFilters(raw);
-  }
-
-  function resetDBFilters() {
-    state.db.filters = C.normalizeFilters(C.DEFAULT_FILTERS);
-    syncFilterUI();
-    closeFilterMenus();
-    if (App.persistCatalogPreferences) App.persistCatalogPreferences();
-  }
-
-  function updateDBStatus() {
-    const el = $('#db-status');
-    if (!el) return;
-    const s = state.db;
-    const resolutionLabels = {
-      dictionary: 'словарь AniTier',
-      anilist: 'название AniList',
-      mymemory: 'перевод MyMemory',
-      raw: 'исходный запрос',
-    };
-    const resolution = s.query && s.resolveVia ? ` · запрос: ${resolutionLabels[s.resolveVia] || 'без преобразования'}` : '';
-    const unavailable = s.alt && s.alt.failedSources && s.alt.failedSources.length
-      ? ` · недоступен: ${s.alt.failedSources.join(', ')}`
-      : '';
-    if (!s.items.length) {
-      el.textContent = s.query && !s.loading
-        ? `Проверено: ${s.sources.length ? s.sources.join(' + ') : 'нет доступных источников'}${resolution}${unavailable}`
-        : '';
-      return;
-    }
-    const page = Math.max(1, s.page - 1);
-    const sources = s.sources.length ? ` · ${s.sources.join(' + ')}` : '';
-    if (s.loading) {
-      el.textContent = `Показано ${s.items.length} · загружаем страницу ${s.page}…${sources}${resolution}${unavailable}`;
-    } else if (s.hasNext) {
-      el.textContent = `Показано ${s.items.length} · страница ${page}${sources}${resolution}${unavailable}`;
-    } else {
-      el.textContent = `Показано ${s.items.length} · все результаты${sources}${resolution}${unavailable}`;
-    }
-  }
-
+  /* ---------------- строка «Продолжить» (рендер-кусок) ---------------- */
   /* ---------------- «Продолжить просмотр» ---------------- */
   const CONTINUE_LIMIT = 6;
 
@@ -13513,107 +13257,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     syncContinueToggle();
   }
 
-  function renderDB() {
-    renderContinue();
-    const s = state.db;
-    const grid = $('#db-grid');
-    const more = $('#db-more');
-    if (!grid) return;
-
-    const busy = Boolean(s.loading || state.booting);
-    grid.setAttribute('aria-busy', busy ? 'true' : 'false');
-
-    if (busy && !s.items.length) {
-      grid.innerHTML = skeletonCards(12);
-      grid.dataset.cardSignature = '';
-      if (more) more.hidden = true;
-      updateDBStatus();
-      return;
-    }
-    if (s.error && !s.items.length) {
-      const status = s.query && s.resolveVia
-        ? ` Поиск: ${s.resolveVia === 'dictionary' ? 'словарь AniTier' : s.resolveVia === 'anilist' ? 'название AniList' : s.resolveVia === 'mymemory' ? 'перевод MyMemory' : 'исходная фраза'}.`
-        : '';
-      grid.innerHTML = msgBlock('⚠️', 'Не удалось загрузить базу', `${s.error}${status}`, 'retry-db');
-      grid.dataset.cardSignature = '';
-      if (more) more.hidden = true;
-      updateDBStatus();
-      return;
-    }
-    if (!s.items.length) {
-      if (s.mode === 'custom' && !s.query && !C.hasActiveFilters(s.filters)) {
-        grid.innerHTML = `<div class="msg">
-          <span class="emoji">✎</span>
-          <h2>Своих карточек пока нет</h2>
-          <p>Добавьте тайтл, которого нет в AniList или Kitsu: название, постер, год и серии.</p>
-          <button class="btn btn-primary" data-action="new-custom">Создать карточку</button>
-        </div>`;
-        grid.dataset.cardSignature = '';
-        if (more) more.hidden = true;
-        updateDBStatus();
-        return;
-      }
-      const hasFilters = C.hasActiveFilters(s.filters);
-      let text = 'Попробуйте обновить данные.';
-      if (s.query) {
-        const resolutionLabels = {
-          dictionary: 'подобрано английское название из словаря AniTier',
-          anilist: 'найден английский вариант названия в AniList',
-          mymemory: 'название переведено через MyMemory',
-          raw: 'запрос передан без преобразования',
-        };
-        const resolution = resolutionLabels[s.resolveVia] || 'запрос передан без преобразования';
-        const tried = s.sources.length ? ` Проверены: ${s.sources.join(' и ')}.` : '';
-        const unavailable = s.alt && s.alt.failedSources && s.alt.failedSources.length
-          ? ` Не ответили: ${s.alt.failedSources.join(' и ')}.`
-          : '';
-        const resolved = s.resolvedQuery && s.resolvedQuery !== s.query
-          ? ` Искали «${s.resolvedQuery}» (${resolution}).`
-          : ` Способ поиска: ${resolution}.`;
-        text = `По запросу «${s.query}» нет результатов.${resolved}${tried}${unavailable} Попробуйте другое название или ослабьте фильтры.`;
-      }
-      else if (hasFilters) text = 'По выбранным фильтрам ничего не нашлось. Попробуйте ослабить условия.';
-      grid.innerHTML = hasFilters || s.query
-        ? msgBlock('🔎', 'Ничего не нашлось', text, 'reset-filters', 'Сбросить фильтры')
-        : msgBlock('🔎', 'Ничего не нашлось', text, 'refresh', 'Обновить');
-      grid.dataset.cardSignature = '';
-      if (more) more.hidden = true;
-      updateDBStatus();
-      return;
-    }
-
-    /* Догрузка страницы не должна пересоздавать уже показанные карточки:
-       иначе при скролле вся сетка мигает и постеры грузятся заново.
-       Смена языка названий — повод перерисовать всё. */
-    const key = s.items.map(a => a.id).join(',');
-    const lang = state.settings.titleLang === 'original' ? 'original' : 'ru';
-    const signature = key + '|' + lang;
-    const previous = grid.dataset.cardSignature || '';
-    const [previousKey, previousLang] = previous.split('|');
-    if (previousLang === lang && previousKey && key.startsWith(previousKey + ',')) {
-      const shown = previousKey.split(',').length;
-      grid.insertAdjacentHTML('beforeend', s.items.slice(shown).map(a => cardHTML(a, 'db')).join(''));
-    } else if (previous !== signature) {
-      grid.innerHTML = s.items.map(a => cardHTML(a, 'db')).join('');
-    }
-    grid.dataset.cardSignature = signature;
-    const sortMode = C.normalizeDBSort(s.sort);
-    if (sortMode === 'default') {
-      grid.querySelectorAll('.card').forEach(card => card.style.removeProperty('order'));
-    } else {
-      const order = new Map(C.sortCatalogItems(s.items, sortMode).map((anime, index) => [anime.id, index]));
-      grid.querySelectorAll('.card').forEach(card => {
-        card.style.order = String(order.get(Number(card.dataset.id)) ?? 0);
-      });
-    }
-    if (more) {
-      more.hidden = !s.hasNext;
-      more.disabled = s.loading;
-      more.textContent = s.loading ? 'Загружаем…' : 'Следующая страница';
-    }
-    updateDBStatus();
-  }
-
+  /* ---------------- прогресс серий (рендер-кусок) ---------------- */
   function releaseLine(a, stats) {
     if (stats.ongoing) {
       if (!stats.info) return 'Считаем вышедшие серии…';
@@ -13792,371 +13436,94 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     return state.epInfo[a.id];
   }
 
-  /* Один вызов saveState на пачку: при открытии уведомлений на 1000 тайтлов
-     раньше на каждую серию собирался весь снапшот состояния. Обновление DOM
-     тоже не по одному: updateEpisodeUI ищет блок по всему документу, и
-     тысяча вызовов превращалась в O(n²). Перерисовываем список один раз. */
-  function ensureNotificationEpisodes() {
-    if (state.tab !== 'notifications') return;
-    const all = allNotifications();
-    let changed = false;
-    for (const a of all) {
-      const info = state.epInfo[a.id];
-      const demoCacheInLiveMode = info && info.source === 'demo' && !state.forceDemo && !a.demo;
-      const fresh = info && Date.now() - Number(info.fetchedAt || 0) < 2 * 3600000;
-      if (fresh && !demoCacheInLiveMode) continue;
-      const code = animeStatusCodeView(a);
-      const needsInfo = code === 'airing' || code === 'hiatus' || !a.episodes;
-      if (needsInfo) {
-        const before = state.epInfo[a.id];
-        ensureEpisodeInfo(a, { save: false, ui: false });
-        if (state.epInfo[a.id] !== before) changed = true;
-      }
-    }
-    if (changed) {
-      saveState();
-      renderNotifications({ skipEnsure: true });
-    }
+  /* ---------------- короткие подписи тиров ---------------- */
+  function tierShort(tier) {
+    return tier === 'N' ? 'Без оц.' : tier;
   }
+  Object.assign(App, {
+    imgAttrs,
+    cardHTML,
+    tierCardHTML,
+    skeletonCards,
+    skeletonRows,
+    msgBlock,
+    continueItems,
+    continueCardHTML,
+    renderContinue,
+    syncContinueToggle,
+    releaseLine,
+    episodeProgressText,
+    chipsHTML,
+    animeStatusCodeView,
+    renderEpisodeBlock,
+    previewEpisodeSlider,
+    updateEpisodeUI,
+    episodeInfoFromAnime,
+    ensureEpisodeInfo,
+    tierShort,
+  });
+})(window.AniTier);
 
-  /* ---------------- отрисовка: уведомления ---------------- */
-  function notifRowHTML(a, kind) {
-    const baseDate = kind === 'airing' ? a.airedFrom : (a.airedTo || a.airedFrom);
-    const d = parseDate(baseDate);
-    const day = d ? d.getDate() : '—';
-    const mon = d ? MONTHS_SHORT[d.getMonth()] : '';
-    const daysAgo = d ? daysBetween(new Date(d.getFullYear(), d.getMonth(), d.getDate()), startOfToday()) : 99;
-    const isNew = daysAgo <= 7;
-    const inW = hasIn('watched', a.id);
-    const inP = hasIn('planned', a.id);
-    const meta = kind === 'airing'
-      ? `<span>Старт: ${esc(dateShort(a.airedFrom))}</span>`
-      : `<span>Завершено ${esc(relativePast(a.airedTo))}</span>`;
+</script>
+<script>
+/* ============================================================
+   AniTier — тир-листы и статистика (выделено из app-render.js)
+   ============================================================ */
+(function (App) {
+  'use strict';
 
-    return `<article class="notif notif-${kind}" data-action="open" data-id="${a.id}" tabindex="0" aria-label="${esc(displayTitle(a))}">
-      <div class="notif-visual"><div class="notif-date"><b>${day}</b><span>${mon}</span></div><img class="notif-poster" ${imgAttrs(a, '')}></div>
-      <div class="notif-body">
-        <h3 class="notif-title">${esc(displayTitle(a))}${isNew ? '<span class="flag-new">new</span>' : ''}</h3>
-        <p class="notif-alt">${esc(a.altTitle || '')}</p>
-        <div class="notif-meta">
-          ${meta}
-          ${a.type ? `<span>· ${esc(typeRu(a.type))}</span>` : ''}
-          <span>· ${a.episodes ? a.episodes + ' эп.' : 'серий: ?'}</span>
-          ${a.score ? `<span>· <b>★ ${a.score.toFixed(1)}</b></span>` : ''}
-        </div>
-      </div>
-      <div class="notif-eps">${renderEpisodeBlock(a, 'notif')}</div>
-      <div class="notif-actions">
-        <button class="mini-btn ${inW ? 'is-on' : ''}" data-action="add-watched" data-id="${a.id}" title="Добавить в просмотрено" aria-label="Добавить в просмотрено">✓</button>
-        <button class="mini-btn ${inP ? 'is-on' : ''}" data-action="add-planned" data-id="${a.id}" title="В планы" aria-label="Добавить в планы">◷</button>
-      </div>
-    </article>`;
-  }
-
-  function renderNotifications(options = {}) {
-    const el = $('#notif-list');
-    if (!el) return;
-    const n = state.notifications;
-    const tracked = n.tracked.episodes.length + n.tracked.seasons.length;
-    const recent = n.recent.episodes.length + n.recent.films.length;
-    const completed = n.completed.length;
-    const totalCount = tracked + recent + completed;
-
-    el.setAttribute('aria-busy', n.loading ? 'true' : 'false');
-    if (n.loading && !totalCount) { el.innerHTML = skeletonRows(5); return; }
-    if (n.error && !totalCount) { el.innerHTML = msgBlock('⚠️', 'Не удалось загрузить уведомления', n.error, 'retry-notifications'); return; }
-    const counts = { tracked, recent, completed };
-    const tabs = C.NOTIF_TABS.map(tab => `<button class="notif-tab ${n.tab === tab ? 'is-active' : ''}" data-action="notif-tab" data-notif-tab="${tab}">${esc(C.NOTIF_TAB_LABELS[tab])}<b>${counts[tab]}</b></button>`).join('');
-    let body = '';
-    if (!totalCount) {
-      body = msgBlock('🌙', 'Новых обновлений пока нет', 'Загляните позже или обновите данные.');
-    } else if (n.tab === 'tracked') {
-      const episodes = n.tracked.episodes.map(group => notifRowHTML(group.anime, 'airing')).join('');
-      const seasons = n.tracked.seasons.map(item => notifRowHTML(item.sequel, 'airing')).join('');
-      body = `${episodes ? `<section class="notif-group"><h2 class="group-head"><span class="group-dot live"></span>Новые серии <b>${n.tracked.episodes.length}</b></h2><div class="notif-list">${episodes}</div></section>` : ''}${seasons ? `<section class="notif-group"><h2 class="group-head"><span class="group-dot live"></span>Продолжения и сезоны <b>${n.tracked.seasons.length}</b></h2><div class="notif-list">${seasons}</div></section>` : ''}${!episodes && !seasons ? '<p class="group-empty">В ваших списках пока нет новых серий или сезонов.</p>' : ''}`;
-    } else if (n.tab === 'recent') {
-      const episodes = n.recent.episodes.map(group => notifRowHTML(group.anime, 'airing')).join('');
-      const films = n.recent.films.map(anime => notifRowHTML(anime, 'completed')).join('');
-      body = `${episodes ? `<section class="notif-group"><h2 class="group-head"><span class="group-dot live"></span>Новые серии <b>${n.recent.episodes.length}</b></h2><div class="notif-list">${episodes}</div></section>` : ''}${films ? `<section class="notif-group"><h2 class="group-head"><span class="group-dot done"></span>Недавно вышедшие фильмы <b>${n.recent.films.length}</b></h2><div class="notif-list">${films}</div></section>` : ''}${!episodes && !films ? '<p class="group-empty">Недавних премьер не найдено.</p>' : ''}`;
-    } else {
-      body = completed
-        ? `<section class="notif-group"><h2 class="group-head"><span class="group-dot done"></span>Недавно завершились <b>${completed}</b></h2><div class="notif-list">${n.completed.map(anime => notifRowHTML(anime, 'completed')).join('')}</div></section>`
-        : '<p class="group-empty">Недавно завершившихся тайтлов не найдено.</p>';
-    }
-    el.innerHTML = `<div class="notif-tabs" role="tablist" aria-label="Группы уведомлений">${tabs}</div>${body}`;
-
-    if (!options.skipEnsure) ensureNotificationEpisodes();
-  }
-
-  function invalidateNotificationEpisodes() {
-    const ids = allNotifications().map(a => a.id);
-    let changed = false;
-    for (const id of ids) {
-      if (state.epInfo[id]) {
-        delete state.epInfo[id];
-        changed = true;
-      }
-    }
-    if (changed) saveState();
-  }
-
-  function allNotifications() {
-    const n = state.notifications;
-    const media = [
-      ...(n.tracked.episodes || []).map(group => group.anime),
-      ...(n.tracked.seasons || []).flatMap(item => [item.anime, item.sequel]),
-      ...(n.recent.episodes || []).map(group => group.anime),
-      ...(n.recent.films || []),
-      ...(n.completed || []),
-    ];
-    return C.dedupeById(media.filter(Boolean));
-  }
-
-  function markNotificationsSeen() {
-    let changed = false;
-    for (const key of C.collectNotificationKeys(state.notifications)) {
-      if (!state.seenNotifications.has(key)) {
-        state.seenNotifications.add(key);
-        changed = true;
-      }
-    }
-    if (changed) saveState();
-    updateBell();
-  }
-
-  function updateBell() {
-    const badge = $('#bell-badge');
-    if (!badge) return;
-    const unread = C.collectNotificationKeys(state.notifications).filter(key => !state.seenNotifications.has(key)).length;
-    badge.hidden = unread === 0;
-    badge.textContent = unread > 9 ? '9+' : String(unread);
-  }
-
-  /* ---------------- отрисовка: скоро выйдут ---------------- */
-  function upcomingListed() {
-    return [...allIn('watched'), ...allIn('planned')];
-  }
-
-  function initUpcomingOptions() {
-    const type = $('#upcoming-type');
-    if (type && type.options.length <= 1) {
-      for (const item of C.TYPES) type.appendChild(new Option(item.label, item.value));
-    }
-    const genre = $('#upcoming-genre');
-    if (genre && genre.options.length <= 1) {
-      for (const item of C.GENRES) genre.appendChild(new Option(item.label, String(item.id)));
-    }
-  }
-
-  function upcomingMonthLabel(key) {
-    return monthLabel(`${key}-01T12:00:00`);
-  }
-
-  /* Список месяцев берём из самих премьер, поэтому пустых вариантов нет. */
-  function syncUpcomingControls(items) {
-    const view = state.upcoming.view;
-    const search = $('#upcoming-search');
-    if (search && search.value !== view.query) search.value = view.query;
-    const type = $('#upcoming-type');
-    if (type) type.value = view.filters.type || '';
-    const genre = $('#upcoming-genre');
-    if (genre) genre.value = view.filters.genre || '';
-    const sort = $('#upcoming-sort');
-    if (sort) sort.value = view.sort === 'title' ? 'title' : 'date';
-    const mine = $('#upcoming-mine');
-    if (mine) {
-      const on = Boolean(view.mine);
-      mine.classList.toggle('btn-primary', on);
-      mine.classList.toggle('btn-ghost', !on);
-      mine.setAttribute('aria-pressed', on ? 'true' : 'false');
-    }
-
-    /* Счётчик на кнопке фильтров и активное состояние. */
-    const activeCount = C.countActiveFilters(view.filters) + (view.month ? 1 : 0);
-    const badge = $('#upcoming-filter-count');
-    if (badge) {
-      badge.textContent = String(activeCount);
-      badge.hidden = activeCount === 0;
-    }
-    const toggle = document.querySelector('[data-action="toggle-upcoming-filters"]');
-    if (toggle) toggle.classList.toggle('is-active', activeCount > 0);
-
-    const month = $('#upcoming-month');
-    if (!month) return;
-    const keys = [...new Set(items.map(a => C.upcomingMonthKey(a.airedFrom)).filter(Boolean))].sort();
-    const current = [...month.options].slice(1).map(option => option.value);
-    const changed = current.length !== keys.length || current.some((value, index) => value !== keys[index]);
-    if (changed) {
-      month.innerHTML = '<option value="">Все месяцы</option>'
-        + keys.map(key => `<option value="${key}">${esc(upcomingMonthLabel(key))}</option>`).join('');
-    }
-    if (!keys.includes(view.month)) view.month = '';
-    month.value = view.month;
-  }
-
-  function updateUpcomingStatus(all, shown) {
-    const el = $('#upcoming-status');
-    if (!el) return;
-    if (!all.length) { el.textContent = ''; return; }
-    const hidden = Math.max(0, state.upcoming.items.length - all.length);
-    const bits = [`Показано ${shown.length} из ${all.length}`];
-    if (hidden) bits.push(`скрыто из ваших списков: ${hidden}`);
-    const view = state.upcoming.view;
-    const active = C.countActiveFilters(view.filters) + (view.month ? 1 : 0) + (view.query.trim() ? 1 : 0);
-    if (active) bits.push(`фильтров: ${active}`);
-    el.textContent = bits.join(' · ');
-  }
-
-  function syncUpcomingMineUI(active) {
-    const toggle = document.querySelector('[data-action="toggle-upcoming-filters"]');
-    const panel = $('#upcoming-filters');
-    const count = $('#upcoming-filter-count');
-    if (toggle) {
-      toggle.hidden = Boolean(active);
-      if (active) {
-        toggle.setAttribute('aria-expanded', 'false');
-        toggle.classList.remove('is-active');
-      }
-    }
-    if (panel && active) panel.hidden = true;
-    if (count && active) count.hidden = true;
-    const reset = document.querySelector('#upcoming-more-menu [data-action="reset-upcoming"]');
-    if (reset) reset.textContent = active ? 'Сбросить поиск' : 'Сбросить фильтры';
-  }
-
-  function renderMyCalendar() {
-    const grid = $('#upcoming-grid');
-    if (!grid) return;
-    const u = state.upcoming;
-    syncUpcomingMineUI(true);
-
-    const busy = Boolean(state.notifications.loading && !state.notifications.loaded);
-    grid.setAttribute('aria-busy', busy ? 'true' : 'false');
-    if (busy) {
-      grid.innerHTML = skeletonRows(6);
-      const loadingStatus = $('#upcoming-status');
-      if (loadingStatus) loadingStatus.textContent = 'Собираем ваши серии…';
-      return;
-    }
-
-    const all = C.buildCalendarItems(state.notifications, state.epInfo);
-    const query = C.normalizeTitleKey(u.view.query);
-    const shown = query ? all.filter(item => C.normalizeTitleKey(item.title).includes(query)) : all;
-    const status = $('#upcoming-status');
-    if (status) status.textContent = all.length ? `Мои серии: ${shown.length} из ${all.length} · доступен поиск` : '';
-
-    const statusEl = $('#upcoming-status');
-    if (statusEl) statusEl.textContent = all.length ? `Мои серии: ${shown.length} из ${all.length} · доступен поиск` : '';
-
-    if (!all.length) {
-      grid.innerHTML = msgBlock('📅', 'Ближайших серий нет', 'Добавьте тайтлы в «Просмотрено» или «Запланировано» и обновите события.');
-      return;
-    }
-    if (!shown.length) {
-      grid.innerHTML = `<div class="msg">
-        <span class="emoji">🔍</span>
-        <h2>Под запрос ничего не подошло</h2>
-        <p>Измените поиск по названию.</p>
-        <button class="btn btn-ghost" data-action="reset-upcoming">Сбросить поиск</button>
-      </div>`;
-      return;
-    }
-
-    let html = '';
-    let day = '';
-    for (const item of shown) {
-      const label = dateShort(item.date);
-      if (label !== day) {
-        day = label;
-        html += `<h2 class="month-head">${esc(label)}</h2>`;
-      }
-      html += `<article class="calendar-row" data-action="open" data-id="${item.id}" tabindex="0" aria-label="Открыть: ${esc(displayTitle(item))}">
-        <span class="calendar-date"><b>${esc(label)}</b><small>${esc(countdownLabel(item.date))}</small></span>
-        <span class="calendar-main"><b>${esc(displayTitle(item))}</b><small>Серия ${item.n}</small></span>
-        <span class="calendar-arrow" aria-hidden="true">›</span>
-      </article>`;
-    }
-    grid.innerHTML = html;
-  }
-
-  function renderUpcoming() {
-    const grid = $('#upcoming-grid');
-    if (!grid) return;
-    const u = state.upcoming;
-    if (!u.view) {
-      u.view = { query: '', filters: { type: '', genre: '', year: '', minScore: '', status: '' }, month: '', sort: 'date', mine: false };
-    }
-    initUpcomingOptions();
-    const mineBtn = $('#upcoming-mine');
-    if (mineBtn) {
-      const on = Boolean(u.view.mine);
-      mineBtn.classList.toggle('btn-primary', on);
-      mineBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
-    }
-
-    if (u.view.mine) {
-      renderMyCalendar();
-      return;
-    }
-    syncUpcomingMineUI(false);
-
-    grid.setAttribute('aria-busy', u.loading ? 'true' : 'false');
-    if (u.loading && !u.items.length) {
-      grid.innerHTML = skeletonCards(10);
-      syncUpcomingControls([]);
-      return;
-    }
-    if (u.error && !u.items.length) {
-      grid.innerHTML = msgBlock('⚠️', 'Не удалось загрузить премьеры', u.error, 'retry-upcoming');
-      return;
-    }
-    if (!u.items.length) {
-      grid.innerHTML = msgBlock('🌌', 'Ближайших премьер не нашлось', 'Попробуйте обновить данные позже.');
-      syncUpcomingControls([]);
-      updateUpcomingStatus([], []);
-      return;
-    }
-
-    /* Своё «Просмотрено» и «Запланировано» в премьерах не показываем:
-       тайтл уже разобран, второй раз он только мешает. */
-    const all = C.excludeListed(u.items, upcomingListed());
-    const shown = C.filterUpcoming(all, u.view);
-    syncUpcomingControls(all);
-    updateUpcomingStatus(all, shown);
-
-    if (!all.length) {
-      grid.innerHTML = `<div class="msg">
-        <span class="emoji">✅</span>
-        <h2>Все премьеры уже в ваших списках</h2>
-        <p>Тайтлы из «Просмотрено» и «Запланировано» здесь не повторяются.</p>
-      </div>`;
-      return;
-    }
-
-    if (!shown.length) {
-      grid.innerHTML = `<div class="msg">
-        <span class="emoji">🔍</span>
-        <h2>Под фильтры ничего не подошло</h2>
-        <p>Измените запрос, месяц или жанр — или сбросьте фильтры.</p>
-        <button class="btn btn-ghost" data-action="reset-upcoming">Сбросить фильтры</button>
-      </div>`;
-      return;
-    }
-
-    let html = '';
-    let currentMonth = '';
-    for (const a of shown) {
-      const month = monthLabel(a.airedFrom);
-      if (month !== currentMonth) {
-        currentMonth = month;
-        html += `<h2 class="month-head">${esc(month)}</h2>`;
-      }
-      html += cardHTML(a, 'upcoming');
-    }
-    grid.innerHTML = html;
-  }
-
-  /* ---------------- тир-листы ---------------- */
+  const C = window.AniTierCore;
+  const {
+    state,
+    TIERS,
+    TIER_IDS,
+    LIST_LABELS,
+    EXCHANGE_FILTERS,
+    TYPE_RU,
+    typeRu,
+    normalizeUpdateCheck,
+    MONTHS_SHORT,
+    MONTHS_FULL,
+    VIEW_TABS,
+    LONG_TITLE_EPS,
+    $,
+    $$,
+    esc,
+    escXml,
+    plural,
+    epWord,
+    startOfToday,
+    endOfToday,
+    startOfTomorrow,
+    addDays,
+    daysBetween,
+    parseDate,
+    fuzzyDateInt,
+    monthLabel,
+    dateShort,
+    countdownLabel,
+    relativePast,
+    makePoster,
+    hasIn,
+    findTier,
+    getAnime,
+    pruneAnimeCache,
+    allIn,
+    addToList,
+    removeFromList,
+    moveToTier,
+    saveState,
+    momentsFor,
+    watchedSet,
+    watchedCount,
+    episodeStats,
+    toggleEpisode,
+    setWatchedUpTo,
+    clearProgress,
+  } = App;
+  /* Перекрёстные вызовы */
+  const tierCardHTML = (...a) => App.tierCardHTML(...a);
+  /* ---------------- тировые списки ---------------- */
   function listView(name) {
     if (!state.listViews) state.listViews = {};
     let view = state.listViews[name];
@@ -14385,7 +13752,777 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     const avg = scored.length ? (scored.reduce((s, a) => s + a.score, 0) / scored.length).toFixed(2) : '—';
     el.innerHTML = `<span class="list-summary-pill is-total">Показано<b>${items.length}</b></span>${tierPills}<span class="list-summary-pill">Средний балл<b>${avg}</b></span>`;
   }
+  Object.assign(App, {
+    listView,
+    listToolsHTML,
+    syncListControls,
+    updateListStatus,
+    listVisibleItems,
+    renderTierList,
+    layoutTierCards,
+    renderStats,
+  });
+})(window.AniTier);
 
+</script>
+<script>
+/* ============================================================
+   AniTier — экраны: каталог, уведомления, календарь, навигация (выделено из app-render.js)
+   ============================================================ */
+(function (App) {
+  'use strict';
+
+  const C = window.AniTierCore;
+  const {
+    state,
+    TIERS,
+    TIER_IDS,
+    LIST_LABELS,
+    EXCHANGE_FILTERS,
+    TYPE_RU,
+    typeRu,
+    normalizeUpdateCheck,
+    MONTHS_SHORT,
+    MONTHS_FULL,
+    VIEW_TABS,
+    LONG_TITLE_EPS,
+    $,
+    $$,
+    esc,
+    escXml,
+    plural,
+    epWord,
+    startOfToday,
+    endOfToday,
+    startOfTomorrow,
+    addDays,
+    daysBetween,
+    parseDate,
+    fuzzyDateInt,
+    monthLabel,
+    dateShort,
+    countdownLabel,
+    relativePast,
+    makePoster,
+    hasIn,
+    findTier,
+    getAnime,
+    pruneAnimeCache,
+    allIn,
+    addToList,
+    removeFromList,
+    moveToTier,
+    saveState,
+    momentsFor,
+    watchedSet,
+    watchedCount,
+    episodeStats,
+    toggleEpisode,
+    setWatchedUpTo,
+    clearProgress,
+  } = App;
+  /* Перекрёстные вызовы и контроллеры (ленивые) */
+  const renderContinue = (...a) => App.renderContinue(...a);
+  const cardHTML = (...a) => App.cardHTML(...a);
+  const skeletonCards = (...a) => App.skeletonCards(...a);
+  const skeletonRows = (...a) => App.skeletonRows(...a);
+  const msgBlock = (...a) => App.msgBlock(...a);
+  const imgAttrs = (...a) => App.imgAttrs(...a);
+  const renderEpisodeBlock = (...a) => App.renderEpisodeBlock(...a);
+  const ensureEpisodeInfo = (...a) => App.ensureEpisodeInfo(...a);
+  const animeStatusCodeView = (...a) => App.animeStatusCodeView(...a);
+  const renderTierList = (...a) => App.renderTierList(...a);
+  const openModal = (...a) => App.openModal(...a);
+  const closeModal = (...a) => App.closeModal(...a);
+  const renderModal = (...a) => App.renderModal(...a);
+  const renderStatsScreen = (...a) => App.renderStatsScreen(...a);
+  const renderCommandResults = (...a) => App.renderCommandResults(...a);
+  const syncContinueToggle = (...a) => App.syncContinueToggle && App.syncContinueToggle(...a);
+  const fetchDB = (...a) => App.fetchDB(...a);
+  const fetchNotifications = (...a) => App.fetchNotifications(...a);
+  const fetchUpcoming = (...a) => App.fetchUpcoming(...a);
+  /* ---------------- внешний вид и названия ---------------- */
+  function displayTitle(a) {
+    if (!a) return '';
+    if (state.settings && state.settings.titleLang === 'original') {
+      return a.originalTitle || a.altTitle || a.titleRu || a.title || '';
+    }
+    return a.titleRu || a.title || a.originalTitle || '';
+  }
+
+  /** Тема, плотность и размер шрифта: классы на <html>, стили — в styles.css. */
+  function applyAppearance() {
+    const root = document.documentElement;
+    const theme = state.settings.theme === 'amoled' ? 'amoled' : 'dark';
+    const density = state.settings.density === 'compact' ? 'compact' : 'comfortable';
+    const font = ['small', 'large'].includes(state.settings.fontSize) ? state.settings.fontSize : 'normal';
+    root.dataset.theme = theme;
+    root.dataset.density = density;
+    root.dataset.font = font;
+  }
+
+  /* ---------------- фильтры каталога ---------------- */
+  /* ---------------- фильтры и отрисовка базы ---------------- */
+  const FILTER_MENU_KEYS = ['type', 'status', 'year', 'genre', 'tags'];
+
+  function filterFieldOptions(key) {
+    if (key === 'type') return C.TYPES.map(item => ({ value: item.value, label: item.label }));
+    if (key === 'status') return C.STATUSES.map(item => ({ value: item.value, label: item.label }));
+    if (key === 'year') {
+      const maxYear = new Date().getFullYear() + 1;
+      const years = [];
+      for (let year = maxYear; year >= 1990; year -= 1) {
+        years.push({ value: String(year), label: String(year) });
+      }
+      return years;
+    }
+    if (key === 'genre') return C.GENRES.map(genre => ({ value: String(genre.id), label: genre.label }));
+    if (key === 'tags') {
+      return C.TAGS.map(tag => ({
+        value: tag.name,
+        label: tag.ru && tag.ru !== tag.name ? tag.ru : tag.name,
+        category: tag.category || '',
+      }));
+    }
+    return [];
+  }
+
+  function renderFilterMenu(key) {
+    const panel = document.querySelector(`[data-filter-panel="${key}"]`);
+    if (!panel || panel.childElementCount) return;
+
+    if (key === 'tags') {
+      const groups = new Map();
+      for (const option of filterFieldOptions('tags')) {
+        const category = C.tagCategoryLabel(option.category);
+        if (!groups.has(category)) groups.set(category, []);
+        groups.get(category).push(option);
+      }
+      const sections = [...groups.entries()].map(([category, options]) => (
+        `<div class="filter-menu-group">${esc(category)}</div>${
+          options.map(option => (
+            `<label class="filter-option" data-search="${esc((option.value + ' ' + option.label).toLowerCase())}"><input type="checkbox" data-filter="tags" value="${esc(option.value)}"><span>${esc(option.label)}</span></label>`
+          )).join('')
+        }`
+      )).join('');
+      panel.innerHTML = `<div class="filter-menu-search"><input type="search" placeholder="Найти тег" aria-label="Поиск тега" autocomplete="off"></div><div class="filter-menu-scroll">${sections}</div><div class="filter-menu-footer"><button type="button" class="btn btn-ghost btn-small" data-action="clear-tag-filter">Сбросить теги</button></div>`;
+      return;
+    }
+
+    panel.innerHTML = filterFieldOptions(key).map(option => (
+      `<label class="filter-option"><input type="checkbox" data-filter="${key}" value="${esc(option.value)}"><span>${esc(option.label)}</span></label>`
+    )).join('');
+  }
+
+  function initFilterOptions() {
+    FILTER_MENU_KEYS.forEach(renderFilterMenu);
+  }
+
+  function closeFilterMenus() {
+    $$('#db-filters [data-filter-panel]').forEach(panel => { panel.hidden = true; });
+    $$('#db-filters [data-filter-menu]').forEach(button => button.setAttribute('aria-expanded', 'false'));
+  }
+
+  /* Меню «⋯» на вкладке «База»: язык поиска, своя карточка, случайное. */
+  function closeDBMoreMenu() {
+    const menu = $('#db-more-menu');
+    if (!menu || menu.hidden) return;
+    menu.hidden = true;
+    const btn = menu.parentElement ? menu.parentElement.querySelector('.db-more-btn') : null;
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  }
+
+  function toggleDBMoreMenu() {
+    const menu = $('#db-more-menu');
+    if (!menu) return;
+    const willOpen = menu.hidden;
+    closeDBMoreMenu();
+    if (willOpen) {
+      menu.hidden = false;
+      const btn = menu.parentElement ? menu.parentElement.querySelector('.db-more-btn') : null;
+      if (btn) btn.setAttribute('aria-expanded', 'true');
+    }
+  }
+
+  function filterMenuLabel(key, values) {
+    const labels = values.map(value => {
+      const option = filterFieldOptions(key).find(item => item.value === value);
+      return option ? option.label : value;
+    });
+    if (!labels.length) return 'Любой';
+    if (labels.length <= 2) return labels.join(', ');
+    return `${labels.length} выбрано`;
+  }
+
+  function syncFilterUI() {
+    const filters = C.normalizeFilters(state.db.filters);
+
+    for (const key of FILTER_MENU_KEYS) {
+      const values = filters[key];
+      $$(`#db-filters input[type="checkbox"][data-filter="${key}"]`).forEach(box => {
+        box.checked = values.includes(box.value);
+      });
+      const label = document.querySelector(`[data-filter-value="${key}"]`);
+      if (label) {
+        label.textContent = filterMenuLabel(key, values);
+        label.title = filterMenuLabel(key, values);
+      }
+      const button = document.querySelector(`[data-filter-menu="${key}"]`);
+      if (button) button.classList.toggle('has-value', values.length > 0);
+    }
+
+    const score = $('#filter-score');
+    if (score) score.value = filters.minScore || '0';
+    const scoreValue = $('#filter-score-value');
+    if (scoreValue) scoreValue.textContent = filters.minScore ? `от ${filters.minScore}` : 'Любой';
+
+    const count = C.countActiveFilters(filters);
+    const badge = $('#filter-count');
+    if (badge) {
+      badge.textContent = String(count);
+      badge.hidden = count === 0;
+    }
+    const toggle = $('[data-action="toggle-filters"]');
+    if (toggle) toggle.classList.toggle('is-active', count > 0);
+  }
+
+  function syncModeChips() {
+    $$('#db-modes .chip').forEach(chip => chip.classList.toggle('is-active', chip.dataset.mode === state.db.mode));
+  }
+
+  const SEARCH_PLACEHOLDERS = {
+    auto: 'Поиск: «Фрирен», «Jujutsu Kaisen»…',
+    ru: 'Поиск: «Фрирен», «Атака титанов»…',
+    en: 'Search: “Frieren”, “Jujutsu Kaisen”…',
+    ja: '検索: 「葬送のフリーレン」…',
+  };
+
+  function syncLangUI() {
+    const lang = C.normalizeSearchLang(state.settings && state.settings.searchLang);
+    const select = $('#search-lang');
+    if (select) select.value = lang;
+    const input = $('#search-input');
+    if (input) input.placeholder = SEARCH_PLACEHOLDERS[lang] || SEARCH_PLACEHOLDERS.auto;
+  }
+
+  function readFiltersFromUI() {
+    const raw = { type: [], status: [], year: [], genre: [], tags: [], minScore: '' };
+    $$('#db-filters input[type="checkbox"][data-filter]').forEach(field => {
+      if (!field.checked) return;
+      const key = field.dataset.filter;
+      if (Array.isArray(raw[key])) raw[key].push(field.value);
+    });
+    const score = $('#filter-score');
+    if (score) raw.minScore = String(score.value || '0');
+    return C.normalizeFilters(raw);
+  }
+
+  function resetDBFilters() {
+    state.db.filters = C.normalizeFilters(C.DEFAULT_FILTERS);
+    syncFilterUI();
+    closeFilterMenus();
+    if (App.persistCatalogPreferences) App.persistCatalogPreferences();
+  }
+
+  function updateDBStatus() {
+    const el = $('#db-status');
+    if (!el) return;
+    const s = state.db;
+    const resolutionLabels = {
+      dictionary: 'словарь AniTier',
+      anilist: 'название AniList',
+      mymemory: 'перевод MyMemory',
+      raw: 'исходный запрос',
+    };
+    const resolution = s.query && s.resolveVia ? ` · запрос: ${resolutionLabels[s.resolveVia] || 'без преобразования'}` : '';
+    const unavailable = s.alt && s.alt.failedSources && s.alt.failedSources.length
+      ? ` · недоступен: ${s.alt.failedSources.join(', ')}`
+      : '';
+    if (!s.items.length) {
+      el.textContent = s.query && !s.loading
+        ? `Проверено: ${s.sources.length ? s.sources.join(' + ') : 'нет доступных источников'}${resolution}${unavailable}`
+        : '';
+      return;
+    }
+    const page = Math.max(1, s.page - 1);
+    const sources = s.sources.length ? ` · ${s.sources.join(' + ')}` : '';
+    if (s.loading) {
+      el.textContent = `Показано ${s.items.length} · загружаем страницу ${s.page}…${sources}${resolution}${unavailable}`;
+    } else if (s.hasNext) {
+      el.textContent = `Показано ${s.items.length} · страница ${page}${sources}${resolution}${unavailable}`;
+    } else {
+      el.textContent = `Показано ${s.items.length} · все результаты${sources}${resolution}${unavailable}`;
+    }
+  }
+
+  function renderDB() {
+    renderContinue();
+    const s = state.db;
+    const grid = $('#db-grid');
+    const more = $('#db-more');
+    if (!grid) return;
+
+    const busy = Boolean(s.loading || state.booting);
+    grid.setAttribute('aria-busy', busy ? 'true' : 'false');
+
+    if (busy && !s.items.length) {
+      grid.innerHTML = skeletonCards(12);
+      grid.dataset.cardSignature = '';
+      if (more) more.hidden = true;
+      updateDBStatus();
+      return;
+    }
+    if (s.error && !s.items.length) {
+      const status = s.query && s.resolveVia
+        ? ` Поиск: ${s.resolveVia === 'dictionary' ? 'словарь AniTier' : s.resolveVia === 'anilist' ? 'название AniList' : s.resolveVia === 'mymemory' ? 'перевод MyMemory' : 'исходная фраза'}.`
+        : '';
+      grid.innerHTML = msgBlock('⚠️', 'Не удалось загрузить базу', `${s.error}${status}`, 'retry-db');
+      grid.dataset.cardSignature = '';
+      if (more) more.hidden = true;
+      updateDBStatus();
+      return;
+    }
+    if (!s.items.length) {
+      if (s.mode === 'custom' && !s.query && !C.hasActiveFilters(s.filters)) {
+        grid.innerHTML = `<div class="msg">
+          <span class="emoji">✎</span>
+          <h2>Своих карточек пока нет</h2>
+          <p>Добавьте тайтл, которого нет в AniList или Kitsu: название, постер, год и серии.</p>
+          <button class="btn btn-primary" data-action="new-custom">Создать карточку</button>
+        </div>`;
+        grid.dataset.cardSignature = '';
+        if (more) more.hidden = true;
+        updateDBStatus();
+        return;
+      }
+      const hasFilters = C.hasActiveFilters(s.filters);
+      let text = 'Попробуйте обновить данные.';
+      if (s.query) {
+        const resolutionLabels = {
+          dictionary: 'подобрано английское название из словаря AniTier',
+          anilist: 'найден английский вариант названия в AniList',
+          mymemory: 'название переведено через MyMemory',
+          raw: 'запрос передан без преобразования',
+        };
+        const resolution = resolutionLabels[s.resolveVia] || 'запрос передан без преобразования';
+        const tried = s.sources.length ? ` Проверены: ${s.sources.join(' и ')}.` : '';
+        const unavailable = s.alt && s.alt.failedSources && s.alt.failedSources.length
+          ? ` Не ответили: ${s.alt.failedSources.join(' и ')}.`
+          : '';
+        const resolved = s.resolvedQuery && s.resolvedQuery !== s.query
+          ? ` Искали «${s.resolvedQuery}» (${resolution}).`
+          : ` Способ поиска: ${resolution}.`;
+        text = `По запросу «${s.query}» нет результатов.${resolved}${tried}${unavailable} Попробуйте другое название или ослабьте фильтры.`;
+      }
+      else if (hasFilters) text = 'По выбранным фильтрам ничего не нашлось. Попробуйте ослабить условия.';
+      grid.innerHTML = hasFilters || s.query
+        ? msgBlock('🔎', 'Ничего не нашлось', text, 'reset-filters', 'Сбросить фильтры')
+        : msgBlock('🔎', 'Ничего не нашлось', text, 'refresh', 'Обновить');
+      grid.dataset.cardSignature = '';
+      if (more) more.hidden = true;
+      updateDBStatus();
+      return;
+    }
+
+    /* Догрузка страницы не должна пересоздавать уже показанные карточки:
+       иначе при скролле вся сетка мигает и постеры грузятся заново.
+       Смена языка названий — повод перерисовать всё. */
+    const key = s.items.map(a => a.id).join(',');
+    const lang = state.settings.titleLang === 'original' ? 'original' : 'ru';
+    const signature = key + '|' + lang;
+    const previous = grid.dataset.cardSignature || '';
+    const [previousKey, previousLang] = previous.split('|');
+    if (previousLang === lang && previousKey && key.startsWith(previousKey + ',')) {
+      const shown = previousKey.split(',').length;
+      grid.insertAdjacentHTML('beforeend', s.items.slice(shown).map(a => cardHTML(a, 'db')).join(''));
+    } else if (previous !== signature) {
+      grid.innerHTML = s.items.map(a => cardHTML(a, 'db')).join('');
+    }
+    grid.dataset.cardSignature = signature;
+    const sortMode = C.normalizeDBSort(s.sort);
+    if (sortMode === 'default') {
+      grid.querySelectorAll('.card').forEach(card => card.style.removeProperty('order'));
+    } else {
+      const order = new Map(C.sortCatalogItems(s.items, sortMode).map((anime, index) => [anime.id, index]));
+      grid.querySelectorAll('.card').forEach(card => {
+        card.style.order = String(order.get(Number(card.dataset.id)) ?? 0);
+      });
+    }
+    if (more) {
+      more.hidden = !s.hasNext;
+      more.disabled = s.loading;
+      more.textContent = s.loading ? 'Загружаем…' : 'Следующая страница';
+    }
+    updateDBStatus();
+  }
+
+  /* ---------------- уведомления ---------------- */
+  /* Один вызов saveState на пачку: при открытии уведомлений на 1000 тайтлов
+     раньше на каждую серию собирался весь снапшот состояния. Обновление DOM
+     тоже не по одному: updateEpisodeUI ищет блок по всему документу, и
+     тысяча вызовов превращалась в O(n²). Перерисовываем список один раз. */
+  function ensureNotificationEpisodes() {
+    if (state.tab !== 'notifications') return;
+    const all = allNotifications();
+    let changed = false;
+    for (const a of all) {
+      const info = state.epInfo[a.id];
+      const demoCacheInLiveMode = info && info.source === 'demo' && !state.forceDemo && !a.demo;
+      const fresh = info && Date.now() - Number(info.fetchedAt || 0) < 2 * 3600000;
+      if (fresh && !demoCacheInLiveMode) continue;
+      const code = animeStatusCodeView(a);
+      const needsInfo = code === 'airing' || code === 'hiatus' || !a.episodes;
+      if (needsInfo) {
+        const before = state.epInfo[a.id];
+        ensureEpisodeInfo(a, { save: false, ui: false });
+        if (state.epInfo[a.id] !== before) changed = true;
+      }
+    }
+    if (changed) {
+      saveState();
+      renderNotifications({ skipEnsure: true });
+    }
+  }
+
+  /* ---------------- отрисовка: уведомления ---------------- */
+  function notifRowHTML(a, kind) {
+    const baseDate = kind === 'airing' ? a.airedFrom : (a.airedTo || a.airedFrom);
+    const d = parseDate(baseDate);
+    const day = d ? d.getDate() : '—';
+    const mon = d ? MONTHS_SHORT[d.getMonth()] : '';
+    const daysAgo = d ? daysBetween(new Date(d.getFullYear(), d.getMonth(), d.getDate()), startOfToday()) : 99;
+    const isNew = daysAgo <= 7;
+    const inW = hasIn('watched', a.id);
+    const inP = hasIn('planned', a.id);
+    const meta = kind === 'airing'
+      ? `<span>Старт: ${esc(dateShort(a.airedFrom))}</span>`
+      : `<span>Завершено ${esc(relativePast(a.airedTo))}</span>`;
+
+    return `<article class="notif notif-${kind}" data-action="open" data-id="${a.id}" tabindex="0" aria-label="${esc(displayTitle(a))}">
+      <div class="notif-visual"><div class="notif-date"><b>${day}</b><span>${mon}</span></div><img class="notif-poster" ${imgAttrs(a, '')}></div>
+      <div class="notif-body">
+        <h3 class="notif-title">${esc(displayTitle(a))}${isNew ? '<span class="flag-new">new</span>' : ''}</h3>
+        <p class="notif-alt">${esc(a.altTitle || '')}</p>
+        <div class="notif-meta">
+          ${meta}
+          ${a.type ? `<span>· ${esc(typeRu(a.type))}</span>` : ''}
+          <span>· ${a.episodes ? a.episodes + ' эп.' : 'серий: ?'}</span>
+          ${a.score ? `<span>· <b>★ ${a.score.toFixed(1)}</b></span>` : ''}
+        </div>
+      </div>
+      <div class="notif-eps">${renderEpisodeBlock(a, 'notif')}</div>
+      <div class="notif-actions">
+        <button class="mini-btn ${inW ? 'is-on' : ''}" data-action="add-watched" data-id="${a.id}" title="Добавить в просмотрено" aria-label="Добавить в просмотрено">✓</button>
+        <button class="mini-btn ${inP ? 'is-on' : ''}" data-action="add-planned" data-id="${a.id}" title="В планы" aria-label="Добавить в планы">◷</button>
+      </div>
+    </article>`;
+  }
+
+  function renderNotifications(options = {}) {
+    const el = $('#notif-list');
+    if (!el) return;
+    const n = state.notifications;
+    const tracked = n.tracked.episodes.length + n.tracked.seasons.length;
+    const recent = n.recent.episodes.length + n.recent.films.length;
+    const completed = n.completed.length;
+    const totalCount = tracked + recent + completed;
+
+    el.setAttribute('aria-busy', n.loading ? 'true' : 'false');
+    if (n.loading && !totalCount) { el.innerHTML = skeletonRows(5); return; }
+    if (n.error && !totalCount) { el.innerHTML = msgBlock('⚠️', 'Не удалось загрузить уведомления', n.error, 'retry-notifications'); return; }
+    const counts = { tracked, recent, completed };
+    const tabs = C.NOTIF_TABS.map(tab => `<button class="notif-tab ${n.tab === tab ? 'is-active' : ''}" data-action="notif-tab" data-notif-tab="${tab}">${esc(C.NOTIF_TAB_LABELS[tab])}<b>${counts[tab]}</b></button>`).join('');
+    let body = '';
+    if (!totalCount) {
+      body = msgBlock('🌙', 'Новых обновлений пока нет', 'Загляните позже или обновите данные.');
+    } else if (n.tab === 'tracked') {
+      const episodes = n.tracked.episodes.map(group => notifRowHTML(group.anime, 'airing')).join('');
+      const seasons = n.tracked.seasons.map(item => notifRowHTML(item.sequel, 'airing')).join('');
+      body = `${episodes ? `<section class="notif-group"><h2 class="group-head"><span class="group-dot live"></span>Новые серии <b>${n.tracked.episodes.length}</b></h2><div class="notif-list">${episodes}</div></section>` : ''}${seasons ? `<section class="notif-group"><h2 class="group-head"><span class="group-dot live"></span>Продолжения и сезоны <b>${n.tracked.seasons.length}</b></h2><div class="notif-list">${seasons}</div></section>` : ''}${!episodes && !seasons ? '<p class="group-empty">В ваших списках пока нет новых серий или сезонов.</p>' : ''}`;
+    } else if (n.tab === 'recent') {
+      const episodes = n.recent.episodes.map(group => notifRowHTML(group.anime, 'airing')).join('');
+      const films = n.recent.films.map(anime => notifRowHTML(anime, 'completed')).join('');
+      body = `${episodes ? `<section class="notif-group"><h2 class="group-head"><span class="group-dot live"></span>Новые серии <b>${n.recent.episodes.length}</b></h2><div class="notif-list">${episodes}</div></section>` : ''}${films ? `<section class="notif-group"><h2 class="group-head"><span class="group-dot done"></span>Недавно вышедшие фильмы <b>${n.recent.films.length}</b></h2><div class="notif-list">${films}</div></section>` : ''}${!episodes && !films ? '<p class="group-empty">Недавних премьер не найдено.</p>' : ''}`;
+    } else {
+      body = completed
+        ? `<section class="notif-group"><h2 class="group-head"><span class="group-dot done"></span>Недавно завершились <b>${completed}</b></h2><div class="notif-list">${n.completed.map(anime => notifRowHTML(anime, 'completed')).join('')}</div></section>`
+        : '<p class="group-empty">Недавно завершившихся тайтлов не найдено.</p>';
+    }
+    el.innerHTML = `<div class="notif-tabs" role="tablist" aria-label="Группы уведомлений">${tabs}</div>${body}`;
+
+    if (!options.skipEnsure) ensureNotificationEpisodes();
+  }
+
+  function invalidateNotificationEpisodes() {
+    const ids = allNotifications().map(a => a.id);
+    let changed = false;
+    for (const id of ids) {
+      if (state.epInfo[id]) {
+        delete state.epInfo[id];
+        changed = true;
+      }
+    }
+    if (changed) saveState();
+  }
+
+  function allNotifications() {
+    const n = state.notifications;
+    const media = [
+      ...(n.tracked.episodes || []).map(group => group.anime),
+      ...(n.tracked.seasons || []).flatMap(item => [item.anime, item.sequel]),
+      ...(n.recent.episodes || []).map(group => group.anime),
+      ...(n.recent.films || []),
+      ...(n.completed || []),
+    ];
+    return C.dedupeById(media.filter(Boolean));
+  }
+
+  function markNotificationsSeen() {
+    let changed = false;
+    for (const key of C.collectNotificationKeys(state.notifications)) {
+      if (!state.seenNotifications.has(key)) {
+        state.seenNotifications.add(key);
+        changed = true;
+      }
+    }
+    if (changed) saveState();
+    updateBell();
+  }
+
+  function updateBell() {
+    const badge = $('#bell-badge');
+    if (!badge) return;
+    const unread = C.collectNotificationKeys(state.notifications).filter(key => !state.seenNotifications.has(key)).length;
+    badge.hidden = unread === 0;
+    badge.textContent = unread > 9 ? '9+' : String(unread);
+  }
+
+  /* ---------------- календарь премьер ---------------- */
+  /* ---------------- отрисовка: скоро выйдут ---------------- */
+  function upcomingListed() {
+    return [...allIn('watched'), ...allIn('planned')];
+  }
+
+  function initUpcomingOptions() {
+    const type = $('#upcoming-type');
+    if (type && type.options.length <= 1) {
+      for (const item of C.TYPES) type.appendChild(new Option(item.label, item.value));
+    }
+    const genre = $('#upcoming-genre');
+    if (genre && genre.options.length <= 1) {
+      for (const item of C.GENRES) genre.appendChild(new Option(item.label, String(item.id)));
+    }
+  }
+
+  function upcomingMonthLabel(key) {
+    return monthLabel(`${key}-01T12:00:00`);
+  }
+
+  /* Список месяцев берём из самих премьер, поэтому пустых вариантов нет. */
+  function syncUpcomingControls(items) {
+    const view = state.upcoming.view;
+    const search = $('#upcoming-search');
+    if (search && search.value !== view.query) search.value = view.query;
+    const type = $('#upcoming-type');
+    if (type) type.value = view.filters.type || '';
+    const genre = $('#upcoming-genre');
+    if (genre) genre.value = view.filters.genre || '';
+    const sort = $('#upcoming-sort');
+    if (sort) sort.value = view.sort === 'title' ? 'title' : 'date';
+    const mine = $('#upcoming-mine');
+    if (mine) {
+      const on = Boolean(view.mine);
+      mine.classList.toggle('btn-primary', on);
+      mine.classList.toggle('btn-ghost', !on);
+      mine.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+
+    /* Счётчик на кнопке фильтров и активное состояние. */
+    const activeCount = C.countActiveFilters(view.filters) + (view.month ? 1 : 0);
+    const badge = $('#upcoming-filter-count');
+    if (badge) {
+      badge.textContent = String(activeCount);
+      badge.hidden = activeCount === 0;
+    }
+    const toggle = document.querySelector('[data-action="toggle-upcoming-filters"]');
+    if (toggle) toggle.classList.toggle('is-active', activeCount > 0);
+
+    const month = $('#upcoming-month');
+    if (!month) return;
+    const keys = [...new Set(items.map(a => C.upcomingMonthKey(a.airedFrom)).filter(Boolean))].sort();
+    const current = [...month.options].slice(1).map(option => option.value);
+    const changed = current.length !== keys.length || current.some((value, index) => value !== keys[index]);
+    if (changed) {
+      month.innerHTML = '<option value="">Все месяцы</option>'
+        + keys.map(key => `<option value="${key}">${esc(upcomingMonthLabel(key))}</option>`).join('');
+    }
+    if (!keys.includes(view.month)) view.month = '';
+    month.value = view.month;
+  }
+
+  function updateUpcomingStatus(all, shown) {
+    const el = $('#upcoming-status');
+    if (!el) return;
+    if (!all.length) { el.textContent = ''; return; }
+    const hidden = Math.max(0, state.upcoming.items.length - all.length);
+    const bits = [`Показано ${shown.length} из ${all.length}`];
+    if (hidden) bits.push(`скрыто из ваших списков: ${hidden}`);
+    const view = state.upcoming.view;
+    const active = C.countActiveFilters(view.filters) + (view.month ? 1 : 0) + (view.query.trim() ? 1 : 0);
+    if (active) bits.push(`фильтров: ${active}`);
+    el.textContent = bits.join(' · ');
+  }
+
+  function syncUpcomingMineUI(active) {
+    const toggle = document.querySelector('[data-action="toggle-upcoming-filters"]');
+    const panel = $('#upcoming-filters');
+    const count = $('#upcoming-filter-count');
+    if (toggle) {
+      toggle.hidden = Boolean(active);
+      if (active) {
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.classList.remove('is-active');
+      }
+    }
+    if (panel && active) panel.hidden = true;
+    if (count && active) count.hidden = true;
+    const reset = document.querySelector('#upcoming-more-menu [data-action="reset-upcoming"]');
+    if (reset) reset.textContent = active ? 'Сбросить поиск' : 'Сбросить фильтры';
+  }
+
+  function renderMyCalendar() {
+    const grid = $('#upcoming-grid');
+    if (!grid) return;
+    const u = state.upcoming;
+    syncUpcomingMineUI(true);
+
+    const busy = Boolean(state.notifications.loading && !state.notifications.loaded);
+    grid.setAttribute('aria-busy', busy ? 'true' : 'false');
+    if (busy) {
+      grid.innerHTML = skeletonRows(6);
+      const loadingStatus = $('#upcoming-status');
+      if (loadingStatus) loadingStatus.textContent = 'Собираем ваши серии…';
+      return;
+    }
+
+    const all = C.buildCalendarItems(state.notifications, state.epInfo);
+    const query = C.normalizeTitleKey(u.view.query);
+    const shown = query ? all.filter(item => C.normalizeTitleKey(item.title).includes(query)) : all;
+    const status = $('#upcoming-status');
+    if (status) status.textContent = all.length ? `Мои серии: ${shown.length} из ${all.length} · доступен поиск` : '';
+
+    const statusEl = $('#upcoming-status');
+    if (statusEl) statusEl.textContent = all.length ? `Мои серии: ${shown.length} из ${all.length} · доступен поиск` : '';
+
+    if (!all.length) {
+      grid.innerHTML = msgBlock('📅', 'Ближайших серий нет', 'Добавьте тайтлы в «Просмотрено» или «Запланировано» и обновите события.');
+      return;
+    }
+    if (!shown.length) {
+      grid.innerHTML = `<div class="msg">
+        <span class="emoji">🔍</span>
+        <h2>Под запрос ничего не подошло</h2>
+        <p>Измените поиск по названию.</p>
+        <button class="btn btn-ghost" data-action="reset-upcoming">Сбросить поиск</button>
+      </div>`;
+      return;
+    }
+
+    let html = '';
+    let day = '';
+    for (const item of shown) {
+      const label = dateShort(item.date);
+      if (label !== day) {
+        day = label;
+        html += `<h2 class="month-head">${esc(label)}</h2>`;
+      }
+      html += `<article class="calendar-row" data-action="open" data-id="${item.id}" tabindex="0" aria-label="Открыть: ${esc(displayTitle(item))}">
+        <span class="calendar-date"><b>${esc(label)}</b><small>${esc(countdownLabel(item.date))}</small></span>
+        <span class="calendar-main"><b>${esc(displayTitle(item))}</b><small>Серия ${item.n}</small></span>
+        <span class="calendar-arrow" aria-hidden="true">›</span>
+      </article>`;
+    }
+    grid.innerHTML = html;
+  }
+
+  function renderUpcoming() {
+    const grid = $('#upcoming-grid');
+    if (!grid) return;
+    const u = state.upcoming;
+    if (!u.view) {
+      u.view = { query: '', filters: { type: '', genre: '', year: '', minScore: '', status: '' }, month: '', sort: 'date', mine: false };
+    }
+    initUpcomingOptions();
+    const mineBtn = $('#upcoming-mine');
+    if (mineBtn) {
+      const on = Boolean(u.view.mine);
+      mineBtn.classList.toggle('btn-primary', on);
+      mineBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+
+    if (u.view.mine) {
+      renderMyCalendar();
+      return;
+    }
+    syncUpcomingMineUI(false);
+
+    grid.setAttribute('aria-busy', u.loading ? 'true' : 'false');
+    if (u.loading && !u.items.length) {
+      grid.innerHTML = skeletonCards(10);
+      syncUpcomingControls([]);
+      return;
+    }
+    if (u.error && !u.items.length) {
+      grid.innerHTML = msgBlock('⚠️', 'Не удалось загрузить премьеры', u.error, 'retry-upcoming');
+      return;
+    }
+    if (!u.items.length) {
+      grid.innerHTML = msgBlock('🌌', 'Ближайших премьер не нашлось', 'Попробуйте обновить данные позже.');
+      syncUpcomingControls([]);
+      updateUpcomingStatus([], []);
+      return;
+    }
+
+    /* Своё «Просмотрено» и «Запланировано» в премьерах не показываем:
+       тайтл уже разобран, второй раз он только мешает. */
+    const all = C.excludeListed(u.items, upcomingListed());
+    const shown = C.filterUpcoming(all, u.view);
+    syncUpcomingControls(all);
+    updateUpcomingStatus(all, shown);
+
+    if (!all.length) {
+      grid.innerHTML = `<div class="msg">
+        <span class="emoji">✅</span>
+        <h2>Все премьеры уже в ваших списках</h2>
+        <p>Тайтлы из «Просмотрено» и «Запланировано» здесь не повторяются.</p>
+      </div>`;
+      return;
+    }
+
+    if (!shown.length) {
+      grid.innerHTML = `<div class="msg">
+        <span class="emoji">🔍</span>
+        <h2>Под фильтры ничего не подошло</h2>
+        <p>Измените запрос, месяц или жанр — или сбросьте фильтры.</p>
+        <button class="btn btn-ghost" data-action="reset-upcoming">Сбросить фильтры</button>
+      </div>`;
+      return;
+    }
+
+    let html = '';
+    let currentMonth = '';
+    for (const a of shown) {
+      const month = monthLabel(a.airedFrom);
+      if (month !== currentMonth) {
+        currentMonth = month;
+        html += `<h2 class="month-head">${esc(month)}</h2>`;
+      }
+      html += cardHTML(a, 'upcoming');
+    }
+    grid.innerHTML = html;
+  }
+
+  /* ---------------- счётчики, обновление экранов, хеши, вкладки ---------------- */
   function updateCounters() {
     const w = $('#count-watched');
     const p = $('#count-planned');
@@ -14398,7 +14535,270 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     set(w, allIn('watched').length);
     set(p, allIn('planned').length);
   }
+  function refreshViews() {
+    updateCounters();
+    renderTierList('watched');
+    renderTierList('planned');
+    if (state.tab === 'db') renderDB();
+    else if (state.tab === 'notifications') renderNotifications();
+    else if (state.tab === 'upcoming') renderUpcoming();
+    if (state.modalId != null) renderModal();
+    if (state.statsScreen && state.statsScreen.open) renderStatsScreen();
+    if (state.command && state.command.open) renderCommandResults();
+    if (typeof pruneAnimeCache === 'function') pruneAnimeCache();
+  }
 
+  function syncBodyScroll() {
+    const locked = state.modalId != null
+      || Boolean(state.quickMenu)
+      || Boolean(state.command && state.command.open)
+      || Boolean(state.exchange && state.exchange.open)
+      || Boolean(state.customForm && state.customForm.open)
+      || Boolean(state.momentForm && state.momentForm.open)
+      || Boolean(state.tiktokImport && state.tiktokImport.open)
+      || Boolean(state.settingsScreen && state.settingsScreen.open)
+      || Boolean(state.statsScreen && state.statsScreen.open)
+      || Boolean(state.backup && state.backup.open);
+    document.body.classList.toggle('no-scroll', locked);
+    /* Скроллбар html тоже отдаёт полосу ширины: без этого нижний лист
+       на Android-WebView не достаёт до правого края экрана. */
+    if (document.documentElement) document.documentElement.classList.toggle('no-scroll', locked);
+  }
+  /* ---------------- модалка ---------------- */
+  const HASH_TABS = ['db', 'notifications', 'watched', 'planned', 'upcoming'];
+  let hashSyncing = false;
+  let pendingHashModal = null;
+
+  function parseLocationHash() {
+    const raw = String(typeof location !== 'undefined' ? location.hash : '').replace(/^#/, '');
+    if (!raw) return { tab: '', modalId: null };
+    const anime = raw.match(/^anime\/(\d+)$/);
+    if (anime) return { tab: '', modalId: Number(anime[1]) };
+    const tab = raw.replace(/\/+$/, '');
+    return { tab: HASH_TABS.includes(tab) ? tab : '', modalId: null };
+  }
+
+  /* Пишем только осмысленное состояние: вкладку или открытую карточку. */
+  function writeLocationHash() {
+    if (typeof location === 'undefined' || hashSyncing) return;
+    const value = state.modalId != null ? `anime/${state.modalId}` : (state.tab || 'db');
+    if (location.hash === `#${value}`) return;
+    hashSyncing = true;
+    try { location.hash = value; }
+    finally { hashSyncing = false; }
+  }
+
+  function applyLocationHash() {
+    const parsed = parseLocationHash();
+    if (parsed.modalId != null) {
+      if (!getAnime(parsed.modalId)) { pendingHashModal = parsed.modalId; return; }
+      pendingHashModal = null;
+      if (state.modalId !== parsed.modalId) openModal(parsed.modalId, { fromHash: true });
+      return;
+    }
+    pendingHashModal = null;
+    if (!parsed.tab) return;
+    if (state.modalId != null) closeModal({ fromHash: true });
+    if (parsed.tab !== state.tab) switchTab(parsed.tab, { fromHash: true });
+  }
+
+  /* Ссылка на карточку может прийти раньше загрузки базы: ждём данные. */
+  function applyPendingHashModal() {
+    if (pendingHashModal == null) return;
+    const id = pendingHashModal;
+    if (!getAnime(id)) return;
+    pendingHashModal = null;
+    openModal(id, { fromHash: true });
+  }
+  /* ---------------- вкладки ---------------- */
+  function switchTab(tab, opts = {}) {
+    if (!VIEW_TABS.includes(tab)) return;
+    state.tab = tab;
+    $$('.tab').forEach(t => {
+      const on = t.dataset.tab === tab;
+      t.classList.toggle('is-active', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      t.tabIndex = on ? 0 : -1;
+    });
+    $$('.view').forEach(v => {
+      v.hidden = v.id !== 'view-' + tab;
+      v.setAttribute('aria-labelledby', 'tab-' + v.id.replace('view-', ''));
+    });
+
+    if (!opts.deferActions) {
+      if (tab === 'db') renderDB();
+      if (tab === 'watched' || tab === 'planned') renderTierList(tab);
+      if (tab === 'notifications') { renderNotifications(); markNotificationsSeen(); fetchNotifications(); ensureNotificationEpisodes(); }
+      if (tab === 'upcoming') { renderUpcoming(); fetchUpcoming(); }
+    }
+    if (!opts.deferPersistence && App.persistCatalogPreferences) App.persistCatalogPreferences();
+    updateOfflineBanner();
+
+    if (!opts.silent) window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (!opts.fromHash && !state.booting) writeLocationHash();
+  }
+  /* ---------------- обновление / офлайн ---------------- */
+  function updateOfflineBanner() {
+    const el = $('#offline-banner');
+    if (!el) return;
+    const show = state.offline || state.forceDemo;
+    el.hidden = !show;
+    const text = $('#offline-text');
+    if (text && show) {
+      const altSearch = state.tab === 'db' && Boolean(state.db.query) && state.db.sources.length > 0;
+      if (state.forceDemo) {
+        text.textContent = 'Демо-режим: показана локальная подборка, запросы к API отключены.';
+      } else if (altSearch) {
+        text.textContent = `Основной API недоступен — поиск идёт через ${state.db.sources.join(' и ')}. Остальные данные — демо.`;
+      } else {
+        text.textContent = 'Нет связи с API — показаны демо-данные.';
+      }
+    }
+  }
+
+  /* ---------------- тосты ---------------- */
+  function toast(message, options = {}) {
+    const box = $('#toasts');
+    if (!box) return;
+    const max = document.body && document.body.classList.contains('mobile-app') ? 2 : 4;
+    while (box.children.length >= max) box.firstElementChild.remove();
+    const el = document.createElement('div');
+    el.className = 'toast';
+    const text = document.createElement('span');
+    text.className = 'toast-text';
+    text.textContent = message;
+    el.appendChild(text);
+
+    let timer = 0;
+    const close = () => {
+      clearTimeout(timer);
+      el.classList.add('is-out');
+      setTimeout(() => el.remove(), 240);
+    };
+
+    if (options.actionLabel && typeof options.onAction === 'function') {
+      el.classList.add('has-action');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'toast-action';
+      button.textContent = options.actionLabel;
+      button.addEventListener('click', () => {
+        close();
+        try { options.onAction(); }
+        catch (err) { console.warn('AniTier: действие из уведомления не выполнилось', err); }
+      });
+      el.appendChild(button);
+    }
+
+    box.appendChild(el);
+    const duration = Number(options.duration) > 0 ? Number(options.duration) : 3200;
+    timer = setTimeout(close, duration);
+  }
+  Object.assign(App, {
+    displayTitle,
+    applyAppearance,
+    initFilterOptions,
+    syncFilterUI,
+    closeFilterMenus,
+    syncModeChips,
+    syncLangUI,
+    readFiltersFromUI,
+    resetDBFilters,
+    updateDBStatus,
+    renderDB,
+    renderMyCalendar,
+    ensureNotificationEpisodes,
+    notifRowHTML,
+    renderNotifications,
+    invalidateNotificationEpisodes,
+    allNotifications,
+    markNotificationsSeen,
+    updateBell,
+    renderUpcoming,
+    updateCounters,
+    refreshViews,
+    syncBodyScroll,
+    applyLocationHash,
+    applyPendingHashModal,
+    parseLocationHash,
+    writeLocationHash,
+    closeDBMoreMenu,
+    toggleDBMoreMenu,
+    switchTab,
+    updateOfflineBanner,
+    toast,
+  });
+})(window.AniTier);
+
+</script>
+<script>
+/* ============================================================
+   AniTier — модалки, формы, настройки, статистика, обмен (выделено из app-render.js)
+   ============================================================ */
+(function (App) {
+  'use strict';
+
+  const C = window.AniTierCore;
+  const {
+    state,
+    TIERS,
+    TIER_IDS,
+    LIST_LABELS,
+    EXCHANGE_FILTERS,
+    TYPE_RU,
+    typeRu,
+    normalizeUpdateCheck,
+    MONTHS_SHORT,
+    MONTHS_FULL,
+    VIEW_TABS,
+    LONG_TITLE_EPS,
+    $,
+    $$,
+    esc,
+    escXml,
+    plural,
+    epWord,
+    startOfToday,
+    endOfToday,
+    startOfTomorrow,
+    addDays,
+    daysBetween,
+    parseDate,
+    fuzzyDateInt,
+    monthLabel,
+    dateShort,
+    countdownLabel,
+    relativePast,
+    makePoster,
+    hasIn,
+    findTier,
+    getAnime,
+    pruneAnimeCache,
+    allIn,
+    addToList,
+    removeFromList,
+    moveToTier,
+    saveState,
+    momentsFor,
+    watchedSet,
+    watchedCount,
+    episodeStats,
+    toggleEpisode,
+    setWatchedUpTo,
+    clearProgress,
+  } = App;
+  /* Перекрёстные вызовы */
+  const displayTitle = (...a) => App.displayTitle(...a);
+  const imgAttrs = (...a) => App.imgAttrs(...a);
+  const tierShort = (...a) => App.tierShort(...a);
+  const renderEpisodeBlock = (...a) => App.renderEpisodeBlock(...a);
+  const ensureEpisodeInfo = (...a) => App.ensureEpisodeInfo(...a);
+  const syncBodyScroll = (...a) => App.syncBodyScroll(...a);
+  const renderDB = (...a) => App.renderDB(...a);
+  const renderTierList = (...a) => App.renderTierList(...a);
+  const toast = (...a) => App.toast(...a);
+  const writeLocationHash = (...a) => (App.writeLocationHash || (() => {}))(...a);
+  /* ---------------- формы, моменты, настройки, статистика, обмен, карточка ---------------- */
   /* ---------------- свои карточки и моменты: формы ---------------- */
   const CUSTOM_TYPES = [
     { value: '', label: 'Не указан' },
@@ -14687,7 +15087,6 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     if (modal) modal.hidden = true;
     syncBodyScroll();
   }
-
   /* ---------------- карточка обновления ---------------- */
   function renderUpdateCard() {
     const el = $('#update-card');
@@ -14730,7 +15129,6 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     </div>`;
     el.hidden = false;
   }
-
   /* ---------------- настройки ---------------- */
   function changelogHTML(current) {
     const list = Array.isArray(C.CHANGELOG) ? C.CHANGELOG : [];
@@ -15026,7 +15424,6 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     if (modal) modal.hidden = true;
     syncBodyScroll();
   }
-
   /* ---------------- глобальный поиск ---------------- */
   let commandReturnFocus = null;
 
@@ -15183,7 +15580,6 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     closeCommand({ restoreFocus: false });
     openModal(result.anime.id);
   }
-
   function openSettings() {
     if (state.modalId != null) closeModal();
     if (state.statsScreen && state.statsScreen.open) closeStats();
@@ -15207,41 +15603,6 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     if (modal) modal.hidden = true;
     syncBodyScroll();
   }
-
-  function refreshViews() {
-    updateCounters();
-    renderTierList('watched');
-    renderTierList('planned');
-    if (state.tab === 'db') renderDB();
-    else if (state.tab === 'notifications') renderNotifications();
-    else if (state.tab === 'upcoming') renderUpcoming();
-    if (state.modalId != null) renderModal();
-    if (state.statsScreen && state.statsScreen.open) renderStatsScreen();
-    if (state.command && state.command.open) renderCommandResults();
-    if (typeof pruneAnimeCache === 'function') pruneAnimeCache();
-  }
-
-  function syncBodyScroll() {
-    const locked = state.modalId != null
-      || Boolean(state.quickMenu)
-      || Boolean(state.command && state.command.open)
-      || Boolean(state.exchange && state.exchange.open)
-      || Boolean(state.customForm && state.customForm.open)
-      || Boolean(state.momentForm && state.momentForm.open)
-      || Boolean(state.tiktokImport && state.tiktokImport.open)
-      || Boolean(state.settingsScreen && state.settingsScreen.open)
-      || Boolean(state.statsScreen && state.statsScreen.open)
-      || Boolean(state.backup && state.backup.open);
-    document.body.classList.toggle('no-scroll', locked);
-    /* Скроллбар html тоже отдаёт полосу ширины: без этого нижний лист
-       на Android-WebView не достаёт до правого края экрана. */
-    if (document.documentElement) document.documentElement.classList.toggle('no-scroll', locked);
-  }
-
-  function tierShort(tier) {
-    return tier === 'N' ? 'Без оц.' : tier;
-  }
-
   function openExchange(mode, list) {
     if (state.modalId != null) closeModal();
     const exportList = list === 'planned' ? 'planned' : 'watched';
@@ -15641,54 +16002,6 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
 
     content.innerHTML = body;
   }
-
-  /* ---------------- модалка ---------------- */
-  const HASH_TABS = ['db', 'notifications', 'watched', 'planned', 'upcoming'];
-  let hashSyncing = false;
-  let pendingHashModal = null;
-
-  function parseLocationHash() {
-    const raw = String(typeof location !== 'undefined' ? location.hash : '').replace(/^#/, '');
-    if (!raw) return { tab: '', modalId: null };
-    const anime = raw.match(/^anime\/(\d+)$/);
-    if (anime) return { tab: '', modalId: Number(anime[1]) };
-    const tab = raw.replace(/\/+$/, '');
-    return { tab: HASH_TABS.includes(tab) ? tab : '', modalId: null };
-  }
-
-  /* Пишем только осмысленное состояние: вкладку или открытую карточку. */
-  function writeLocationHash() {
-    if (typeof location === 'undefined' || hashSyncing) return;
-    const value = state.modalId != null ? `anime/${state.modalId}` : (state.tab || 'db');
-    if (location.hash === `#${value}`) return;
-    hashSyncing = true;
-    try { location.hash = value; }
-    finally { hashSyncing = false; }
-  }
-
-  function applyLocationHash() {
-    const parsed = parseLocationHash();
-    if (parsed.modalId != null) {
-      if (!getAnime(parsed.modalId)) { pendingHashModal = parsed.modalId; return; }
-      pendingHashModal = null;
-      if (state.modalId !== parsed.modalId) openModal(parsed.modalId, { fromHash: true });
-      return;
-    }
-    pendingHashModal = null;
-    if (!parsed.tab) return;
-    if (state.modalId != null) closeModal({ fromHash: true });
-    if (parsed.tab !== state.tab) switchTab(parsed.tab, { fromHash: true });
-  }
-
-  /* Ссылка на карточку может прийти раньше загрузки базы: ждём данные. */
-  function applyPendingHashModal() {
-    if (pendingHashModal == null) return;
-    const id = pendingHashModal;
-    if (!getAnime(id)) return;
-    pendingHashModal = null;
-    openModal(id, { fromHash: true });
-  }
-
   function openModal(id, opts = {}) {
     const a = getAnime(id);
     if (!a) { toast('Не удалось открыть карточку'); return; }
@@ -16017,148 +16330,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       if (a.status === 'В эфире' || !a.episodes) ensureEpisodeInfo(a);
     }
   }
-
-  /* ---------------- вкладки ---------------- */
-  function switchTab(tab, opts = {}) {
-    if (!VIEW_TABS.includes(tab)) return;
-    state.tab = tab;
-    $$('.tab').forEach(t => {
-      const on = t.dataset.tab === tab;
-      t.classList.toggle('is-active', on);
-      t.setAttribute('aria-selected', on ? 'true' : 'false');
-      t.tabIndex = on ? 0 : -1;
-    });
-    $$('.view').forEach(v => {
-      v.hidden = v.id !== 'view-' + tab;
-      v.setAttribute('aria-labelledby', 'tab-' + v.id.replace('view-', ''));
-    });
-
-    if (!opts.deferActions) {
-      if (tab === 'db') renderDB();
-      if (tab === 'watched' || tab === 'planned') renderTierList(tab);
-      if (tab === 'notifications') { renderNotifications(); markNotificationsSeen(); fetchNotifications(); ensureNotificationEpisodes(); }
-      if (tab === 'upcoming') { renderUpcoming(); fetchUpcoming(); }
-    }
-    if (!opts.deferPersistence && App.persistCatalogPreferences) App.persistCatalogPreferences();
-    updateOfflineBanner();
-
-    if (!opts.silent) window.scrollTo({ top: 0, behavior: 'smooth' });
-    if (!opts.fromHash && !state.booting) writeLocationHash();
-  }
-
-  /* ---------------- обновление / офлайн ---------------- */
-  function updateOfflineBanner() {
-    const el = $('#offline-banner');
-    if (!el) return;
-    const show = state.offline || state.forceDemo;
-    el.hidden = !show;
-    const text = $('#offline-text');
-    if (text && show) {
-      const altSearch = state.tab === 'db' && Boolean(state.db.query) && state.db.sources.length > 0;
-      if (state.forceDemo) {
-        text.textContent = 'Демо-режим: показана локальная подборка, запросы к API отключены.';
-      } else if (altSearch) {
-        text.textContent = `Основной API недоступен — поиск идёт через ${state.db.sources.join(' и ')}. Остальные данные — демо.`;
-      } else {
-        text.textContent = 'Нет связи с API — показаны демо-данные.';
-      }
-    }
-  }
-
-  /* ---------------- тосты ---------------- */
-  function toast(message, options = {}) {
-    const box = $('#toasts');
-    if (!box) return;
-    const max = document.body && document.body.classList.contains('mobile-app') ? 2 : 4;
-    while (box.children.length >= max) box.firstElementChild.remove();
-    const el = document.createElement('div');
-    el.className = 'toast';
-    const text = document.createElement('span');
-    text.className = 'toast-text';
-    text.textContent = message;
-    el.appendChild(text);
-
-    let timer = 0;
-    const close = () => {
-      clearTimeout(timer);
-      el.classList.add('is-out');
-      setTimeout(() => el.remove(), 240);
-    };
-
-    if (options.actionLabel && typeof options.onAction === 'function') {
-      el.classList.add('has-action');
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'toast-action';
-      button.textContent = options.actionLabel;
-      button.addEventListener('click', () => {
-        close();
-        try { options.onAction(); }
-        catch (err) { console.warn('AniTier: действие из уведомления не выполнилось', err); }
-      });
-      el.appendChild(button);
-    }
-
-    box.appendChild(el);
-    const duration = Number(options.duration) > 0 ? Number(options.duration) : 3200;
-    timer = setTimeout(close, duration);
-  }
-
   Object.assign(App, {
-    displayTitle,
-    applyAppearance,
-    imgAttrs,
-    cardHTML,
-    tierCardHTML,
-    skeletonCards,
-    skeletonRows,
-    msgBlock,
-    initFilterOptions,
-    syncFilterUI,
-    closeFilterMenus,
-    syncModeChips,
-    syncLangUI,
-    readFiltersFromUI,
-    resetDBFilters,
-    updateDBStatus,
-    renderDB,
-    continueItems,
-    renderContinue,
-    renderMyCalendar,
-    listVisibleItems,
-    applyLocationHash,
-    applyPendingHashModal,
-    parseLocationHash,
-    releaseLine,
-    episodeProgressText,
-    chipsHTML,
-    renderEpisodeBlock,
-    previewEpisodeSlider,
-    updateEpisodeUI,
-    episodeInfoFromAnime,
-    ensureEpisodeInfo,
-    ensureNotificationEpisodes,
-    notifRowHTML,
-    renderNotifications,
-    invalidateNotificationEpisodes,
-    allNotifications,
-    markNotificationsSeen,
-    updateBell,
-    renderUpcoming,
-    renderTierList,
-    renderStats,
-    renderStatsScreen,
-    openStats,
-    closeStats,
-    renderCommandResults,
-    openCommand,
-    closeCommand,
-    setCommandQuery,
-    moveCommand,
-    jumpCommand,
-    openCommandResult,
-    layoutTierCards,
-    updateCounters,
     openCustomForm,
     closeCustomForm,
     renderCustomForm,
@@ -16172,13 +16344,20 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     renderBackup,
     openBackup,
     closeBackup,
-    renderSettings,
     renderUpdateCard,
+    renderSettings,
+    renderStatsScreen,
+    openStats,
+    closeStats,
+    renderCommandResults,
+    openCommand,
+    closeCommand,
+    setCommandQuery,
+    moveCommand,
+    jumpCommand,
+    openCommandResult,
     openSettings,
     closeSettings,
-    refreshViews,
-    syncBodyScroll,
-    tierShort,
     openExchange,
     closeExchange,
     setExchangeMode,
@@ -16190,17 +16369,11 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     exchangeRowHTML,
     renderExchangeComparison,
     renderExchange,
+    renderFranchiseSection,
     openModal,
     closeModal,
     renderModal,
     switchModalTab,
-    closeDBMoreMenu,
-    toggleDBMoreMenu,
-    syncContinueToggle,
-    renderFranchiseSection,
-    switchTab,
-    updateOfflineBanner,
-    toast,
   });
 })(window.AniTier);
 
@@ -16741,21 +16914,695 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
 </script>
 <script>
 /* ============================================================
-   AniTier — контроллер моментов и своих карточек (выделено из app.js)
+   AniTier — контроллер моментов и медиа (выделено из app.js)
    ============================================================ */
 (function (App) {
   'use strict';
   const C = window.AniTierCore;
+  const $ = (...a) => App.$(...a);
+  const state = App.state;
+  const toast = (...a) => App.toast(...a);
+  const renderModal = (...a) => App.renderModal(...a);
+  const renderMomentForm = (...a) => App.renderMomentForm(...a);
+  const renderTikTokImport = (...a) => App.renderTikTokImport(...a);
+  const closeModal = (...a) => App.closeModal(...a);
+  const openModal = (...a) => App.openModal(...a);
+  const syncBodyScroll = (...a) => App.syncBodyScroll(...a);
+  const createMoment = (...a) => App.createMoment(...a);
+  const updateMoment = (...a) => App.updateMoment(...a);
+  const removeMoment = (...a) => App.removeMoment(...a);
+  const findMoment = (...a) => App.findMoment(...a);
+  const momentsFor = (...a) => App.momentsFor(...a);
+  const mediaPut = (...a) => App.mediaPut(...a);
+  const mediaGet = (...a) => App.mediaGet(...a);
+  const mediaDelete = (...a) => App.mediaDelete(...a);
+  const getAnime = (...a) => App.getAnime(...a);
+  const hasIn = (...a) => App.hasIn(...a);
+  const addToList = (...a) => App.addToList(...a);
+  const fetchTikTokMeta = (...a) => App.fetchTikTokMeta(...a);
+  const addMoment = (...a) => App.addMoment(...a);
+  const isDataImageUrl = (...a) => App.isDataImageUrl(...a);
+  const dataUrlToBlob = (...a) => App.dataUrlToBlob(...a);
+  const setLocalImageUrl = (...a) => App.setLocalImageUrl(...a);
+  const momentThumbKey = (...a) => App.momentThumbKey(...a);
+  const newUid = (...a) => App.newUid ? App.newUid(...a) : (Date.now().toString(36) + Math.random().toString(36).slice(2));
+  const MOMENT_GIF_MAX = App.MOMENT_GIF_MAX || 8 * 1024 * 1024;
+  const MOMENT_VIDEO_MAX = App.MOMENT_VIDEO_MAX || 40 * 1024 * 1024;
+  const pruneAnimeCache = (...a) => App.pruneAnimeCache && App.pruneAnimeCache(...a);
+  const normalizeMediaError = (err, fallback) => App.normalizeMediaError ? App.normalizeMediaError(err, fallback) : (err && err.message ? err.message : fallback);
+
+  const momentObjectUrls = new Set();
+
+  function readImageFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(reader.error || new Error('Не удалось прочитать файл'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function loadImageElement(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('Не удалось открыть изображение'));
+      img.src = src;
+    });
+  }
+
+  async function makeImageThumbnail(file, max = 480, quality = 0.78) {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await loadImageElement(url);
+      const width = img.naturalWidth || img.width || 1;
+      const height = img.naturalHeight || img.height || 1;
+      const scale = Math.min(1, max / Math.max(width, height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(width * scale));
+      canvas.height = Math.max(1, Math.round(height * scale));
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas недоступен');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      let data = canvas.toDataURL('image/jpeg', quality);
+      if (data.length > 450000) data = canvas.toDataURL('image/jpeg', 0.55);
+      return data;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  async function makeVideoThumbnail(file) {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.muted = true;
+    video.playsInline = true;
+    try {
+      await new Promise((resolve, reject) => {
+        video.onloadedmetadata = resolve;
+        video.onerror = () => reject(new Error('Не удалось прочитать видео'));
+        video.src = url;
+      });
+      if (Number.isFinite(video.duration) && video.duration > 0) {
+        await new Promise(resolve => {
+          const timer = setTimeout(resolve, 2500);
+          video.onseeked = () => { clearTimeout(timer); resolve(); };
+          try { video.currentTime = Math.min(1, video.duration / 3); } catch { clearTimeout(timer); resolve(); }
+        });
+      }
+      const width = video.videoWidth || 640;
+      const height = video.videoHeight || 360;
+      const scale = Math.min(1, 480 / Math.max(width, height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(width * scale));
+      canvas.height = Math.max(1, Math.round(height * scale));
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas недоступен');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      let data = canvas.toDataURL('image/jpeg', 0.72);
+      if (data.length > 450000) data = canvas.toDataURL('image/jpeg', 0.55);
+      return data;
+    } finally {
+      URL.revokeObjectURL(url);
+      video.removeAttribute('src');
+      try { video.load(); } catch { /* noop */ }
+    }
+  }
+
+  async function makeFileThumbnail(file) {
+    if (file.type === 'image/gif' || file.type.startsWith('image/')) return makeImageThumbnail(file);
+    if (file.type.startsWith('video/')) return makeVideoThumbnail(file);
+    return '';
+  }
+
+  function openTikTokUrl(url) {
+    const target = String(url || '');
+    if (!C.isTikTokUrl(target)) { toast('Ссылка TikTok недействительна'); return false; }
+    try {
+      if (window.AniTierAndroid && typeof window.AniTierAndroid.openTikTok === 'function') {
+        return window.AniTierAndroid.openTikTok(target);
+      }
+      const opened = window.open(target, '_blank', 'noopener');
+      if (!opened) window.location.href = target;
+      return true;
+    } catch {
+      window.location.href = target;
+      return true;
+    }
+  }
+
+  function openTikTokSearch(query) {
+    const text = String(query == null ? '' : query).trim();
+    if (!text) return false;
+    const bridge = typeof window !== 'undefined' ? window.AniTierAndroid : null;
+    if (bridge && typeof bridge.openTikTokSearch === 'function') {
+      try {
+        return bridge.openTikTokSearch(text);
+      } catch { /* ниже обычный путь через ссылку */ }
+    }
+    const url = C.tiktokSearchUrl(text);
+    return url ? openTikTokUrl(url) : false;
+  }
+
+  function closeTikTokImport() {
+    state.tiktokImport = { open: false, url: '', title: '', thumb: '', query: '', loading: false };
+    const modal = $('#tiktok-import-modal');
+    if (modal) modal.hidden = true;
+    App.syncBodyScroll();
+  }
+
+  function openTikTokImport(url) {
+    const target = String(url || '').trim();
+    if (!C.isTikTokUrl(target)) { toast('Не удалось прочитать ссылку TikTok'); return false; }
+    if (state.modalId != null) closeModal();
+    state.tiktokImport = { open: true, url: target, title: '', thumb: '', videoId: '', query: '', loading: true };
+    App.renderTikTokImport();
+    App.syncBodyScroll();
+    const panel = $('#tiktok-import-modal .modal-panel');
+    if (panel) { panel.scrollTop = 0; panel.focus({ preventScroll: true }); }
+    fetchTikTokMeta(target).then(meta => {
+      if (!state.tiktokImport.open || state.tiktokImport.url !== target) return;
+      state.tiktokImport.title = meta.title || '';
+      state.tiktokImport.thumb = meta.thumb || '';
+      state.tiktokImport.videoId = meta.videoId || C.extractTikTokId(target) || '';
+      state.tiktokImport.loading = false;
+      App.renderTikTokImport();
+    });
+    return true;
+  }
+
+  function consumeSharedLink() {
+    if (typeof location === 'undefined') return false;
+    let params = null;
+    try { params = new URLSearchParams(location.search); } catch { return false; }
+    const text = [params.get('text'), params.get('url'), params.get('title')]
+      .filter(Boolean)
+      .join(' ');
+    if (!text || !/tiktok\.com/i.test(text)) return false;
+    try {
+      history.replaceState(null, '', location.pathname + location.hash);
+    } catch { /* не критично */ }
+    return receiveSharedTikTok(text);
+  }
+
+  function receiveSharedTikTok(text) {
+    const links = String(text || '').match(/https?:\/\/[^\s<>"']+/gi) || [String(text || '').trim()];
+    const url = links.map(link => link.replace(/[),.;!?\]}]+$/g, '')).find(C.isTikTokUrl);
+    if (!url) { toast('В полученном сообщении нет ссылки TikTok'); return false; }
+    return openTikTokImport(url);
+  }
+
+  function saveSharedTikTok(animeId) {
+    const anime = getAnime(animeId);
+    const imported = state.tiktokImport;
+    if (!anime || !imported || !imported.url) return;
+    const existing = momentsFor(animeId).find(moment => moment.kind === 'tiktok' && moment.url === imported.url);
+    if (existing) {
+      closeTikTokImport();
+      toast(`Это видео уже есть в карточке «${anime.title}»`);
+      return;
+    }
+    addMoment(animeId, {
+      id: C.extractTikTokId(imported.url) || newUid(),
+      kind: 'tiktok',
+      url: imported.url,
+      title: imported.title || anime.title,
+      thumb: imported.thumb,
+      videoId: imported.videoId || C.extractTikTokId(imported.url) || '',
+      createdAt: Date.now(),
+    });
+    closeTikTokImport();
+    openModal(animeId);
+    toast(`Видео TikTok добавлено к «${anime.title}»`);
+  }
+
+  function captureMomentDraft() {
+    const form = $('#moment-form');
+    if (!form) return;
+    const url = form.querySelector('input[name="url"]');
+    const title = form.querySelector('input[name="title"]');
+    if (url) state.momentForm.url = url.value;
+    if (title) state.momentForm.title = title.value;
+  }
+
+  async function saveMomentForm(form) {
+    const f = state.momentForm;
+    if (!f.open || f.busy) return;
+    const animeId = f.animeId;
+    const a = getAnime(animeId);
+    if (!a) return;
+    const data = new FormData(form);
+    const title = String(data.get('title') || '').trim();
+
+    if (f.mode === 'tiktok') {
+      const url = String(data.get('url') || '').trim();
+      if (!C.isTikTokUrl(url)) {
+        f.error = 'Нужна ссылка на TikTok.';
+        renderMomentForm();
+        return;
+      }
+      f.busy = true;
+      f.error = '';
+      renderMomentForm();
+      try {
+        const meta = await fetchTikTokMeta(url);
+        const videoId = meta.videoId || C.extractTikTokId(url);
+        if (!videoId) {
+          throw new Error('Не удалось найти видео в ссылке. Скопируйте полную ссылку на ролик из TikTok.');
+        }
+        addMoment(animeId, {
+          id: newUid(),
+          kind: 'tiktok',
+          title: title || meta.title || '',
+          url,
+          videoId,
+          thumb: meta.thumb || '',
+          createdAt: Date.now(),
+        });
+        closeMomentForm(true);
+        toast('Момент добавлен');
+      } catch (err) {
+        f.busy = false;
+        f.error = err && err.message ? err.message : 'Не удалось добавить момент.';
+        renderMomentForm();
+      }
+      return;
+    }
+
+    const fileInput = form.querySelector('input[name="file"]');
+    const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+    if (!file) {
+      f.error = 'Выберите видео или GIF.';
+      renderMomentForm();
+      return;
+    }
+    const isGif = file.type === 'image/gif' || /\.gif$/i.test(file.name || '');
+    const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|mov|m4v)$/i.test(file.name || '');
+    if (!isGif && !isVideo) {
+      f.error = 'Подойдёт MP4, WebM или GIF.';
+      renderMomentForm();
+      return;
+    }
+    const limit = isGif ? MOMENT_GIF_MAX : MOMENT_VIDEO_MAX;
+    if (file.size > limit) {
+      f.error = `Файл больше ${C.formatBytes(limit)}.`;
+      renderMomentForm();
+      return;
+    }
+
+    f.busy = true;
+    f.error = '';
+    renderMomentForm();
+    try {
+      const mediaKey = newUid();
+      const stored = await mediaPut('media', mediaKey, file);
+      if (!stored) throw new Error('Браузер не смог сохранить файл. Попробуйте файл меньше.');
+      let thumb = '';
+      let thumbKey = '';
+      try { thumb = await makeFileThumbnail(file); } catch { thumb = ''; }
+      if (thumb && isDataImageUrl(thumb)) {
+        thumbKey = momentThumbKey({ id: mediaKey }) || `moment:${mediaKey}:thumb`;
+        try {
+          const thumbBlob = await dataUrlToBlob(thumb);
+          await mediaPut('images', thumbKey, thumbBlob);
+          setLocalImageUrl(thumbKey, thumb);
+        } catch { thumbKey = ''; }
+      }
+      addMoment(animeId, {
+        id: mediaKey,
+        kind: isGif ? 'gif' : 'video',
+        title,
+        mediaKey,
+        thumb,
+        thumbKey,
+        mime: file.type || '',
+        size: file.size,
+        createdAt: Date.now(),
+      });
+      closeMomentForm(true);
+      toast('Момент добавлен');
+    } catch (err) {
+      f.busy = false;
+      f.error = err && err.message ? err.message : 'Не удалось добавить момент.';
+      renderMomentForm();
+    }
+  }
+
+  function revokeMomentUrls() {
+    for (const url of momentObjectUrls) URL.revokeObjectURL(url);
+    momentObjectUrls.clear();
+  }
+
+  async function playMoment(animeId, momentId, button) {
+    if (!button || button.dataset.loaded === '1') return;
+    const moment = findMoment(animeId, momentId);
+    if (!moment) return;
+
+    if (moment.kind === 'tiktok') {
+      const videoId = moment.videoId || C.extractTikTokId(moment.url);
+      if (!videoId) { toast('Не удалось открыть TikTok'); return; }
+      button.innerHTML = `<iframe class="moment-frame" src="${C.tiktokPlayerUrl(videoId)}" title="TikTok" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+      button.dataset.loaded = '1';
+      button.classList.add('is-playing');
+      return;
+    }
+
+    const blob = await mediaGet('media', moment.mediaKey);
+    if (!blob) { toast('Файл не найден в этом браузере'); return; }
+    revokeMomentUrls();
+    const url = URL.createObjectURL(blob);
+    momentObjectUrls.add(url);
+    if (moment.kind === 'gif') {
+      button.innerHTML = `<img class="moment-gif" src="${url}" alt="">`;
+    } else {
+      button.innerHTML = `<video class="moment-video" src="${url}" controls autoplay playsinline></video>`;
+    }
+    button.dataset.loaded = '1';
+    button.classList.add('is-playing');
+  }
+
+  function safeFileName(value) {
+    return String(value || 'moment')
+      .replace(/[\\/:*?"<>|]+/g, ' ')
+      .trim()
+      .slice(0, 80) || 'moment';
+  }
+
+  async function shareMoment(animeId, momentId) {
+    const moment = findMoment(animeId, momentId);
+    if (!moment) return;
+    const anime = getAnime(animeId);
+    const title = moment.title || (anime ? anime.title : 'Момент AniTier');
+
+    if (moment.kind === 'tiktok') {
+      if (navigator.share) {
+        try { await navigator.share({ title, url: moment.url }); return; }
+        catch (err) { if (err && err.name === 'AbortError') return; }
+      }
+      try {
+        await navigator.clipboard.writeText(moment.url);
+        toast('Ссылка на TikTok скопирована');
+      } catch {
+        toast('Не удалось поделиться ссылкой');
+      }
+      return;
+    }
+
+    const blob = await mediaGet('media', moment.mediaKey);
+    if (!blob) { toast('Файл не найден в этом браузере'); return; }
+    const ext = moment.kind === 'gif' ? 'gif' : (moment.mime && moment.mime.includes('webm') ? 'webm' : 'mp4');
+    const mime = moment.mime || blob.type || 'application/octet-stream';
+    let file = null;
+    try { file = new File([blob], `${safeFileName(title)}.${ext}`, { type: mime }); } catch { file = null; }
+
+    if (file && navigator.canShare) {
+      try {
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title });
+          return;
+        }
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;
+      }
+    }
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = file ? file.name : `${safeFileName(title)}.${ext}`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast('Файл сохранён — отправьте его через мессенджер');
+  }
+
+  async function removeMomentAction(animeId, momentId) {
+    const moment = findMoment(animeId, momentId);
+    if (!moment) return;
+    if (!window.confirm('Удалить этот момент?')) return;
+    if (moment.mediaKey) await mediaDelete('media', moment.mediaKey);
+    if (moment.thumbKey) await mediaDelete('images', moment.thumbKey);
+    removeMoment(animeId, momentId);
+    renderModal();
+    toast('Момент удалён');
+  }
+
+  Object.assign(App, {
+    readImageFile,
+    loadImageElement,
+    makeImageThumbnail,
+    makeVideoThumbnail,
+    makeFileThumbnail,
+    openTikTokUrl,
+    openTikTokSearch,
+    closeTikTokImport,
+    openTikTokImport,
+    consumeSharedLink,
+    receiveSharedTikTok,
+    saveSharedTikTok,
+    captureMomentDraft,
+    saveMomentForm,
+    revokeMomentUrls,
+    playMoment,
+    safeFileName,
+    shareMoment,
+    removeMomentAction,
+  });
 })(window.AniTier);
 
 </script>
 <script>
 /* ============================================================
-   AniTier — контроллер настроек (выделено из app.js)
+   AniTier — контроллер настроек и обновлений (выделено из app.js)
    ============================================================ */
 (function (App) {
   'use strict';
   const C = window.AniTierCore;
+  const state = App.state;
+  const $ = (...a) => App.$(...a);
+  const toast = (...a) => App.toast(...a);
+  const renderSettings = (...a) => App.renderSettings(...a);
+  const renderUpdateCard = (...a) => App.renderUpdateCard(...a);
+  const renderNotifications = (...a) => App.renderNotifications(...a);
+  const saveState = (...a) => App.saveState(...a);
+  const closeSettings = (...a) => App.closeSettings(...a);
+  const syncLangUI = (...a) => App.syncLangUI(...a);
+  const applyAppearance = (...a) => App.applyAppearance(...a);
+  const normalizeUpdateCheck = (v) => (App.normalizeUpdateCheck ? App.normalizeUpdateCheck(v) : v);
+  const clearPosterStore = (...a) => App.clearPosterStore(...a);
+
+
+  const UPDATE_CHECK_INTERVAL = 12 * 3600000;
+
+  function releaseBridge() {
+    return typeof window !== 'undefined' ? window.AniTierAndroid : null;
+  }
+
+  function releaseNotificationsEnabled() {
+    const bridge = releaseBridge();
+    if (!bridge || typeof bridge.areReleaseNotificationsEnabled !== 'function') return false;
+    try {
+      return Boolean(bridge.areReleaseNotificationsEnabled());
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function syncReleaseNotifications() {
+    const bridge = releaseBridge();
+    if (!bridge || typeof bridge.scheduleReleaseNotifications !== 'function') return;
+    const items = C.buildReleaseNotificationItems(state.notifications, state.epInfo);
+    try {
+      bridge.scheduleReleaseNotifications(JSON.stringify(items));
+    } catch (err) {
+      console.warn('AniTier: не удалось запланировать напоминания', err);
+    }
+  }
+
+  function toggleReleaseNotifications() {
+    const bridge = releaseBridge();
+    if (!bridge || typeof bridge.setReleaseNotificationsEnabled !== 'function') {
+      toast('Напоминания работают только в приложении для Android');
+      return;
+    }
+    bridge.setReleaseNotificationsEnabled(!releaseNotificationsEnabled());
+    if (state.settingsScreen && state.settingsScreen.open) renderSettings();
+  }
+
+  function onReleaseNotificationPermissionResult(enabled) {
+    if (state.tab === 'notifications') renderNotifications();
+    if (state.settingsScreen && state.settingsScreen.open) renderSettings();
+    toast(enabled ? 'Напоминания о сериях включены' : 'Напоминания о сериях выключены');
+    if (enabled) syncReleaseNotifications();
+  }
+
+  function showUpdateAvailable(release) {
+    const bridge = releaseBridge();
+    const apk = Boolean(bridge && typeof bridge.openUrl === 'function');
+    const base = String(C.GITHUB_URL || '').replace(/\/+$/, '');
+    state.updateCard = {
+      mode: 'available',
+      release,
+      apk,
+      url: apk ? `${base}/releases/latest/download/AniTier.apk` : (release.url || base),
+    };
+    renderUpdateCard();
+  }
+
+  async function autoCheckUpdates(options) {
+    const announce = Boolean(options && options.announce);
+    const mode = normalizeUpdateCheck(state.settings.updateCheck);
+    if (mode === 'ask') {
+      state.updateCard = { mode: 'ask' };
+      renderUpdateCard();
+      return;
+    }
+    if (mode !== 'on') return;
+
+    const last = Number(state.settings.lastUpdateCheck) || 0;
+    if (!announce && Date.now() - last < UPDATE_CHECK_INTERVAL) return;
+    state.settings.lastUpdateCheck = Date.now();
+    saveState();
+
+    try {
+      if (typeof App.fetchLatestRelease !== 'function') return;
+      const release = await App.fetchLatestRelease();
+      if (C.compareVersions(release.version, C.APP_VERSION) > 0) showUpdateAvailable(release);
+      else if (announce) toast(`У вас последняя версия ${C.APP_VERSION}.`);
+    } catch (err) {
+      if (announce) toast(err && err.message ? err.message : 'Не удалось проверить обновления');
+      /* нет сети или GitHub недоступен — молча ждём следующего запуска */
+    }
+  }
+
+  async function checkForUpdates() {
+    const screen = state.settingsScreen;
+    if (!screen || screen.checking) return;
+    screen.checking = true;
+    screen.message = '';
+    screen.error = false;
+    screen.latest = null;
+    if (screen.open) renderSettings();
+
+    try {
+      if (typeof App.fetchLatestRelease !== 'function') throw new Error('Проверка обновлений недоступна');
+      const release = await App.fetchLatestRelease();
+      const current = C.APP_VERSION;
+      screen.latest = release;
+      const diff = C.compareVersions(release.version, current);
+      if (diff > 0) {
+        screen.message = `Доступна версия ${release.version}, у вас ${current}.`;
+        showUpdateAvailable(release);
+      } else if (diff < 0) screen.message = `У вас версия ${current}, на GitHub опубликована ${release.version}.`;
+      else screen.message = `У вас последняя версия ${current}.`;
+    } catch (err) {
+      screen.error = true;
+      screen.message = err && err.message ? err.message : 'Не удалось проверить обновления';
+    } finally {
+      screen.checking = false;
+      if (screen.open) renderSettings();
+    }
+  }
+
+  function openExternalLink(url) {
+    if (!/^https?:\/\//i.test(String(url || ''))) return;
+    const bridge = releaseBridge();
+    if (bridge && typeof bridge.openUrl === 'function') {
+      try {
+        bridge.openUrl(url);
+        return;
+      } catch (_) { /* падаем в обычное окно */ }
+    }
+    if (typeof window !== 'undefined' && typeof window.open === 'function') {
+      window.open(url, '_blank', 'noopener');
+    }
+  }
+
+  function applySettingsChange(kind, value) {
+    if (kind === 'searchLang') {
+      state.settings.searchLang = C.normalizeSearchLang(value);
+      syncLangUI();
+    } else if (kind === 'titleLang') {
+      state.settings.titleLang = value === 'original' ? 'original' : 'ru';
+      if (typeof App.refreshViews === 'function') App.refreshViews();
+    } else if (kind === 'synopsisLang') {
+      state.settings.synopsisLang = value === 'original' ? 'original' : 'translated';
+      if (state.modalId != null) renderModal();
+    } else if (kind === 'theme') {
+      state.settings.theme = value === 'amoled' ? 'amoled' : 'dark';
+      if (typeof App.applyAppearance === 'function') App.applyAppearance();
+    } else if (kind === 'density') {
+      state.settings.density = value === 'compact' ? 'compact' : 'comfortable';
+      if (typeof App.applyAppearance === 'function') App.applyAppearance();
+      if (typeof App.refreshViews === 'function') App.refreshViews();
+    } else if (kind === 'fontSize') {
+      state.settings.fontSize = ['small', 'large'].includes(value) ? value : 'normal';
+      if (typeof App.applyAppearance === 'function') App.applyAppearance();
+    } else if (kind === 'translationProvider') {
+      state.settings.translationProvider = ['mymemory', 'google'].includes(value) ? value : 'auto';
+    } else {
+      return;
+    }
+    saveState();
+    if (state.settingsScreen && state.settingsScreen.open) renderSettings();
+  }
+
+  async function refreshStorageInfo() {
+    const screen = state.settingsScreen;
+    if (!screen || !screen.open) return;
+    screen.storageBusy = true;
+    renderSettings();
+    try {
+      let text = 'недоступно';
+      if (navigator.storage && navigator.storage.estimate) {
+        const est = await navigator.storage.estimate();
+        const used = Number(est.usage) || 0;
+        const quota = Number(est.quota) || 0;
+        text = quota ? `${C.formatBytes(used)} из ${C.formatBytes(quota)}` : C.formatBytes(used);
+      }
+      screen.storageText = text;
+    } catch {
+      screen.storageText = 'не удалось определить';
+    } finally {
+      screen.storageBusy = false;
+      if (screen.open) renderSettings();
+    }
+  }
+
+  async function clearAppCache() {
+    const screen = state.settingsScreen;
+    if (!window.confirm('Очистить кэш API и постеров? Списки, прогресс, карточки и моменты останутся.')) return;
+    if (screen) { screen.cacheBusy = true; screen.cacheMessage = ''; screen.cacheError = false; renderSettings(); }
+    try {
+      if (App.clearAniListCache) App.clearAniListCache();
+      if (App.clearPersistentApiCache) await App.clearPersistentApiCache();
+      if (clearPosterStore) await clearPosterStore();
+      if (screen) { screen.cacheMessage = 'Кэш очищен. Данные списков и прогресс сохранены.'; screen.cacheError = false; }
+      toast('Кэш очищен');
+    } catch (err) {
+      if (screen) { screen.cacheMessage = (err && err.message) ? err.message : 'Не удалось очистить кэш.'; screen.cacheError = true; }
+    } finally {
+      if (screen) { screen.cacheBusy = false; if (screen.open) renderSettings(); }
+      refreshStorageInfo();
+    }
+  }
+
+  Object.assign(App, {
+    releaseBridge,
+    releaseNotificationsEnabled,
+    syncReleaseNotifications,
+    toggleReleaseNotifications,
+    onReleaseNotificationPermissionResult,
+    showUpdateAvailable,
+    autoCheckUpdates,
+    checkForUpdates,
+    openExternalLink,
+    applySettingsChange,
+    refreshStorageInfo,
+    clearAppCache,
+  });
 })(window.AniTier);
 
 </script>
@@ -16769,6 +17616,40 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
   try {
 
   const C = window.AniTierCore;
+
+// Ленивая привязка к функциям, перенесённым в app-ctrl-moments/settings (п.35)
+const readImageFile = (...a) => App.readImageFile(...a);
+const loadImageElement = (...a) => App.loadImageElement(...a);
+const makeImageThumbnail = (...a) => App.makeImageThumbnail(...a);
+const makeVideoThumbnail = (...a) => App.makeVideoThumbnail(...a);
+const makeFileThumbnail = (...a) => App.makeFileThumbnail(...a);
+const openTikTokUrl = (...a) => App.openTikTokUrl(...a);
+const openTikTokSearch = (...a) => App.openTikTokSearch(...a);
+const closeTikTokImport = (...a) => App.closeTikTokImport(...a);
+const openTikTokImport = (...a) => App.openTikTokImport(...a);
+const consumeSharedLink = (...a) => App.consumeSharedLink(...a);
+const receiveSharedTikTok = (...a) => App.receiveSharedTikTok(...a);
+const saveSharedTikTok = (...a) => App.saveSharedTikTok(...a);
+const captureMomentDraft = (...a) => App.captureMomentDraft(...a);
+const saveMomentForm = (...a) => App.saveMomentForm(...a);
+const revokeMomentUrls = (...a) => App.revokeMomentUrls(...a);
+const playMoment = (...a) => App.playMoment(...a);
+const safeFileName = (...a) => App.safeFileName(...a);
+const shareMoment = (...a) => App.shareMoment(...a);
+const removeMomentAction = (...a) => App.removeMomentAction(...a);
+const releaseBridge = (...a) => App.releaseBridge(...a);
+const releaseNotificationsEnabled = (...a) => App.releaseNotificationsEnabled(...a);
+const syncReleaseNotifications = (...a) => App.syncReleaseNotifications(...a);
+const toggleReleaseNotifications = (...a) => App.toggleReleaseNotifications(...a);
+const onReleaseNotificationPermissionResult = (...a) => App.onReleaseNotificationPermissionResult(...a);
+const showUpdateAvailable = (...a) => App.showUpdateAvailable(...a);
+const autoCheckUpdates = (...a) => App.autoCheckUpdates(...a);
+const checkForUpdates = (...a) => App.checkForUpdates(...a);
+const openExternalLink = (...a) => App.openExternalLink(...a);
+const applySettingsChange = (...a) => App.applySettingsChange(...a);
+const refreshStorageInfo = (...a) => App.refreshStorageInfo(...a);
+const clearAppCache = (...a) => App.clearAppCache(...a);
+try { window.onReleaseNotificationPermissionResult = onReleaseNotificationPermissionResult; } catch (_) {}
   const {
     state,
     LS_KEY,
@@ -17284,88 +18165,10 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
   }
 
   /* ---------------- свои карточки: сохранение ---------------- */
-  function readImageFile(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ''));
-      reader.onerror = () => reject(reader.error || new Error('Не удалось прочитать файл'));
-      reader.readAsDataURL(file);
-    });
-  }
 
-  function loadImageElement(src) {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error('Не удалось открыть изображение'));
-      img.src = src;
-    });
-  }
 
-  async function makeImageThumbnail(file, max = 480, quality = 0.78) {
-    const url = URL.createObjectURL(file);
-    try {
-      const img = await loadImageElement(url);
-      const width = img.naturalWidth || img.width || 1;
-      const height = img.naturalHeight || img.height || 1;
-      const scale = Math.min(1, max / Math.max(width, height));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, Math.round(width * scale));
-      canvas.height = Math.max(1, Math.round(height * scale));
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Canvas недоступен');
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      let data = canvas.toDataURL('image/jpeg', quality);
-      if (data.length > 450000) data = canvas.toDataURL('image/jpeg', 0.55);
-      return data;
-    } finally {
-      URL.revokeObjectURL(url);
-    }
-  }
 
-  async function makeVideoThumbnail(file) {
-    const url = URL.createObjectURL(file);
-    const video = document.createElement('video');
-    video.preload = 'metadata';
-    video.muted = true;
-    video.playsInline = true;
-    try {
-      await new Promise((resolve, reject) => {
-        video.onloadedmetadata = resolve;
-        video.onerror = () => reject(new Error('Не удалось прочитать видео'));
-        video.src = url;
-      });
-      if (Number.isFinite(video.duration) && video.duration > 0) {
-        await new Promise(resolve => {
-          const timer = setTimeout(resolve, 2500);
-          video.onseeked = () => { clearTimeout(timer); resolve(); };
-          try { video.currentTime = Math.min(1, video.duration / 3); } catch { clearTimeout(timer); resolve(); }
-        });
-      }
-      const width = video.videoWidth || 640;
-      const height = video.videoHeight || 360;
-      const scale = Math.min(1, 480 / Math.max(width, height));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, Math.round(width * scale));
-      canvas.height = Math.max(1, Math.round(height * scale));
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Canvas недоступен');
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      let data = canvas.toDataURL('image/jpeg', 0.72);
-      if (data.length > 450000) data = canvas.toDataURL('image/jpeg', 0.55);
-      return data;
-    } finally {
-      URL.revokeObjectURL(url);
-      video.removeAttribute('src');
-      try { video.load(); } catch { /* noop */ }
-    }
-  }
 
-  async function makeFileThumbnail(file) {
-    if (file.type === 'image/gif' || file.type.startsWith('image/')) return makeImageThumbnail(file);
-    if (file.type.startsWith('video/')) return makeVideoThumbnail(file);
-    return '';
-  }
 
   async function saveCustomForm(form) {
     if (state.customForm.busy) return;
@@ -17491,311 +18294,20 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
   }
 
   /* ---------------- моменты ---------------- */
-  function openTikTokUrl(url) {
-    const target = String(url || '');
-    if (!C.isTikTokUrl(target)) { toast('Ссылка TikTok недействительна'); return false; }
-    try {
-      if (window.AniTierAndroid && typeof window.AniTierAndroid.openTikTok === 'function') {
-        return window.AniTierAndroid.openTikTok(target);
-      }
-      const opened = window.open(target, '_blank', 'noopener');
-      if (!opened) window.location.href = target;
-      return true;
-    } catch {
-      window.location.href = target;
-      return true;
-    }
-  }
 
   /* Поиск: в APK сначала открываем приложение TikTok, если его нет — браузер. */
-  function openTikTokSearch(query) {
-    const text = String(query == null ? '' : query).trim();
-    if (!text) return false;
-    const bridge = typeof window !== 'undefined' ? window.AniTierAndroid : null;
-    if (bridge && typeof bridge.openTikTokSearch === 'function') {
-      try {
-        return bridge.openTikTokSearch(text);
-      } catch { /* ниже обычный путь через ссылку */ }
-    }
-    const url = C.tiktokSearchUrl(text);
-    return url ? openTikTokUrl(url) : false;
-  }
 
-  function closeTikTokImport() {
-    state.tiktokImport = { open: false, url: '', title: '', thumb: '', query: '', loading: false };
-    const modal = $('#tiktok-import-modal');
-    if (modal) modal.hidden = true;
-    App.syncBodyScroll();
-  }
 
-  function openTikTokImport(url) {
-    const target = String(url || '').trim();
-    if (!C.isTikTokUrl(target)) { toast('Не удалось прочитать ссылку TikTok'); return false; }
-    if (state.modalId != null) closeModal();
-    state.tiktokImport = { open: true, url: target, title: '', thumb: '', videoId: '', query: '', loading: true };
-    App.renderTikTokImport();
-    App.syncBodyScroll();
-    const panel = $('#tiktok-import-modal .modal-panel');
-    if (panel) { panel.scrollTop = 0; panel.focus({ preventScroll: true }); }
-    fetchTikTokMeta(target).then(meta => {
-      if (!state.tiktokImport.open || state.tiktokImport.url !== target) return;
-      state.tiktokImport.title = meta.title || '';
-      state.tiktokImport.thumb = meta.thumb || '';
-      state.tiktokImport.videoId = meta.videoId || C.extractTikTokId(target) || '';
-      state.tiktokImport.loading = false;
-      App.renderTikTokImport();
-    });
-    return true;
-  }
 
-  /* PWA share_target: Android делится ссылкой на TikTok прямо в приложение. */
-  function consumeSharedLink() {
-    if (typeof location === 'undefined') return false;
-    let params = null;
-    try { params = new URLSearchParams(location.search); } catch { return false; }
-    const text = [params.get('text'), params.get('url'), params.get('title')]
-      .filter(Boolean)
-      .join(' ');
-    if (!text || !/tiktok\.com/i.test(text)) return false;
-    try {
-      history.replaceState(null, '', location.pathname + location.hash);
-    } catch { /* не критично */ }
-    return receiveSharedTikTok(text);
-  }
 
-  function receiveSharedTikTok(text) {
-    const links = String(text || '').match(/https?:\/\/[^\s<>"']+/gi) || [String(text || '').trim()];
-    const url = links.map(link => link.replace(/[),.;!?\]}]+$/g, '')).find(C.isTikTokUrl);
-    if (!url) { toast('В полученном сообщении нет ссылки TikTok'); return false; }
-    return openTikTokImport(url);
-  }
 
-  function saveSharedTikTok(animeId) {
-    const anime = getAnime(animeId);
-    const imported = state.tiktokImport;
-    if (!anime || !imported || !imported.url) return;
-    const existing = momentsFor(animeId).find(moment => moment.kind === 'tiktok' && moment.url === imported.url);
-    if (existing) {
-      closeTikTokImport();
-      toast(`Это видео уже есть в карточке «${anime.title}»`);
-      return;
-    }
-    addMoment(animeId, {
-      id: C.extractTikTokId(imported.url) || newUid(),
-      kind: 'tiktok',
-      url: imported.url,
-      title: imported.title || anime.title,
-      thumb: imported.thumb,
-      videoId: imported.videoId || C.extractTikTokId(imported.url) || '',
-      createdAt: Date.now(),
-    });
-    closeTikTokImport();
-    openModal(animeId);
-    toast(`Видео TikTok добавлено к «${anime.title}»`);
-  }
 
-  function captureMomentDraft() {
-    const form = $('#moment-form');
-    if (!form) return;
-    const url = form.querySelector('input[name="url"]');
-    const title = form.querySelector('input[name="title"]');
-    if (url) state.momentForm.url = url.value;
-    if (title) state.momentForm.title = title.value;
-  }
 
-  async function saveMomentForm(form) {
-    const f = state.momentForm;
-    if (!f.open || f.busy) return;
-    const animeId = f.animeId;
-    const a = getAnime(animeId);
-    if (!a) return;
-    const data = new FormData(form);
-    const title = String(data.get('title') || '').trim();
 
-    if (f.mode === 'tiktok') {
-      const url = String(data.get('url') || '').trim();
-      if (!C.isTikTokUrl(url)) {
-        f.error = 'Нужна ссылка на TikTok.';
-        renderMomentForm();
-        return;
-      }
-      f.busy = true;
-      f.error = '';
-      renderMomentForm();
-      try {
-        const meta = await fetchTikTokMeta(url);
-        const videoId = meta.videoId || C.extractTikTokId(url);
-        if (!videoId) {
-          throw new Error('Не удалось найти видео в ссылке. Скопируйте полную ссылку на ролик из TikTok.');
-        }
-        addMoment(animeId, {
-          id: newUid(),
-          kind: 'tiktok',
-          title: title || meta.title || '',
-          url,
-          videoId,
-          thumb: meta.thumb || '',
-          createdAt: Date.now(),
-        });
-        closeMomentForm(true);
-        toast('Момент добавлен');
-      } catch (err) {
-        f.busy = false;
-        f.error = err && err.message ? err.message : 'Не удалось добавить момент.';
-        renderMomentForm();
-      }
-      return;
-    }
 
-    const fileInput = form.querySelector('input[name="file"]');
-    const file = fileInput && fileInput.files ? fileInput.files[0] : null;
-    if (!file) {
-      f.error = 'Выберите видео или GIF.';
-      renderMomentForm();
-      return;
-    }
-    const isGif = file.type === 'image/gif' || /\.gif$/i.test(file.name || '');
-    const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|mov|m4v)$/i.test(file.name || '');
-    if (!isGif && !isVideo) {
-      f.error = 'Подойдёт MP4, WebM или GIF.';
-      renderMomentForm();
-      return;
-    }
-    const limit = isGif ? MOMENT_GIF_MAX : MOMENT_VIDEO_MAX;
-    if (file.size > limit) {
-      f.error = `Файл больше ${C.formatBytes(limit)}.`;
-      renderMomentForm();
-      return;
-    }
 
-    f.busy = true;
-    f.error = '';
-    renderMomentForm();
-    try {
-      const mediaKey = newUid();
-      const stored = await mediaPut('media', mediaKey, file);
-      if (!stored) throw new Error('Браузер не смог сохранить файл. Попробуйте файл меньше.');
-      let thumb = '';
-      let thumbKey = '';
-      try { thumb = await makeFileThumbnail(file); } catch { thumb = ''; }
-      if (thumb && isDataImageUrl(thumb)) {
-        thumbKey = momentThumbKey({ id: mediaKey }) || `moment:${mediaKey}:thumb`;
-        try {
-          const thumbBlob = await dataUrlToBlob(thumb);
-          await mediaPut('images', thumbKey, thumbBlob);
-          setLocalImageUrl(thumbKey, thumb);
-        } catch { thumbKey = ''; }
-      }
-      addMoment(animeId, {
-        id: mediaKey,
-        kind: isGif ? 'gif' : 'video',
-        title,
-        mediaKey,
-        thumb,
-        thumbKey,
-        mime: file.type || '',
-        size: file.size,
-        createdAt: Date.now(),
-      });
-      closeMomentForm(true);
-      toast('Момент добавлен');
-    } catch (err) {
-      f.busy = false;
-      f.error = err && err.message ? err.message : 'Не удалось добавить момент.';
-      renderMomentForm();
-    }
-  }
 
-  const momentObjectUrls = new Set();
 
-  function revokeMomentUrls() {
-    for (const url of momentObjectUrls) URL.revokeObjectURL(url);
-    momentObjectUrls.clear();
-  }
-
-  async function playMoment(animeId, momentId, button) {
-    if (!button || button.dataset.loaded === '1') return;
-    const moment = findMoment(animeId, momentId);
-    if (!moment) return;
-
-    if (moment.kind === 'tiktok') {
-      const videoId = moment.videoId || C.extractTikTokId(moment.url);
-      if (!videoId) { toast('Не удалось открыть TikTok'); return; }
-      button.innerHTML = `<iframe class="moment-frame" src="${C.tiktokPlayerUrl(videoId)}" title="TikTok" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
-      button.dataset.loaded = '1';
-      button.classList.add('is-playing');
-      return;
-    }
-
-    const blob = await mediaGet('media', moment.mediaKey);
-    if (!blob) { toast('Файл не найден в этом браузере'); return; }
-    revokeMomentUrls();
-    const url = URL.createObjectURL(blob);
-    momentObjectUrls.add(url);
-    if (moment.kind === 'gif') {
-      button.innerHTML = `<img class="moment-gif" src="${url}" alt="">`;
-    } else {
-      button.innerHTML = `<video class="moment-video" src="${url}" controls autoplay playsinline></video>`;
-    }
-    button.dataset.loaded = '1';
-    button.classList.add('is-playing');
-  }
-
-  function safeFileName(value) {
-    return String(value || 'moment')
-      .replace(/[\\/:*?"<>|]+/g, ' ')
-      .trim()
-      .slice(0, 80) || 'moment';
-  }
-
-  async function shareMoment(animeId, momentId) {
-    const moment = findMoment(animeId, momentId);
-    if (!moment) return;
-    const anime = getAnime(animeId);
-    const title = moment.title || (anime ? anime.title : 'Момент AniTier');
-
-    if (moment.kind === 'tiktok') {
-      if (navigator.share) {
-        try { await navigator.share({ title, url: moment.url }); return; }
-        catch (err) { if (err && err.name === 'AbortError') return; }
-      }
-      try {
-        await navigator.clipboard.writeText(moment.url);
-        toast('Ссылка на TikTok скопирована');
-      } catch {
-        toast('Не удалось поделиться ссылкой');
-      }
-      return;
-    }
-
-    const blob = await mediaGet('media', moment.mediaKey);
-    if (!blob) { toast('Файл не найден в этом браузере'); return; }
-    const ext = moment.kind === 'gif' ? 'gif' : (moment.mime && moment.mime.includes('webm') ? 'webm' : 'mp4');
-    const mime = moment.mime || blob.type || 'application/octet-stream';
-    let file = null;
-    try { file = new File([blob], `${safeFileName(title)}.${ext}`, { type: mime }); } catch { file = null; }
-
-    if (file && navigator.canShare) {
-      try {
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title });
-          return;
-        }
-      } catch (err) {
-        if (err && err.name === 'AbortError') return;
-      }
-    }
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = file ? file.name : `${safeFileName(title)}.${ext}`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    toast('Файл сохранён — отправьте его через мессенджер');
-  }
 
   /* ---------------- PNG тир-листа ---------------- */
   const TIER_IMAGE_GRADIENTS = {
@@ -18164,16 +18676,6 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     }
   }
 
-  async function removeMomentAction(animeId, momentId) {
-    const moment = findMoment(animeId, momentId);
-    if (!moment) return;
-    if (!window.confirm('Удалить этот момент?')) return;
-    if (moment.mediaKey) await mediaDelete('media', moment.mediaKey);
-    if (moment.thumbKey) await mediaDelete('images', moment.thumbKey);
-    removeMoment(animeId, momentId);
-    renderModal();
-    toast('Момент удалён');
-  }
 
   /* ---------------- резервные копии и Google Drive ---------------- */
   const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
@@ -18937,45 +19439,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
   }
   window.bindModalSwipe = bindModalSwipe;
 
-  async function refreshStorageInfo() {
-    const screen = state.settingsScreen;
-    if (!screen || !screen.open) return;
-    screen.storageBusy = true;
-    renderSettings();
-    try {
-      let text = 'недоступно';
-      if (navigator.storage && navigator.storage.estimate) {
-        const est = await navigator.storage.estimate();
-        const used = Number(est.usage) || 0;
-        const quota = Number(est.quota) || 0;
-        text = quota ? `${C.formatBytes(used)} из ${C.formatBytes(quota)}` : C.formatBytes(used);
-      }
-      screen.storageText = text;
-    } catch {
-      screen.storageText = 'не удалось определить';
-    } finally {
-      screen.storageBusy = false;
-      if (screen.open) renderSettings();
-    }
-  }
 
-  async function clearAppCache() {
-    const screen = state.settingsScreen;
-    if (!window.confirm('Очистить кэш API и постеров? Списки, прогресс, карточки и моменты останутся.')) return;
-    if (screen) { screen.cacheBusy = true; screen.cacheMessage = ''; screen.cacheError = false; renderSettings(); }
-    try {
-      if (App.clearAniListCache) App.clearAniListCache();
-      if (App.clearPersistentApiCache) await App.clearPersistentApiCache();
-      if (clearPosterStore) await clearPosterStore();
-      if (screen) { screen.cacheMessage = 'Кэш очищен. Данные списков и прогресс сохранены.'; screen.cacheError = false; }
-      toast('Кэш очищен');
-    } catch (err) {
-      if (screen) { screen.cacheMessage = (err && err.message) ? err.message : 'Не удалось очистить кэш.'; screen.cacheError = true; }
-    } finally {
-      if (screen) { screen.cacheBusy = false; if (screen.open) renderSettings(); }
-      refreshStorageInfo();
-    }
-  }
 
   /* Реестр действий: data-action → обработчик. Новое действие — одна строка. */
 
@@ -20566,165 +21030,21 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
   }
 
   /* ---------------- напоминания на телефоне ---------------- */
-  function releaseBridge() {
-    return typeof window !== 'undefined' ? window.AniTierAndroid : null;
-  }
 
-  function releaseNotificationsEnabled() {
-    const bridge = releaseBridge();
-    if (!bridge || typeof bridge.areReleaseNotificationsEnabled !== 'function') return false;
-    try {
-      return Boolean(bridge.areReleaseNotificationsEnabled());
-    } catch (_) {
-      return false;
-    }
-  }
 
-  function syncReleaseNotifications() {
-    const bridge = releaseBridge();
-    if (!bridge || typeof bridge.scheduleReleaseNotifications !== 'function') return;
-    const items = C.buildReleaseNotificationItems(state.notifications, state.epInfo);
-    try {
-      bridge.scheduleReleaseNotifications(JSON.stringify(items));
-    } catch (err) {
-      console.warn('AniTier: не удалось запланировать напоминания', err);
-    }
-  }
 
-  function toggleReleaseNotifications() {
-    const bridge = releaseBridge();
-    if (!bridge || typeof bridge.setReleaseNotificationsEnabled !== 'function') {
-      toast('Напоминания работают только в приложении для Android');
-      return;
-    }
-    bridge.setReleaseNotificationsEnabled(!releaseNotificationsEnabled());
-    if (state.settingsScreen && state.settingsScreen.open) renderSettings();
-  }
 
   /* Вызывается из MainActivity после ответа на запрос разрешений. */
-  function onReleaseNotificationPermissionResult(enabled) {
-    if (state.tab === 'notifications') renderNotifications();
-    if (state.settingsScreen && state.settingsScreen.open) renderSettings();
-    toast(enabled ? 'Напоминания о сериях включены' : 'Напоминания о сериях выключены');
-    if (enabled) syncReleaseNotifications();
-  }
 
   /* ---------------- проверка обновлений ---------------- */
-  const UPDATE_CHECK_INTERVAL = 12 * 3600000;
 
   /* Карточка «доступно обновление»: в APK ведём сразу на APK, в браузере — на релиз. */
-  function showUpdateAvailable(release) {
-    const bridge = releaseBridge();
-    const apk = Boolean(bridge && typeof bridge.openUrl === 'function');
-    const base = String(C.GITHUB_URL || '').replace(/\/+$/, '');
-    state.updateCard = {
-      mode: 'available',
-      release,
-      apk,
-      url: apk ? `${base}/releases/latest/download/AniTier.apk` : (release.url || base),
-    };
-    renderUpdateCard();
-  }
 
   /* При запуске: спросить разрешение один раз или проверить молча. */
-  async function autoCheckUpdates(options) {
-    const announce = Boolean(options && options.announce);
-    const mode = normalizeUpdateCheck(state.settings.updateCheck);
-    if (mode === 'ask') {
-      state.updateCard = { mode: 'ask' };
-      renderUpdateCard();
-      return;
-    }
-    if (mode !== 'on') return;
 
-    const last = Number(state.settings.lastUpdateCheck) || 0;
-    if (!announce && Date.now() - last < UPDATE_CHECK_INTERVAL) return;
-    state.settings.lastUpdateCheck = Date.now();
-    saveState();
-
-    try {
-      if (typeof App.fetchLatestRelease !== 'function') return;
-      const release = await App.fetchLatestRelease();
-      if (C.compareVersions(release.version, C.APP_VERSION) > 0) showUpdateAvailable(release);
-      else if (announce) toast(`У вас последняя версия ${C.APP_VERSION}.`);
-    } catch (err) {
-      if (announce) toast(err && err.message ? err.message : 'Не удалось проверить обновления');
-      /* нет сети или GitHub недоступен — молча ждём следующего запуска */
-    }
-  }
-
-  async function checkForUpdates() {
-    const screen = state.settingsScreen;
-    if (!screen || screen.checking) return;
-    screen.checking = true;
-    screen.message = '';
-    screen.error = false;
-    screen.latest = null;
-    if (screen.open) renderSettings();
-
-    try {
-      if (typeof App.fetchLatestRelease !== 'function') throw new Error('Проверка обновлений недоступна');
-      const release = await App.fetchLatestRelease();
-      const current = C.APP_VERSION;
-      screen.latest = release;
-      const diff = C.compareVersions(release.version, current);
-      if (diff > 0) {
-        screen.message = `Доступна версия ${release.version}, у вас ${current}.`;
-        showUpdateAvailable(release);
-      } else if (diff < 0) screen.message = `У вас версия ${current}, на GitHub опубликована ${release.version}.`;
-      else screen.message = `У вас последняя версия ${current}.`;
-    } catch (err) {
-      screen.error = true;
-      screen.message = err && err.message ? err.message : 'Не удалось проверить обновления';
-    } finally {
-      screen.checking = false;
-      if (screen.open) renderSettings();
-    }
-  }
 
   /* Ссылки: в APK открываем системным браузером через мост, в браузере — новой вкладкой. */
-  function openExternalLink(url) {
-    if (!/^https?:\/\//i.test(String(url || ''))) return;
-    const bridge = releaseBridge();
-    if (bridge && typeof bridge.openUrl === 'function') {
-      try {
-        bridge.openUrl(url);
-        return;
-      } catch (_) { /* падаем в обычное окно */ }
-    }
-    if (typeof window !== 'undefined' && typeof window.open === 'function') {
-      window.open(url, '_blank', 'noopener');
-    }
-  }
 
-  function applySettingsChange(kind, value) {
-    if (kind === 'searchLang') {
-      state.settings.searchLang = C.normalizeSearchLang(value);
-      syncLangUI();
-    } else if (kind === 'titleLang') {
-      state.settings.titleLang = value === 'original' ? 'original' : 'ru';
-      if (typeof App.refreshViews === 'function') App.refreshViews();
-    } else if (kind === 'synopsisLang') {
-      state.settings.synopsisLang = value === 'original' ? 'original' : 'translated';
-      if (state.modalId != null) renderModal();
-    } else if (kind === 'theme') {
-      state.settings.theme = value === 'amoled' ? 'amoled' : 'dark';
-      if (typeof App.applyAppearance === 'function') App.applyAppearance();
-    } else if (kind === 'density') {
-      state.settings.density = value === 'compact' ? 'compact' : 'comfortable';
-      if (typeof App.applyAppearance === 'function') App.applyAppearance();
-      if (typeof App.refreshViews === 'function') App.refreshViews();
-    } else if (kind === 'fontSize') {
-      state.settings.fontSize = ['small', 'large'].includes(value) ? value : 'normal';
-      if (typeof App.applyAppearance === 'function') App.applyAppearance();
-    } else if (kind === 'translationProvider') {
-      state.settings.translationProvider = ['mymemory', 'google'].includes(value) ? value : 'auto';
-    } else {
-      return;
-    }
-    saveState();
-    if (state.settingsScreen && state.settingsScreen.open) renderSettings();
-  }
 
   /* Системная кнопка «назад» в Android: сначала закрываем слои интерфейса. */
   function handleAndroidBack() {
@@ -20786,18 +21106,18 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     saveCustomForm,
     removeCustomCard,
     hydrateCustomImage,
-    saveMomentForm,
-    receiveSharedTikTok,
-    openTikTokSearch,
-    playMoment,
-    shareMoment,
-    removeMomentAction,
+
+
+
+
+
+
     openCustomForm,
     closeCustomForm,
     openMomentForm,
     closeMomentForm,
-    captureMomentDraft,
-    revokeMomentUrls,
+
+
     openBackup,
     closeBackup,
     saveBackupFile,
@@ -20816,16 +21136,16 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     buildBackupPayload,
     applyBackupData,
     handleAndroidBack,
-    onReleaseNotificationPermissionResult,
-    syncReleaseNotifications,
-    toggleReleaseNotifications,
-    releaseNotificationsEnabled,
-    checkForUpdates,
-    autoCheckUpdates,
-    showUpdateAvailable,
+
+
+
+
+
+
+
     renderUpdateCard,
-    refreshStorageInfo,
-    clearAppCache,
+
+
     openSettings,
     closeSettings,
     openStats,
@@ -20838,7 +21158,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     openCommandResult,
     renderSettings,
     scrollPageBy,
-    openExternalLink,
+
     renderSearchHistory,
     translateModalSynopsis,
     init,

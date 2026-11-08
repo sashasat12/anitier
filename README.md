@@ -353,7 +353,7 @@ anitier/
 ├── tags.js          — все теги AniList с русскими подписями и категориями
 ├── app-store.js     — состояние, localStorage, IndexedDB, списки, прогресс, свои карточки, моменты, копии
 ├── app-api.js       — AniList/Kitsu, поиск, кэш, переводы, TikTok oEmbed, Google Drive
-├── app-render.js    — отрисовка интерфейса, модалки, обмен тир-листами, формы карточек и моментов, копии
+├── app-render-* (cards/lists/screens/modals)    — отрисовка интерфейса, модалки, обмен тир-листами, формы карточек и моментов, копии
 ├── app-render-cards.js, app-render-lists.js, app-render-screens.js, app-render-modals.js — модули рендера (часть пока заглушки)
 ├── app.js           — контроллер, события, drag & drop, файлы, Google Drive, запуск
 ├── app-ctrl-catalog.js, app-ctrl-notifications.js, app-ctrl-upcoming.js, app-ctrl-backup.js — контроллеры каталога, уведомлений, премьер, копий

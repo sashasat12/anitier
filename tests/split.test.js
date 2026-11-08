@@ -1,11 +1,11 @@
-/* Порядок загрузки после разделения app.js/app-render.js (пункт 17). */
+/* Порядок загрузки после завершения разделения app-render.js (пункт 35). */
 (() => {
   'use strict';
   const T = window.AniTierTests;
 
   const SCRIPTS = [
     'app-store.js', 'app-api.js',
-    'app-render-cards.js', 'app-render-lists.js', 'app-render-screens.js', 'app-render-modals.js', 'app-render.js',
+    'app-render-cards.js', 'app-render-lists.js', 'app-render-screens.js', 'app-render-modals.js',
     'app-ctrl-catalog.js', 'app-ctrl-notifications.js', 'app-ctrl-upcoming.js', 'app-ctrl-backup.js', 'app-ctrl-moments.js', 'app-ctrl-settings.js',
     'app.js',
   ];

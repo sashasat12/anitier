@@ -25,7 +25,6 @@ const SHELL = [
   '../app-render-lists.js',
   '../app-render-screens.js',
   '../app-render-modals.js',
-  '../app-render.js',
   '../app-ctrl-catalog.js',
   '../app-ctrl-notifications.js',
   '../app-ctrl-upcoming.js',
