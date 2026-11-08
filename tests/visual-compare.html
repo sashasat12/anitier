@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>AniTier visual compare</title>
+<style>body{margin:0;font:14px sans-serif;background:#111;color:#eee;padding:16px}pre{white-space:pre-wrap}</style>
+</head>
+<body>
+<pre id="out">ready</pre>
+<script>
+window.visualCompare = async function visualCompare(baselineUrl, actualDataUrl, tolerance) {
+  const tol = Number.isFinite(tolerance) ? tolerance : 0;
+  function load(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('Не удалось загрузить: ' + src));
+      img.src = src;
+    });
+  }
+  function pixels(img) {
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth; c.height = img.naturalHeight;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0);
+    return ctx.getImageData(0, 0, c.width, c.height);
+  }
+  const base = await load(baselineUrl);
+  const actual = await load(actualDataUrl);
+  if (base.naturalWidth !== actual.naturalWidth || base.naturalHeight !== actual.naturalHeight) {
+    return { ok: false, reason: 'size', expected: [base.naturalWidth, base.naturalHeight], actual: [actual.naturalWidth, actual.naturalHeight] };
+  }
+  const a = pixels(base).data;
+  const b = pixels(actual).data;
+  let diff = 0;
+  let max = 0;
+  for (let i = 0; i < a.length; i += 4) {
+    if (a[i+3] === 0 && b[i+3] === 0) continue;
+    const d = Math.abs(a[i]-b[i]) + Math.abs(a[i+1]-b[i+1]) + Math.abs(a[i+2]-b[i+2]) + Math.abs(a[i+3]-b[i+3]);
+    if (d > tol) diff++;
+    if (d > max) max = d;
+  }
+  return { ok: diff === 0, diffPixels: diff, maxChannelDelta: max, width: base.naturalWidth, height: base.naturalHeight };
+};
+document.getElementById('out').textContent = 'ready';
+</script>
+</body>
+</html>

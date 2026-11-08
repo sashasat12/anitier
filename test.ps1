@@ -1,7 +1,11 @@
 ﻿# Запуск браузерных тестов AniTier без Node/npm.
 # Требуется Microsoft Edge или Google Chrome.
 
-param([int]$Port = 8099)
+param(
+  [int]$Port = 8099,
+  [switch]$UpdateVisual,
+  [switch]$SkipVisual
+)
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -114,6 +118,18 @@ try {
     }
   }
 
+  function Wait-Eval {
+    param([string]$Expr, [int]$Attempts = 80)
+    for ($i = 0; $i -lt $Attempts; $i++) {
+      Start-Sleep -Milliseconds 250
+      try {
+        $r = Invoke-Cdp -Method 'Runtime.evaluate' -Params @{ expression = $Expr; returnByValue = $true; awaitPromise = $true }
+        return $r.result.value
+      } catch { }
+    }
+    return $null
+  }
+
   [void](Invoke-Cdp -Method 'Page.enable')
   [void](Invoke-Cdp -Method 'Runtime.enable')
   [void](Invoke-Cdp -Method 'Page.navigate' -Params @{ url = "http://127.0.0.1:$Port/tests/index.html" })
@@ -167,6 +183,82 @@ JSON.stringify({
   }
 
   Write-Host "ТЕСТЫ ПРОЙДЕНЫ: $($result.summary)" -ForegroundColor Green
+
+  # ---------------- визуальная регрессия (CDP, без доп. зависимостей) ----------------
+  # Скриншоты ключевых экранов сравниваются с эталонами в tests/visual/baseline.
+  # Нестабильный рендер в headless (шрифты/анимации/тайминги сети) возможен:
+  # сценарии ждут init + fonts.ready + паузы; при ложных срабатываниях — уточнить
+  # допуск/стабилизацию, не отключать проверку. Первый запуск/обновление: -UpdateVisual.
+  if (-not $SkipVisual) {
+    $visualDir = Join-Path $root 'tests\visual\baseline'
+    $actualDir = Join-Path $root 'tests\visual\_actual'
+    New-Item -ItemType Directory -Force -Path $visualDir | Out-Null
+    New-Item -ItemType Directory -Force -Path $actualDir | Out-Null
+
+    $tabClick = "const goTab=(tab)=>{const el=document.querySelector('[data-action=""tab""][data-tab=""'+tab+'""], #tab-'+tab); if(el) el.click(); else if(window.AniTier&&window.AniTier.switchTab) window.AniTier.switchTab(tab);};"
+    $stabilizeCss = "try{const s=document.createElement('style');s.id='visual-stable';s.textContent='*,*::before,*::after{animation:none!important;animation-delay:0s!important;animation-duration:0s!important;transition:none!important;transition-delay:0s!important;transition-duration:0s!important;caret-color:transparent!important;scroll-behavior:auto!important}.bg-orbs,.bg-orbs *{animation:none!important}';document.head.appendChild(s);}catch(e){}"
+    $waitBase = "(async()=>{try{localStorage.clear()}catch(e){}" + $stabilizeCss + "let g=0;while(!window.__anitierTest&&g++<240)await new Promise(r=>setTimeout(r,50));await window.__anitierTest.init();" + $stabilizeCss + "if(document.fonts&&document.fonts.ready)await document.fonts.ready;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));"
+    $settle = "await new Promise(r=>setTimeout(r,900));if(document.fonts&&document.fonts.ready)await document.fonts.ready;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));await new Promise(r=>setTimeout(r,120));return 'ok';})()"
+    $clearLists = "const st=window.AniTier&&window.AniTier.state;if(st){const e={S:[],A:[],B:[],C:[],D:[],F:[],N:[]};st.lists.watched=JSON.parse(JSON.stringify(e));st.lists.planned=JSON.parse(JSON.stringify(e));if(window.AniTier&&window.AniTier.refreshViews)try{window.AniTier.refreshViews()}catch(e){}}"
+
+    $scenarios = @(
+      @{ name='desktop-db-filled'; url="/index.html?demo=1&test=1"; width=1280; height=900; setup=($waitBase + $tabClick + "goTab('db');" + $settle) },
+      @{ name='desktop-watched-empty'; url="/index.html?demo=1&test=1"; width=1280; height=900; setup=($waitBase + $clearLists + $tabClick + "goTab('watched');" + $settle) },
+      @{ name='mobile-db-filled'; url="/mobile/index.html?demo=1&test=1"; width=390; height=844; setup=($waitBase + $tabClick + "goTab('db');" + $settle) },
+      @{ name='mobile-watched-empty'; url="/mobile/index.html?demo=1&test=1"; width=390; height=844; setup=($waitBase + $clearLists + $tabClick + "goTab('watched');" + $settle) }
+    )
+
+    $visualFailures = @()
+    foreach ($sc in $scenarios) {
+      [void](Invoke-Cdp -Method 'Emulation.setDeviceMetricsOverride' -Params @{ width = $sc.width; height = $sc.height; deviceScaleFactor = 1; mobile = ($sc.url -like '/mobile/*') })
+      [void](Invoke-Cdp -Method 'Page.navigate' -Params @{ url = "http://127.0.0.1:$Port$($sc.url)" })
+      Start-Sleep -Milliseconds 800
+      [void](Wait-Eval -Expr $sc.setup -Attempts 160)
+      Start-Sleep -Milliseconds 350
+      $shot = Invoke-Cdp -Method 'Page.captureScreenshot' -Params @{ format = 'png'; fromSurface = $true }
+      $actualPath = Join-Path $actualDir "$($sc.name).png"
+      [IO.File]::WriteAllBytes($actualPath, [Convert]::FromBase64String($shot.data))
+      $basePath = Join-Path $visualDir "$($sc.name).png"
+
+      if ($UpdateVisual) {
+        Copy-Item -LiteralPath $actualPath -Destination $basePath -Force
+        Write-Host "VISUAL: эталон обновлён — $($sc.name)" -ForegroundColor Cyan
+        continue
+      }
+      if (-not (Test-Path $basePath)) {
+        $visualFailures += "VISUAL FAIL: $($sc.name) — нет эталона (запустите .\test.ps1 -UpdateVisual). Актуальный: $actualPath"
+        continue
+      }
+
+      # Сравнение в браузере через canvas; файлы читаются с локального сервера (без гигантских CDP-выражений).
+      [void](Invoke-Cdp -Method 'Page.navigate' -Params @{ url = "http://127.0.0.1:$Port/tests/visual-compare.html" })
+      Start-Sleep -Milliseconds 350
+      [void](Wait-Eval -Expr "window.visualCompare ? 'ready' : ''" -Attempts 50)
+      $cmpExpr = "(async()=>JSON.stringify(await window.visualCompare('visual/baseline/$($sc.name).png','visual/_actual/$($sc.name).png', 12)))()"
+      $cmpRaw = Wait-Eval -Expr $cmpExpr -Attempts 160
+      $cmp = $null
+      if ($cmpRaw) { try { $cmp = $cmpRaw | ConvertFrom-Json } catch { } }
+      if (-not $cmp) {
+        $visualFailures += "VISUAL FAIL: $($sc.name) — сравнение не вернуло результат (актуальный: $actualPath)"
+      } elseif (-not $cmp.ok) {
+        $reason = if ($cmp.reason -eq 'size') { "размер $($cmp.actual -join 'x') != $($cmp.expected -join 'x')" } else { "отличающихся пикселей: $($cmp.diffPixels), макс. дельта: $($cmp.maxChannelDelta)" }
+        $visualFailures += "VISUAL FAIL: $($sc.name) — $reason (актуальный: $actualPath)"
+      } else {
+        Write-Host "VISUAL OK: $($sc.name)" -ForegroundColor Green
+      }
+    }
+
+    [void](Invoke-Cdp -Method 'Emulation.clearDeviceMetricsOverride')
+
+    if ($visualFailures.Count -gt 0) {
+      Write-Host 'ВИЗУАЛЬНАЯ РЕГРЕССИЯ' -ForegroundColor Red
+      $visualFailures | ForEach-Object { Write-Host $_ -ForegroundColor Red }
+      Write-Host 'Обновить эталоны: .\test.ps1 -UpdateVisual' -ForegroundColor Yellow
+      exit 1
+    }
+    Write-Host "VISUAL: $($scenarios.Count) экранов без отличий" -ForegroundColor Green
+  }
+
   exit 0
 } finally {
   if ($ws) {
