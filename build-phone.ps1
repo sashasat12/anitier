@@ -22,7 +22,17 @@ $titlesAniList = Read-Text 'titles-ru-anilist.js'
 $changelog = Read-Text 'changelog.js'
 $store = Read-Text 'app-store.js'
 $api = Read-Text 'app-api.js'
+$renderCards = Read-Text 'app-render-cards.js'
+$renderLists = Read-Text 'app-render-lists.js'
+$renderScreens = Read-Text 'app-render-screens.js'
+$renderModals = Read-Text 'app-render-modals.js'
 $render = Read-Text 'app-render.js'
+$ctrlCatalog = Read-Text 'app-ctrl-catalog.js'
+$ctrlNotifications = Read-Text 'app-ctrl-notifications.js'
+$ctrlUpcoming = Read-Text 'app-ctrl-upcoming.js'
+$ctrlBackup = Read-Text 'app-ctrl-backup.js'
+$ctrlMoments = Read-Text 'app-ctrl-moments.js'
+$ctrlSettings = Read-Text 'app-ctrl-settings.js'
 $app = Read-Text 'app.js'
 
 $html = $html.Replace(
@@ -38,10 +48,20 @@ $html = $html.Replace(
   '<script src="../core.js" defer></script>' + "`n" +
   '<script src="../app-store.js" defer></script>' + "`n" +
   '<script src="../app-api.js" defer></script>' + "`n" +
+  '<script src="../app-render-cards.js" defer></script>' + "`n" +
+  '<script src="../app-render-lists.js" defer></script>' + "`n" +
+  '<script src="../app-render-screens.js" defer></script>' + "`n" +
+  '<script src="../app-render-modals.js" defer></script>' + "`n" +
   '<script src="../app-render.js" defer></script>' + "`n" +
+  '<script src="../app-ctrl-catalog.js" defer></script>' + "`n" +
+  '<script src="../app-ctrl-notifications.js" defer></script>' + "`n" +
+  '<script src="../app-ctrl-upcoming.js" defer></script>' + "`n" +
+  '<script src="../app-ctrl-backup.js" defer></script>' + "`n" +
+  '<script src="../app-ctrl-moments.js" defer></script>' + "`n" +
+  '<script src="../app-ctrl-settings.js" defer></script>' + "`n" +
   '<script src="../app.js" defer></script>' + "`n" +
   '<script src="mobile.js" defer></script>',
-  "<script>`n$tags`n</script>`n<script>`n$titlesAniList`n</script>`n<script>`n$titles`n</script>`n<script>`n$changelog`n</script>`n<script>`n$core`n</script>`n<script>`n$store`n</script>`n<script>`n$api`n</script>`n<script>`n$render`n</script>`n<script>`n$app`n</script>"
+  "<script>`n$tags`n</script>`n<script>`n$titlesAniList`n</script>`n<script>`n$titles`n</script>`n<script>`n$changelog`n</script>`n<script>`n$core`n</script>`n<script>`n$store`n</script>`n<script>`n$api`n</script>`n<script>`n$renderCards`n</script>`n<script>`n$renderLists`n</script>`n<script>`n$renderScreens`n</script>`n<script>`n$renderModals`n</script>`n<script>`n$render`n</script>`n<script>`n$ctrlCatalog`n</script>`n<script>`n$ctrlNotifications`n</script>`n<script>`n$ctrlUpcoming`n</script>`n<script>`n$ctrlBackup`n</script>`n<script>`n$ctrlMoments`n</script>`n<script>`n$ctrlSettings`n</script>`n<script>`n$app`n</script>"
 )
 
 $html = $html.Replace('<link rel="manifest" href="manifest.webmanifest">' + "`n", '')
