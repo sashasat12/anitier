@@ -32,8 +32,12 @@
   const MEDIA_DB = 'anitier-media';
   const MEDIA_DB_VERSION = 3;
   const POSTER_CACHE_LIMIT = 600;
+  const POSTER_PLACEHOLDER_LIMIT = 300;
   const POSTER_CACHE_WIDTH = 240;
   const POSTER_CACHE_HEIGHT = 360;
+  /* state.byId растёт с каждым открытым тайтлом; списки и текущая выдача
+     хранят свои снапшоты, поэтому давние записи можно отпускать. */
+  const ANIME_CACHE_LIMIT = 800;
   const PAGE_LIMIT = C.PAGE_LIMIT;
   const LONG_TITLE_EPS = 60;
   const ANILIST_TIMEOUT = 9000;
@@ -435,6 +439,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
 <text x="180" y="522" font-family="Manrope,Segoe UI,Arial,sans-serif" font-size="9" letter-spacing="6" fill="#ffffff" fill-opacity=".42" text-anchor="middle">ANITIER</text>
 </svg>`;
     const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    if (posterCache.size >= POSTER_PLACEHOLDER_LIMIT) posterCache.delete(posterCache.keys().next().value);
     posterCache.set(key, url);
     return url;
   }
@@ -1512,6 +1517,35 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     return null;
   }
 
+  /** Отпускает давние записи state.byId, сохраняя списки, карточки и текущие экраны. */
+  function pruneAnimeCache(limit = ANIME_CACHE_LIMIT) {
+    const map = state.byId;
+    if (!map || map.size <= limit) return 0;
+    const keep = new Set();
+    const remember = a => { if (a && a.id != null) keep.add(a.id); };
+    for (const name of ['watched', 'planned']) {
+      for (const t of TIER_IDS) (state.lists[name][t] || []).forEach(remember);
+    }
+    (state.customCards || []).forEach(remember);
+    (state.db.items || []).forEach(remember);
+    (state.upcoming.items || []).forEach(remember);
+    const n = state.notifications || {};
+    (n.tracked && n.tracked.episodes || []).forEach(group => remember(group && group.anime));
+    (n.tracked && n.tracked.seasons || []).forEach(item => { remember(item && item.anime); remember(item && item.sequel); });
+    (n.recent && n.recent.episodes || []).forEach(group => remember(group && group.anime));
+    (n.recent && n.recent.films || []).forEach(remember);
+    (n.completed || []).forEach(remember);
+
+    let removed = 0;
+    for (const key of map.keys()) {
+      if (map.size <= limit) break;
+      if (keep.has(key)) continue;
+      map.delete(key);
+      removed += 1;
+    }
+    return removed;
+  }
+
   function watchedSet(id) {
     const p = state.progress[id];
     return new Set(p && Array.isArray(p.watched) ? p.watched : []);
@@ -1688,6 +1722,8 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     MEDIA_DB,
     MEDIA_DB_VERSION,
     POSTER_CACHE_LIMIT,
+    POSTER_PLACEHOLDER_LIMIT,
+    ANIME_CACHE_LIMIT,
     POSTER_CACHE_WIDTH,
     POSTER_CACHE_HEIGHT,
     PAGE_LIMIT,
@@ -1790,6 +1826,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     hasIn,
     findTier,
     getAnime,
+    pruneAnimeCache,
     addToList,
     importTrackedItems,
     removeFromList,

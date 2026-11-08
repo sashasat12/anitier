@@ -287,6 +287,22 @@
     T.assert(keys.includes('title:frieren beyond journey s end:2023'));
   });
 
+  T.test('core: кэш нормализации названий и жанров ограничен и не меняет результат', () => {
+    const C = core();
+    const title = 'Frieren: Beyond Journey’s End';
+    T.eq(C.normalizeTitleKey(title), C.normalizeTitleKey(title), 'повторный вызов даёт тот же ключ');
+    T.eq(C.genreRu('Slice of Life'), C.genreRu('Slice of Life'), 'повторный вызов жанра стабилен');
+
+    for (let i = 0; i < C.TITLE_KEY_CACHE_LIMIT + 50; i += 1) C.normalizeTitleKey('Title ' + i);
+    T.assert(C.coreCacheStats().titles <= C.TITLE_KEY_CACHE_LIMIT, 'кэш названий не растёт бесконечно');
+
+    for (let i = 0; i < C.GENRE_CACHE_LIMIT + 50; i += 1) C.genreRu('Genre ' + i);
+    T.assert(C.coreCacheStats().genres <= C.GENRE_CACHE_LIMIT, 'кэш жанров не растёт бесконечно');
+
+    T.eq(C.normalizeTitleKey('  Frieren: Beyond Journey’s End! '), 'frieren beyond journey s end', 'кэш не ломает нормализацию');
+    T.eq(C.genreRu('Sci-Fi'), 'Фантастика', 'кэш не ломает перевод жанра');
+  });
+
   T.test('core: японские названия участвуют в локальном поиске', () => {
     const C = core();
     const japanese = '葬送のフリーレン';

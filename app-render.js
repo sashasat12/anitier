@@ -40,6 +40,7 @@
     hasIn,
     findTier,
     getAnime,
+    pruneAnimeCache,
     allIn,
     addToList,
     removeFromList,
@@ -647,7 +648,7 @@
     };
   }
 
-  function ensureEpisodeInfo(a) {
+  function ensureEpisodeInfo(a, options = {}) {
     if (!a) return null;
     const cached = state.epInfo[a.id];
     const fresh = cached && Date.now() - Number(cached.fetchedAt || 0) < 2 * 3600000;
@@ -668,7 +669,7 @@
           total: Number(a.episodes) || Number(a.demoEp.total) || null,
           source: 'demo',
         };
-        updateEpisodeUI(a.id);
+        if (options.ui !== false) updateEpisodeUI(a.id);
       }
       return state.epInfo[a.id] || null;
     }
@@ -676,21 +677,34 @@
     const info = episodeInfoFromAnime(a);
     if (a.status === 'В эфире' && !info.count && !info.next) return null;
     state.epInfo[a.id] = info;
-    saveState();
-    updateEpisodeUI(a.id);
+    if (options.save !== false) saveState();
+    if (options.ui !== false) updateEpisodeUI(a.id);
     return state.epInfo[a.id];
   }
 
+  /* Один вызов saveState на пачку: при открытии уведомлений на 1000 тайтлов
+     раньше на каждую серию собирался весь снапшот состояния. Обновление DOM
+     тоже не по одному: updateEpisodeUI ищет блок по всему документу, и
+     тысяча вызовов превращалась в O(n²). Перерисовываем список один раз. */
   function ensureNotificationEpisodes() {
     if (state.tab !== 'notifications') return;
     const all = allNotifications();
+    let changed = false;
     for (const a of all) {
       const info = state.epInfo[a.id];
       const demoCacheInLiveMode = info && info.source === 'demo' && !state.forceDemo && !a.demo;
       const fresh = info && Date.now() - Number(info.fetchedAt || 0) < 2 * 3600000;
       if (fresh && !demoCacheInLiveMode) continue;
       const needsInfo = a.status === 'В эфире' || !a.episodes;
-      if (needsInfo) ensureEpisodeInfo(a);
+      if (needsInfo) {
+        const before = state.epInfo[a.id];
+        ensureEpisodeInfo(a, { save: false, ui: false });
+        if (state.epInfo[a.id] !== before) changed = true;
+      }
+    }
+    if (changed) {
+      saveState();
+      renderNotifications({ skipEnsure: true });
     }
   }
 
@@ -728,7 +742,7 @@
     </article>`;
   }
 
-  function renderNotifications() {
+  function renderNotifications(options = {}) {
     const el = $('#notif-list');
     if (!el) return;
     const n = state.notifications;
@@ -759,7 +773,7 @@
     }
     el.innerHTML = `<div class="notif-tabs" role="tablist" aria-label="Группы уведомлений">${tabs}</div>${body}`;
 
-    ensureNotificationEpisodes();
+    if (!options.skipEnsure) ensureNotificationEpisodes();
   }
 
   function invalidateNotificationEpisodes() {
@@ -2078,6 +2092,7 @@
     if (state.modalId != null) renderModal();
     if (state.statsScreen && state.statsScreen.open) renderStatsScreen();
     if (state.command && state.command.open) renderCommandResults();
+    if (typeof pruneAnimeCache === 'function') pruneAnimeCache();
   }
 
   function syncBodyScroll() {

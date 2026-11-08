@@ -164,12 +164,23 @@
     return 'en';
   }
 
+  /* Жанры повторяются в каждой карточке: кэш убирает повторный перебор TAGS
+     при отрисовке списков на сотни и тысячи тайтлов. */
+  const GENRE_CACHE_LIMIT = 500;
+  const genreCache = new Map();
+
   function genreRu(name) {
     const raw = String(name == null ? '' : name).trim();
-    if (!raw || hasCyrillic(raw)) return raw;
-    const tag = TAGS.find(item => String(item.name).toLowerCase() === raw.toLowerCase());
-    if (tag && tag.ru && tag.ru !== tag.name) return tag.ru;
-    return GENRE_RU[raw.toLowerCase()] || EXTRA_GENRE_RU[raw.toLowerCase()] || raw;
+    if (genreCache.has(raw)) return genreCache.get(raw);
+    let result = raw;
+    if (raw && !hasCyrillic(raw)) {
+      const tag = TAGS.find(item => String(item.name).toLowerCase() === raw.toLowerCase());
+      if (tag && tag.ru && tag.ru !== tag.name) result = tag.ru;
+      else result = GENRE_RU[raw.toLowerCase()] || EXTRA_GENRE_RU[raw.toLowerCase()] || raw;
+    }
+    if (genreCache.size >= GENRE_CACHE_LIMIT) genreCache.delete(genreCache.keys().next().value);
+    genreCache.set(raw, result);
+    return result;
   }
 
   const DB_SORTS = [
@@ -629,8 +640,19 @@
     });
   }
 
+  /* Ключ названия считается на каждый поиск и сравнение дублей. Кэш ограничен,
+     длинные строки не запоминаем, чтобы не раздувать память. */
+  const TITLE_KEY_CACHE_LIMIT = 2000;
+  const titleKeyCache = new Map();
+
+  function coreCacheStats() {
+    return { titles: titleKeyCache.size, genres: genreCache.size };
+  }
+
   function normalizeTitleKey(value) {
-    return String(value == null ? '' : value)
+    const raw = String(value == null ? '' : value);
+    if (titleKeyCache.has(raw)) return titleKeyCache.get(raw);
+    const result = raw
       .normalize('NFKD')
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase()
@@ -638,6 +660,11 @@
       .replace(/[^a-z0-9\u0400-\u04ff\u3040-\u30ff\u31f0-\u31ff\u3400-\u4dbf\u4e00-\u9fff]+/g, ' ')
       .trim()
       .replace(/\s+/g, ' ');
+    if (raw.length <= 200) {
+      if (titleKeyCache.size >= TITLE_KEY_CACHE_LIMIT) titleKeyCache.delete(titleKeyCache.keys().next().value);
+      titleKeyCache.set(raw, result);
+    }
+    return result;
   }
 
   /**
@@ -2147,6 +2174,9 @@
     genreById,
     genreIdByName,
     genreRu,
+    GENRE_CACHE_LIMIT,
+    TITLE_KEY_CACHE_LIMIT,
+    coreCacheStats,
     hasCyrillic,
     hasJapanese,
     firstCyrillic,

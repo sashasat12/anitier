@@ -16,14 +16,6 @@
 
 ## Пункты
 
-### 25. P2 — Производительность
-
-Файлы: `app-render.js`, `app.js`, `core.js`.
-
-Батчить `saveState` при `ensureEpisodeInfo`, memoize `normalizeTitleKey`/`genreRu`, чистить `state.byId` и `posterCache`, ограничить параллельную загрузку постеров. Замерить до/после на 1000 тайтлов.
-
-Готово, когда: нет заметных фризов при открытии уведомлений и списка на 1000 тайтлов; есть замер.
-
 ### 26. P2 — Доступность
 
 Файлы: `app-render.js`, `index.html`, `mobile/index.html`, `styles.css`.

@@ -1093,6 +1093,7 @@
      IndexedDB. Дальше при ошибке загрузки картинки берётся из кэша,
      поэтому список открывается и без сети. */
   const POSTER_FETCH_CONCURRENCY = 2;
+  const POSTER_QUEUE_LIMIT = 160;
   const posterQueue = [];
   const posterQueued = new Set();
   let posterActive = 0;
@@ -1162,10 +1163,23 @@
 
   function queuePosterCache(url) {
     const src = String(url || '');
-    if (!canCachePoster(src) || posterQueued.has(src)) return;
+    if (!canCachePoster(src) || posterQueued.has(src)) return false;
+    /* Длинная лента не должна забивать очередь: лишние постеры догрузятся
+       при следующем появлении карточки на экране. */
+    if (posterQueue.length >= POSTER_QUEUE_LIMIT) return false;
     posterQueued.add(src);
     posterQueue.push(src);
     pumpPosterQueue();
+    return true;
+  }
+
+  function posterQueueStats() {
+    return {
+      queued: posterQueue.length,
+      active: posterActive,
+      limit: POSTER_QUEUE_LIMIT,
+      concurrency: POSTER_FETCH_CONCURRENCY,
+    };
   }
 
   window.cachePoster = function (img) {
@@ -3958,6 +3972,7 @@
       cachePosterImage: call('cachePosterImage', typeof cachePosterImage !== 'undefined' ? cachePosterImage : undefined),
       shrinkPoster: call('shrinkPoster', typeof shrinkPoster !== 'undefined' ? shrinkPoster : undefined),
       queuePosterCache: call('queuePosterCache', typeof queuePosterCache !== 'undefined' ? queuePosterCache : undefined),
+      posterQueueStats: call('posterQueueStats', typeof posterQueueStats !== 'undefined' ? posterQueueStats : undefined),
       importMediaFile: call('importMediaFile', typeof importMediaFile !== 'undefined' ? importMediaFile : undefined),
       buildBackupPayload: call('buildBackupPayload', typeof buildBackupPayload !== 'undefined' ? buildBackupPayload : undefined),
       applyBackupData: call('applyBackupData', typeof applyBackupData !== 'undefined' ? applyBackupData : undefined),
