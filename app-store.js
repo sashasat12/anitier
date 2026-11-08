@@ -17,6 +17,10 @@
   const LS_KEY = 'anitier.v1';
   /* Версия схемы сохранения. Старые копии без поля читаются как 0. */
   const SCHEMA_VERSION = 1;
+  const SAVE_DEBOUNCE_MS = 350;
+  let saveTimer = 0;
+  let savePending = false;
+  let saveErrorAt = 0;
   const MOMENTS_KEY = 'anitier.moments.v1';
   const TRANSLATIONS_KEY = 'anitier.translations.v1';
   const CUSTOM_LIMIT = 100;
@@ -904,7 +908,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
 
   /* ---------------- резервные копии ---------------- */
   function buildBackupPayload() {
-    saveState();
+    saveStateNow();
     saveMoments();
     const read = (key) => {
       try {
@@ -1111,9 +1115,33 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     });
   }
 
+  function migrateState(raw) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+    const version = Number(raw.schemaVersion);
+    let next = { ...raw };
+    /* schemaVersion отсутствует/0 — формат до явных миграций. Данные не теряем. */
+    if (!Number.isFinite(version) || version < 1) {
+      next = {
+        ...next,
+        watched: next.watched && typeof next.watched === 'object' ? next.watched : {},
+        planned: next.planned && typeof next.planned === 'object' ? next.planned : {},
+        customCards: Array.isArray(next.customCards) ? next.customCards : [],
+        progress: next.progress && typeof next.progress === 'object' ? next.progress : {},
+        epInfo: next.epInfo && typeof next.epInfo === 'object' ? next.epInfo : {},
+        seenNotifications: Array.isArray(next.seenNotifications) ? next.seenNotifications : [],
+        settings: next.settings && typeof next.settings === 'object' ? next.settings : {},
+        listViews: next.listViews && typeof next.listViews === 'object' ? next.listViews : {},
+        schemaVersion: 1,
+      };
+    }
+    next.schemaVersion = SCHEMA_VERSION;
+    return next;
+  }
+
   function loadState() {
     let raw = null;
     try { raw = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch { raw = null; }
+    raw = migrateState(raw);
     if (!raw) {
       state.lists.watched = emptyTiers();
       state.lists.planned = emptyTiers();
@@ -1147,7 +1175,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     state.progress = {};
     if (raw.progress && typeof raw.progress === 'object') {
       for (const [key, val] of Object.entries(raw.progress)) {
-        const arr = Array.isArray(val?.watched) ? val.watched : [];
+        const arr = Array.isArray(val && val.watched) ? val.watched : [];
         const watched = [...new Set(arr.map(Number).filter(n => Number.isInteger(n) && n > 0))].sort((a, b) => a - b);
         if (watched.length) state.progress[key] = { watched, updated: Number(val.updated) || 0 };
       }
@@ -1163,32 +1191,73 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     }
   }
 
-  function saveState() {
+  function isQuotaError(err) {
+    if (!err) return false;
+    return err.name === 'QuotaExceededError'
+      || err.name === 'NS_ERROR_DOM_QUOTA_REACHED'
+      || err.code === 22
+      || err.code === 1014;
+  }
+
+  function reportSaveError(err) {
+    console.warn('localStorage', err);
+    const now = Date.now();
+    if (now - saveErrorAt < 4000) return false;
+    saveErrorAt = now;
+    const quota = isQuotaError(err);
+    toast(quota
+      ? 'Не удалось сохранить данные: в хранилище браузера не хватает места. Освободите место или сделайте резервную копию и очистите кэш.'
+      : 'Не удалось сохранить данные. Попробуйте ещё раз или сделайте резервную копию.');
+    return quota;
+  }
+
+  function buildStatePayload() {
+    const epInfo = {};
+    const cutoff = Date.now() - 7 * 86400000;
+    for (const [key, val] of Object.entries(state.epInfo)) {
+      if (val && Number(val.fetchedAt) > cutoff) epInfo[key] = val;
+    }
+    return {
+      schemaVersion: SCHEMA_VERSION,
+      watched: state.lists.watched,
+      planned: state.lists.planned,
+      customCards: state.customCards,
+      progress: state.progress,
+      epInfo,
+      seenNotifications: [...state.seenNotifications],
+      listViews: {
+        watched: normalizeListView(state.listViews && state.listViews.watched),
+        planned: normalizeListView(state.listViews && state.listViews.planned),
+      },
+      settings: normalizeSettings(state.settings),
+    };
+  }
+
+  function saveStateNow() {
+    savePending = false;
+    if (saveTimer) { clearTimeout(saveTimer); saveTimer = 0; }
     try {
-      const epInfo = {};
-      const cutoff = Date.now() - 7 * 86400000;
-      for (const [key, val] of Object.entries(state.epInfo)) {
-        if (val && Number(val.fetchedAt) > cutoff) epInfo[key] = val;
-      }
-      localStorage.setItem(LS_KEY, JSON.stringify({
-        schemaVersion: SCHEMA_VERSION,
-        watched: state.lists.watched,
-        planned: state.lists.planned,
-        customCards: state.customCards,
-        progress: state.progress,
-        epInfo,
-        seenNotifications: [...state.seenNotifications],
-        listViews: {
-          watched: normalizeListView(state.listViews && state.listViews.watched),
-          planned: normalizeListView(state.listViews && state.listViews.planned),
-        },
-        settings: normalizeSettings(state.settings),
-      }));
+      localStorage.setItem(LS_KEY, JSON.stringify(buildStatePayload()));
+      return true;
     } catch (err) {
-      console.warn('localStorage', err);
-      toast('Не удалось сохранить список: браузер не даёт место');
+      reportSaveError(err);
+      return false;
     }
   }
+
+  function scheduleStateSave() {
+    if ((TEST_MODE && !(App && App._testForceDebounce)) || (App && App._testImmediateSave)) return saveStateNow();
+    savePending = true;
+    if (saveTimer) return true;
+    saveTimer = setTimeout(() => {
+      saveTimer = 0;
+      if (savePending) saveStateNow();
+    }, SAVE_DEBOUNCE_MS);
+    return true;
+  }
+
+  const saveState = scheduleStateSave;
+  const flushStateSave = saveStateNow;
 
   function allIn(name) {
     return TIER_IDS.flatMap(t => state.lists[name][t] || []);
@@ -1389,8 +1458,14 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     }
   }
 
+  if (typeof window !== 'undefined') {
+    window.addEventListener('pagehide', saveStateNow);
+    window.addEventListener('beforeunload', saveStateNow);
+  }
+
   Object.assign(App, {
     LS_KEY,
+    SCHEMA_VERSION,
     MOMENTS_KEY,
     TRANSLATIONS_KEY,
     CUSTOM_LIMIT,
@@ -1477,8 +1552,13 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     posterCachedUrl,
     markPosterCached,
     prunePosters,
+    migrateState,
+    buildStatePayload,
     loadState,
     saveState,
+    saveStateNow,
+    flushStateSave,
+    scheduleStateSave,
     normalizeUpdateCheck,
     UPDATE_CHECK_MODES,
     allIn,
