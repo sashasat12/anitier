@@ -25,15 +25,6 @@
 
 ## Пункты
 
-### 39. Вынести PNG тир-листа из app.js
-
-Кластер экспорта PNG: `TIER_IMAGE_GRADIENTS`, `canvasRoundRect`, `loadCanvasImage`, `drawPosterCover`, `drawWrappedText`, `tierPngFileName`, `mapWithLimit`, `tierPngTitle`, `buildTierListPngBlob`, `exportTierPng`.
-
-- Создать `app-render-png.js` (рендер-слой: без сетевых запросов, canvas и DOM допустимы).
-- Удалить кластер из `app.js`, оставить ленивые алиасы; `buildTierListPngBlob` и `exportTierPng` экспортирует модуль.
-- Подключить модуль в обе оболочки, `mobile/sw.js`, `build-phone.ps1`, `tests/shell.test.js`, `tests/split.test.js`; обновить `AGENTS.md`.
-- Критерий готовности: `tests/png.test.js` зелёный, сценарии `desktop-card` и `desktop-exchange` без изменений, артефакты пересобраны.
-
 ### 40. Вынести жесты и перетаскивание из app.js
 
 Кластеры drag & drop (`dragState`, `dragPointerY`, `dragAutoScrollFrame`, `dragGesture`, `dragGhost`, `suppressTierClickUntil`, `setInstantScroll`, `scrollPageBy`, `createDragGhost`, `moveDragGhost`, `removeDragGhost`, `updateDragTarget`, `activateDrag`, `runDragAutoScroll`, `cleanupDrag`, `bindDragEvents`) и быстрых жестов (`longPressTimer`, `touchGesture`, `pullDistance`, `suppressQuickClickUntil`, `isMobileShell`, `quickMenuHTML`, `openQuickMenu`, `closeQuickMenu`, `pullIndicator`, `resetPullIndicator`, `bindGestures`, `bindModalSwipe`).

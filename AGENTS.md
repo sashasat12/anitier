@@ -37,6 +37,7 @@
 | `app-render-screens.js` | экраны каталога, уведомлений, календаря, навигация, хеши, утилиты | без сетевых запросов; экспорт в `window.AniTier` |
 | `app-render-modals.js` | модалки, формы, настройки, статистика, карточка тайтла | без сетевых запросов; экспорт в `window.AniTier` |
 | `app-render-exchange.js` | обмен тир-листами: экспорт/импорт кода, сравнение, импорт списков | без сетевых запросов; экспорт в `window.AniTier` |
+| `app-render-png.js` | экспорт тир-листа в PNG: canvas, постеры, скачивание/сохранение | canvas и DOM допустимы; экспорт в `window.AniTier` |
 | `app.js` | контроллер, события, drag & drop, запуск | бизнес-логику выносить в `core.js` или `app-store.js` |
 | `app-ctrl-catalog.js`, `app-ctrl-notifications.js`, `app-ctrl-upcoming.js` | контроллеры каталога, уведомлений, премьер | экспорт в `window.AniTier`/через `App` по принятому паттерну |
 | `app-ctrl-backup.js` | контроллер копий: файл, медиаархив, Google Drive, авто-бэкап | экспорт в `window.AniTier`; сеть только через `app-api.js` |
