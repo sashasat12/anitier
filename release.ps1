@@ -167,6 +167,7 @@ if ($wantRelease) {
   foreach ($bullet in $bullets) { $notes.Add($bullet) | Out-Null }
   $notes.Add("`n## Установка") | Out-Null
   $notes.Add('Скачайте AniTier.apk и установите на Android. Версия: ' + "$version (versionCode $manifestCode).") | Out-Null
+  $notes.Add('Без установки: скачайте AniTier-phone.html и откройте файл в браузере телефона.') | Out-Null
 
   $notesPath = Join-Path $env:TEMP ("anitier-release-" + $version + ".md")
   [IO.File]::WriteAllText($notesPath, ($notes -join "`r`n"), (New-Object Text.UTF8Encoding($false)))
@@ -175,12 +176,12 @@ if ($wantRelease) {
   $previous = $ErrorActionPreference
   $ErrorActionPreference = 'Continue'
   try {
-    & gh release create $tag $apkPath --title "AniTier $version — $entryTitle" --notes-file $notesPath --target main
+    & gh release create $tag $apkPath $phonePath --title "AniTier $version — $entryTitle" --notes-file $notesPath --target main
     $ghCode = $LASTEXITCODE
   } finally {
     $ErrorActionPreference = $previous
   }
   if ($ghCode -ne 0) { throw 'Не удалось создать GitHub-релиз (gh).' }
-  Write-Host "Релиз создан: $tag с AniTier.apk" -ForegroundColor Green
+  Write-Host "Релиз создан: $tag с AniTier.apk и AniTier-phone.html" -ForegroundColor Green
   Write-Host 'Проверка после выкладки: gh api repos/sashasat12/anitier/pages/builds/latest' -ForegroundColor DarkGray
 }
