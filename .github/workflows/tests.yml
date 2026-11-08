@@ -1,0 +1,24 @@
+# Браузерные тесты AniTier на GitHub Actions.
+# Раннер windows-latest уже содержит Edge/Chrome — Node и npm не нужны.
+name: Тесты
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: windows-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Получить код
+        uses: actions/checkout@v4
+
+      - name: Функциональные и визуальные тесты
+        shell: powershell
+        run: powershell -ExecutionPolicy Bypass -File .\test.ps1

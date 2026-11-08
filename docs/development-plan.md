@@ -25,15 +25,6 @@
 
 ## Пункты
 
-### 43. Настроить CI на GitHub Actions
-
-Локальный `test.ps1` — единственная защита от регрессий; на push в `main` и в pull request ничего не запускается.
-
-- Добавить `.github/workflows/tests.yml`: `runs-on: windows-latest`, шаги — checkout, `powershell -ExecutionPolicy Bypass -File .\test.ps1`.
-- Убедиться, что раннер находит браузер: `test.ps1` уже проверяет пути Edge и Chrome, Chrome есть на `windows-latest`.
-- Не добавлять npm/Node-шаги и сторонние actions, кроме `actions/checkout`.
-- Критерий готовности: workflow проходит на push (зелёная галочка), полный прогон укладывается в лимит 60 минут; в `README.md` — бейдж и абзац о CI.
-
 ### 44. Описать архитектуру в docs/architecture.md
 
 Нет документа, по которому новый участник понимает, где что лежит.

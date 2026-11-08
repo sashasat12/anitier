@@ -1,5 +1,7 @@
 # AniTier — сайт для тир-листов аниме
 
+[![Тесты](https://github.com/sashasat12/anitier/actions/workflows/tests.yml/badge.svg)](https://github.com/sashasat12/anitier/actions/workflows/tests.yml)
+
 Одностраничный сайт на чистом HTML/CSS/JS без сборки и зависимостей. Для Android есть готовый `AniTier.apk`, который запускается без сервера.
 
 - **Открыть в браузере:** https://sashasat12.github.io/anitier/
@@ -339,6 +341,8 @@ powershell -ExecutionPolicy Bypass -File .\test.ps1 -SkipVisual     # тольк
 - локальную диагностику: санитизация URL/параметров, отчёт со счётчиками запросов и ошибок без названий тайтлов и прогресса (`tests/diag.test.js`);
 - статусы и жанры: коды статусов, синонимы жанров, совместимость русских/английских значений и раздельные жанры/теги Kitsu (`tests/status-genre.test.js`);
 - визуальную регрессию ключевых экранов (desktop/mobile, демо и пустые состояния): скриншоты CDP сравниваются с эталонами в `tests/visual/baseline/`, обновление — `test.ps1 -UpdateVisual`, пропуск — `test.ps1 -SkipVisual`.
+
+Те же тесты запускаются в CI: `.github/workflows/tests.yml` выполняет `test.ps1` на `windows-latest` при push в `main` и в pull request. Статус виден по бейджу вверху README, полный прогон укладывается в лимит 60 минут. Локально и в CI используется один и тот же скрипт — отдельной настройки для GitHub не нужно.
 
 ## Файлы
 

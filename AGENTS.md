@@ -53,6 +53,7 @@
 | `mobile/` | мобильная PWA: `index.html`, `mobile.css`, `mobile.js`, `manifest.webmanifest`, `sw.js` | логика та же, что на десктопе; не дублировать её без нужды |
 | `tests/` | браузерные тесты и раннер | включая `tests/visual-compare.html` и эталоны `tests/visual/baseline/` (визуальная регрессия) |
 | `*.ps1` | сервер, тесты, сборки | Windows PowerShell, без внешних утилит, кроме JDK/SDK для APK |
+| `.github/workflows/tests.yml` | CI: `test.ps1` на `windows-latest` при push в `main` и PR | только `actions/checkout`, без npm/Node |
 
 Ключ хранилища — `anitier.v1`. Схему данных менять только обратно совместимо: старые сохранения пользователя не должны ломаться.
 
