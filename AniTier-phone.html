@@ -9809,6 +9809,26 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     });
   }
 
+  async function clearPosterStore() {
+    for (const url of posterObjectUrls.values()) {
+      try { URL.revokeObjectURL(url); } catch { /* noop */ }
+    }
+    posterObjectUrls.clear();
+    posterMisses.clear();
+    const db = await openMediaDB();
+    if (!db || !db.objectStoreNames.contains('posters')) return false;
+    return new Promise(resolve => {
+      try {
+        const tx = db.transaction('posters', 'readwrite');
+        tx.objectStore('posters').clear();
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = tx.onabort = () => resolve(false);
+      } catch {
+        resolve(false);
+      }
+    });
+  }
+
   /* ---------------- состояние ---------------- */
   const state = {
     tab: 'db',
@@ -11036,6 +11056,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     posterCachedUrl,
     markPosterCached,
     prunePosters,
+    clearPosterStore,
     isDataImageUrl,
     dataUrlToBlob,
     customThumbKey,
@@ -14492,6 +14513,15 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
         </div>
       </div>
       <div class="backup-block">
+        <h3>Хранилище и кэш</h3>
+        <p>Занято устройством: <strong id="storage-usage">${esc(screen.storageText || 'проверяем…')}</strong>. Можно очистить кэш API и постеров — списки, прогресс, карточки и моменты не затрагиваются.</p>
+        ${screen.cacheMessage ? `<p class="backup-status${screen.cacheError ? ' is-error' : ''}" role="status">${esc(screen.cacheMessage)}</p>` : ''}
+        <div class="form-actions">
+          <button class="btn btn-ghost" type="button" data-action="settings-refresh-storage"${screen.storageBusy ? ' disabled' : ''}>${screen.storageBusy ? 'Проверяем…' : 'Обновить'}</button>
+          <button class="btn btn-ghost" type="button" data-action="settings-clear-cache"${screen.cacheBusy ? ' disabled' : ''}>${screen.cacheBusy ? 'Очищаем…' : 'Очистить кэш'}</button>
+        </div>
+      </div>
+      <div class="backup-block">
         <h3>Что нового</h3>
         <p>История изменений по версиям: что появилось, что исправили и что стало удобнее.</p>
         <button class="btn btn-ghost" type="button" data-action="open-changelog">История изменений</button>
@@ -14792,13 +14822,17 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     if (state.modalId != null) closeModal();
     if (state.statsScreen && state.statsScreen.open) closeStats();
     if (state.backup && state.backup.open) closeBackup();
-    state.settingsScreen = { open: true, view: 'main', checking: false, message: '', error: false, latest: null };
+    state.settingsScreen = {
+      open: true, view: 'main', checking: false, message: '', error: false, latest: null,
+      storageText: 'проверяем…', storageBusy: false, cacheBusy: false, cacheMessage: '', cacheError: false,
+    };
     renderSettings();
     const modal = $('#settings-modal');
     if (modal) modal.hidden = false;
     syncBodyScroll();
     const panel = $('#settings-panel');
     if (panel) { panel.scrollTop = 0; panel.focus({ preventScroll: true }); }
+    if (App.refreshStorageInfo) App.refreshStorageInfo();
   }
 
   function closeSettings() {
@@ -16422,6 +16456,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     posterCachedUrl,
     markPosterCached,
     prunePosters,
+    clearPosterStore,
     POSTER_CACHE_LIMIT,
     POSTER_CACHE_WIDTH,
     POSTER_CACHE_HEIGHT,
@@ -18501,6 +18536,46 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
   }
   window.bindModalSwipe = bindModalSwipe;
 
+  async function refreshStorageInfo() {
+    const screen = state.settingsScreen;
+    if (!screen || !screen.open) return;
+    screen.storageBusy = true;
+    renderSettings();
+    try {
+      let text = 'недоступно';
+      if (navigator.storage && navigator.storage.estimate) {
+        const est = await navigator.storage.estimate();
+        const used = Number(est.usage) || 0;
+        const quota = Number(est.quota) || 0;
+        text = quota ? `${C.formatBytes(used)} из ${C.formatBytes(quota)}` : C.formatBytes(used);
+      }
+      screen.storageText = text;
+    } catch {
+      screen.storageText = 'не удалось определить';
+    } finally {
+      screen.storageBusy = false;
+      if (screen.open) renderSettings();
+    }
+  }
+
+  async function clearAppCache() {
+    const screen = state.settingsScreen;
+    if (!window.confirm('Очистить кэш API и постеров? Списки, прогресс, карточки и моменты останутся.')) return;
+    if (screen) { screen.cacheBusy = true; screen.cacheMessage = ''; screen.cacheError = false; renderSettings(); }
+    try {
+      if (App.clearAniListCache) App.clearAniListCache();
+      if (App.clearPersistentApiCache) await App.clearPersistentApiCache();
+      if (clearPosterStore) await clearPosterStore();
+      if (screen) { screen.cacheMessage = 'Кэш очищен. Данные списков и прогресс сохранены.'; screen.cacheError = false; }
+      toast('Кэш очищен');
+    } catch (err) {
+      if (screen) { screen.cacheMessage = (err && err.message) ? err.message : 'Не удалось очистить кэш.'; screen.cacheError = true; }
+    } finally {
+      if (screen) { screen.cacheBusy = false; if (screen.open) renderSettings(); }
+      refreshStorageInfo();
+    }
+  }
+
   /* Реестр действий: data-action → обработчик. Новое действие — одна строка. */
   const ACTION_HANDLERS = {
     tab({ e, el }) {
@@ -18996,6 +19071,14 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       renderSettings();
       const panel = $('#settings-panel');
       if (panel) panel.scrollTop = 0;
+    },
+
+    'settings-refresh-storage'() {
+      refreshStorageInfo();
+    },
+
+    'settings-clear-cache'() {
+      clearAppCache();
     },
 
     'settings-back'() {
@@ -20168,6 +20251,8 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     autoCheckUpdates,
     showUpdateAvailable,
     renderUpdateCard,
+    refreshStorageInfo,
+    clearAppCache,
     openSettings,
     closeSettings,
     openStats,

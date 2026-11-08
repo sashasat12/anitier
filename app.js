@@ -63,6 +63,7 @@
     posterCachedUrl,
     markPosterCached,
     prunePosters,
+    clearPosterStore,
     POSTER_CACHE_LIMIT,
     POSTER_CACHE_WIDTH,
     POSTER_CACHE_HEIGHT,
@@ -2142,6 +2143,46 @@
   }
   window.bindModalSwipe = bindModalSwipe;
 
+  async function refreshStorageInfo() {
+    const screen = state.settingsScreen;
+    if (!screen || !screen.open) return;
+    screen.storageBusy = true;
+    renderSettings();
+    try {
+      let text = 'недоступно';
+      if (navigator.storage && navigator.storage.estimate) {
+        const est = await navigator.storage.estimate();
+        const used = Number(est.usage) || 0;
+        const quota = Number(est.quota) || 0;
+        text = quota ? `${C.formatBytes(used)} из ${C.formatBytes(quota)}` : C.formatBytes(used);
+      }
+      screen.storageText = text;
+    } catch {
+      screen.storageText = 'не удалось определить';
+    } finally {
+      screen.storageBusy = false;
+      if (screen.open) renderSettings();
+    }
+  }
+
+  async function clearAppCache() {
+    const screen = state.settingsScreen;
+    if (!window.confirm('Очистить кэш API и постеров? Списки, прогресс, карточки и моменты останутся.')) return;
+    if (screen) { screen.cacheBusy = true; screen.cacheMessage = ''; screen.cacheError = false; renderSettings(); }
+    try {
+      if (App.clearAniListCache) App.clearAniListCache();
+      if (App.clearPersistentApiCache) await App.clearPersistentApiCache();
+      if (clearPosterStore) await clearPosterStore();
+      if (screen) { screen.cacheMessage = 'Кэш очищен. Данные списков и прогресс сохранены.'; screen.cacheError = false; }
+      toast('Кэш очищен');
+    } catch (err) {
+      if (screen) { screen.cacheMessage = (err && err.message) ? err.message : 'Не удалось очистить кэш.'; screen.cacheError = true; }
+    } finally {
+      if (screen) { screen.cacheBusy = false; if (screen.open) renderSettings(); }
+      refreshStorageInfo();
+    }
+  }
+
   /* Реестр действий: data-action → обработчик. Новое действие — одна строка. */
   const ACTION_HANDLERS = {
     tab({ e, el }) {
@@ -2637,6 +2678,14 @@
       renderSettings();
       const panel = $('#settings-panel');
       if (panel) panel.scrollTop = 0;
+    },
+
+    'settings-refresh-storage'() {
+      refreshStorageInfo();
+    },
+
+    'settings-clear-cache'() {
+      clearAppCache();
     },
 
     'settings-back'() {
@@ -3809,6 +3858,8 @@
     autoCheckUpdates,
     showUpdateAvailable,
     renderUpdateCard,
+    refreshStorageInfo,
+    clearAppCache,
     openSettings,
     closeSettings,
     openStats,

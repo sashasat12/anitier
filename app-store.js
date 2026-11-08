@@ -517,6 +517,26 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     });
   }
 
+  async function clearPosterStore() {
+    for (const url of posterObjectUrls.values()) {
+      try { URL.revokeObjectURL(url); } catch { /* noop */ }
+    }
+    posterObjectUrls.clear();
+    posterMisses.clear();
+    const db = await openMediaDB();
+    if (!db || !db.objectStoreNames.contains('posters')) return false;
+    return new Promise(resolve => {
+      try {
+        const tx = db.transaction('posters', 'readwrite');
+        tx.objectStore('posters').clear();
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = tx.onabort = () => resolve(false);
+      } catch {
+        resolve(false);
+      }
+    });
+  }
+
   /* ---------------- состояние ---------------- */
   const state = {
     tab: 'db',
@@ -1744,6 +1764,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     posterCachedUrl,
     markPosterCached,
     prunePosters,
+    clearPosterStore,
     isDataImageUrl,
     dataUrlToBlob,
     customThumbKey,

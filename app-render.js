@@ -1739,6 +1739,15 @@
         </div>
       </div>
       <div class="backup-block">
+        <h3>Хранилище и кэш</h3>
+        <p>Занято устройством: <strong id="storage-usage">${esc(screen.storageText || 'проверяем…')}</strong>. Можно очистить кэш API и постеров — списки, прогресс, карточки и моменты не затрагиваются.</p>
+        ${screen.cacheMessage ? `<p class="backup-status${screen.cacheError ? ' is-error' : ''}" role="status">${esc(screen.cacheMessage)}</p>` : ''}
+        <div class="form-actions">
+          <button class="btn btn-ghost" type="button" data-action="settings-refresh-storage"${screen.storageBusy ? ' disabled' : ''}>${screen.storageBusy ? 'Проверяем…' : 'Обновить'}</button>
+          <button class="btn btn-ghost" type="button" data-action="settings-clear-cache"${screen.cacheBusy ? ' disabled' : ''}>${screen.cacheBusy ? 'Очищаем…' : 'Очистить кэш'}</button>
+        </div>
+      </div>
+      <div class="backup-block">
         <h3>Что нового</h3>
         <p>История изменений по версиям: что появилось, что исправили и что стало удобнее.</p>
         <button class="btn btn-ghost" type="button" data-action="open-changelog">История изменений</button>
@@ -2039,13 +2048,17 @@
     if (state.modalId != null) closeModal();
     if (state.statsScreen && state.statsScreen.open) closeStats();
     if (state.backup && state.backup.open) closeBackup();
-    state.settingsScreen = { open: true, view: 'main', checking: false, message: '', error: false, latest: null };
+    state.settingsScreen = {
+      open: true, view: 'main', checking: false, message: '', error: false, latest: null,
+      storageText: 'проверяем…', storageBusy: false, cacheBusy: false, cacheMessage: '', cacheError: false,
+    };
     renderSettings();
     const modal = $('#settings-modal');
     if (modal) modal.hidden = false;
     syncBodyScroll();
     const panel = $('#settings-panel');
     if (panel) { panel.scrollTop = 0; panel.focus({ preventScroll: true }); }
+    if (App.refreshStorageInfo) App.refreshStorageInfo();
   }
 
   function closeSettings() {

@@ -174,4 +174,38 @@
       app.close();
     }
   });
+
+  T.test('storage: очистка кэша не удаляет списки и прогресс', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const App = app.win.AniTier;
+      const win = app.win;
+      App.addToList('watched', { id: 52991, malId: 52991, title: 'Фрирен', image: '', episodes: 28, status: 'Завершено' }, 'A');
+      App.state.progress[52991] = { watched: [1, 2], updated: Date.now() };
+      App.flushStateSave();
+
+      win.navigator.storage.estimate = async () => ({ usage: 2048, quota: 1024 * 1024 });
+      win.confirm = () => true;
+      App.clearAniListCache = () => {};
+      App.clearPersistentApiCache = async () => {};
+      if (App.clearPosterStore) {
+        const orig = App.clearPosterStore;
+        App.clearPosterStore = async () => { await orig(); };
+      }
+
+      App.openSettings();
+      await new Promise(r => win.setTimeout(r, 50));
+      await App.refreshStorageInfo();
+      const html = win.document.getElementById('settings-content').textContent || '';
+      T.assert(/2[.,]?0?s*К?Б|2048|из/i.test(html), 'в настройках показан объём хранилища');
+
+      await App.clearAppCache();
+      T.eq(App.hasIn('watched', 52991), true, 'список сохранён');
+      T.eq(App.watchedCount(52991), 2, 'прогресс сохранён');
+      const saved = JSON.parse(win.localStorage.getItem(App.LS_KEY) || '{}');
+      T.assert(saved.watched && JSON.stringify(saved.watched).includes('52991'), 'данные сохранены в localStorage');
+    } finally {
+      app.close();
+    }
+  });
 })();
