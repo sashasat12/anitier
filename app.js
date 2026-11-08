@@ -1562,8 +1562,24 @@
   function importSourceForFile(file) {
     const name = String(file && file.name || '').toLowerCase();
     if (name.endsWith('.xml')) return 'mal';
-    if (name.endsWith('.json')) return 'shikimori';
-    return state.exchange.importSource === 'mal' ? 'mal' : 'shikimori';
+    if (name.endsWith('.gz')) return 'anilist';
+    const current = state.exchange.importSource;
+    return ['mal', 'shikimori', 'anilist'].includes(current) ? current : 'shikimori';
+  }
+
+  /** Файл AniList обычно приходит сжатым в .json.gz — распаковываем через DecompressionStream. */
+  async function readImportText(file) {
+    const name = String(file && file.name || '').toLowerCase();
+    if (!name.endsWith('.gz')) return readTextFile(file);
+    if (typeof DecompressionStream !== 'function') {
+      throw new Error('Браузер не умеет распаковывать .gz. Обновите браузер или распакуйте файл сами и выберите обычный .json.');
+    }
+    try {
+      const stream = file.stream().pipeThrough(new DecompressionStream('gzip'));
+      return await new Response(stream).text();
+    } catch {
+      throw new Error('Не удалось распаковать .json.gz. Выберите файл экспорта AniList без изменений.');
+    }
   }
 
   async function importListFile(file) {
@@ -1590,11 +1606,13 @@
     renderExchange();
 
     try {
-      const text = await readTextFile(file);
+      const text = await readImportText(file);
       if (token !== ex.importToken) return;
       const rows = source === 'mal'
         ? C.parseMalXml(text, new DOMParser())
-        : C.parseShikimoriJson(text);
+        : source === 'anilist'
+          ? C.parseAniListJson(text)
+          : C.parseShikimoriJson(text);
       const malIds = [...new Set(rows.map(row => row.malId).filter(Boolean))];
       let resolved = [];
       if (malIds.length) {
@@ -2952,7 +2970,7 @@
     'exchange-import-pick'({ el }) {
       const input = $('#import-list-file');
       if (!input) return;
-      state.exchange.importSource = el.dataset.source === 'mal' ? 'mal' : 'shikimori';
+      state.exchange.importSource = ['mal', 'shikimori', 'anilist'].includes(el.dataset.source) ? el.dataset.source : 'shikimori';
       input.value = '';
       input.click();
     },

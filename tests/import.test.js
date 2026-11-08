@@ -173,6 +173,185 @@
     T.includes(message, 'нет оценок Shikimori');
   });
 
+  function aniListList(name, entries) {
+    return { name, isCustomList: false, isSplitCompletedList: false, status: null, userId: 1, user: { id: 1, name: 'tester' }, entries };
+  }
+
+  const ANILIST_EXPORT = JSON.stringify({
+    data: {
+      MediaListCollection: {
+        user: { id: 1, name: 'tester' },
+        lists: [
+          aniListList('Watching', [
+            {
+              id: 101,
+              mediaId: 210,
+              status: 'CURRENT',
+              format: 'TV',
+              score: 72,
+              progress: 5,
+              repeat: 0,
+              notes: '',
+              private: false,
+              customLists: [],
+              media: {
+                id: 210,
+                idMal: 44511,
+                title: { romaji: 'Chainsaw Man', english: null, native: 'チェンソーマン' },
+                episodes: 12,
+                format: 'TV',
+                status: 'FINISHED',
+                startDate: { year: 2022, month: 10, day: 12 },
+                seasonYear: 2022,
+                coverImage: { large: 'https://img.example/chainsaw.jpg', medium: 'https://img.example/chainsaw-m.jpg' },
+              },
+            },
+          ]),
+          aniListList('Completed', [
+            {
+              id: 102,
+              mediaId: 5,
+              status: 'COMPLETED',
+              format: 'TV',
+              score: 95,
+              progress: 28,
+              repeat: 0,
+              notes: '',
+              private: false,
+              customLists: [],
+              media: {
+                id: 5,
+                idMal: 52991,
+                title: { romaji: 'Sousou no Frieren', english: 'Frieren: Beyond Journey\'s End', native: '葬送のフリーレン' },
+                episodes: 28,
+                format: 'TV',
+                status: 'FINISHED',
+                startDate: { year: 2023, month: 9, day: 29 },
+                seasonYear: 2023,
+                coverImage: { large: 'https://img.example/frieren.jpg', medium: '' },
+              },
+            },
+          ]),
+          aniListList('Planning', [
+            {
+            id: 103,
+            mediaId: 85,
+            status: 'PLANNING',
+            format: 'TV',
+            score: 0,
+            progress: 0,
+            repeat: 0,
+            notes: '',
+            private: false,
+            customLists: [],
+            media: {
+              id: 85,
+              idMal: 5114,
+              title: { romaji: 'Fullmetal Alchemist: Brotherhood', english: 'Fullmetal Alchemist: Brotherhood', native: '鋼の錬金術師 FULLMETAL ALCHEMIST' },
+              episodes: 64,
+              format: 'TV',
+              status: 'FINISHED',
+              startDate: { year: 2009, month: 4, day: 5 },
+              seasonYear: 2009,
+              coverImage: { large: '', medium: '' },
+            },
+          },
+        ]),
+        ],
+      },
+    },
+  });
+
+  T.test('import: JSON AniList читает списки, шкалу 0–100 и статусы', () => {
+    const C = core();
+    const rows = C.parseAniListJson(ANILIST_EXPORT);
+    T.eq(rows.length, 3);
+
+    const frieren = rows.find(row => row.malId === 52991);
+    T.eq(frieren.title, 'Frieren: Beyond Journey\'s End');
+    T.eq(frieren.altTitle, 'Sousou no Frieren');
+    T.eq(frieren.watched, 28);
+    T.eq(frieren.episodes, 28);
+    T.eq(frieren.score, 9.5);
+    T.eq(frieren.tier, 'S');
+    T.eq(frieren.list, 'watched');
+    T.eq(frieren.year, 2023);
+    T.eq(frieren.image, 'https://img.example/frieren.jpg');
+    T.eq(frieren.source, 'anilist');
+
+    const chainsaw = rows.find(row => row.malId === 44511);
+    T.eq(chainsaw.watched, 5);
+    T.eq(chainsaw.score, 7.2);
+    T.eq(chainsaw.tier, 'B');
+    T.eq(chainsaw.list, 'watched');
+
+    const planned = rows.find(row => row.malId === 5114);
+    T.eq(planned.list, 'planned');
+    T.eq(planned.tier, 'N');
+    T.eq(planned.watched, 0);
+  });
+
+  T.test('import: JSON AniList понимает плоский массив и шкалу 0–10', () => {
+    const C = core();
+    const flat = JSON.stringify([
+      {
+        id: 5,
+        mediaId: 5,
+        status: 'COMPLETED',
+        score: 9,
+        progress: 12,
+        media: {
+          id: 5,
+          idMal: 52991,
+          title: { romaji: 'Sousou no Frieren', english: '', native: '' },
+          episodes: 28,
+          format: 'TV',
+          seasonYear: 2023,
+          coverImage: {},
+        },
+      },
+      {
+        id: 6,
+        mediaId: 6,
+        status: 'PAUSED',
+        score: 8,
+        progress: 3,
+        media: {
+          id: 6,
+          idMal: 44511,
+          title: { romaji: 'Chainsaw Man', english: '', native: '' },
+          episodes: 12,
+          format: 'TV',
+          seasonYear: 2022,
+          coverImage: {},
+        },
+      },
+    ]);
+    const rows = C.parseAniListJson(flat);
+    T.eq(rows.length, 2);
+    const frieren = rows.find(row => row.malId === 52991);
+    T.eq(frieren.score, 9);
+    T.eq(frieren.tier, 'S');
+    const paused = rows.find(row => row.malId === 44511);
+    T.eq(paused.list, 'watched');
+    T.eq(paused.tier, 'A');
+  });
+
+  T.test('import: битый и пустой JSON AniList отклоняются с понятным текстом', () => {
+    const C = core();
+    let message = '';
+    try { C.parseAniListJson('{'); } catch (err) { message = err.message; }
+    T.includes(message, 'JSON');
+
+    message = '';
+    try { C.parseAniListJson(''); } catch (err) { message = err.message; }
+    T.includes(message, 'пустой');
+
+    message = '';
+    try { C.parseAniListJson('{"foo":1}'); } catch (err) { message = err.message; }
+    T.includes(message, 'нет списка AniList');
+  });
+
   T.test('import: план сопоставляет MAL ID, пропускает существующее и считает тиры', () => {
     const C = core();
     const rows = C.parseMalXml(MAL_XML, new DOMParser());
@@ -320,6 +499,50 @@
       T.eq(state.lists.planned.N.length, 1);
       T.eq(state.lists.planned.N[0].malId, 44511);
       T.eq(state.progress[52991].watched.length, 28);
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: сжатый .json.gz AniList распаковывается и импортируется', async () => {
+    const calls = [];
+    const app = await T.mountApp({
+      query: '?demo=1&test=1',
+      setup(win) { win.fetch = importFetch(calls); },
+    });
+
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const state = api.state;
+      const doc = app.win.document;
+
+      const gzBytes = await new app.win.Response(
+        new app.win.Blob([ANILIST_EXPORT]).stream().pipeThrough(new app.win.CompressionStream('gzip')),
+      ).arrayBuffer();
+      const file = new app.win.File([gzBytes], 'export.json.gz', { type: 'application/gzip' });
+
+      api.openExchange('import', 'watched');
+      await api.importListFile(file);
+
+      T.eq(state.exchange.importPlan.summary.total, 3);
+      T.eq(state.exchange.importPlan.summary.newCount, 3);
+      T.eq(state.exchange.importPlan.summary.watched, 2);
+      T.eq(state.exchange.importPlan.summary.planned, 1);
+      T.includes(doc.getElementById('exchange-content').textContent, 'Добавить 3 тайтла');
+
+      api.confirmImportList();
+      T.eq(state.lists.watched.S.length, 1);
+      T.eq(state.lists.watched.B.length, 1);
+      T.eq(state.lists.planned.N.length, 1);
+      T.eq(state.progress[52991].watched.length, 28);
+      T.eq(state.progress[44511].watched.join(','), '1,2,3,4,5');
+      T.eq(state.exchange.importResult.added, 3);
+
+      // Повторный импорт того же файла: новых тайтлов нет, всё «уже у вас»
+      await api.importListFile(file);
+      T.eq(state.exchange.importPlan.summary.newCount, 0);
+      T.eq(state.exchange.importPlan.summary.already, 3);
     } finally {
       app.close();
     }

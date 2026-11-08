@@ -2396,7 +2396,8 @@
     const pick = `<div class="exchange-pick">
       <button class="btn btn-ghost" data-action="exchange-import-pick" data-source="mal">MyAnimeList (.xml)</button>
       <button class="btn btn-ghost" data-action="exchange-import-pick" data-source="shikimori">Shikimori (.json)</button>
-      <input type="file" id="import-list-file" data-action="import-list-file" accept=".xml,.json,text/xml,application/xml,application/json" hidden>
+      <button class="btn btn-ghost" data-action="exchange-import-pick" data-source="anilist">AniList (.json.gz)</button>
+      <input type="file" id="import-list-file" data-action="import-list-file" accept=".xml,.json,.json.gz,.gz,text/xml,application/xml,application/json,application/gzip" hidden>
     </div>`;
 
     if (ex.importBusy) {
@@ -2460,7 +2461,7 @@
     return `<section class="exchange-import">
       <div class="exchange-import-head">
         <div class="exchange-eyebrow">Импорт списка</div>
-        <p class="exchange-sub">Перенесите оценки из MyAnimeList или Shikimori: файл читается в браузере и никуда не отправляется.</p>
+        <p class="exchange-sub">Перенесите оценки из MyAnimeList, Shikimori или AniList: файл читается в браузере и никуда не отправляется.</p>
       </div>
       ${pick}
       ${ex.importError ? `<div class="exchange-error" role="alert">${esc(ex.importError)}</div>` : ''}

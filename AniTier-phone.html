@@ -9064,6 +9064,89 @@ window.AniTierChangelog = [
     return normalizeImportRows(rows, 'shikimori');
   }
 
+  /** Записи списка AniList: официальный экспорт — объект MediaListCollection, иначе плоский массив. */
+  function aniListEntries(payload) {
+    if (Array.isArray(payload)) return payload.filter(item => item && typeof item === 'object');
+    if (!payload || typeof payload !== 'object') return [];
+    const collection = (payload.data && payload.data.MediaListCollection)
+      || payload.MediaListCollection
+      || payload.mediaListCollection;
+    if (collection && Array.isArray(collection.lists)) {
+      const entries = [];
+      for (const list of collection.lists) {
+        if (list && Array.isArray(list.entries)) entries.push(...list.entries);
+      }
+      return entries;
+    }
+    for (const key of ['entries', 'rates', 'lists']) {
+      if (Array.isArray(payload[key])) return payload[key].filter(item => item && typeof item === 'object');
+    }
+    return [];
+  }
+
+  function pickAniListTitle(titles) {
+    if (!titles || typeof titles !== 'object') return { main: '', alt: '' };
+    const english = String(titles.english == null ? '' : titles.english).trim();
+    const romaji = String(titles.romaji == null ? '' : titles.romaji).trim();
+    const native = String(titles.native == null ? '' : titles.native).trim();
+    const main = english || romaji || native;
+    return { main, alt: romaji && romaji !== main ? romaji : '' };
+  }
+
+  /**
+   * Разбирает экспорт AniList (.json, распакованный из .json.gz).
+   * Архив распаковывается снаружи: core.js не зависит от браузерных потоков.
+   * Оценки учитывают шкалу профиля: если в файле есть оценка больше 10 —
+   * это 100-балльная шкала, и все оценки делятся на 10.
+   */
+  function parseAniListJson(text) {
+    const raw = String(text == null ? '' : text);
+    if (!raw.trim()) throw new Error('Файл пустой.');
+    let payload = null;
+    try { payload = JSON.parse(raw); } catch {
+      throw new Error('Не удалось прочитать JSON. Выберите файл экспорта AniList (.json).');
+    }
+    const entries = aniListEntries(payload);
+    if (!entries.length) throw new Error('В файле нет списка AniList.');
+
+    const maxScore = entries.reduce((max, entry) => {
+      const value = Number(entry && entry.score) || 0;
+      return value > max ? value : max;
+    }, 0);
+    const divide = maxScore > 10;
+
+    const rows = entries.map(entry => {
+      const entryObject = entry && typeof entry === 'object' ? entry : {};
+      const media = entryObject.media && typeof entryObject.media === 'object' ? entryObject.media : entryObject;
+      const title = pickAniListTitle(media.title);
+      const score = Number(entryObject.score) || 0;
+      const cover = media.coverImage && typeof media.coverImage === 'object' ? media.coverImage : media;
+      const statusMap = {
+        CURRENT: 'watching',
+        COMPLETED: 'completed',
+        PAUSED: 'on hold',
+        DROPPED: 'dropped',
+        REPEATING: 'rewatching',
+        PLANNING: 'plan to watch',
+      };
+      return {
+        malId: media.idMal,
+        title: title.main,
+        altTitle: title.alt,
+        episodes: media.episodes,
+        watched: entryObject.progress,
+        score: divide ? Math.round(score / 10 * 10) / 10 : score,
+        status: statusMap[String(entryObject.status || '').trim().toUpperCase()] || '',
+        type: media.format,
+        year: (media.startDate && media.startDate.year) || media.seasonYear,
+        image: cover.large || cover.medium || '',
+      };
+    });
+    const normalized = normalizeImportRows(rows, 'anilist');
+    if (!normalized.length) throw new Error('В файле нет списка AniList.');
+    return normalized;
+  }
+
   /**
    * Сопоставляет строки файла с тайтлами AniList и решает, что добавлять.
    * Возвращает новые записи, уже имеющиеся тайтлы и то, что не нашлось.
@@ -9381,6 +9464,7 @@ window.AniTierChangelog = [
     normalizeImportRows,
     parseMalXml,
     parseShikimoriJson,
+    parseAniListJson,
     planImport,
     TIER_IMAGE_DEFAULTS,
     buildTierImageLayout,
@@ -15414,7 +15498,8 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     const pick = `<div class="exchange-pick">
       <button class="btn btn-ghost" data-action="exchange-import-pick" data-source="mal">MyAnimeList (.xml)</button>
       <button class="btn btn-ghost" data-action="exchange-import-pick" data-source="shikimori">Shikimori (.json)</button>
-      <input type="file" id="import-list-file" data-action="import-list-file" accept=".xml,.json,text/xml,application/xml,application/json" hidden>
+      <button class="btn btn-ghost" data-action="exchange-import-pick" data-source="anilist">AniList (.json.gz)</button>
+      <input type="file" id="import-list-file" data-action="import-list-file" accept=".xml,.json,.json.gz,.gz,text/xml,application/xml,application/json,application/gzip" hidden>
     </div>`;
 
     if (ex.importBusy) {
@@ -15478,7 +15563,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     return `<section class="exchange-import">
       <div class="exchange-import-head">
         <div class="exchange-eyebrow">Импорт списка</div>
-        <p class="exchange-sub">Перенесите оценки из MyAnimeList или Shikimori: файл читается в браузере и никуда не отправляется.</p>
+        <p class="exchange-sub">Перенесите оценки из MyAnimeList, Shikimori или AniList: файл читается в браузере и никуда не отправляется.</p>
       </div>
       ${pick}
       ${ex.importError ? `<div class="exchange-error" role="alert">${esc(ex.importError)}</div>` : ''}
@@ -18239,8 +18324,24 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
   function importSourceForFile(file) {
     const name = String(file && file.name || '').toLowerCase();
     if (name.endsWith('.xml')) return 'mal';
-    if (name.endsWith('.json')) return 'shikimori';
-    return state.exchange.importSource === 'mal' ? 'mal' : 'shikimori';
+    if (name.endsWith('.gz')) return 'anilist';
+    const current = state.exchange.importSource;
+    return ['mal', 'shikimori', 'anilist'].includes(current) ? current : 'shikimori';
+  }
+
+  /** Файл AniList обычно приходит сжатым в .json.gz — распаковываем через DecompressionStream. */
+  async function readImportText(file) {
+    const name = String(file && file.name || '').toLowerCase();
+    if (!name.endsWith('.gz')) return readTextFile(file);
+    if (typeof DecompressionStream !== 'function') {
+      throw new Error('Браузер не умеет распаковывать .gz. Обновите браузер или распакуйте файл сами и выберите обычный .json.');
+    }
+    try {
+      const stream = file.stream().pipeThrough(new DecompressionStream('gzip'));
+      return await new Response(stream).text();
+    } catch {
+      throw new Error('Не удалось распаковать .json.gz. Выберите файл экспорта AniList без изменений.');
+    }
   }
 
   async function importListFile(file) {
@@ -18267,11 +18368,13 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     renderExchange();
 
     try {
-      const text = await readTextFile(file);
+      const text = await readImportText(file);
       if (token !== ex.importToken) return;
       const rows = source === 'mal'
         ? C.parseMalXml(text, new DOMParser())
-        : C.parseShikimoriJson(text);
+        : source === 'anilist'
+          ? C.parseAniListJson(text)
+          : C.parseShikimoriJson(text);
       const malIds = [...new Set(rows.map(row => row.malId).filter(Boolean))];
       let resolved = [];
       if (malIds.length) {
@@ -19629,7 +19732,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     'exchange-import-pick'({ el }) {
       const input = $('#import-list-file');
       if (!input) return;
-      state.exchange.importSource = el.dataset.source === 'mal' ? 'mal' : 'shikimori';
+      state.exchange.importSource = ['mal', 'shikimori', 'anilist'].includes(el.dataset.source) ? el.dataset.source : 'shikimori';
       input.value = '';
       input.click();
     },

@@ -1951,6 +1951,89 @@
     return normalizeImportRows(rows, 'shikimori');
   }
 
+  /** Записи списка AniList: официальный экспорт — объект MediaListCollection, иначе плоский массив. */
+  function aniListEntries(payload) {
+    if (Array.isArray(payload)) return payload.filter(item => item && typeof item === 'object');
+    if (!payload || typeof payload !== 'object') return [];
+    const collection = (payload.data && payload.data.MediaListCollection)
+      || payload.MediaListCollection
+      || payload.mediaListCollection;
+    if (collection && Array.isArray(collection.lists)) {
+      const entries = [];
+      for (const list of collection.lists) {
+        if (list && Array.isArray(list.entries)) entries.push(...list.entries);
+      }
+      return entries;
+    }
+    for (const key of ['entries', 'rates', 'lists']) {
+      if (Array.isArray(payload[key])) return payload[key].filter(item => item && typeof item === 'object');
+    }
+    return [];
+  }
+
+  function pickAniListTitle(titles) {
+    if (!titles || typeof titles !== 'object') return { main: '', alt: '' };
+    const english = String(titles.english == null ? '' : titles.english).trim();
+    const romaji = String(titles.romaji == null ? '' : titles.romaji).trim();
+    const native = String(titles.native == null ? '' : titles.native).trim();
+    const main = english || romaji || native;
+    return { main, alt: romaji && romaji !== main ? romaji : '' };
+  }
+
+  /**
+   * Разбирает экспорт AniList (.json, распакованный из .json.gz).
+   * Архив распаковывается снаружи: core.js не зависит от браузерных потоков.
+   * Оценки учитывают шкалу профиля: если в файле есть оценка больше 10 —
+   * это 100-балльная шкала, и все оценки делятся на 10.
+   */
+  function parseAniListJson(text) {
+    const raw = String(text == null ? '' : text);
+    if (!raw.trim()) throw new Error('Файл пустой.');
+    let payload = null;
+    try { payload = JSON.parse(raw); } catch {
+      throw new Error('Не удалось прочитать JSON. Выберите файл экспорта AniList (.json).');
+    }
+    const entries = aniListEntries(payload);
+    if (!entries.length) throw new Error('В файле нет списка AniList.');
+
+    const maxScore = entries.reduce((max, entry) => {
+      const value = Number(entry && entry.score) || 0;
+      return value > max ? value : max;
+    }, 0);
+    const divide = maxScore > 10;
+
+    const rows = entries.map(entry => {
+      const entryObject = entry && typeof entry === 'object' ? entry : {};
+      const media = entryObject.media && typeof entryObject.media === 'object' ? entryObject.media : entryObject;
+      const title = pickAniListTitle(media.title);
+      const score = Number(entryObject.score) || 0;
+      const cover = media.coverImage && typeof media.coverImage === 'object' ? media.coverImage : media;
+      const statusMap = {
+        CURRENT: 'watching',
+        COMPLETED: 'completed',
+        PAUSED: 'on hold',
+        DROPPED: 'dropped',
+        REPEATING: 'rewatching',
+        PLANNING: 'plan to watch',
+      };
+      return {
+        malId: media.idMal,
+        title: title.main,
+        altTitle: title.alt,
+        episodes: media.episodes,
+        watched: entryObject.progress,
+        score: divide ? Math.round(score / 10 * 10) / 10 : score,
+        status: statusMap[String(entryObject.status || '').trim().toUpperCase()] || '',
+        type: media.format,
+        year: (media.startDate && media.startDate.year) || media.seasonYear,
+        image: cover.large || cover.medium || '',
+      };
+    });
+    const normalized = normalizeImportRows(rows, 'anilist');
+    if (!normalized.length) throw new Error('В файле нет списка AniList.');
+    return normalized;
+  }
+
   /**
    * Сопоставляет строки файла с тайтлами AniList и решает, что добавлять.
    * Возвращает новые записи, уже имеющиеся тайтлы и то, что не нашлось.
@@ -2268,6 +2351,7 @@
     normalizeImportRows,
     parseMalXml,
     parseShikimoriJson,
+    parseAniListJson,
     planImport,
     TIER_IMAGE_DEFAULTS,
     buildTierImageLayout,
