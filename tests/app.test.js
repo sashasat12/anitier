@@ -2553,6 +2553,9 @@
       T.includes(doc.querySelector('#upcoming-grid').textContent, 'Серия', 'В календаре есть ближайшие серии');
       T.assert(doc.querySelectorAll('#upcoming-grid .calendar-row').length > 0, 'Календарь отрисован строками');
       T.includes(doc.querySelector('#upcoming-status').textContent, 'Мои серии');
+      T.includes(doc.querySelector('#upcoming-status').textContent, 'доступен поиск', 'Статус уточняет, что доступен поиск');
+      T.eq(doc.querySelector('[data-action="toggle-upcoming-filters"]').hidden, true, 'Кнопка фильтров скрыта в «Моих сериях»');
+      T.eq(doc.getElementById('upcoming-filters').hidden, true, 'Панель фильтров скрыта в «Моих сериях»');
 
       doc.querySelector('[data-action="export-ics"]').click();
       const saved = win.__savedFiles[0];
@@ -2562,8 +2565,16 @@
       T.includes(saved.text, 'BEGIN:VEVENT');
       T.includes(saved.text, 'SUMMARY:');
 
+      const search = doc.querySelector('#upcoming-search');
+      search.value = 'zzzz-no-match';
+      search.dispatchEvent(new win.Event('input', { bubbles: true }));
+      await T.waitFor(() => doc.querySelector('#upcoming-grid').textContent.includes('Под запрос ничего не подошло'), 'Пустое состояние «Моих серий» не обновилось', 4000);
+      doc.querySelector('[data-action="reset-upcoming"]').click();
+      await T.waitFor(() => doc.querySelector('#upcoming-search').value === '' && App.state.upcoming.view.mine, 'Сброс в «Моих сериях» должен очищать только поиск', 4000);
+
       mine.click();
       T.eq(App.state.upcoming.view.mine, false, 'Режим «Мои серии» выключается');
+      T.eq(doc.querySelector('[data-action="toggle-upcoming-filters"]').hidden, false, 'Кнопка фильтров возвращается после выхода');
     } finally {
       app.close();
     }

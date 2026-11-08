@@ -2894,6 +2894,7 @@
           break;
 
         case 'toggle-upcoming-filters': {
+          if (state.upcoming.view && state.upcoming.view.mine) break;
           const panel = $('#upcoming-filters');
           if (!panel) break;
           panel.hidden = !panel.hidden;
@@ -3018,14 +3019,17 @@
           break;
 
         case 'reset-upcoming': {
-          const mine = Boolean(state.upcoming.view && state.upcoming.view.mine);
-          state.upcoming.view = {
-            query: '',
-            filters: C.normalizeFilters(C.DEFAULT_FILTERS),
-            month: '',
-            sort: 'date',
-            mine,
-          };
+          const view = state.upcoming.view || (state.upcoming.view = {});
+          const mine = Boolean(view.mine);
+          view.query = '';
+          if (!mine) {
+            view.filters = C.normalizeFilters(C.DEFAULT_FILTERS);
+            view.month = '';
+            view.sort = 'date';
+          }
+          view.mine = mine;
+          const search = $('#upcoming-search');
+          if (search) search.value = '';
           App.renderUpcoming();
           break;
         }
@@ -3033,6 +3037,8 @@
         case 'toggle-upcoming-mine':
           if (!state.upcoming.view) state.upcoming.view = {};
           state.upcoming.view.mine = !state.upcoming.view.mine;
+          const upPanel = $('#upcoming-filters');
+          if (upPanel && state.upcoming.view.mine) upPanel.hidden = true;
           App.renderUpcoming();
           break;
 

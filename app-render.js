@@ -881,11 +881,28 @@
     el.textContent = bits.join(' · ');
   }
 
+  function syncUpcomingMineUI(active) {
+    const toggle = document.querySelector('[data-action="toggle-upcoming-filters"]');
+    const panel = $('#upcoming-filters');
+    const count = $('#upcoming-filter-count');
+    if (toggle) {
+      toggle.hidden = Boolean(active);
+      if (active) {
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.classList.remove('is-active');
+      }
+    }
+    if (panel && active) panel.hidden = true;
+    if (count && active) count.hidden = true;
+    const reset = document.querySelector('#upcoming-more-menu [data-action="reset-upcoming"]');
+    if (reset) reset.textContent = active ? 'Сбросить поиск' : 'Сбросить фильтры';
+  }
+
   function renderMyCalendar() {
     const grid = $('#upcoming-grid');
     if (!grid) return;
     const u = state.upcoming;
-    syncUpcomingControls(u.items || []);
+    syncUpcomingMineUI(true);
 
     if (state.notifications.loading && !state.notifications.loaded) {
       grid.innerHTML = skeletonRows(6);
@@ -898,7 +915,7 @@
     const query = C.normalizeTitleKey(u.view.query);
     const shown = query ? all.filter(item => C.normalizeTitleKey(item.title).includes(query)) : all;
     const status = $('#upcoming-status');
-    if (status) status.textContent = all.length ? `Мои серии: ${shown.length} из ${all.length}` : '';
+    if (status) status.textContent = all.length ? `Мои серии: ${shown.length} из ${all.length} · доступен поиск` : '';
 
     if (!all.length) {
       grid.innerHTML = msgBlock('📅', 'Ближайших серий нет', 'Добавьте тайтлы в «Просмотрено» или «Запланировано» и обновите события.');
@@ -907,9 +924,9 @@
     if (!shown.length) {
       grid.innerHTML = `<div class="msg">
         <span class="emoji">🔍</span>
-        <h3>Под фильтры ничего не подошло</h3>
-        <p>Измените запрос или сбросьте фильтры.</p>
-        <button class="btn btn-ghost" data-action="reset-upcoming">Сбросить фильтры</button>
+        <h3>Под запрос ничего не подошло</h3>
+        <p>Измените поиск по названию.</p>
+        <button class="btn btn-ghost" data-action="reset-upcoming">Сбросить поиск</button>
       </div>`;
       return;
     }
@@ -939,11 +956,18 @@
       u.view = { query: '', filters: { type: '', genre: '', year: '', minScore: '', status: '' }, month: '', sort: 'date', mine: false };
     }
     initUpcomingOptions();
+    const mineBtn = $('#upcoming-mine');
+    if (mineBtn) {
+      const on = Boolean(u.view.mine);
+      mineBtn.classList.toggle('btn-primary', on);
+      mineBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
 
     if (u.view.mine) {
       renderMyCalendar();
       return;
     }
+    syncUpcomingMineUI(false);
 
     if (u.loading && !u.items.length) {
       grid.innerHTML = skeletonCards(10);
