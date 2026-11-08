@@ -156,7 +156,8 @@
     catch (err) { if (stale) return stale; throw err; }
 
     const pageData = json?.data?.Page;
-    if (!pageData || !Array.isArray(pageData.media)) throw new Error('AniList: неверный ответ');
+    if (!pageData) throw new Error('AniList: неверный ответ');
+    if (!Array.isArray(pageData.media)) pageData.media = [];
     if (useCache) {
       anilistCache.set(key, pageData);
       await writeApiCache(`anilist:${key}`, pageData);
@@ -437,7 +438,7 @@
     return C.dedupeById(all);
   }
 
-  async function fetchRecentScheduleEvents(days = 7, maxPages = 4) {
+  async function fetchRecentScheduleEvents(days = 7, maxPages = 10) {
     const now = Math.floor(Date.now() / 1000);
     const from = now - Math.max(1, Number(days) || 7) * 86400;
     const events = [];

@@ -435,6 +435,46 @@
     } finally { app.close(); }
   });
 
+  T.test('app: недавние серии пагинируются до hasNextPage', async () => {
+    const calls = [];
+    const app = await T.mountApp({
+      query: '?test=1',
+      setup(win) {
+        win.fetch = async (url, opts = {}) => {
+          const parsed = new URL(url);
+          if (parsed.hostname === 'graphql.anilist.co') {
+            const body = JSON.parse(opts.body || '{}');
+            const vars = body.variables || {};
+            calls.push(vars);
+            const page = Number(vars.page) || 1;
+            const media = { id: page, idMal: 70000 + page, title: { romaji: `Sched ${page}` }, format: 'TV', status: 'RELEASING', episodes: 12, averageScore: 80, seasonYear: 2026, startDate: { year: 2026, month: 1, day: 1 }, genres: [], coverImage: { large: '' }, description: '' };
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({
+                data: {
+                  Page: {
+                    pageInfo: { hasNextPage: page === 1 },
+                    airingSchedules: [{ episode: page, airingAt: Math.floor(Date.now() / 1000) - 3600 * page, media }],
+                  },
+                },
+              }),
+            };
+          }
+          return baseFetch(calls)(url, opts);
+        };
+      },
+    });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      await api.clearPersistentApiCache();
+      const events = await api.withCacheReload(() => api.fetchRecentScheduleEvents(7, 10));
+      T.eq(events.length, 2, 'Собраны события с двух страниц');
+      T.assert(calls.filter(v => v.airingAtGreater).length >= 2, 'Выполнена пагинация расписания');
+    } finally { app.close(); }
+  });
+
   T.test('app: ID своих карточек не пересекаются с ID источников', async () => {
     const app = await T.mountApp({ query: '?test=1' });
     try {

@@ -520,7 +520,7 @@
       const malIds = trackedMalIds();
       const results = await Promise.allSettled([
         malIds.length ? fetchTrackedAnime(malIds) : Promise.resolve([]),
-        fetchRecentScheduleEvents(C.RECENT_EPISODE_DAYS, 4),
+        fetchRecentScheduleEvents(C.RECENT_EPISODE_DAYS, 10),
         fetchRecentFilms(),
         fetchFinishedAnime(),
       ]);
@@ -612,7 +612,7 @@
       const startLesser = fuzzyDateInt(to);
       const all = [];
 
-      for (let page = 1; page <= 2; page++) {
+      for (let page = 1; page <= 10; page++) {
         const pageData = await fetchAniList({
           type: 'ANIME',
           status: 'NOT_YET_RELEASED',
@@ -4328,6 +4328,7 @@
       fetchDB,
       fetchNotifications,
       fetchUpcoming,
+      fetchRecentScheduleEvents,
       resetDBFilters,
       syncFilterUI,
       syncLangUI,
