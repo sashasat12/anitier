@@ -46,6 +46,9 @@ powershell -ExecutionPolicy Bypass -File .\serve.ps1
 # тесты (headless Edge/Chrome, порт 8099)
 powershell -ExecutionPolicy Bypass -File .\test.ps1
 
+# проверка живого контракта AniList (нужен интернет, ключи не нужны)
+powershell -ExecutionPolicy Bypass -File .\smoke-api.ps1
+
 # автономный файл для телефона → AniTier-phone.html
 powershell -ExecutionPolicy Bypass -File .\build-phone.ps1
 
