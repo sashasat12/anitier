@@ -371,11 +371,25 @@ anitier/
 │   ├── setup-tools.ps1 — JDK 17 и Android SDK (один раз)
 │   └── build-apk.ps1   — сборка и подпись AniTier.apk
 ├── test.ps1         — запуск браузерных тестов и визуальной регрессии
+├── bump-version.ps1 — подъём версии во всех местах (без пересборки артефактов)
+├── release.ps1      — проверка версий, тесты, сборка и публикация релиза
 ├── tests/           — тестовый раннер и сценарии
 │   ├── visual-compare.html — сравнение скриншотов в браузере (canvas)
 │   └── visual/baseline/    — эталоны визуальной регрессии
 └── README.md
 ```
+
+## Версия и релиз
+
+Версия хранится в `core.js` (`APP_VERSION`), первой записи `changelog.js`, `android/AndroidManifest.xml` (`versionName`/`versionCode`), `mobile/sw.js` (`CACHE`) и ссылках `?v=` в `index.html`/`mobile/index.html`. Поднимать её вручную не нужно:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\bump-version.ps1 -Check
+powershell -ExecutionPolicy Bypass -File .\bump-version.ps1 -Version 1.42.0
+powershell -ExecutionPolicy Bypass -File .\bump-version.ps1 -Bump patch   # или minor/major
+```
+
+`-Check` только показывает расхождения. Подъём версии увеличивает `versionCode` на 1, ставит текущую дату в первой записи changelog и не трогает сгенерированные артефакты. После этого обновите `title`/`items` в changelog и используйте `release.ps1` для проверки версий, тестов, сборки и (по флагам) публикации.
 
 ## Источник данных
 

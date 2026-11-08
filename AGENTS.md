@@ -65,6 +65,11 @@ powershell -ExecutionPolicy Bypass -File .\build-phone.ps1
 powershell -ExecutionPolicy Bypass -File .\android\setup-tools.ps1
 powershell -ExecutionPolicy Bypass -File .\android\build-apk.ps1
 
+# подъём версии во всех местах (без пересборки артефактов)
+powershell -ExecutionPolicy Bypass -File .\bump-version.ps1 -Check
+powershell -ExecutionPolicy Bypass -File .\bump-version.ps1 -Version 1.42.0
+powershell -ExecutionPolicy Bypass -File .\bump-version.ps1 -Bump patch   # или minor/major
+
 # релиз одной командой: сверка версий → тесты → сборка → (по флагам) коммит, пуш, GitHub-релиз
 powershell -ExecutionPolicy Bypass -File .\release.ps1
 powershell -ExecutionPolicy Bypass -File .\release.ps1 -Release   # полный цикл с тегом и APK

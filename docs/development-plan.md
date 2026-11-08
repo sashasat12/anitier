@@ -18,14 +18,6 @@
 
 
 
-### 32. P2 — Автоматизировать подъём версии
-
-Файлы: `release.ps1`, новый `bump-version.ps1` (или режим `release.ps1 -Bump`), `README.md`, `AGENTS.md`.
-
-Версия дублируется в `core.js` (`APP_VERSION`), первой записи `changelog.js`, `android/AndroidManifest.xml` (`versionName` и `versionCode`), `mobile/sw.js` (`CACHE`) и `?v=` в `index.html`/`mobile/index.html`. `release.ps1` только проверяет; при ручном подъёме легко пропустить место.
-
-Готово, когда: одна команда `bump-version.ps1 -Version X.Y.Z` (или `-Bump patch|minor`) обновляет все места, увеличивает `versionCode` на 1, ставит текущую дату в первой записи changelog и не трогает сгенерированные артефакты; `-Check` только показывает расхождения; после запуска `release.ps1` проходит проверку версий.
-
 ### 33. P2 — Расширить визуальную регрессию
 
 Файлы: `test.ps1`, `tests/visual/baseline/*.png`.
