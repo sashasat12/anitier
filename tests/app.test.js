@@ -435,6 +435,25 @@
     } finally { app.close(); }
   });
 
+  T.test('app: ID своих карточек не пересекаются с ID источников', async () => {
+    const app = await T.mountApp({ query: '?test=1' });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const anilistSourceId = -(2000000 + 124);
+      const kitsuSourceId = -(1000000 + 55);
+      api.state.lists.watched.S.push({ id: anilistSourceId, title: 'AniList', custom: false });
+      api.state.lists.planned.A.push({ id: kitsuSourceId, title: 'Kitsu', custom: false });
+      const id = app.win.AniTier.nextCustomId();
+      T.assert(Number.isInteger(id) && id < 0, 'ID своей карточки отрицательный');
+      T.assert(id > -1000000, 'ID своей карточки в безопасном диапазоне');
+      T.assert(id !== anilistSourceId && id !== kitsuSourceId, 'ID не совпадает с ID источников');
+      api.state.customCards.push({ id, custom: true, customId: 'c1', title: 'Своя' });
+      const next = app.win.AniTier.nextCustomId();
+      T.assert(next > -1000000 && next !== id, 'Следующий ID тоже в безопасном диапазоне');
+    } finally { app.close(); }
+  });
+
   T.test('app: снимок выходящего тайтла сохраняет следующую серию', async () => {
     const app = await T.mountApp({ query: '?test=1' });
     try {

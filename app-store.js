@@ -716,18 +716,16 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
   }
 
   function nextCustomId() {
+    /* Свои карточки живут в диапазоне -1..-999999. ID источников занимают
+       -(1000000 + id) и -(2000000 + id), поэтому глобальный минимум по спискам
+       использовать нельзя: он мог дать ID, совпадающий с ID источника. */
     let min = 0;
-    const consider = (value) => {
-      const id = Number(value);
-      if (Number.isInteger(id) && id < min) min = id;
-    };
-    for (const card of state.customCards) consider(card.id);
-    for (const name of ['watched', 'planned']) {
-      for (const tier of TIER_IDS) {
-        for (const item of state.lists[name][tier] || []) consider(item.id);
-      }
+    for (const card of state.customCards) {
+      const id = Number(card.id);
+      if (Number.isInteger(id) && id < 0 && id > -1000000 && id < min) min = id;
     }
-    return min - 1;
+    const next = min - 1;
+    return next > -1000000 ? next : -1;
   }
 
   function normalizeCustomCard(raw) {
