@@ -31,6 +31,7 @@ const SHELL = [
   '../app-ctrl-backup.js',
   '../app-ctrl-moments.js',
   '../app-ctrl-settings.js',
+  '../app-ctrl-diagnostics.js',
   '../app.js',
 ];
 

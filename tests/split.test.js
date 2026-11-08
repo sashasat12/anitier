@@ -6,7 +6,7 @@
   const SCRIPTS = [
     'app-store.js', 'app-api.js',
     'app-render-cards.js', 'app-render-lists.js', 'app-render-screens.js', 'app-render-modals.js',
-    'app-ctrl-catalog.js', 'app-ctrl-notifications.js', 'app-ctrl-upcoming.js', 'app-ctrl-backup.js', 'app-ctrl-moments.js', 'app-ctrl-settings.js',
+    'app-ctrl-catalog.js', 'app-ctrl-notifications.js', 'app-ctrl-upcoming.js', 'app-ctrl-backup.js', 'app-ctrl-moments.js', 'app-ctrl-settings.js', 'app-ctrl-diagnostics.js',
     'app.js',
   ];
 
