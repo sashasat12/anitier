@@ -1885,6 +1885,33 @@
     }
   });
 
+  T.test('app: открытые слои блокируют прокрутку фона', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      const doc = win.document;
+      await win.__anitierTest.init();
+
+      T.eq(doc.body.classList.contains('no-scroll'), false, 'Фон не заблокирован без слоёв');
+      App.openSettings();
+      T.eq(doc.body.classList.contains('no-scroll'), true, 'Настройки блокируют прокрутку фона');
+      T.eq(doc.documentElement.classList.contains('no-scroll'), true, 'html тоже блокируется');
+      App.closeSettings();
+      T.eq(doc.body.classList.contains('no-scroll'), false, 'После закрытия настроек прокрутка возвращается');
+
+      App.openBackup();
+      T.eq(doc.body.classList.contains('no-scroll'), true, 'Копия блокирует прокрутку');
+      App.closeBackup();
+      App.openExchange('export', 'watched');
+      T.eq(doc.body.classList.contains('no-scroll'), true, 'Обмен блокирует прокрутку');
+      App.closeExchange();
+      T.eq(doc.body.classList.contains('no-scroll'), false);
+    } finally {
+      app.close();
+    }
+  });
+
   T.test('app: поиск и фильтры внутри «Просмотрено» показывают нужные тайтлы', async () => {
     const app = await T.mountApp({ query: '?demo=1&test=1' });
     try {

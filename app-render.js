@@ -2075,6 +2075,7 @@
       || Boolean(state.customForm && state.customForm.open)
       || Boolean(state.momentForm && state.momentForm.open)
       || Boolean(state.tiktokImport && state.tiktokImport.open)
+      || Boolean(state.settingsScreen && state.settingsScreen.open)
       || Boolean(state.statsScreen && state.statsScreen.open)
       || Boolean(state.backup && state.backup.open);
     document.body.classList.toggle('no-scroll', locked);
