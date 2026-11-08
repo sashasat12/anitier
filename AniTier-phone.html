@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AniTier Phone — без сервера</title>
 <meta name="description" content="Автономная версия AniTier для телефона: база аниме, уведомления о премьерах, тир-листы и календарь. Работает как приложение.">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; base-uri 'self'; object-src 'none'; script-src 'self' https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' data: blob: https://graphql.anilist.co https://kitsu.io https://api.mymemory.translated.net https://translate.googleapis.com https://query.wikidata.org https://www.googleapis.com https://accounts.google.com https://oauth2.googleapis.com; frame-src https://www.tiktok.com; media-src 'self' data: blob: https:; manifest-src 'self'">
 <meta name="anitier-google-client-id" content="">
 <meta name="theme-color" content="#0c0d14">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -12857,9 +12858,9 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     const image = String(a.image || '');
     const src = image || makePoster(a.title, a.id);
     const remote = /^https?:\/\//i.test(image)
-      ? ` data-poster-src="${esc(image)}" onload="cachePoster(this)"`
+      ? ` data-poster-src="${esc(image)}"`
       : '';
-    return `src="${esc(src)}" alt="${esc(alt !== undefined ? alt : displayTitle(a))}" loading="lazy" decoding="async" data-title="${esc(displayTitle(a))}" data-id="${a.id}"${remote} onerror="posterFallback(this)"`;
+    return `src="${esc(src)}" alt="${esc(alt !== undefined ? alt : displayTitle(a))}" loading="lazy" decoding="async" data-title="${esc(displayTitle(a))}" data-id="${a.id}"${remote}`;
   }
 
   function cardHTML(a, ctx) {
@@ -15587,7 +15588,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       <div class="modal-grid">
         <div class="modal-poster">
           <div class="modal-poster-wrap">
-            <img src="${esc(poster)}" alt="${esc(displayTitle(a))}" data-title="${esc(displayTitle(a))}" data-id="${a.id}"${/^https?:\/\//i.test(poster) ? ` data-poster-src="${esc(poster)}" onload="cachePoster(this)"` : ''} onerror="posterFallback(this)">
+            <img src="${esc(poster)}" alt="${esc(displayTitle(a))}" data-title="${esc(displayTitle(a))}" data-id="${a.id}"${/^https?:\/\//i.test(poster) ? ` data-poster-src="${esc(poster)}"` : ''}>
             <div class="modal-side-score">${a.score ? `★ ${a.score.toFixed(2)}` : '★ —'}<small>рейтинг</small></div>
           </div>
         </div>
@@ -19273,6 +19274,17 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
   function bindEvents() {
     if (eventsBound) return;
     eventsBound = true;
+
+    document.addEventListener('error', (e) => {
+      const img = e.target;
+      if (!img || img.tagName !== 'IMG') return;
+      if (typeof window.posterFallback === 'function') window.posterFallback(img);
+    }, true);
+    document.addEventListener('load', (e) => {
+      const img = e.target;
+      if (!img || img.tagName !== 'IMG' || !img.dataset || !img.dataset.posterSrc) return;
+      if (typeof window.cachePoster === 'function') window.cachePoster(img);
+    }, true);
 
     const scrollTopBtn = document.getElementById('scroll-top');
     if (scrollTopBtn && !scrollTopBtn.dataset.bound) {

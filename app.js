@@ -2881,6 +2881,17 @@
     if (eventsBound) return;
     eventsBound = true;
 
+    document.addEventListener('error', (e) => {
+      const img = e.target;
+      if (!img || img.tagName !== 'IMG') return;
+      if (typeof window.posterFallback === 'function') window.posterFallback(img);
+    }, true);
+    document.addEventListener('load', (e) => {
+      const img = e.target;
+      if (!img || img.tagName !== 'IMG' || !img.dataset || !img.dataset.posterSrc) return;
+      if (typeof window.cachePoster === 'function') window.cachePoster(img);
+    }, true);
+
     const scrollTopBtn = document.getElementById('scroll-top');
     if (scrollTopBtn && !scrollTopBtn.dataset.bound) {
       scrollTopBtn.dataset.bound = '1';

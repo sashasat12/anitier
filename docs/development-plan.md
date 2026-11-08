@@ -16,14 +16,6 @@
 
 ## Пункты
 
-### 22. P2 — Убрать inline-обработчики и добавить CSP
-
-Файлы: `app-render.js`, `index.html`, `mobile/index.html`.
-
-`onload="cachePoster(this)"` и `onerror="posterFallback(this)"` мешают строгому CSP. Перейти на делегированные обработчики `load`/`error` или `IntersectionObserver`, добавить CSP-мета с разрешёнными источниками (AniList, Kitsu, Google Fonts, Google Identity, Wikidata, MyMemory, Google Translate).
-
-Готово, когда: CSP не ломает приложение и APK; нет inline-обработчиков; есть тест/ручной сценарий.
-
 ### 23. P2 — Безопасность Android WebView
 
 Файлы: `android/src/com/anitier/phone/MainActivity.java`, `android/AndroidManifest.xml`.

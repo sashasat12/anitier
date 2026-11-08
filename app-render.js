@@ -83,9 +83,9 @@
     const image = String(a.image || '');
     const src = image || makePoster(a.title, a.id);
     const remote = /^https?:\/\//i.test(image)
-      ? ` data-poster-src="${esc(image)}" onload="cachePoster(this)"`
+      ? ` data-poster-src="${esc(image)}"`
       : '';
-    return `src="${esc(src)}" alt="${esc(alt !== undefined ? alt : displayTitle(a))}" loading="lazy" decoding="async" data-title="${esc(displayTitle(a))}" data-id="${a.id}"${remote} onerror="posterFallback(this)"`;
+    return `src="${esc(src)}" alt="${esc(alt !== undefined ? alt : displayTitle(a))}" loading="lazy" decoding="async" data-title="${esc(displayTitle(a))}" data-id="${a.id}"${remote}`;
   }
 
   function cardHTML(a, ctx) {
@@ -2813,7 +2813,7 @@
       <div class="modal-grid">
         <div class="modal-poster">
           <div class="modal-poster-wrap">
-            <img src="${esc(poster)}" alt="${esc(displayTitle(a))}" data-title="${esc(displayTitle(a))}" data-id="${a.id}"${/^https?:\/\//i.test(poster) ? ` data-poster-src="${esc(poster)}" onload="cachePoster(this)"` : ''} onerror="posterFallback(this)">
+            <img src="${esc(poster)}" alt="${esc(displayTitle(a))}" data-title="${esc(displayTitle(a))}" data-id="${a.id}"${/^https?:\/\//i.test(poster) ? ` data-poster-src="${esc(poster)}"` : ''}>
             <div class="modal-side-score">${a.score ? `★ ${a.score.toFixed(2)}` : '★ —'}<small>рейтинг</small></div>
           </div>
         </div>

@@ -108,16 +108,17 @@
       const A = app.win.AniTier;
       const remote = A.imgAttrs({ image: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx1.jpg', title: 'Тайтл', id: 1 });
       T.includes(remote, 'data-poster-src="https://s4.anilist.co');
-      T.includes(remote, 'onload="cachePoster(this)"');
-      T.includes(remote, 'onerror="posterFallback(this)"');
+      T.assert(!remote.includes('onload='), 'inline onload убран (CSP)');
+      T.assert(!remote.includes('onerror='), 'inline onerror убран (CSP)');
 
       const local = A.imgAttrs({ image: 'data:image/svg+xml;charset=utf-8,test', title: 'Тайтл', id: 1 });
       T.assert(!local.includes('data-poster-src'), 'Локальную картинку кэшировать не нужно');
-      T.assert(!local.includes('cachePoster'), 'Для локальной картинки нет onload');
+      T.assert(!local.includes('onload='), 'Для локальной картинки нет inline onload');
 
       const empty = A.imgAttrs({ image: '', title: 'Без постера', id: 2 });
       T.includes(empty, 'data:image/svg+xml');
       T.assert(!empty.includes('data-poster-src'));
+      T.assert(!empty.includes('onerror='));
     } finally {
       app.close();
     }
