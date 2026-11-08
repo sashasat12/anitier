@@ -256,6 +256,30 @@
     };
   }
 
+  /* Все настройки читаются и пишутся через одну функцию: иначе сохранение
+     и восстановление расходятся, как это было с темой и языками. */
+  function normalizeSettings(raw) {
+    const value = raw && typeof raw === 'object' ? raw : {};
+    return {
+      searchLang: C.normalizeSearchLang(value.searchLang),
+      titleLang: value.titleLang === 'original' ? 'original' : 'ru',
+      synopsisLang: value.synopsisLang === 'original' ? 'original' : 'translated',
+      translationProvider: normalizeTranslationProvider(value.translationProvider),
+      updateCheck: normalizeUpdateCheck(value.updateCheck),
+      lastUpdateCheck: Number(value.lastUpdateCheck) || 0,
+      driveAutoBackup: Boolean(value.driveAutoBackup),
+      lastDriveBackupAt: Number(value.lastDriveBackupAt) || 0,
+      lastDriveBackupTry: Number(value.lastDriveBackupTry) || 0,
+      theme: value.theme === 'amoled' ? 'amoled' : 'dark',
+      density: value.density === 'compact' ? 'compact' : 'comfortable',
+      fontSize: ['small', 'large'].includes(value.fontSize) ? value.fontSize : 'normal',
+      searchHistory: Array.isArray(value.searchHistory)
+        ? value.searchHistory.map(item => String(item == null ? '' : item).trim()).filter(Boolean).slice(0, 8)
+        : [],
+      catalog: normalizeCatalogPreferences(value.catalog),
+    };
+  }
+
   /* Русские названия лежат в titles-ru.js: данные отдельно от логики. */
   const RU_TITLES = (typeof window !== 'undefined' && window.AniTierTitlesRu && typeof window.AniTierTitlesRu === 'object')
     ? window.AniTierTitlesRu
@@ -657,6 +681,13 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       custom: Boolean(a.custom),
       customId: a.customId || '',
       episodes: a.episodes ?? null,
+      airedEpisodes: a.airedEpisodes == null ? null : Math.max(0, Number(a.airedEpisodes) || 0),
+      nextEpisode: a.nextEpisode && a.nextEpisode.date
+        ? {
+          n: Number(a.nextEpisode.n) > 0 ? Number(a.nextEpisode.n) : null,
+          date: String(a.nextEpisode.date).slice(0, 40),
+        }
+        : null,
       type: a.type || '',
       status: a.status || '',
       score: typeof a.score === 'number' ? a.score : null,
@@ -916,21 +947,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
         watched: normalizeListView(rawState.listViews && rawState.listViews.watched),
         planned: normalizeListView(rawState.listViews && rawState.listViews.planned),
       },
-      settings: rawState.settings && typeof rawState.settings === 'object'
-        ? {
-          searchLang: C.normalizeSearchLang(rawState.settings.searchLang),
-          translationProvider: normalizeTranslationProvider(rawState.settings.translationProvider),
-          updateCheck: normalizeUpdateCheck(rawState.settings.updateCheck),
-          lastUpdateCheck: Number(rawState.settings.lastUpdateCheck) || 0,
-          catalog: normalizeCatalogPreferences(rawState.settings.catalog),
-        }
-        : {
-          searchLang: 'auto',
-          translationProvider: 'auto',
-          updateCheck: 'ask',
-          lastUpdateCheck: 0,
-          catalog: normalizeCatalogPreferences(),
-        },
+      settings: normalizeSettings(rawState.settings),
     };
 
     const moments = {};
@@ -1106,8 +1123,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       state.epInfo = {};
       state.seenNotifications = new Set();
       state.customCards = [];
-      state.settings.searchLang = 'auto';
-      state.settings.catalog = normalizeCatalogPreferences();
+      Object.assign(state.settings, normalizeSettings(null));
       state.listViews = { watched: emptyListView(), planned: emptyListView() };
       return;
     }
@@ -1123,11 +1139,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       })
       .slice(0, CUSTOM_LIMIT);
     state.seenNotifications = new Set(Array.isArray(raw.seenNotifications) ? raw.seenNotifications : []);
-    state.settings.searchLang = C.normalizeSearchLang(raw.settings && raw.settings.searchLang);
-    state.settings.translationProvider = normalizeTranslationProvider(raw.settings && raw.settings.translationProvider);
-    state.settings.updateCheck = normalizeUpdateCheck(raw.settings && raw.settings.updateCheck);
-    state.settings.lastUpdateCheck = Number(raw.settings && raw.settings.lastUpdateCheck) || 0;
-    state.settings.catalog = normalizeCatalogPreferences(raw.settings && raw.settings.catalog);
+    Object.assign(state.settings, normalizeSettings(raw.settings));
     /* Старые сохранения без listViews читаются как «все фильтры сброшены». */
     state.listViews = {
       watched: normalizeListView(raw.listViews && raw.listViews.watched),
@@ -1172,24 +1184,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
           watched: normalizeListView(state.listViews && state.listViews.watched),
           planned: normalizeListView(state.listViews && state.listViews.planned),
         },
-        settings: {
-          searchLang: C.normalizeSearchLang(state.settings.searchLang),
-          titleLang: state.settings.titleLang === 'original' ? 'original' : 'ru',
-          synopsisLang: state.settings.synopsisLang === 'original' ? 'original' : 'translated',
-          translationProvider: normalizeTranslationProvider(state.settings.translationProvider),
-          updateCheck: normalizeUpdateCheck(state.settings.updateCheck),
-          lastUpdateCheck: Number(state.settings.lastUpdateCheck) || 0,
-          driveAutoBackup: Boolean(state.settings.driveAutoBackup),
-          lastDriveBackupAt: Number(state.settings.lastDriveBackupAt) || 0,
-          lastDriveBackupTry: Number(state.settings.lastDriveBackupTry) || 0,
-          theme: state.settings.theme === 'amoled' ? 'amoled' : 'dark',
-          density: state.settings.density === 'compact' ? 'compact' : 'comfortable',
-          fontSize: ['small', 'large'].includes(state.settings.fontSize) ? state.settings.fontSize : 'normal',
-          searchHistory: Array.isArray(state.settings.searchHistory)
-            ? state.settings.searchHistory.map(value => String(value || '').trim()).filter(Boolean).slice(0, 8)
-            : [],
-          catalog: normalizeCatalogPreferences(state.settings.catalog),
-        },
+        settings: normalizeSettings(state.settings),
       }));
     } catch (err) {
       console.warn('localStorage', err);
@@ -1454,6 +1449,8 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     makePoster,
     posterCache,
     state,
+    normalizeCatalogPreferences,
+    normalizeSettings,
     emptyTiers,
     createAltSearchState,
     normalizeTiers,

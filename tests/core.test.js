@@ -287,6 +287,26 @@
     T.assert(keys.includes('title:frieren beyond journey s end:2023'));
   });
 
+  T.test('core: японские названия участвуют в локальном поиске', () => {
+    const C = core();
+    const japanese = '葬送のフリーレン';
+    T.assert(C.normalizeTitleKey(japanese).includes('葬送'), 'CJK сохраняются в ключе');
+    const items = [
+      { id: 1, title: 'Фрирен' },
+      { id: 2, title: japanese },
+    ];
+    T.eq(C.filterItems(items, { query: '葬送' }).length, 1, 'Фильтр находит только японский тайтл');
+    T.eq(
+      C.searchGlobal({ lists: { watched: { S: [{ id: 2, title: japanese }] } } }, '葬送').length,
+      1,
+      'Глобальный поиск находит японское название',
+    );
+    T.assert(
+      C.animeIdentityKeys({ id: 2, title: japanese }).some(key => key.includes('葬送')),
+      'Ключ сходства содержит японское название',
+    );
+  });
+
   T.test('core: mergeUniqueAnime склеивает AniList и Kitsu без повторов', () => {
     const C = core();
     const seen = new Set();

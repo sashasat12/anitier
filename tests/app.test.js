@@ -351,6 +351,114 @@
     } finally { app.close(); }
   });
 
+  T.test('app: настройки оформления и языков переживают перезапуск', async () => {
+    const app = await T.mountApp({ query: '?test=1' });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const s = api.state.settings;
+      s.theme = 'amoled';
+      s.density = 'compact';
+      s.fontSize = 'large';
+      s.titleLang = 'original';
+      s.synopsisLang = 'original';
+      s.searchHistory = ['Фрирен', 'Bleach'];
+      s.driveAutoBackup = true;
+      s.lastDriveBackupAt = 123456;
+      s.lastDriveBackupTry = 654321;
+      app.win.AniTier.saveState();
+
+      s.theme = 'dark';
+      s.density = 'comfortable';
+      s.fontSize = 'normal';
+      s.titleLang = 'ru';
+      s.synopsisLang = 'translated';
+      s.searchHistory = [];
+      s.driveAutoBackup = false;
+      s.lastDriveBackupAt = 0;
+      s.lastDriveBackupTry = 0;
+
+      app.win.AniTier.loadState();
+      T.eq(s.theme, 'amoled', 'Тема восстанавливается');
+      T.eq(s.density, 'compact', 'Плотность восстанавливается');
+      T.eq(s.fontSize, 'large', 'Размер шрифта восстанавливается');
+      T.eq(s.titleLang, 'original', 'Язык названий восстанавливается');
+      T.eq(s.synopsisLang, 'original', 'Язык описаний восстанавливается');
+      T.eq(s.searchHistory, ['Фрирен', 'Bleach'], 'История поиска восстанавливается');
+      T.eq(s.driveAutoBackup, true, 'Авто-бэкап восстанавливается');
+      T.eq(s.lastDriveBackupAt, 123456, 'Дата авто-бэкапа восстанавливается');
+
+      app.win.AniTier.applyAppearance();
+      T.eq(app.win.document.documentElement.dataset.theme, 'amoled', 'Тема применяется к документу');
+    } finally { app.close(); }
+  });
+
+  T.test('app: резервная копия возвращает настройки оформления', async () => {
+    const app = await T.mountApp({ query: '?test=1' });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const s = api.state.settings;
+      s.theme = 'amoled';
+      s.titleLang = 'original';
+      s.searchHistory = ['Фрирен'];
+      s.driveAutoBackup = true;
+      const payload = app.win.AniTier.buildBackupPayload();
+
+      s.theme = 'dark';
+      s.titleLang = 'ru';
+      s.searchHistory = [];
+      s.driveAutoBackup = false;
+      app.win.AniTier.applyBackupData(payload.data);
+
+      T.eq(s.theme, 'amoled', 'Тема из копии');
+      T.eq(s.titleLang, 'original', 'Язык названий из копии');
+      T.eq(s.searchHistory, ['Фрирен'], 'История поиска из копии');
+      T.eq(s.driveAutoBackup, true, 'Авто-бэкап из копии');
+    } finally { app.close(); }
+  });
+
+  T.test('app: принудительная загрузка игнорирует кэш', async () => {
+    const calls = [];
+    const app = await T.mountApp({ query: '?test=1', setup(win) { win.fetch = baseFetch(calls); } });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const variables = { search: 'force-reload-proof-unique', page: 1, perPage: 20, type: 'ANIME', isAdult: false };
+      await api.fetchAniList(variables);
+      const before = calls.length;
+      api.clearMemoryApiCache();
+      await api.fetchAniList(variables);
+      T.eq(calls.length, before, 'Обычный запрос читается из IndexedDB');
+      await api.withCacheReload(() => api.fetchAniList(variables));
+      T.eq(calls.length, before + 1, 'Принудительный запрос идёт в сеть');
+    } finally { app.close(); }
+  });
+
+  T.test('app: снимок выходящего тайтла сохраняет следующую серию', async () => {
+    const app = await T.mountApp({ query: '?test=1' });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const snap = app.win.AniTier.snapshotAnime({
+        id: 900001,
+        malId: 900001,
+        title: 'Выходящий тайтл',
+        episodes: 12,
+        status: 'В эфире',
+        airedEpisodes: 7,
+        nextEpisode: { n: 8, date: '2026-11-10T00:00:00.000Z' },
+        type: 'TV',
+        genres: [],
+        tags: [],
+      });
+      T.eq(snap.airedEpisodes, 7, 'Вышедшие серии сохранены');
+      T.eq(snap.nextEpisode && snap.nextEpisode.n, 8, 'Следующая серия сохранена');
+      const info = app.win.AniTier.episodeInfoFromAnime(snap);
+      T.eq(info.count, 7, 'Прогресс выходящего тайтла считается по снимку');
+    } finally { app.close(); }
+  });
+
   T.test('app: фильтры меняют переменные AniList и сбрасываются', async () => {
     const calls = [];
     const app = await T.mountApp({

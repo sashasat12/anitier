@@ -652,7 +652,10 @@
     const cached = state.epInfo[a.id];
     const fresh = cached && Date.now() - Number(cached.fetchedAt || 0) < 2 * 3600000;
     const demoCacheInLiveMode = cached && cached.source === 'demo' && !state.forceDemo && !a.demo;
-    if (fresh && !demoCacheInLiveMode) return cached;
+    /* Нулевой прогресс «В эфире» — это не данные, а отсутствие данных:
+       такой кэш нельзя держать два часа, иначе серии не появятся. */
+    const emptyAiring = cached && a.status === 'В эфире' && !Number(cached.count) && !cached.next;
+    if (fresh && !demoCacheInLiveMode && !emptyAiring) return cached;
 
     if (state.forceDemo || a.demo) {
       if (a.demoEp) {
@@ -670,7 +673,9 @@
       return state.epInfo[a.id] || null;
     }
 
-    state.epInfo[a.id] = episodeInfoFromAnime(a);
+    const info = episodeInfoFromAnime(a);
+    if (a.status === 'В эфире' && !info.count && !info.next) return null;
+    state.epInfo[a.id] = info;
     saveState();
     updateEpisodeUI(a.id);
     return state.epInfo[a.id];

@@ -79,6 +79,7 @@
     clearAniListCache,
     setDailySyncMode,
     clearPersistentApiCache,
+    withCacheReload,
     fillAltPage,
     demoAnime,
     fetchAniList,
@@ -168,7 +169,15 @@
     ensureNotificationEpisodes,
   } = App;
 
-  async function fetchDB(force = false) {
+  async function fetchDB(force = false, options = {}) {
+    const reload = Boolean(options && options.reload);
+    if (reload) {
+      return withCacheReload(() => fetchDBInner(force, reload));
+    }
+    return fetchDBInner(force, false);
+  }
+
+  async function fetchDBInner(force = false, reload = false) {
     const s = state.db;
 
     if (force) {
@@ -187,6 +196,7 @@
     if (s.loading) {
       if (force) {
         s.queued = true;
+        s.reloadQueued = reload;
         renderDB();
       }
       return;
@@ -313,9 +323,11 @@
         renderDB();
       }
       if (s.queued) {
+        const queuedReload = Boolean(s.reloadQueued);
         s.queued = false;
+        s.reloadQueued = false;
         s.loading = false;
-        fetchDB();
+        fetchDB(false, { reload: queuedReload });
       }
       enrichRussianTitles();
     }
@@ -471,10 +483,21 @@
     updateBell();
   }
 
-  async function fetchNotifications(force = false) {
+  async function fetchNotifications(force = false, options = {}) {
+    const reload = Boolean(options && options.reload);
+    if (reload) {
+      return withCacheReload(() => fetchNotificationsInner(force, reload));
+    }
+    return fetchNotificationsInner(force, false);
+  }
+
+  async function fetchNotificationsInner(force = false, reload = false) {
     const n = state.notifications;
     if (n.loading) {
-      if (force) n.queued = true;
+      if (force) {
+        n.queued = true;
+        n.reloadQueued = reload;
+      }
       return;
     }
     if (hasNotificationData() && !force) return;
@@ -539,16 +562,29 @@
       updateOfflineBanner();
       syncReleaseNotifications();
       if (n.queued) {
+        const queuedReload = Boolean(n.reloadQueued);
         n.queued = false;
-        fetchNotifications(true);
+        n.reloadQueued = false;
+        fetchNotifications(true, { reload: queuedReload });
       }
     }
   }
 
-  async function fetchUpcoming(force = false) {
+  async function fetchUpcoming(force = false, options = {}) {
+    const reload = Boolean(options && options.reload);
+    if (reload) {
+      return withCacheReload(() => fetchUpcomingInner(force, reload));
+    }
+    return fetchUpcomingInner(force, false);
+  }
+
+  async function fetchUpcomingInner(force = false, reload = false) {
     const u = state.upcoming;
     if (u.loading) {
-      if (force) u.queued = true;
+      if (force) {
+        u.queued = true;
+        u.reloadQueued = reload;
+      }
       return;
     }
     if (u.items.length && !force) return;
@@ -607,8 +643,10 @@
       renderUpcoming();
       updateOfflineBanner();
       if (u.queued) {
+        const queuedReload = Boolean(u.reloadQueued);
         u.queued = false;
-        fetchUpcoming(true);
+        u.reloadQueued = false;
+        fetchUpcoming(true, { reload: queuedReload });
       }
     }
   }
@@ -616,11 +654,11 @@
   async function refreshCurrent() {
     clearAniListCache();
     if (state.tab === 'db') {
-      await fetchDB(true);
+      await fetchDB(true, { reload: true });
     } else if (state.tab === 'notifications') {
-      await fetchNotifications(true);
+      await fetchNotifications(true, { reload: true });
     } else if (state.tab === 'upcoming') {
-      await fetchUpcoming(true);
+      await fetchUpcoming(true, { reload: true });
     } else {
       toast('Тир-листы хранятся локально — обновлять нечего');
     }
@@ -653,8 +691,11 @@
     state.offline = false;
     updateOfflineBanner();
 
-    await Promise.allSettled([fetchNotifications(), fetchUpcoming()]);
-    await fetchDB(true);
+    await Promise.allSettled([
+      fetchNotifications(true, { reload: true }),
+      fetchUpcoming(true, { reload: true }),
+    ]);
+    await fetchDB(true, { reload: true });
   }
 
   /* ---------------- drag & drop ---------------- */
@@ -2036,6 +2077,8 @@
       const result = applyBackupData(parsed.data);
       restoreCatalogPreferences();
       syncLangUI();
+      if (typeof App.applyAppearance === 'function') App.applyAppearance();
+      if (typeof App.renderSearchHistory === 'function') App.renderSearchHistory();
       updateBell();
       if (state.tab === 'db') fetchDB(true);
       setBackupMessage(`Копия восстановлена: карточек — ${result.cards}, тайтлов с моментами — ${result.moments}.`, false);
@@ -2943,7 +2986,7 @@
           break;
 
         case 'refresh-notifications':
-          fetchNotifications(true);
+          fetchNotifications(true, { reload: true });
           break;
 
         case 'release-notifications':
@@ -2959,19 +3002,19 @@
           break;
 
         case 'refresh-upcoming':
-          fetchUpcoming(true);
+          fetchUpcoming(true, { reload: true });
           break;
 
         case 'retry-db':
-          fetchDB(true);
+          fetchDB(true, { reload: true });
           break;
 
         case 'retry-notifications':
-          fetchNotifications(true);
+          fetchNotifications(true, { reload: true });
           break;
 
         case 'retry-upcoming':
-          fetchUpcoming(true);
+          fetchUpcoming(true, { reload: true });
           break;
 
         case 'reset-upcoming': {
@@ -4248,6 +4291,7 @@
     renderSettings,
     scrollPageBy,
     openExternalLink,
+    renderSearchHistory,
     init,
   });
 
@@ -4265,12 +4309,14 @@
       fetchAnimeRelations: App.fetchAnimeRelations,
       clearPersistentApiCache,
       clearMemoryApiCache: clearAniListCache,
+      withCacheReload,
       dailySyncIsDue,
       runDailySync,
       persistCatalogPreferences,
       fetchAniList,
       clearPersistentApiCache,
       clearMemoryApiCache: clearAniListCache,
+      withCacheReload,
       dailySyncIsDue,
       runDailySync,
       fetchDB,

@@ -33,6 +33,23 @@
   const API_CACHE_TTL = 24 * 60 * 60 * 1000;
   let apiCacheDbPromise = null;
   let dailySyncMode = false;
+  /* Счётчик принудительных загрузок: пока он больше нуля, чтение кэша
+     отключено. Счётчик, а не флаг, потому что force-запросы могут
+     пересекаться (уведомления + премьеры + база). */
+  let cacheReloadDepth = 0;
+
+  function isCacheReload() {
+    return cacheReloadDepth > 0;
+  }
+
+  async function withCacheReload(task) {
+    cacheReloadDepth += 1;
+    try {
+      return await task();
+    } finally {
+      cacheReloadDepth -= 1;
+    }
+  }
 
   function openApiCacheDb() {
     if (!('indexedDB' in window)) return Promise.resolve(null);
@@ -109,11 +126,12 @@
 
   async function fetchAniList(variables, options = {}) {
     const useCache = options.cache !== false;
+    const readCache = useCache && !dailySyncMode && !isCacheReload();
     const query = options.query || ANILIST_QUERY;
     const key = anilistCacheKey(variables, query);
     let stale = null;
-    if (useCache && !dailySyncMode && anilistCache.has(key)) return anilistCache.get(key);
-    if (useCache && !dailySyncMode) {
+    if (readCache && anilistCache.has(key)) return anilistCache.get(key);
+    if (readCache) {
       const cached = await readApiCache(`anilist:${key}`);
       if (cached) {
         stale = cached.value;
@@ -618,7 +636,7 @@
     const url = `${KITSU_ENDPOINT}?filter[text]=${encodeURIComponent(query)}&page[limit]=${PAGE_LIMIT}&page[offset]=${offset}&include=categories,mappings`;
     const cacheKey = `kitsu:${url}`;
     let stale = null;
-    if (!dailySyncMode) {
+    if (!dailySyncMode && !isCacheReload()) {
       const cached = await readApiCache(cacheKey);
       if (cached) {
         stale = cached.value;
@@ -1531,5 +1549,7 @@
     clearAniListCache,
     setDailySyncMode,
     clearPersistentApiCache,
+    withCacheReload,
+    isCacheReload,
   });
 })(window.AniTier);

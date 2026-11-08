@@ -7766,7 +7766,7 @@ window.AniTierChangelog = [
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase()
       .replace(/&/g, ' and ')
-      .replace(/[^a-z0-9\u0400-\u04ff]+/g, ' ')
+      .replace(/[^a-z0-9\u0400-\u04ff\u3040-\u30ff\u31f0-\u31ff\u3400-\u4dbf\u4e00-\u9fff]+/g, ' ')
       .trim()
       .replace(/\s+/g, ' ');
   }
@@ -9568,6 +9568,30 @@ window.AniTierChangelog = [
     };
   }
 
+  /* Все настройки читаются и пишутся через одну функцию: иначе сохранение
+     и восстановление расходятся, как это было с темой и языками. */
+  function normalizeSettings(raw) {
+    const value = raw && typeof raw === 'object' ? raw : {};
+    return {
+      searchLang: C.normalizeSearchLang(value.searchLang),
+      titleLang: value.titleLang === 'original' ? 'original' : 'ru',
+      synopsisLang: value.synopsisLang === 'original' ? 'original' : 'translated',
+      translationProvider: normalizeTranslationProvider(value.translationProvider),
+      updateCheck: normalizeUpdateCheck(value.updateCheck),
+      lastUpdateCheck: Number(value.lastUpdateCheck) || 0,
+      driveAutoBackup: Boolean(value.driveAutoBackup),
+      lastDriveBackupAt: Number(value.lastDriveBackupAt) || 0,
+      lastDriveBackupTry: Number(value.lastDriveBackupTry) || 0,
+      theme: value.theme === 'amoled' ? 'amoled' : 'dark',
+      density: value.density === 'compact' ? 'compact' : 'comfortable',
+      fontSize: ['small', 'large'].includes(value.fontSize) ? value.fontSize : 'normal',
+      searchHistory: Array.isArray(value.searchHistory)
+        ? value.searchHistory.map(item => String(item == null ? '' : item).trim()).filter(Boolean).slice(0, 8)
+        : [],
+      catalog: normalizeCatalogPreferences(value.catalog),
+    };
+  }
+
   /* Русские названия лежат в titles-ru.js: данные отдельно от логики. */
   const RU_TITLES = (typeof window !== 'undefined' && window.AniTierTitlesRu && typeof window.AniTierTitlesRu === 'object')
     ? window.AniTierTitlesRu
@@ -9969,6 +9993,13 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       custom: Boolean(a.custom),
       customId: a.customId || '',
       episodes: a.episodes ?? null,
+      airedEpisodes: a.airedEpisodes == null ? null : Math.max(0, Number(a.airedEpisodes) || 0),
+      nextEpisode: a.nextEpisode && a.nextEpisode.date
+        ? {
+          n: Number(a.nextEpisode.n) > 0 ? Number(a.nextEpisode.n) : null,
+          date: String(a.nextEpisode.date).slice(0, 40),
+        }
+        : null,
       type: a.type || '',
       status: a.status || '',
       score: typeof a.score === 'number' ? a.score : null,
@@ -10228,21 +10259,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
         watched: normalizeListView(rawState.listViews && rawState.listViews.watched),
         planned: normalizeListView(rawState.listViews && rawState.listViews.planned),
       },
-      settings: rawState.settings && typeof rawState.settings === 'object'
-        ? {
-          searchLang: C.normalizeSearchLang(rawState.settings.searchLang),
-          translationProvider: normalizeTranslationProvider(rawState.settings.translationProvider),
-          updateCheck: normalizeUpdateCheck(rawState.settings.updateCheck),
-          lastUpdateCheck: Number(rawState.settings.lastUpdateCheck) || 0,
-          catalog: normalizeCatalogPreferences(rawState.settings.catalog),
-        }
-        : {
-          searchLang: 'auto',
-          translationProvider: 'auto',
-          updateCheck: 'ask',
-          lastUpdateCheck: 0,
-          catalog: normalizeCatalogPreferences(),
-        },
+      settings: normalizeSettings(rawState.settings),
     };
 
     const moments = {};
@@ -10418,8 +10435,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       state.epInfo = {};
       state.seenNotifications = new Set();
       state.customCards = [];
-      state.settings.searchLang = 'auto';
-      state.settings.catalog = normalizeCatalogPreferences();
+      Object.assign(state.settings, normalizeSettings(null));
       state.listViews = { watched: emptyListView(), planned: emptyListView() };
       return;
     }
@@ -10435,11 +10451,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       })
       .slice(0, CUSTOM_LIMIT);
     state.seenNotifications = new Set(Array.isArray(raw.seenNotifications) ? raw.seenNotifications : []);
-    state.settings.searchLang = C.normalizeSearchLang(raw.settings && raw.settings.searchLang);
-    state.settings.translationProvider = normalizeTranslationProvider(raw.settings && raw.settings.translationProvider);
-    state.settings.updateCheck = normalizeUpdateCheck(raw.settings && raw.settings.updateCheck);
-    state.settings.lastUpdateCheck = Number(raw.settings && raw.settings.lastUpdateCheck) || 0;
-    state.settings.catalog = normalizeCatalogPreferences(raw.settings && raw.settings.catalog);
+    Object.assign(state.settings, normalizeSettings(raw.settings));
     /* Старые сохранения без listViews читаются как «все фильтры сброшены». */
     state.listViews = {
       watched: normalizeListView(raw.listViews && raw.listViews.watched),
@@ -10484,24 +10496,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
           watched: normalizeListView(state.listViews && state.listViews.watched),
           planned: normalizeListView(state.listViews && state.listViews.planned),
         },
-        settings: {
-          searchLang: C.normalizeSearchLang(state.settings.searchLang),
-          titleLang: state.settings.titleLang === 'original' ? 'original' : 'ru',
-          synopsisLang: state.settings.synopsisLang === 'original' ? 'original' : 'translated',
-          translationProvider: normalizeTranslationProvider(state.settings.translationProvider),
-          updateCheck: normalizeUpdateCheck(state.settings.updateCheck),
-          lastUpdateCheck: Number(state.settings.lastUpdateCheck) || 0,
-          driveAutoBackup: Boolean(state.settings.driveAutoBackup),
-          lastDriveBackupAt: Number(state.settings.lastDriveBackupAt) || 0,
-          lastDriveBackupTry: Number(state.settings.lastDriveBackupTry) || 0,
-          theme: state.settings.theme === 'amoled' ? 'amoled' : 'dark',
-          density: state.settings.density === 'compact' ? 'compact' : 'comfortable',
-          fontSize: ['small', 'large'].includes(state.settings.fontSize) ? state.settings.fontSize : 'normal',
-          searchHistory: Array.isArray(state.settings.searchHistory)
-            ? state.settings.searchHistory.map(value => String(value || '').trim()).filter(Boolean).slice(0, 8)
-            : [],
-          catalog: normalizeCatalogPreferences(state.settings.catalog),
-        },
+        settings: normalizeSettings(state.settings),
       }));
     } catch (err) {
       console.warn('localStorage', err);
@@ -10766,6 +10761,8 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     makePoster,
     posterCache,
     state,
+    normalizeCatalogPreferences,
+    normalizeSettings,
     emptyTiers,
     createAltSearchState,
     normalizeTiers,
@@ -10854,6 +10851,23 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
   const API_CACHE_TTL = 24 * 60 * 60 * 1000;
   let apiCacheDbPromise = null;
   let dailySyncMode = false;
+  /* Счётчик принудительных загрузок: пока он больше нуля, чтение кэша
+     отключено. Счётчик, а не флаг, потому что force-запросы могут
+     пересекаться (уведомления + премьеры + база). */
+  let cacheReloadDepth = 0;
+
+  function isCacheReload() {
+    return cacheReloadDepth > 0;
+  }
+
+  async function withCacheReload(task) {
+    cacheReloadDepth += 1;
+    try {
+      return await task();
+    } finally {
+      cacheReloadDepth -= 1;
+    }
+  }
 
   function openApiCacheDb() {
     if (!('indexedDB' in window)) return Promise.resolve(null);
@@ -10930,11 +10944,12 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
 
   async function fetchAniList(variables, options = {}) {
     const useCache = options.cache !== false;
+    const readCache = useCache && !dailySyncMode && !isCacheReload();
     const query = options.query || ANILIST_QUERY;
     const key = anilistCacheKey(variables, query);
     let stale = null;
-    if (useCache && !dailySyncMode && anilistCache.has(key)) return anilistCache.get(key);
-    if (useCache && !dailySyncMode) {
+    if (readCache && anilistCache.has(key)) return anilistCache.get(key);
+    if (readCache) {
       const cached = await readApiCache(`anilist:${key}`);
       if (cached) {
         stale = cached.value;
@@ -11439,7 +11454,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     const url = `${KITSU_ENDPOINT}?filter[text]=${encodeURIComponent(query)}&page[limit]=${PAGE_LIMIT}&page[offset]=${offset}&include=categories,mappings`;
     const cacheKey = `kitsu:${url}`;
     let stale = null;
-    if (!dailySyncMode) {
+    if (!dailySyncMode && !isCacheReload()) {
       const cached = await readApiCache(cacheKey);
       if (cached) {
         stale = cached.value;
@@ -12352,6 +12367,8 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     clearAniListCache,
     setDailySyncMode,
     clearPersistentApiCache,
+    withCacheReload,
+    isCacheReload,
   });
 })(window.AniTier);
 
@@ -13011,7 +13028,10 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     const cached = state.epInfo[a.id];
     const fresh = cached && Date.now() - Number(cached.fetchedAt || 0) < 2 * 3600000;
     const demoCacheInLiveMode = cached && cached.source === 'demo' && !state.forceDemo && !a.demo;
-    if (fresh && !demoCacheInLiveMode) return cached;
+    /* Нулевой прогресс «В эфире» — это не данные, а отсутствие данных:
+       такой кэш нельзя держать два часа, иначе серии не появятся. */
+    const emptyAiring = cached && a.status === 'В эфире' && !Number(cached.count) && !cached.next;
+    if (fresh && !demoCacheInLiveMode && !emptyAiring) return cached;
 
     if (state.forceDemo || a.demo) {
       if (a.demoEp) {
@@ -13029,7 +13049,9 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       return state.epInfo[a.id] || null;
     }
 
-    state.epInfo[a.id] = episodeInfoFromAnime(a);
+    const info = episodeInfoFromAnime(a);
+    if (a.status === 'В эфире' && !info.count && !info.next) return null;
+    state.epInfo[a.id] = info;
     saveState();
     updateEpisodeUI(a.id);
     return state.epInfo[a.id];
@@ -15451,6 +15473,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     clearAniListCache,
     setDailySyncMode,
     clearPersistentApiCache,
+    withCacheReload,
     fillAltPage,
     demoAnime,
     fetchAniList,
@@ -15540,7 +15563,15 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     ensureNotificationEpisodes,
   } = App;
 
-  async function fetchDB(force = false) {
+  async function fetchDB(force = false, options = {}) {
+    const reload = Boolean(options && options.reload);
+    if (reload) {
+      return withCacheReload(() => fetchDBInner(force, reload));
+    }
+    return fetchDBInner(force, false);
+  }
+
+  async function fetchDBInner(force = false, reload = false) {
     const s = state.db;
 
     if (force) {
@@ -15559,6 +15590,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     if (s.loading) {
       if (force) {
         s.queued = true;
+        s.reloadQueued = reload;
         renderDB();
       }
       return;
@@ -15685,9 +15717,11 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
         renderDB();
       }
       if (s.queued) {
+        const queuedReload = Boolean(s.reloadQueued);
         s.queued = false;
+        s.reloadQueued = false;
         s.loading = false;
-        fetchDB();
+        fetchDB(false, { reload: queuedReload });
       }
       enrichRussianTitles();
     }
@@ -15843,10 +15877,21 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     updateBell();
   }
 
-  async function fetchNotifications(force = false) {
+  async function fetchNotifications(force = false, options = {}) {
+    const reload = Boolean(options && options.reload);
+    if (reload) {
+      return withCacheReload(() => fetchNotificationsInner(force, reload));
+    }
+    return fetchNotificationsInner(force, false);
+  }
+
+  async function fetchNotificationsInner(force = false, reload = false) {
     const n = state.notifications;
     if (n.loading) {
-      if (force) n.queued = true;
+      if (force) {
+        n.queued = true;
+        n.reloadQueued = reload;
+      }
       return;
     }
     if (hasNotificationData() && !force) return;
@@ -15911,16 +15956,29 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       updateOfflineBanner();
       syncReleaseNotifications();
       if (n.queued) {
+        const queuedReload = Boolean(n.reloadQueued);
         n.queued = false;
-        fetchNotifications(true);
+        n.reloadQueued = false;
+        fetchNotifications(true, { reload: queuedReload });
       }
     }
   }
 
-  async function fetchUpcoming(force = false) {
+  async function fetchUpcoming(force = false, options = {}) {
+    const reload = Boolean(options && options.reload);
+    if (reload) {
+      return withCacheReload(() => fetchUpcomingInner(force, reload));
+    }
+    return fetchUpcomingInner(force, false);
+  }
+
+  async function fetchUpcomingInner(force = false, reload = false) {
     const u = state.upcoming;
     if (u.loading) {
-      if (force) u.queued = true;
+      if (force) {
+        u.queued = true;
+        u.reloadQueued = reload;
+      }
       return;
     }
     if (u.items.length && !force) return;
@@ -15979,8 +16037,10 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       renderUpcoming();
       updateOfflineBanner();
       if (u.queued) {
+        const queuedReload = Boolean(u.reloadQueued);
         u.queued = false;
-        fetchUpcoming(true);
+        u.reloadQueued = false;
+        fetchUpcoming(true, { reload: queuedReload });
       }
     }
   }
@@ -15988,11 +16048,11 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
   async function refreshCurrent() {
     clearAniListCache();
     if (state.tab === 'db') {
-      await fetchDB(true);
+      await fetchDB(true, { reload: true });
     } else if (state.tab === 'notifications') {
-      await fetchNotifications(true);
+      await fetchNotifications(true, { reload: true });
     } else if (state.tab === 'upcoming') {
-      await fetchUpcoming(true);
+      await fetchUpcoming(true, { reload: true });
     } else {
       toast('Тир-листы хранятся локально — обновлять нечего');
     }
@@ -16025,8 +16085,11 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     state.offline = false;
     updateOfflineBanner();
 
-    await Promise.allSettled([fetchNotifications(), fetchUpcoming()]);
-    await fetchDB(true);
+    await Promise.allSettled([
+      fetchNotifications(true, { reload: true }),
+      fetchUpcoming(true, { reload: true }),
+    ]);
+    await fetchDB(true, { reload: true });
   }
 
   /* ---------------- drag & drop ---------------- */
@@ -17408,6 +17471,8 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       const result = applyBackupData(parsed.data);
       restoreCatalogPreferences();
       syncLangUI();
+      if (typeof App.applyAppearance === 'function') App.applyAppearance();
+      if (typeof App.renderSearchHistory === 'function') App.renderSearchHistory();
       updateBell();
       if (state.tab === 'db') fetchDB(true);
       setBackupMessage(`Копия восстановлена: карточек — ${result.cards}, тайтлов с моментами — ${result.moments}.`, false);
@@ -18315,7 +18380,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
           break;
 
         case 'refresh-notifications':
-          fetchNotifications(true);
+          fetchNotifications(true, { reload: true });
           break;
 
         case 'release-notifications':
@@ -18331,19 +18396,19 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
           break;
 
         case 'refresh-upcoming':
-          fetchUpcoming(true);
+          fetchUpcoming(true, { reload: true });
           break;
 
         case 'retry-db':
-          fetchDB(true);
+          fetchDB(true, { reload: true });
           break;
 
         case 'retry-notifications':
-          fetchNotifications(true);
+          fetchNotifications(true, { reload: true });
           break;
 
         case 'retry-upcoming':
-          fetchUpcoming(true);
+          fetchUpcoming(true, { reload: true });
           break;
 
         case 'reset-upcoming': {
@@ -19620,6 +19685,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     renderSettings,
     scrollPageBy,
     openExternalLink,
+    renderSearchHistory,
     init,
   });
 
@@ -19637,12 +19703,14 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       fetchAnimeRelations: App.fetchAnimeRelations,
       clearPersistentApiCache,
       clearMemoryApiCache: clearAniListCache,
+      withCacheReload,
       dailySyncIsDue,
       runDailySync,
       persistCatalogPreferences,
       fetchAniList,
       clearPersistentApiCache,
       clearMemoryApiCache: clearAniListCache,
+      withCacheReload,
       dailySyncIsDue,
       runDailySync,
       fetchDB,

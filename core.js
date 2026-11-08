@@ -635,7 +635,7 @@
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase()
       .replace(/&/g, ' and ')
-      .replace(/[^a-z0-9\u0400-\u04ff]+/g, ' ')
+      .replace(/[^a-z0-9\u0400-\u04ff\u3040-\u30ff\u31f0-\u31ff\u3400-\u4dbf\u4e00-\u9fff]+/g, ' ')
       .trim()
       .replace(/\s+/g, ' ');
   }
