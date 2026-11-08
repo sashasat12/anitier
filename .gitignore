@@ -17,4 +17,6 @@ graphify-out/
 .DS_Store
 Thumbs.db
 *.log
-\n\n# Visual regression runtime artifacts\ntests/visual/_actual/\n
+
+# Visual regression runtime artifacts
+tests/visual/_actual/
