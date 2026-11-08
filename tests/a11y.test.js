@@ -170,6 +170,43 @@
     }
   });
 
+  T.test('a11y: сообщения используют h2, статусы — aria-live, модалки — aria-describedby', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const doc = app.win.document;
+
+      T.eq(app.win.AniTier.msgBlock('🔎', 'Тест', 'Текст').includes('<h2>Тест</h2>'), true, 'msgBlock рендерит h2');
+
+      T.eq(doc.getElementById('db-status').getAttribute('aria-live'), 'polite');
+      T.eq(doc.getElementById('db-status').getAttribute('role'), 'status');
+      T.assert(!doc.getElementById('db-grid').hasAttribute('aria-live'), 'Сетка не должна быть live-регионом');
+      T.assert(!doc.getElementById('notif-list').hasAttribute('aria-live'), 'Лента уведомлений не должна быть live-регионом');
+      T.assert(!doc.getElementById('upcoming-grid').hasAttribute('aria-live'), 'Сетка премьер не должна быть live-регионом');
+      T.assert(!doc.getElementById('summary-watched').hasAttribute('aria-live'), 'Сводка списка не должна быть live-регионом');
+
+      const modalIds = ['modal', 'exchange-modal', 'backup-modal', 'settings-modal', 'command-modal', 'stats-modal', 'custom-modal', 'moment-modal'];
+      for (const id of modalIds) {
+        const panel = doc.querySelector('#' + id + ' [role="dialog"]');
+        T.assert(panel, 'Диалог найден: ' + id);
+        const described = panel.getAttribute('aria-describedby');
+        T.assert(described, 'aria-describedby есть: ' + id);
+        T.assert(doc.getElementById(described), 'Описывающий элемент существует: ' + described);
+      }
+
+      api.state.db.loading = true;
+      api.state.db.items = [];
+      app.win.AniTier.renderDB();
+      T.eq(doc.getElementById('db-grid').getAttribute('aria-busy'), 'true');
+      api.state.db.loading = false;
+      app.win.AniTier.renderDB();
+      T.eq(doc.getElementById('db-grid').getAttribute('aria-busy'), 'false');
+    } finally {
+      app.close();
+    }
+  });
+
   T.test('a11y: фокус зацикливается внутри открытой карточки', async () => {
     const app = await T.mountApp({ query: '?demo=1&test=1' });
     try {

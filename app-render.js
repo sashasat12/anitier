@@ -144,7 +144,7 @@
   function msgBlock(emoji, title, text, action, actionLabel) {
     return `<div class="msg">
       <span class="emoji">${emoji}</span>
-      <h3>${esc(title)}</h3>
+      <h2>${esc(title)}</h2>
       <p>${esc(text)}</p>
       ${action ? `<button class="btn btn-ghost" data-action="${action}">${esc(actionLabel || 'Попробовать снова')}</button>` : ''}
     </div>`;
@@ -418,7 +418,10 @@
     const more = $('#db-more');
     if (!grid) return;
 
-    if ((s.loading || state.booting) && !s.items.length) {
+    const busy = Boolean(s.loading || state.booting);
+    grid.setAttribute('aria-busy', busy ? 'true' : 'false');
+
+    if (busy && !s.items.length) {
       grid.innerHTML = skeletonCards(12);
       grid.dataset.cardSignature = '';
       if (more) more.hidden = true;
@@ -439,7 +442,7 @@
       if (s.mode === 'custom' && !s.query && !C.hasActiveFilters(s.filters)) {
         grid.innerHTML = `<div class="msg">
           <span class="emoji">✎</span>
-          <h3>Своих карточек пока нет</h3>
+          <h2>Своих карточек пока нет</h2>
           <p>Добавьте тайтл, которого нет в AniList или Kitsu: название, постер, год и серии.</p>
           <button class="btn btn-primary" data-action="new-custom">Создать карточку</button>
         </div>`;
@@ -751,6 +754,7 @@
     const completed = n.completed.length;
     const totalCount = tracked + recent + completed;
 
+    el.setAttribute('aria-busy', n.loading ? 'true' : 'false');
     if (n.loading && !totalCount) { el.innerHTML = skeletonRows(5); return; }
     if (n.error && !totalCount) { el.innerHTML = msgBlock('⚠️', 'Не удалось загрузить уведомления', n.error, 'retry-notifications'); return; }
     const counts = { tracked, recent, completed };
@@ -918,7 +922,9 @@
     const u = state.upcoming;
     syncUpcomingMineUI(true);
 
-    if (state.notifications.loading && !state.notifications.loaded) {
+    const busy = Boolean(state.notifications.loading && !state.notifications.loaded);
+    grid.setAttribute('aria-busy', busy ? 'true' : 'false');
+    if (busy) {
       grid.innerHTML = skeletonRows(6);
       const loadingStatus = $('#upcoming-status');
       if (loadingStatus) loadingStatus.textContent = 'Собираем ваши серии…';
@@ -931,6 +937,9 @@
     const status = $('#upcoming-status');
     if (status) status.textContent = all.length ? `Мои серии: ${shown.length} из ${all.length} · доступен поиск` : '';
 
+    const statusEl = $('#upcoming-status');
+    if (statusEl) statusEl.textContent = all.length ? `Мои серии: ${shown.length} из ${all.length} · доступен поиск` : '';
+
     if (!all.length) {
       grid.innerHTML = msgBlock('📅', 'Ближайших серий нет', 'Добавьте тайтлы в «Просмотрено» или «Запланировано» и обновите события.');
       return;
@@ -938,7 +947,7 @@
     if (!shown.length) {
       grid.innerHTML = `<div class="msg">
         <span class="emoji">🔍</span>
-        <h3>Под запрос ничего не подошло</h3>
+        <h2>Под запрос ничего не подошло</h2>
         <p>Измените поиск по названию.</p>
         <button class="btn btn-ghost" data-action="reset-upcoming">Сбросить поиск</button>
       </div>`;
@@ -983,6 +992,7 @@
     }
     syncUpcomingMineUI(false);
 
+    grid.setAttribute('aria-busy', u.loading ? 'true' : 'false');
     if (u.loading && !u.items.length) {
       grid.innerHTML = skeletonCards(10);
       syncUpcomingControls([]);
@@ -1009,7 +1019,7 @@
     if (!all.length) {
       grid.innerHTML = `<div class="msg">
         <span class="emoji">✅</span>
-        <h3>Все премьеры уже в ваших списках</h3>
+        <h2>Все премьеры уже в ваших списках</h2>
         <p>Тайтлы из «Просмотрено» и «Запланировано» здесь не повторяются.</p>
       </div>`;
       return;
@@ -1018,7 +1028,7 @@
     if (!shown.length) {
       grid.innerHTML = `<div class="msg">
         <span class="emoji">🔍</span>
-        <h3>Под фильтры ничего не подошло</h3>
+        <h2>Под фильтры ничего не подошло</h2>
         <p>Измените запрос, месяц или жанр — или сбросьте фильтры.</p>
         <button class="btn btn-ghost" data-action="reset-upcoming">Сбросить фильтры</button>
       </div>`;
@@ -1462,7 +1472,7 @@
     if (!modal) {
       document.body.insertAdjacentHTML('beforeend', `<div class="modal" id="tiktok-import-modal" hidden>
         <div class="modal-backdrop" data-action="close-tiktok-import"></div>
-        <section class="modal-panel tiktok-import-panel" role="dialog" aria-modal="true" aria-labelledby="tiktok-import-title" tabindex="-1">
+        <section class="modal-panel tiktok-import-panel" role="dialog" aria-modal="true" aria-labelledby="tiktok-import-title" aria-describedby="tiktok-import-content" tabindex="-1">
           <button class="modal-close" data-action="close-tiktok-import" aria-label="Закрыть">✕</button>
           <div class="custom-content" id="tiktok-import-content"></div>
         </section>

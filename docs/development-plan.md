@@ -16,14 +16,6 @@
 
 ## Пункты
 
-### 26. P2 — Доступность
-
-Файлы: `app-render.js`, `index.html`, `mobile/index.html`, `styles.css`.
-
-Поправить порядок заголовков (h1 → h3 в сообщениях), сузить `aria-live` до статуса, добавить `aria-busy` на загрузки и `aria-describedby` модалкам. Прогнать Lighthouse и axe.
-
-Готово, когда: Accessibility 100 в Lighthouse на ключевых экранах; нет пропусков заголовков.
-
 ### 27. P3 — Единая модель статусов и жанров
 
 Файлы: `core.js`, `app-api.js`, `app-store.js`, `app-render.js`.

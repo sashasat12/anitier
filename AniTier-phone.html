@@ -1533,6 +1533,7 @@ button { font-family: inherit; }
   background: rgba(255, 255, 255, .02);
 }
 .msg .emoji { display: block; font-size: 40px; margin-bottom: 12px; }
+.msg h2,
 .msg h3 { margin: 0 0 6px; font-size: 18px; letter-spacing: -.01em; }
 .msg p { margin: 0 auto; max-width: 420px; color: var(--muted); font-size: 13px; }
 .msg .btn { margin-top: 18px; }
@@ -4477,8 +4478,8 @@ body.mobile-app .update-card-actions .btn { min-height: 34px; font-size: 12px; }
       <div class="continue-row" id="continue-row"></div>
     </section>
 
-    <div class="db-status" id="db-status" aria-live="polite"></div>
-    <div class="grid" id="db-grid" aria-live="polite"></div>
+    <div class="db-status" id="db-status" role="status" aria-live="polite"></div>
+    <div class="grid" id="db-grid"></div>
     <div class="load-row">
       <button class="btn btn-ghost" data-action="load-more" id="db-more" hidden>Следующая страница</button>
     </div>
@@ -4494,7 +4495,7 @@ body.mobile-app .update-card-actions .btn { min-height: 34px; font-size: 12px; }
       </div>
       <button class="btn btn-ghost" data-action="refresh-notifications">Обновить</button>
     </div>
-    <div class="notif-feed" id="notif-list" aria-live="polite"></div>
+    <div class="notif-feed" id="notif-list"></div>
   </section>
 
   <!-- ================= ПРОСМОТРЕНО ================= -->
@@ -4516,9 +4517,9 @@ body.mobile-app .update-card-actions .btn { min-height: 34px; font-size: 12px; }
         </div>
       </div>
     </div>
-    <div class="list-summary" id="summary-watched" aria-live="polite"></div>
+    <div class="list-summary" id="summary-watched"></div>
     <div class="list-tools" id="list-tools-watched" data-list-tools="watched"></div>
-    <div class="db-status" id="list-status-watched" aria-live="polite"></div>
+    <div class="db-status" id="list-status-watched" role="status" aria-live="polite"></div>
     <div class="tierlist" id="tiers-watched"></div>
   </section>
 
@@ -4541,9 +4542,9 @@ body.mobile-app .update-card-actions .btn { min-height: 34px; font-size: 12px; }
         </div>
       </div>
     </div>
-    <div class="list-summary" id="summary-planned" aria-live="polite"></div>
+    <div class="list-summary" id="summary-planned"></div>
     <div class="list-tools" id="list-tools-planned" data-list-tools="planned"></div>
-    <div class="db-status" id="list-status-planned" aria-live="polite"></div>
+    <div class="db-status" id="list-status-planned" role="status" aria-live="polite"></div>
     <div class="tierlist" id="tiers-planned"></div>
   </section>
 
@@ -4601,15 +4602,15 @@ body.mobile-app .update-card-actions .btn { min-height: 34px; font-size: 12px; }
         </label>
       </div>
     </div>
-    <div class="db-status" id="upcoming-status" aria-live="polite"></div>
-    <div class="grid upcoming-grid" id="upcoming-grid" aria-live="polite"></div>
+    <div class="db-status" id="upcoming-status" role="status" aria-live="polite"></div>
+    <div class="grid upcoming-grid" id="upcoming-grid"></div>
   </section>
 </main>
 
 <!-- ================= МОДАЛКА ================= -->
 <div class="modal" id="modal" hidden>
   <div class="modal-backdrop" data-action="close-modal"></div>
-  <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modal-title" tabindex="-1">
+  <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-content" tabindex="-1">
     <button class="modal-close" data-action="close-modal" aria-label="Закрыть">✕</button>
     <div id="modal-content"></div>
   </div>
@@ -4618,7 +4619,7 @@ body.mobile-app .update-card-actions .btn { min-height: 34px; font-size: 12px; }
 <!-- ================= ОБМЕН ТИР-ЛИСТАМИ ================= -->
 <div class="modal" id="exchange-modal" hidden>
   <div class="modal-backdrop" data-action="close-exchange"></div>
-  <div class="modal-panel exchange-panel" id="exchange-panel" role="dialog" aria-modal="true" aria-labelledby="exchange-title" tabindex="-1">
+  <div class="modal-panel exchange-panel" id="exchange-panel" role="dialog" aria-modal="true" aria-labelledby="exchange-title" aria-describedby="exchange-content" tabindex="-1">
     <button class="modal-close" data-action="close-exchange" aria-label="Закрыть">✕</button>
     <div class="exchange-content" id="exchange-content"></div>
   </div>
@@ -4627,7 +4628,7 @@ body.mobile-app .update-card-actions .btn { min-height: 34px; font-size: 12px; }
 <!-- ================= РЕЗЕРВНАЯ КОПИЯ ================= -->
 <div class="modal" id="backup-modal" hidden>
   <div class="modal-backdrop" data-action="close-backup"></div>
-  <div class="modal-panel backup-panel" id="backup-panel" role="dialog" aria-modal="true" aria-labelledby="backup-title" tabindex="-1">
+  <div class="modal-panel backup-panel" id="backup-panel" role="dialog" aria-modal="true" aria-labelledby="backup-title" aria-describedby="backup-content" tabindex="-1">
     <button class="modal-close" data-action="close-backup" aria-label="Закрыть">✕</button>
     <div class="backup-content" id="backup-content"></div>
   </div>
@@ -4636,7 +4637,7 @@ body.mobile-app .update-card-actions .btn { min-height: 34px; font-size: 12px; }
 <!-- ================= НАСТРОЙКИ ================= -->
 <div class="modal" id="settings-modal" hidden>
   <div class="modal-backdrop" data-action="close-settings"></div>
-  <div class="modal-panel backup-panel" id="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title" tabindex="-1">
+  <div class="modal-panel backup-panel" id="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title" aria-describedby="settings-content" tabindex="-1">
     <button class="modal-close" data-action="close-settings" aria-label="Закрыть">✕</button>
     <div class="backup-content" id="settings-content"></div>
   </div>
@@ -4645,7 +4646,7 @@ body.mobile-app .update-card-actions .btn { min-height: 34px; font-size: 12px; }
 <!-- ================= ГЛОБАЛЬНЫЙ ПОИСК ================= -->
 <div class="modal command-modal" id="command-modal" hidden>
   <div class="modal-backdrop" data-action="close-command"></div>
-  <div class="modal-panel command-panel" id="command-panel" role="dialog" aria-modal="true" aria-labelledby="command-title" tabindex="-1">
+  <div class="modal-panel command-panel" id="command-panel" role="dialog" aria-modal="true" aria-labelledby="command-title" aria-describedby="command-desc" tabindex="-1">
     <button class="modal-close" data-action="close-command" aria-label="Закрыть">✕</button>
     <div class="command-content">
       <h2 class="visually-hidden" id="command-title">Поиск по AniTier</h2>
@@ -4655,7 +4656,7 @@ body.mobile-app .update-card-actions .btn { min-height: 34px; font-size: 12px; }
         <kbd class="command-key">Esc</kbd>
       </div>
       <div class="command-results" id="command-results" role="listbox" aria-label="Результаты поиска"></div>
-      <div class="command-hint">
+      <div class="command-hint" id="command-desc">
         <span><kbd>↑</kbd><kbd>↓</kbd> выбрать</span>
         <span><kbd>Enter</kbd> открыть</span>
         <span><kbd>Ctrl</kbd>+<kbd>K</kbd> закрыть</span>
@@ -4667,7 +4668,7 @@ body.mobile-app .update-card-actions .btn { min-height: 34px; font-size: 12px; }
 <!-- ================= СТАТИСТИКА ================= -->
 <div class="modal" id="stats-modal" hidden>
   <div class="modal-backdrop" data-action="close-stats"></div>
-  <div class="modal-panel stats-panel" id="stats-panel" role="dialog" aria-modal="true" aria-labelledby="stats-title" tabindex="-1">
+  <div class="modal-panel stats-panel" id="stats-panel" role="dialog" aria-modal="true" aria-labelledby="stats-title" aria-describedby="stats-content" tabindex="-1">
     <button class="modal-close" data-action="close-stats" aria-label="Закрыть">✕</button>
     <div class="stats-content" id="stats-content"></div>
   </div>
@@ -4676,7 +4677,7 @@ body.mobile-app .update-card-actions .btn { min-height: 34px; font-size: 12px; }
 <!-- ================= СВОЯ КАРТОЧКА ================= -->
 <div class="modal" id="custom-modal" hidden>
   <div class="modal-backdrop" data-action="close-custom"></div>
-  <div class="modal-panel custom-panel" id="custom-panel" role="dialog" aria-modal="true" aria-labelledby="custom-title" tabindex="-1">
+  <div class="modal-panel custom-panel" id="custom-panel" role="dialog" aria-modal="true" aria-labelledby="custom-title" aria-describedby="custom-content" tabindex="-1">
     <button class="modal-close" data-action="close-custom" aria-label="Закрыть">✕</button>
     <div class="custom-content" id="custom-content"></div>
   </div>
@@ -4685,7 +4686,7 @@ body.mobile-app .update-card-actions .btn { min-height: 34px; font-size: 12px; }
 <!-- ================= МОМЕНТ ================= -->
 <div class="modal" id="moment-modal" hidden>
   <div class="modal-backdrop" data-action="close-moment"></div>
-  <div class="modal-panel custom-panel" id="moment-panel" role="dialog" aria-modal="true" aria-labelledby="moment-title" tabindex="-1">
+  <div class="modal-panel custom-panel" id="moment-panel" role="dialog" aria-modal="true" aria-labelledby="moment-title" aria-describedby="moment-content" tabindex="-1">
     <button class="modal-close" data-action="close-moment" aria-label="Закрыть">✕</button>
     <div class="custom-content" id="moment-content"></div>
   </div>
@@ -12986,7 +12987,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
   function msgBlock(emoji, title, text, action, actionLabel) {
     return `<div class="msg">
       <span class="emoji">${emoji}</span>
-      <h3>${esc(title)}</h3>
+      <h2>${esc(title)}</h2>
       <p>${esc(text)}</p>
       ${action ? `<button class="btn btn-ghost" data-action="${action}">${esc(actionLabel || 'Попробовать снова')}</button>` : ''}
     </div>`;
@@ -13260,7 +13261,10 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     const more = $('#db-more');
     if (!grid) return;
 
-    if ((s.loading || state.booting) && !s.items.length) {
+    const busy = Boolean(s.loading || state.booting);
+    grid.setAttribute('aria-busy', busy ? 'true' : 'false');
+
+    if (busy && !s.items.length) {
       grid.innerHTML = skeletonCards(12);
       grid.dataset.cardSignature = '';
       if (more) more.hidden = true;
@@ -13281,7 +13285,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       if (s.mode === 'custom' && !s.query && !C.hasActiveFilters(s.filters)) {
         grid.innerHTML = `<div class="msg">
           <span class="emoji">✎</span>
-          <h3>Своих карточек пока нет</h3>
+          <h2>Своих карточек пока нет</h2>
           <p>Добавьте тайтл, которого нет в AniList или Kitsu: название, постер, год и серии.</p>
           <button class="btn btn-primary" data-action="new-custom">Создать карточку</button>
         </div>`;
@@ -13593,6 +13597,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     const completed = n.completed.length;
     const totalCount = tracked + recent + completed;
 
+    el.setAttribute('aria-busy', n.loading ? 'true' : 'false');
     if (n.loading && !totalCount) { el.innerHTML = skeletonRows(5); return; }
     if (n.error && !totalCount) { el.innerHTML = msgBlock('⚠️', 'Не удалось загрузить уведомления', n.error, 'retry-notifications'); return; }
     const counts = { tracked, recent, completed };
@@ -13760,7 +13765,9 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     const u = state.upcoming;
     syncUpcomingMineUI(true);
 
-    if (state.notifications.loading && !state.notifications.loaded) {
+    const busy = Boolean(state.notifications.loading && !state.notifications.loaded);
+    grid.setAttribute('aria-busy', busy ? 'true' : 'false');
+    if (busy) {
       grid.innerHTML = skeletonRows(6);
       const loadingStatus = $('#upcoming-status');
       if (loadingStatus) loadingStatus.textContent = 'Собираем ваши серии…';
@@ -13773,6 +13780,9 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     const status = $('#upcoming-status');
     if (status) status.textContent = all.length ? `Мои серии: ${shown.length} из ${all.length} · доступен поиск` : '';
 
+    const statusEl = $('#upcoming-status');
+    if (statusEl) statusEl.textContent = all.length ? `Мои серии: ${shown.length} из ${all.length} · доступен поиск` : '';
+
     if (!all.length) {
       grid.innerHTML = msgBlock('📅', 'Ближайших серий нет', 'Добавьте тайтлы в «Просмотрено» или «Запланировано» и обновите события.');
       return;
@@ -13780,7 +13790,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     if (!shown.length) {
       grid.innerHTML = `<div class="msg">
         <span class="emoji">🔍</span>
-        <h3>Под запрос ничего не подошло</h3>
+        <h2>Под запрос ничего не подошло</h2>
         <p>Измените поиск по названию.</p>
         <button class="btn btn-ghost" data-action="reset-upcoming">Сбросить поиск</button>
       </div>`;
@@ -13825,6 +13835,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     }
     syncUpcomingMineUI(false);
 
+    grid.setAttribute('aria-busy', u.loading ? 'true' : 'false');
     if (u.loading && !u.items.length) {
       grid.innerHTML = skeletonCards(10);
       syncUpcomingControls([]);
@@ -13851,7 +13862,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     if (!all.length) {
       grid.innerHTML = `<div class="msg">
         <span class="emoji">✅</span>
-        <h3>Все премьеры уже в ваших списках</h3>
+        <h2>Все премьеры уже в ваших списках</h2>
         <p>Тайтлы из «Просмотрено» и «Запланировано» здесь не повторяются.</p>
       </div>`;
       return;
@@ -13860,7 +13871,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     if (!shown.length) {
       grid.innerHTML = `<div class="msg">
         <span class="emoji">🔍</span>
-        <h3>Под фильтры ничего не подошло</h3>
+        <h2>Под фильтры ничего не подошло</h2>
         <p>Измените запрос, месяц или жанр — или сбросьте фильтры.</p>
         <button class="btn btn-ghost" data-action="reset-upcoming">Сбросить фильтры</button>
       </div>`;
@@ -14304,7 +14315,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     if (!modal) {
       document.body.insertAdjacentHTML('beforeend', `<div class="modal" id="tiktok-import-modal" hidden>
         <div class="modal-backdrop" data-action="close-tiktok-import"></div>
-        <section class="modal-panel tiktok-import-panel" role="dialog" aria-modal="true" aria-labelledby="tiktok-import-title" tabindex="-1">
+        <section class="modal-panel tiktok-import-panel" role="dialog" aria-modal="true" aria-labelledby="tiktok-import-title" aria-describedby="tiktok-import-content" tabindex="-1">
           <button class="modal-close" data-action="close-tiktok-import" aria-label="Закрыть">✕</button>
           <div class="custom-content" id="tiktok-import-content"></div>
         </section>

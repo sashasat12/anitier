@@ -174,8 +174,8 @@
       <div class="continue-row" id="continue-row"></div>
     </section>
 
-    <div class="db-status" id="db-status" aria-live="polite"></div>
-    <div class="grid" id="db-grid" aria-live="polite"></div>
+    <div class="db-status" id="db-status" role="status" aria-live="polite"></div>
+    <div class="grid" id="db-grid"></div>
     <div class="load-row">
       <button class="btn btn-ghost" data-action="load-more" id="db-more" hidden>Следующая страница</button>
     </div>
@@ -191,7 +191,7 @@
       </div>
       <button class="btn btn-ghost" data-action="refresh-notifications">Обновить</button>
     </div>
-    <div class="notif-feed" id="notif-list" aria-live="polite"></div>
+    <div class="notif-feed" id="notif-list"></div>
   </section>
 
   <!-- ================= ПРОСМОТРЕНО ================= -->
@@ -213,9 +213,9 @@
         </div>
       </div>
     </div>
-    <div class="list-summary" id="summary-watched" aria-live="polite"></div>
+    <div class="list-summary" id="summary-watched"></div>
     <div class="list-tools" id="list-tools-watched" data-list-tools="watched"></div>
-    <div class="db-status" id="list-status-watched" aria-live="polite"></div>
+    <div class="db-status" id="list-status-watched" role="status" aria-live="polite"></div>
     <div class="tierlist" id="tiers-watched"></div>
   </section>
 
@@ -238,9 +238,9 @@
         </div>
       </div>
     </div>
-    <div class="list-summary" id="summary-planned" aria-live="polite"></div>
+    <div class="list-summary" id="summary-planned"></div>
     <div class="list-tools" id="list-tools-planned" data-list-tools="planned"></div>
-    <div class="db-status" id="list-status-planned" aria-live="polite"></div>
+    <div class="db-status" id="list-status-planned" role="status" aria-live="polite"></div>
     <div class="tierlist" id="tiers-planned"></div>
   </section>
 
@@ -298,8 +298,8 @@
         </label>
       </div>
     </div>
-    <div class="db-status" id="upcoming-status" aria-live="polite"></div>
-    <div class="grid upcoming-grid" id="upcoming-grid" aria-live="polite"></div>
+    <div class="db-status" id="upcoming-status" role="status" aria-live="polite"></div>
+    <div class="grid upcoming-grid" id="upcoming-grid"></div>
   </section>
 
   <footer class="footer">
@@ -312,7 +312,7 @@
 <!-- ================= МОДАЛКА ================= -->
 <div class="modal" id="modal" hidden>
   <div class="modal-backdrop" data-action="close-modal"></div>
-  <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modal-title" tabindex="-1">
+  <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-content" tabindex="-1">
     <button class="modal-close" data-action="close-modal" aria-label="Закрыть">✕</button>
     <div id="modal-content"></div>
   </div>
@@ -321,7 +321,7 @@
 <!-- ================= ОБМЕН ТИР-ЛИСТАМИ ================= -->
 <div class="modal" id="exchange-modal" hidden>
   <div class="modal-backdrop" data-action="close-exchange"></div>
-  <div class="modal-panel exchange-panel" id="exchange-panel" role="dialog" aria-modal="true" aria-labelledby="exchange-title" tabindex="-1">
+  <div class="modal-panel exchange-panel" id="exchange-panel" role="dialog" aria-modal="true" aria-labelledby="exchange-title" aria-describedby="exchange-content" tabindex="-1">
     <button class="modal-close" data-action="close-exchange" aria-label="Закрыть">✕</button>
     <div class="exchange-content" id="exchange-content"></div>
   </div>
@@ -330,7 +330,7 @@
 <!-- ================= РЕЗЕРВНАЯ КОПИЯ ================= -->
 <div class="modal" id="backup-modal" hidden>
   <div class="modal-backdrop" data-action="close-backup"></div>
-  <div class="modal-panel backup-panel" id="backup-panel" role="dialog" aria-modal="true" aria-labelledby="backup-title" tabindex="-1">
+  <div class="modal-panel backup-panel" id="backup-panel" role="dialog" aria-modal="true" aria-labelledby="backup-title" aria-describedby="backup-content" tabindex="-1">
     <button class="modal-close" data-action="close-backup" aria-label="Закрыть">✕</button>
     <div class="backup-content" id="backup-content"></div>
   </div>
@@ -339,7 +339,7 @@
 <!-- ================= НАСТРОЙКИ ================= -->
 <div class="modal" id="settings-modal" hidden>
   <div class="modal-backdrop" data-action="close-settings"></div>
-  <div class="modal-panel backup-panel" id="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title" tabindex="-1">
+  <div class="modal-panel backup-panel" id="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title" aria-describedby="settings-content" tabindex="-1">
     <button class="modal-close" data-action="close-settings" aria-label="Закрыть">✕</button>
     <div class="backup-content" id="settings-content"></div>
   </div>
@@ -348,7 +348,7 @@
 <!-- ================= ГЛОБАЛЬНЫЙ ПОИСК ================= -->
 <div class="modal command-modal" id="command-modal" hidden>
   <div class="modal-backdrop" data-action="close-command"></div>
-  <div class="modal-panel command-panel" id="command-panel" role="dialog" aria-modal="true" aria-labelledby="command-title" tabindex="-1">
+  <div class="modal-panel command-panel" id="command-panel" role="dialog" aria-modal="true" aria-labelledby="command-title" aria-describedby="command-desc" tabindex="-1">
     <button class="modal-close" data-action="close-command" aria-label="Закрыть">✕</button>
     <div class="command-content">
       <h2 class="visually-hidden" id="command-title">Поиск по AniTier</h2>
@@ -358,7 +358,7 @@
         <kbd class="command-key">Esc</kbd>
       </div>
       <div class="command-results" id="command-results" role="listbox" aria-label="Результаты поиска"></div>
-      <div class="command-hint">
+      <div class="command-hint" id="command-desc">
         <span><kbd>↑</kbd><kbd>↓</kbd> выбрать</span>
         <span><kbd>Enter</kbd> открыть</span>
         <span><kbd>Ctrl</kbd>+<kbd>K</kbd> закрыть</span>
@@ -370,7 +370,7 @@
 <!-- ================= СТАТИСТИКА ================= -->
 <div class="modal" id="stats-modal" hidden>
   <div class="modal-backdrop" data-action="close-stats"></div>
-  <div class="modal-panel stats-panel" id="stats-panel" role="dialog" aria-modal="true" aria-labelledby="stats-title" tabindex="-1">
+  <div class="modal-panel stats-panel" id="stats-panel" role="dialog" aria-modal="true" aria-labelledby="stats-title" aria-describedby="stats-content" tabindex="-1">
     <button class="modal-close" data-action="close-stats" aria-label="Закрыть">✕</button>
     <div class="stats-content" id="stats-content"></div>
   </div>
@@ -379,7 +379,7 @@
 <!-- ================= СВОЯ КАРТОЧКА ================= -->
 <div class="modal" id="custom-modal" hidden>
   <div class="modal-backdrop" data-action="close-custom"></div>
-  <div class="modal-panel custom-panel" id="custom-panel" role="dialog" aria-modal="true" aria-labelledby="custom-title" tabindex="-1">
+  <div class="modal-panel custom-panel" id="custom-panel" role="dialog" aria-modal="true" aria-labelledby="custom-title" aria-describedby="custom-content" tabindex="-1">
     <button class="modal-close" data-action="close-custom" aria-label="Закрыть">✕</button>
     <div class="custom-content" id="custom-content"></div>
   </div>
@@ -388,7 +388,7 @@
 <!-- ================= МОМЕНТ ================= -->
 <div class="modal" id="moment-modal" hidden>
   <div class="modal-backdrop" data-action="close-moment"></div>
-  <div class="modal-panel custom-panel" id="moment-panel" role="dialog" aria-modal="true" aria-labelledby="moment-title" tabindex="-1">
+  <div class="modal-panel custom-panel" id="moment-panel" role="dialog" aria-modal="true" aria-labelledby="moment-title" aria-describedby="moment-content" tabindex="-1">
     <button class="modal-close" data-action="close-moment" aria-label="Закрыть">✕</button>
     <div class="custom-content" id="moment-content"></div>
   </div>
