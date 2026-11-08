@@ -84,4 +84,4 @@
 
 - Локальная диагностика (`app-ctrl-diagnostics.js`) собирает ошибки/запросы на устройстве и не отправляет данные наружу.
 - Тесты: `test.ps1` (headless Edge/Chrome, порт 8099) — функциональные тесты и визуальная регрессия; сценарии в `tests/`. `tests/shell.test.js`/`tests/split.test.js` фиксируют состав и порядок модулей.
-- CI: `.github/workflows/tests.yml` запускает `test.ps1` на `windows-latest` при push в `main` и PR.
+- CI: `.github/workflows/tests.yml` запускает `test.ps1 -SkipVisual` на `windows-latest` при push в `main` и PR. Визуальная регрессия остаётся локальной: её эталоны зависят от браузера и шрифтов.

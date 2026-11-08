@@ -19,6 +19,6 @@ jobs:
       - name: Получить код
         uses: actions/checkout@v4
 
-      - name: Функциональные и визуальные тесты
+      - name: Функциональные тесты
         shell: powershell
-        run: powershell -ExecutionPolicy Bypass -File .\test.ps1
+        run: powershell -ExecutionPolicy Bypass -File .\test.ps1 -SkipVisual

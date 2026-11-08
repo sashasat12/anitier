@@ -342,7 +342,7 @@ powershell -ExecutionPolicy Bypass -File .\test.ps1 -SkipVisual     # тольк
 - статусы и жанры: коды статусов, синонимы жанров, совместимость русских/английских значений и раздельные жанры/теги Kitsu (`tests/status-genre.test.js`);
 - визуальную регрессию ключевых экранов (desktop/mobile, демо и пустые состояния): скриншоты CDP сравниваются с эталонами в `tests/visual/baseline/`, обновление — `test.ps1 -UpdateVisual`, пропуск — `test.ps1 -SkipVisual`.
 
-Те же тесты запускаются в CI: `.github/workflows/tests.yml` выполняет `test.ps1` на `windows-latest` при push в `main` и в pull request. Статус виден по бейджу вверху README, полный прогон укладывается в лимит 60 минут. Локально и в CI используется один и тот же скрипт — отдельной настройки для GitHub не нужно.
+Те же функциональные тесты запускаются в CI: `.github/workflows/tests.yml` выполняет `test.ps1 -SkipVisual` на `windows-latest` при push в `main` и в pull request. Статус виден по бейджу вверху README, прогон укладывается в лимит 60 минут. Визуальная регрессия остаётся локальной: эталоны зависят от версии браузера и рендера шрифтов, поэтому в CI её не сравнивают.
 
 ## Файлы
 

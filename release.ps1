@@ -109,8 +109,17 @@ Write-Host 'Артефакты готовы и актуальны: AniTier-phone
 
 # --- git: без флагов ничего не трогаем ---
 function Invoke-Git([string[]]$arguments) {
-  $output = & git @arguments 2>&1
-  if ($LASTEXITCODE -ne 0) { throw "git $([string]$arguments[0]): $output" }
+  # git пишет прогресс в stderr; при ErrorActionPreference=Stop это
+  # выглядит как ошибка даже при успешном коде возврата.
+  $previous = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  try {
+    $output = & git @arguments 2>&1
+    $code = $LASTEXITCODE
+  } finally {
+    $ErrorActionPreference = $previous
+  }
+  if ($code -ne 0) { throw "git $([string]$arguments[0]): $output" }
   return ($output | Out-String).Trim()
 }
 
@@ -163,8 +172,15 @@ if ($wantRelease) {
   [IO.File]::WriteAllText($notesPath, ($notes -join "`r`n"), (New-Object Text.UTF8Encoding($false)))
 
   Write-Host "Создаём GitHub-релиз $tag…" -ForegroundColor Cyan
-  & gh release create $tag $apkPath --title "AniTier $version — $entryTitle" --notes-file $notesPath --target main
-  if ($LASTEXITCODE -ne 0) { throw 'Не удалось создать GitHub-релиз (gh).' }
+  $previous = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  try {
+    & gh release create $tag $apkPath --title "AniTier $version — $entryTitle" --notes-file $notesPath --target main
+    $ghCode = $LASTEXITCODE
+  } finally {
+    $ErrorActionPreference = $previous
+  }
+  if ($ghCode -ne 0) { throw 'Не удалось создать GitHub-релиз (gh).' }
   Write-Host "Релиз создан: $tag с AniTier.apk" -ForegroundColor Green
   Write-Host 'Проверка после выкладки: gh api repos/sashasat12/anitier/pages/builds/latest' -ForegroundColor DarkGray
 }
