@@ -346,6 +346,8 @@ powershell -ExecutionPolicy Bypass -File .\test.ps1 -SkipVisual     # тольк
 
 ## Файлы
 
+Подробная карта модулей, слоёв и хранилищ: [`docs/architecture.md`](docs/architecture.md).
+
 ```
 anitier/
 ├── index.html       — разметка и вкладки
