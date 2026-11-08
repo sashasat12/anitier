@@ -2386,10 +2386,10 @@
   function bindGestures() {
     document.addEventListener('touchstart', event => {
       if (!isMobileShell() || event.touches.length !== 1) return;
-      if (state.quickMenu || state.modalId != null) return;
+      if (document.body.classList.contains('no-scroll') || state.quickMenu || state.modalId != null) return;
       const target = event.target;
       if (!target || !target.closest) return;
-      if (target.closest('input, textarea, select, .modal, .quick-menu, .ep-chips, .notif-tabs, .continue-row, .chips')) return;
+      if (target.closest('input, textarea, select, button, a, [role="dialog"], .modal, .custom-modal, .moment-modal, .exchange-modal, .backup-modal, .settings-modal, .stats-modal, .command-modal, .tiktok-modal, .quick-menu, .ep-chips, .notif-tabs, .continue-row, .chips, .bottom-sheet')) return;
 
       const touch = event.touches[0];
       touchGesture = {
@@ -2570,44 +2570,6 @@
   function bindEvents() {
     if (eventsBound) return;
     eventsBound = true;
-
-    let ptr = null;
-    let ptrStart = 0;
-    let ptrDistance = 0;
-    if (document.body.classList.contains('mobile-app')) {
-      document.addEventListener('touchstart', (e) => {
-        if (window.scrollY > 5) return;
-        if (e.touches.length !== 1) return;
-        ptrStart = e.touches[0].clientY;
-        ptrDistance = 0;
-      }, { passive: true });
-      document.addEventListener('touchmove', (e) => {
-        if (ptrStart === 0 || window.scrollY > 5) return;
-        const dy = e.touches[0].clientY - ptrStart;
-        if (dy > 60) {
-          ptrDistance = Math.min(dy, 90);
-          if (!ptr) {
-            ptr = document.createElement('div');
-            ptr.className = 'ptr-indicator';
-            ptr.innerHTML = '<span>↓ Обновить</span>';
-            document.body.appendChild(ptr);
-          }
-          ptr.style.transform = `translateX(-50%) translateY(${ptrDistance - 40}px)`;
-        }
-      }, { passive: true });
-      document.addEventListener('touchend', () => {
-        if (ptrDistance > 70 && window.scrollY <= 5) {
-          if (ptr) { ptr.classList.add('is-active'); ptr.querySelector('span').textContent = 'Обновление...'; }
-          setTimeout(() => {
-            if (typeof refreshCurrent === 'function') refreshCurrent();
-            else if (typeof fetchDB === 'function' && state.tab === 'db') fetchDB(true);
-            if (ptr) { ptr.remove(); ptr = null; }
-          }, 400);
-        } else if (ptr) { ptr.remove(); ptr = null; }
-        ptrStart = 0;
-        ptrDistance = 0;
-      }, { passive: true });
-    }
 
     const scrollTopBtn = document.getElementById('scroll-top');
     if (scrollTopBtn && !scrollTopBtn.dataset.bound) {

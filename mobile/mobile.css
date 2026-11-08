@@ -667,26 +667,6 @@ body.mobile-app .modal-panel {
   padding-top: 18px;
 }
 
-.ptr-indicator {
-  position: fixed;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%) translateY(-40px);
-  z-index: 200;
-  padding: 6px 14px;
-  border-radius: 999px;
-  background: rgba(17, 21, 31, 0.95);
-  border: 1px solid var(--line);
-  color: var(--muted);
-  font-size: 11.5px;
-  transition: transform .2s, color .2s;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-.ptr-indicator.is-active {
-  color: var(--text);
-}
-
 body.mobile-app .tab-ico {
   font-size: 14px;
 }

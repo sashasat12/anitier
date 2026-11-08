@@ -247,5 +247,16 @@
     } finally {
       frame.remove();
     }
+  } );
+
+  T.test('mobile: один pull-to-refresh без дубля ptr-indicator', async () => {
+    const [appJs, mobileCss] = await Promise.all([
+      fetch('../app.js').then(r => r.text()),
+      fetch('../mobile/mobile.css').then(r => r.text()),
+    ]);
+    T.assert(!appJs.includes("className = 'ptr-indicator'") && !appJs.includes('ptrDistance'), 'Дублирующий ptr-indicator удалён из app.js');
+    T.assert(!mobileCss.includes('.ptr-indicator'), 'Мёртвый CSS ptr-indicator удалён');
+    T.includes(appJs, "id = 'pull-refresh'", 'Оставлен один pull-refresh индикатор');
+    T.includes(appJs, "document.body.classList.contains('no-scroll')", 'Pull-to-refresh учитывает открытые слои');
   });
 })();
