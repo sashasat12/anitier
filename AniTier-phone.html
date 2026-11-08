@@ -14798,6 +14798,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
   const renderTierList = (...a) => App.renderTierList(...a);
   const toast = (...a) => App.toast(...a);
   const writeLocationHash = (...a) => (App.writeLocationHash || (() => {}))(...a);
+  const closeExchange = (...a) => App.closeExchange(...a);
   /* ---------------- формы, моменты, настройки, статистика, обмен, карточка ---------------- */
   /* ---------------- свои карточки и моменты: формы ---------------- */
   const CUSTOM_TYPES = [
@@ -15603,6 +15604,436 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     if (modal) modal.hidden = true;
     syncBodyScroll();
   }
+
+  function openModal(id, opts = {}) {
+    const a = getAnime(id);
+    if (!a) { toast('Не удалось открыть карточку'); return; }
+    state.modalId = id;
+    state.modalTab = 'overview';
+    renderModal();
+    const modal = $('#modal');
+    modal.hidden = false;
+    syncBodyScroll();
+    const panel = $('.modal-panel');
+    if (panel) { panel.scrollTop = 0; panel.focus({ preventScroll: true }); }
+    if (a.custom && App.hydrateCustomImage) App.hydrateCustomImage(id);
+    if (!opts.fromHash) writeLocationHash();
+    if (typeof bindModalSwipe === 'function') bindModalSwipe();
+    /* Автоперевод при любом открытии, если пользователь не выбрал оригинал. */
+    const synopsisMode = state.synopsisModes && state.synopsisModes.get(id);
+    const wantsTranslation = synopsisMode !== 'original'
+      && !(state.settings && state.settings.synopsisLang === 'original');
+    if (wantsTranslation && a.synopsis && C.hasCyrillic && !C.hasCyrillic(a.synopsis)
+      && typeof App.translateModalSynopsis === 'function') {
+      App.translateModalSynopsis(id);
+    }
+  }
+
+  function franchiseRelationLabel(type) {
+    if (type === 'PREQUEL' || type === 'PARENT') return 'Смотреть раньше';
+    if (type === 'CURRENT') return 'Текущая часть';
+    if (type === 'SEQUEL') return 'Следующий сезон';
+    if (type === 'SIDE_STORY') return 'Побочная история';
+    if (type === 'SPIN_OFF') return 'Спин-офф';
+    if (type === 'SUMMARY') return 'Пересказ';
+    if (type === 'ALTERNATIVE') return 'Альтернатива';
+    if (type === 'ADAPTATION') return 'Адаптация';
+    if (type === 'CHARACTER') return 'С участием героев';
+    return 'Связанная история';
+  }
+
+  /* Дата выхода связи: по ней строится порядок просмотра. */
+  function franchiseDate(link) {
+    const stamp = Date.parse((link.anime && link.anime.airedFrom) || '');
+    if (Number.isFinite(stamp)) return stamp;
+    const year = Number(link.anime && link.anime.year) || 0;
+    return year ? Date.parse(`${year}-01-01`) : Number.MAX_SAFE_INTEGER;
+  }
+
+  const FRANCHISE_PREVIEW = 8;
+  const FRANCHISE_MAIN = new Set(['PREQUEL', 'PARENT', 'SEQUEL']);
+  const MODAL_TABS = ['overview', 'seasons', 'episodes', 'moments'];
+
+  function franchiseCardHTML(link, opts = {}) {
+    const item = link.anime;
+    const tier = findTier('watched', item.id) || findTier('planned', item.id);
+    const progress = watchedCount(item.id);
+    const isCurrent = link.relationType === 'CURRENT';
+    const meta = [typeRu(item.type) || '', item.year || '', item.episodes ? `${item.episodes} серий` : ''].filter(Boolean).join(' · ');
+    const listStatus = tier ? `В тире ${tier}` : 'Не в тир-листе';
+    const progressStatus = progress ? `Просмотрено ${progress}${item.episodes ? ` из ${item.episodes}` : ''}` : '';
+    const order = Number.isFinite(opts.order)
+      ? `<span class="franchise-order" aria-hidden="true">${opts.order}</span>`
+      : '';
+    const here = isCurrent ? '<span class="franchise-here">Вы здесь</span>' : '';
+    return `<article class="franchise-link${isCurrent ? ' franchise-current' : ''}" data-action="open" data-id="${item.id}" tabindex="0" role="button"${isCurrent ? ' aria-current="true"' : ''} aria-label="${isCurrent ? 'Текущая часть: ' : 'Открыть: '}${esc(displayTitle(item))}">
+      <span class="franchise-poster"><img ${imgAttrs(item)}>${item.score ? `<span class="franchise-score">★ ${item.score.toFixed(1)}</span>` : ''}<span class="franchise-link-arrow" aria-hidden="true">›</span></span>
+      <span class="franchise-link-main">
+        <span class="franchise-link-kind">${order}${esc(franchiseRelationLabel(link.relationType))}${here}</span>
+        <b>${esc(displayTitle(item))}</b>
+        <small>${esc(meta || 'Данные уточняются')}</small>
+        <span class="franchise-link-status">${esc(listStatus)}${progressStatus ? ` · ${esc(progressStatus)}` : ''}</span>
+      </span>
+    </article>`;
+  }
+
+  function renderFranchiseSection(anime) {
+    if (anime.custom) return '';
+    const related = state.franchiseById.get(anime.id);
+    const label = '<div class="modal-label">Сезоны и порядок просмотра</div>';
+    if (state.franchiseLoading.has(anime.id)) {
+      return `<div class="modal-section franchise-section">${label}<p class="hint">Загружаем связанные сезоны…</p></div>`;
+    }
+    if (state.franchiseErrors.has(anime.id)) {
+      return `<div class="modal-section franchise-section">${label}<p class="hint">${esc(state.franchiseErrors.get(anime.id))}</p><button class="btn btn-ghost" data-action="retry-franchise" data-id="${anime.id}">Повторить</button></div>`;
+    }
+    if (!related) return `<div class="modal-section franchise-section">${label}<p class="hint">Проверяем, есть ли связанные сезоны…</p></div>`;
+    if (!related.length) return `<div class="modal-section franchise-section">${label}<p class="hint">Связанные сезоны и продолжения не найдены.</p></div>`;
+
+    const full = state.franchiseFullById.get(anime.id);
+    const fullLoading = state.franchiseFullLoading && state.franchiseFullLoading.has(anime.id);
+    const useRelated = full || related;
+    const built = (window.AniTierCore && typeof window.AniTierCore.buildFranchiseGroups === 'function')
+      ? window.AniTierCore.buildFranchiseGroups(useRelated, anime)
+      : null;
+    let groups = built && Array.isArray(built.groups) ? built.groups : [];
+    if (!groups.length) {
+      groups = [{ id: 'empty', title: 'Порядок просмотра', list: [], numbered: false }];
+    }
+    const hidden = groups.reduce((total, group) => total + Math.max(0, (group.list ? group.list.length : 0) - FRANCHISE_PREVIEW), 0);
+    const expanded = Boolean(state.franchiseExpanded && state.franchiseExpanded.has(anime.id));
+    const sections = groups.map(group => {
+      if (!group.list || !group.list.length) return '';
+      const shown = expanded ? group.list : group.list.slice(0, FRANCHISE_PREVIEW);
+      const rows = shown.map((link, index) => franchiseCardHTML(link, {
+        order: group.numbered ? index + 1 : undefined,
+      })).join('');
+      return `<div class="franchise-group">
+        <h4 class="franchise-group-title">${esc(group.title)}<span>${group.list.length}</span></h4>
+        <div class="franchise-list">${rows}</div>
+      </div>`;
+    }).join('');
+
+    return `<div class="modal-section franchise-section">
+      ${label}
+      <p class="franchise-intro">Основной сюжет — по дате выхода. Фильмы, спешлы и пересказы собраны отдельно.</p>
+      ${sections}
+      <div class="franchise-actions">
+        ${(hidden > 0 || expanded)
+          ? `<button class="btn btn-ghost btn-small franchise-more" type="button" data-action="franchise-more" data-id="${anime.id}">${expanded ? 'Свернуть список' : `Показать все (${built.total || useRelated.length + 1})`}</button>`
+          : ''}
+        ${!full && !fullLoading
+          ? `<button class="btn btn-ghost btn-small franchise-full" type="button" data-action="franchise-full" data-id="${anime.id}">Показать всю франшизу</button>`
+          : fullLoading ? `<span class="hint">Собираем всю франшизу…</span>` : `<span class="hint">Показана вся доступная франшиза</span>`}
+      </div>
+      <p class="hint">У каждого тайтла свой тир-лист и прогресс серий.</p>
+    </div>`;
+  }
+
+  function loadFranchise(anime) {
+    if (!anime || state.franchiseById.has(anime.id) || state.franchiseLoading.has(anime.id)) return;
+    if (anime.custom) { state.franchiseById.set(anime.id, []); return; }
+    state.franchiseLoading.add(anime.id);
+    state.franchiseErrors.delete(anime.id);
+    Promise.resolve(App.fetchAnimeRelations(anime)).then(relations => {
+      const allowed = new Set(['PREQUEL', 'SEQUEL', 'PARENT', 'SIDE_STORY', 'SPIN_OFF']);
+      const seen = new Set();
+      const links = [];
+      for (const relation of Array.isArray(relations) ? relations : []) {
+        if (!relation || !allowed.has(relation.relationType) || !relation.anime || relation.anime.id === anime.id || seen.has(relation.anime.id)) continue;
+        seen.add(relation.anime.id);
+        links.push(relation);
+      }
+      /* Только хронология: иначе фильмы и OVA прыгают в конец списка. */
+      links.sort((a, b) => (franchiseDate(a) - franchiseDate(b)) || (a.anime.id - b.anime.id));
+      state.franchiseById.set(anime.id, links);
+    }).catch(error => {
+      state.franchiseErrors.set(anime.id, error && error.message ? error.message : 'Не удалось загрузить порядок просмотра');
+    }).finally(() => {
+      state.franchiseLoading.delete(anime.id);
+      if (state.modalId === anime.id) renderModal();
+    });
+  }
+
+  function closeModal(opts = {}) {
+    state.modalId = null;
+    state.modalTab = 'overview';
+    const modal = $('#modal');
+    if (modal) modal.hidden = true;
+    if (App.revokeMomentUrls) App.revokeMomentUrls();
+    syncBodyScroll();
+    if (state.tab === 'db') renderDB();
+    else if (state.tab === 'watched' || state.tab === 'planned') renderTierList(state.tab);
+    if (!opts.fromHash) writeLocationHash();
+  }
+
+  /* Переключение разделов карточки без перерисовки: изображения и прогресс
+     остаются на месте, меняются только видимые панели. */
+  function switchModalTab(tab, opts = {}) {
+    if (!MODAL_TABS.includes(tab)) return;
+    state.modalTab = tab;
+    $$('.modal-tab').forEach(node => {
+      const on = node.dataset.tab === tab;
+      node.classList.toggle('is-active', on);
+      node.setAttribute('aria-selected', on ? 'true' : 'false');
+      node.tabIndex = on ? 0 : -1;
+    });
+    $$('.modal-pane').forEach(node => {
+      node.hidden = node.id !== 'modal-pane-' + tab;
+    });
+    const panel = $('.modal-panel');
+    if (panel) panel.scrollTop = 0;
+    if (opts.focus) {
+      const active = $('.modal-tab.is-active');
+      if (active) active.focus({ preventScroll: true });
+    }
+  }
+
+  function renderModal() {
+    if (state.modalId == null) return;
+    const a = getAnime(state.modalId);
+    const content = $('#modal-content');
+    const panel = $('.modal-panel');
+    if (!a || !content) { closeModal(); return; }
+
+    const scrollTop = panel ? panel.scrollTop : 0;
+    const inW = hasIn('watched', a.id);
+    const inP = hasIn('planned', a.id);
+    const curTier = findTier('watched', a.id) || findTier('planned', a.id);
+    const status = a.status || '';
+    const sourceName = a.source === 'Kitsu' ? 'Kitsu' : a.source === 'AniList' ? 'AniList' : 'MyAnimeList';
+    const sourceUrl = a.url || (a.malId ? `https://myanimelist.net/anime/${a.malId}` : '');
+    const sourceLine = a.custom
+      ? '<span class="modal-source">Своя карточка</span>'
+      : sourceUrl ? `<a class="mal-link" href="${esc(sourceUrl)}" target="_blank" rel="noopener">Открыть на ${esc(sourceName)} ↗</a>` : '';
+    const customActions = a.custom ? `<div class="modal-custom-actions">
+      <button class="btn btn-ghost" data-action="edit-custom" data-id="${a.id}">Редактировать</button>
+      <button class="btn btn-ghost btn-danger" data-action="delete-custom" data-id="${a.id}">Удалить карточку</button>
+    </div>` : '';
+    const facts = [
+      a.type ? `<span class="fact"><span>Тип:</span> ${esc(typeRu(a.type))}</span>` : '',
+      a.episodes ? `<span class="fact"><span>Серии:</span> ${a.episodes}</span>` : '<span class="fact"><span>Серии:</span> ?</span>',
+      a.year ? `<span class="fact"><span>Год:</span> ${a.year}</span>` : '',
+      status ? `<span class="fact"><span>Статус:</span> ${esc(status)}</span>` : '',
+      a.airedFrom ? `<span class="fact"><span>Старт:</span> ${esc(dateShort(a.airedFrom))}</span>` : '',
+    ].filter(Boolean).join('');
+
+    const tiers = TIERS.map(t => `<button class="tier-pick tier-${t.id} ${curTier === t.id ? 'is-active' : ''}" data-action="set-tier" data-id="${a.id}" data-tier="${t.id}" title="${esc(t.name)}" aria-label="Тир ${esc(t.name)}">${t.label}</button>`).join('');
+    const genres = (a.genres || []).map(g => (
+      `<button type="button" class="tag tag-link" data-action="find-genre" data-genre="${esc(g)}" title="Найти аниме в жанре «${esc(C.genreRu(g))}»">${esc(C.genreRu(g))}</button>`
+    )).join('');
+    const spoilerTags = new Set(Array.isArray(a.spoilerTags) ? a.spoilerTags : []);
+    const tagChips = (Array.isArray(a.tags) ? a.tags : []).slice(0, 18).map(tag => (
+      `<button type="button" class="tag tag-link${spoilerTags.has(tag) ? ' tag-spoiler' : ''}" data-action="find-tag" data-tag="${esc(tag)}"${spoilerTags.has(tag) ? ' title="Может содержать спойлер"' : ''}>${esc(C.genreRu(tag))}</button>`
+    )).join('');
+    const poster = a.image || makePoster(a.title, a.id);
+    const mainTitle = displayTitle(a);
+    const secondaryTitle = mainTitle === (a.titleRu || '')
+      ? (a.originalTitle || a.altTitle || '')
+      : (a.titleRu || a.altTitle || '');
+    const translationProvider = state.settings.translationProvider || 'auto';
+    const translatedSynopsis = App.cachedTranslation ? App.cachedTranslation(a.synopsis, translationProvider) : '';
+    const translatedVia = App.cachedTranslationProvider ? App.cachedTranslationProvider(a.synopsis, translationProvider) : '';
+    const translationRequestKey = `${a.id}:${translationProvider}`;
+    const canTranslateSynopsis = Boolean(a.synopsis && !C.hasCyrillic(a.synopsis));
+    const synopsisMode = state.synopsisModes.get(a.id)
+      || (state.settings.synopsisLang === 'original' ? 'original' : 'translated');
+    const showTranslatedSynopsis = Boolean(canTranslateSynopsis && translatedSynopsis && synopsisMode !== 'original');
+    const synopsis = (showTranslatedSynopsis ? translatedSynopsis : a.synopsis) || 'Описание пока недоступно.';
+    const translating = state.synopsisTranslating.has(translationRequestKey);
+    const synopsisControls = canTranslateSynopsis
+      ? `<div class="synopsis-toolbar">
+          <label class="synopsis-provider">Переводчик
+            <select data-action="synopsis-provider" aria-label="Переводчик описания">
+              <option value="auto"${translationProvider === 'auto' ? ' selected' : ''}>Авто: MyMemory → Google</option>
+              <option value="mymemory"${translationProvider === 'mymemory' ? ' selected' : ''}>MyMemory</option>
+              <option value="google"${translationProvider === 'google' ? ' selected' : ''}>Google Переводчик</option>
+            </select>
+          </label>
+          <span class="synopsis-translation-status" role="status">${translatedSynopsis ? (showTranslatedSynopsis ? `Перевод: ${translatedVia === 'google' ? 'Google' : 'MyMemory'}` : 'Оригинал') : (translating ? 'Переводим…' : 'Перевод пока недоступен')}</span>
+          ${!translatedSynopsis && !translating ? `<button type="button" class="ep-link" data-action="translate-synopsis" data-id="${a.id}">Перевести</button>` : ''}
+          <div class="synopsis-switch" role="group" aria-label="Язык описания">
+            <button type="button" data-action="synopsis-mode" data-id="${a.id}" data-mode="translated" aria-pressed="${showTranslatedSynopsis ? 'true' : 'false'}"${translatedSynopsis ? '' : ' disabled'}>Перевод</button>
+            <button type="button" data-action="synopsis-mode" data-id="${a.id}" data-mode="original" aria-pressed="${!showTranslatedSynopsis ? 'true' : 'false'}">Оригинал</button>
+          </div>
+        </div>`
+      : '';
+
+    const related = state.franchiseById.get(a.id) || [];
+    const ownProgress = watchedCount(a.id);
+    const momentsCount = momentsFor(a.id).length;
+    const episodesCount = a.episodes ? `${ownProgress}/${a.episodes}` : (ownProgress ? String(ownProgress) : '');
+    const activeTab = ['overview', 'seasons', 'episodes', 'moments'].includes(state.modalTab) ? state.modalTab : 'overview';
+    const tabButton = (id, label, count) => `<button type="button" class="modal-tab${activeTab === id ? ' is-active' : ''}" role="tab" id="modal-tab-${id}" aria-selected="${activeTab === id ? 'true' : 'false'}" aria-controls="modal-pane-${id}" tabindex="${activeTab === id ? '0' : '-1'}" data-action="modal-tab" data-tab="${id}">${label}${count ? `<b>${esc(String(count))}</b>` : ''}</button>`;
+    const pane = (id, inner) => `<div class="modal-pane" id="modal-pane-${id}" role="tabpanel" aria-labelledby="modal-tab-${id}"${activeTab === id ? '' : ' hidden'}>${inner}</div>`;
+
+    content.innerHTML = `
+      <div class="modal-grid">
+        <div class="modal-poster">
+          <div class="modal-poster-wrap">
+            <img src="${esc(poster)}" alt="${esc(displayTitle(a))}" data-title="${esc(displayTitle(a))}" data-id="${a.id}"${/^https?:\/\//i.test(poster) ? ` data-poster-src="${esc(poster)}"` : ''}>
+            <div class="modal-side-score">${a.score ? `★ ${a.score.toFixed(2)}` : '★ —'}<small>рейтинг</small></div>
+          </div>
+        </div>
+        <div class="modal-info">
+          <div class="modal-eyebrow">${esc(typeRu(a.type) || 'Аниме')}${a.year ? ' · ' + a.year : ''}</div>
+          <h2 id="modal-title">${esc(mainTitle)}</h2>
+          ${secondaryTitle ? `<p class="modal-alt">${esc(secondaryTitle)}</p>` : ''}
+          <div class="modal-facts">${facts}</div>
+          <div class="modal-actions">
+            <button class="btn ${inW ? 'is-on' : 'btn-primary'}" data-action="add-watched" data-id="${a.id}">${inW ? '✓ В просмотрено' : 'Отметить просмотренным'}</button>
+            <button class="btn btn-ghost ${inP ? 'is-on' : ''}" data-action="add-planned" data-id="${a.id}">${inP ? '◷ В планах' : 'Запланировать'}</button>
+            ${!a.custom ? `<button class="btn btn-ghost" data-action="tiktok-search" data-id="${a.id}">Искать в TikTok</button>` : ''}
+          </div>
+          ${customActions}
+          <div class="modal-tabs" role="tablist" aria-label="Разделы карточки">
+            ${tabButton('overview', 'Обзор')}
+            ${a.custom ? '' : tabButton('seasons', 'Сезоны', related.length ? related.length + 1 : '')}
+            ${tabButton('episodes', 'Серии', episodesCount)}
+            ${tabButton('moments', 'Моменты', momentsCount || '')}
+          </div>
+          ${pane('overview', `
+            <div class="modal-section">
+              <div class="modal-label">Тир-лист</div>
+              <div class="tier-picker">${tiers}</div>
+              <p class="hint">${inW || inP
+                ? 'Выберите уровень — карточка переедет в выбранный тир.'
+                : 'Выберите тир, чтобы сразу добавить тайтл в «Просмотрено».'}</p>
+            </div>
+            <section class="modal-section modal-synopsis-section">
+              <div class="modal-label">Описание</div>
+              ${synopsisControls}
+              <p class="modal-synopsis"${showTranslatedSynopsis ? ' data-translated="1" title="Автоматический перевод"' : ''}>${esc(synopsis)}</p>
+            </section>
+            ${genres ? `<section class="modal-section modal-genres">
+              <div class="modal-label">Жанры</div>
+              <div class="tags">${genres}</div>
+            </section>` : ''}
+            ${tagChips ? `<section class="modal-section modal-tags">
+              <div class="modal-label">Теги</div>
+              <div class="tags">${tagChips}</div>
+              <button class="btn btn-ghost" type="button" data-action="find-similar" data-id="${a.id}">Найти похожие</button>
+            </section>` : ''}
+            ${sourceLine}
+          `)}
+          ${a.custom ? '' : pane('seasons', renderFranchiseSection(a))}
+          ${pane('episodes', `<div class="modal-section modal-episodes">
+            <div class="modal-label">Серии и прогресс</div>
+            ${renderEpisodeBlock(a, 'modal')}
+          </div>`)}
+          ${pane('moments', momentsHTML(a))}
+        </div>      </div>`;
+
+    const fresh = $('.modal-panel');
+    if (fresh) fresh.scrollTop = scrollTop;
+
+    if (!state.franchiseById.has(a.id) && !state.franchiseLoading.has(a.id) && !state.franchiseErrors.has(a.id)) loadFranchise(a);
+
+    if (!a.custom && (!state.epInfo[a.id] || Date.now() - Number(state.epInfo[a.id].fetchedAt || 0) > 2 * 3600000)) {
+      if (a.status === 'В эфире' || !a.episodes) ensureEpisodeInfo(a);
+    }
+  }
+  Object.assign(App, {
+    openCustomForm,
+    closeCustomForm,
+    renderCustomForm,
+    momentLabel,
+    momentCardHTML,
+    momentsHTML,
+    openMomentForm,
+    closeMomentForm,
+    renderMomentForm,
+    renderTikTokImport,
+    renderBackup,
+    openBackup,
+    closeBackup,
+    renderUpdateCard,
+    renderSettings,
+    renderStatsScreen,
+    openStats,
+    closeStats,
+    renderCommandResults,
+    openCommand,
+    closeCommand,
+    setCommandQuery,
+    moveCommand,
+    jumpCommand,
+    openCommandResult,
+    openSettings,
+    closeSettings,
+    renderFranchiseSection,
+    openModal,
+    closeModal,
+    renderModal,
+    switchModalTab,
+  });
+})(window.AniTier);
+
+</script>
+<script>
+/* ============================================================
+   AniTier — обмен тир-листами (выделено из app-render-modals.js)
+   ============================================================ */
+(function (App) {
+  'use strict';
+
+  const C = window.AniTierCore;
+  const {
+    state,
+    TIERS,
+    TIER_IDS,
+    LIST_LABELS,
+    EXCHANGE_FILTERS,
+    TYPE_RU,
+    typeRu,
+    normalizeUpdateCheck,
+    MONTHS_SHORT,
+    MONTHS_FULL,
+    VIEW_TABS,
+    LONG_TITLE_EPS,
+    $,
+    $$,
+    esc,
+    escXml,
+    plural,
+    epWord,
+    startOfToday,
+    endOfToday,
+    startOfTomorrow,
+    addDays,
+    daysBetween,
+    parseDate,
+    fuzzyDateInt,
+    monthLabel,
+    dateShort,
+    countdownLabel,
+    relativePast,
+    makePoster,
+    hasIn,
+    findTier,
+    getAnime,
+    pruneAnimeCache,
+    allIn,
+    addToList,
+    removeFromList,
+    moveToTier,
+    saveState,
+    momentsFor,
+    watchedSet,
+    watchedCount,
+    episodeStats,
+    toggleEpisode,
+    setWatchedUpTo,
+    clearProgress,
+  } = App;
+  /* Перекрёстные вызовы */
+  const displayTitle = (...a) => App.displayTitle(...a);
+  const tierShort = (...a) => App.tierShort(...a);
+  const imgAttrs = (...a) => App.imgAttrs(...a);
+  const closeModal = (...a) => App.closeModal(...a);
+  const syncBodyScroll = (...a) => App.syncBodyScroll(...a);
+
+
   function openExchange(mode, list) {
     if (state.modalId != null) closeModal();
     const exportList = list === 'planned' ? 'planned' : 'watched';
@@ -16002,362 +16433,8 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
 
     content.innerHTML = body;
   }
-  function openModal(id, opts = {}) {
-    const a = getAnime(id);
-    if (!a) { toast('Не удалось открыть карточку'); return; }
-    state.modalId = id;
-    state.modalTab = 'overview';
-    renderModal();
-    const modal = $('#modal');
-    modal.hidden = false;
-    syncBodyScroll();
-    const panel = $('.modal-panel');
-    if (panel) { panel.scrollTop = 0; panel.focus({ preventScroll: true }); }
-    if (a.custom && App.hydrateCustomImage) App.hydrateCustomImage(id);
-    if (!opts.fromHash) writeLocationHash();
-    if (typeof bindModalSwipe === 'function') bindModalSwipe();
-    /* Автоперевод при любом открытии, если пользователь не выбрал оригинал. */
-    const synopsisMode = state.synopsisModes && state.synopsisModes.get(id);
-    const wantsTranslation = synopsisMode !== 'original'
-      && !(state.settings && state.settings.synopsisLang === 'original');
-    if (wantsTranslation && a.synopsis && C.hasCyrillic && !C.hasCyrillic(a.synopsis)
-      && typeof App.translateModalSynopsis === 'function') {
-      App.translateModalSynopsis(id);
-    }
-  }
 
-  function franchiseRelationLabel(type) {
-    if (type === 'PREQUEL' || type === 'PARENT') return 'Смотреть раньше';
-    if (type === 'CURRENT') return 'Текущая часть';
-    if (type === 'SEQUEL') return 'Следующий сезон';
-    if (type === 'SIDE_STORY') return 'Побочная история';
-    if (type === 'SPIN_OFF') return 'Спин-офф';
-    if (type === 'SUMMARY') return 'Пересказ';
-    if (type === 'ALTERNATIVE') return 'Альтернатива';
-    if (type === 'ADAPTATION') return 'Адаптация';
-    if (type === 'CHARACTER') return 'С участием героев';
-    return 'Связанная история';
-  }
-
-  /* Дата выхода связи: по ней строится порядок просмотра. */
-  function franchiseDate(link) {
-    const stamp = Date.parse((link.anime && link.anime.airedFrom) || '');
-    if (Number.isFinite(stamp)) return stamp;
-    const year = Number(link.anime && link.anime.year) || 0;
-    return year ? Date.parse(`${year}-01-01`) : Number.MAX_SAFE_INTEGER;
-  }
-
-  const FRANCHISE_PREVIEW = 8;
-  const FRANCHISE_MAIN = new Set(['PREQUEL', 'PARENT', 'SEQUEL']);
-  const MODAL_TABS = ['overview', 'seasons', 'episodes', 'moments'];
-
-  function franchiseCardHTML(link, opts = {}) {
-    const item = link.anime;
-    const tier = findTier('watched', item.id) || findTier('planned', item.id);
-    const progress = watchedCount(item.id);
-    const isCurrent = link.relationType === 'CURRENT';
-    const meta = [typeRu(item.type) || '', item.year || '', item.episodes ? `${item.episodes} серий` : ''].filter(Boolean).join(' · ');
-    const listStatus = tier ? `В тире ${tier}` : 'Не в тир-листе';
-    const progressStatus = progress ? `Просмотрено ${progress}${item.episodes ? ` из ${item.episodes}` : ''}` : '';
-    const order = Number.isFinite(opts.order)
-      ? `<span class="franchise-order" aria-hidden="true">${opts.order}</span>`
-      : '';
-    const here = isCurrent ? '<span class="franchise-here">Вы здесь</span>' : '';
-    return `<article class="franchise-link${isCurrent ? ' franchise-current' : ''}" data-action="open" data-id="${item.id}" tabindex="0" role="button"${isCurrent ? ' aria-current="true"' : ''} aria-label="${isCurrent ? 'Текущая часть: ' : 'Открыть: '}${esc(displayTitle(item))}">
-      <span class="franchise-poster"><img ${imgAttrs(item)}>${item.score ? `<span class="franchise-score">★ ${item.score.toFixed(1)}</span>` : ''}<span class="franchise-link-arrow" aria-hidden="true">›</span></span>
-      <span class="franchise-link-main">
-        <span class="franchise-link-kind">${order}${esc(franchiseRelationLabel(link.relationType))}${here}</span>
-        <b>${esc(displayTitle(item))}</b>
-        <small>${esc(meta || 'Данные уточняются')}</small>
-        <span class="franchise-link-status">${esc(listStatus)}${progressStatus ? ` · ${esc(progressStatus)}` : ''}</span>
-      </span>
-    </article>`;
-  }
-
-  function renderFranchiseSection(anime) {
-    if (anime.custom) return '';
-    const related = state.franchiseById.get(anime.id);
-    const label = '<div class="modal-label">Сезоны и порядок просмотра</div>';
-    if (state.franchiseLoading.has(anime.id)) {
-      return `<div class="modal-section franchise-section">${label}<p class="hint">Загружаем связанные сезоны…</p></div>`;
-    }
-    if (state.franchiseErrors.has(anime.id)) {
-      return `<div class="modal-section franchise-section">${label}<p class="hint">${esc(state.franchiseErrors.get(anime.id))}</p><button class="btn btn-ghost" data-action="retry-franchise" data-id="${anime.id}">Повторить</button></div>`;
-    }
-    if (!related) return `<div class="modal-section franchise-section">${label}<p class="hint">Проверяем, есть ли связанные сезоны…</p></div>`;
-    if (!related.length) return `<div class="modal-section franchise-section">${label}<p class="hint">Связанные сезоны и продолжения не найдены.</p></div>`;
-
-    const full = state.franchiseFullById.get(anime.id);
-    const fullLoading = state.franchiseFullLoading && state.franchiseFullLoading.has(anime.id);
-    const useRelated = full || related;
-    const built = (window.AniTierCore && typeof window.AniTierCore.buildFranchiseGroups === 'function')
-      ? window.AniTierCore.buildFranchiseGroups(useRelated, anime)
-      : null;
-    let groups = built && Array.isArray(built.groups) ? built.groups : [];
-    if (!groups.length) {
-      groups = [{ id: 'empty', title: 'Порядок просмотра', list: [], numbered: false }];
-    }
-    const hidden = groups.reduce((total, group) => total + Math.max(0, (group.list ? group.list.length : 0) - FRANCHISE_PREVIEW), 0);
-    const expanded = Boolean(state.franchiseExpanded && state.franchiseExpanded.has(anime.id));
-    const sections = groups.map(group => {
-      if (!group.list || !group.list.length) return '';
-      const shown = expanded ? group.list : group.list.slice(0, FRANCHISE_PREVIEW);
-      const rows = shown.map((link, index) => franchiseCardHTML(link, {
-        order: group.numbered ? index + 1 : undefined,
-      })).join('');
-      return `<div class="franchise-group">
-        <h4 class="franchise-group-title">${esc(group.title)}<span>${group.list.length}</span></h4>
-        <div class="franchise-list">${rows}</div>
-      </div>`;
-    }).join('');
-
-    return `<div class="modal-section franchise-section">
-      ${label}
-      <p class="franchise-intro">Основной сюжет — по дате выхода. Фильмы, спешлы и пересказы собраны отдельно.</p>
-      ${sections}
-      <div class="franchise-actions">
-        ${(hidden > 0 || expanded)
-          ? `<button class="btn btn-ghost btn-small franchise-more" type="button" data-action="franchise-more" data-id="${anime.id}">${expanded ? 'Свернуть список' : `Показать все (${built.total || useRelated.length + 1})`}</button>`
-          : ''}
-        ${!full && !fullLoading
-          ? `<button class="btn btn-ghost btn-small franchise-full" type="button" data-action="franchise-full" data-id="${anime.id}">Показать всю франшизу</button>`
-          : fullLoading ? `<span class="hint">Собираем всю франшизу…</span>` : `<span class="hint">Показана вся доступная франшиза</span>`}
-      </div>
-      <p class="hint">У каждого тайтла свой тир-лист и прогресс серий.</p>
-    </div>`;
-  }
-
-  function loadFranchise(anime) {
-    if (!anime || state.franchiseById.has(anime.id) || state.franchiseLoading.has(anime.id)) return;
-    if (anime.custom) { state.franchiseById.set(anime.id, []); return; }
-    state.franchiseLoading.add(anime.id);
-    state.franchiseErrors.delete(anime.id);
-    Promise.resolve(App.fetchAnimeRelations(anime)).then(relations => {
-      const allowed = new Set(['PREQUEL', 'SEQUEL', 'PARENT', 'SIDE_STORY', 'SPIN_OFF']);
-      const seen = new Set();
-      const links = [];
-      for (const relation of Array.isArray(relations) ? relations : []) {
-        if (!relation || !allowed.has(relation.relationType) || !relation.anime || relation.anime.id === anime.id || seen.has(relation.anime.id)) continue;
-        seen.add(relation.anime.id);
-        links.push(relation);
-      }
-      /* Только хронология: иначе фильмы и OVA прыгают в конец списка. */
-      links.sort((a, b) => (franchiseDate(a) - franchiseDate(b)) || (a.anime.id - b.anime.id));
-      state.franchiseById.set(anime.id, links);
-    }).catch(error => {
-      state.franchiseErrors.set(anime.id, error && error.message ? error.message : 'Не удалось загрузить порядок просмотра');
-    }).finally(() => {
-      state.franchiseLoading.delete(anime.id);
-      if (state.modalId === anime.id) renderModal();
-    });
-  }
-
-  function closeModal(opts = {}) {
-    state.modalId = null;
-    state.modalTab = 'overview';
-    const modal = $('#modal');
-    if (modal) modal.hidden = true;
-    if (App.revokeMomentUrls) App.revokeMomentUrls();
-    syncBodyScroll();
-    if (state.tab === 'db') renderDB();
-    else if (state.tab === 'watched' || state.tab === 'planned') renderTierList(state.tab);
-    if (!opts.fromHash) writeLocationHash();
-  }
-
-  /* Переключение разделов карточки без перерисовки: изображения и прогресс
-     остаются на месте, меняются только видимые панели. */
-  function switchModalTab(tab, opts = {}) {
-    if (!MODAL_TABS.includes(tab)) return;
-    state.modalTab = tab;
-    $$('.modal-tab').forEach(node => {
-      const on = node.dataset.tab === tab;
-      node.classList.toggle('is-active', on);
-      node.setAttribute('aria-selected', on ? 'true' : 'false');
-      node.tabIndex = on ? 0 : -1;
-    });
-    $$('.modal-pane').forEach(node => {
-      node.hidden = node.id !== 'modal-pane-' + tab;
-    });
-    const panel = $('.modal-panel');
-    if (panel) panel.scrollTop = 0;
-    if (opts.focus) {
-      const active = $('.modal-tab.is-active');
-      if (active) active.focus({ preventScroll: true });
-    }
-  }
-
-  function renderModal() {
-    if (state.modalId == null) return;
-    const a = getAnime(state.modalId);
-    const content = $('#modal-content');
-    const panel = $('.modal-panel');
-    if (!a || !content) { closeModal(); return; }
-
-    const scrollTop = panel ? panel.scrollTop : 0;
-    const inW = hasIn('watched', a.id);
-    const inP = hasIn('planned', a.id);
-    const curTier = findTier('watched', a.id) || findTier('planned', a.id);
-    const status = a.status || '';
-    const sourceName = a.source === 'Kitsu' ? 'Kitsu' : a.source === 'AniList' ? 'AniList' : 'MyAnimeList';
-    const sourceUrl = a.url || (a.malId ? `https://myanimelist.net/anime/${a.malId}` : '');
-    const sourceLine = a.custom
-      ? '<span class="modal-source">Своя карточка</span>'
-      : sourceUrl ? `<a class="mal-link" href="${esc(sourceUrl)}" target="_blank" rel="noopener">Открыть на ${esc(sourceName)} ↗</a>` : '';
-    const customActions = a.custom ? `<div class="modal-custom-actions">
-      <button class="btn btn-ghost" data-action="edit-custom" data-id="${a.id}">Редактировать</button>
-      <button class="btn btn-ghost btn-danger" data-action="delete-custom" data-id="${a.id}">Удалить карточку</button>
-    </div>` : '';
-    const facts = [
-      a.type ? `<span class="fact"><span>Тип:</span> ${esc(typeRu(a.type))}</span>` : '',
-      a.episodes ? `<span class="fact"><span>Серии:</span> ${a.episodes}</span>` : '<span class="fact"><span>Серии:</span> ?</span>',
-      a.year ? `<span class="fact"><span>Год:</span> ${a.year}</span>` : '',
-      status ? `<span class="fact"><span>Статус:</span> ${esc(status)}</span>` : '',
-      a.airedFrom ? `<span class="fact"><span>Старт:</span> ${esc(dateShort(a.airedFrom))}</span>` : '',
-    ].filter(Boolean).join('');
-
-    const tiers = TIERS.map(t => `<button class="tier-pick tier-${t.id} ${curTier === t.id ? 'is-active' : ''}" data-action="set-tier" data-id="${a.id}" data-tier="${t.id}" title="${esc(t.name)}" aria-label="Тир ${esc(t.name)}">${t.label}</button>`).join('');
-    const genres = (a.genres || []).map(g => (
-      `<button type="button" class="tag tag-link" data-action="find-genre" data-genre="${esc(g)}" title="Найти аниме в жанре «${esc(C.genreRu(g))}»">${esc(C.genreRu(g))}</button>`
-    )).join('');
-    const spoilerTags = new Set(Array.isArray(a.spoilerTags) ? a.spoilerTags : []);
-    const tagChips = (Array.isArray(a.tags) ? a.tags : []).slice(0, 18).map(tag => (
-      `<button type="button" class="tag tag-link${spoilerTags.has(tag) ? ' tag-spoiler' : ''}" data-action="find-tag" data-tag="${esc(tag)}"${spoilerTags.has(tag) ? ' title="Может содержать спойлер"' : ''}>${esc(C.genreRu(tag))}</button>`
-    )).join('');
-    const poster = a.image || makePoster(a.title, a.id);
-    const mainTitle = displayTitle(a);
-    const secondaryTitle = mainTitle === (a.titleRu || '')
-      ? (a.originalTitle || a.altTitle || '')
-      : (a.titleRu || a.altTitle || '');
-    const translationProvider = state.settings.translationProvider || 'auto';
-    const translatedSynopsis = App.cachedTranslation ? App.cachedTranslation(a.synopsis, translationProvider) : '';
-    const translatedVia = App.cachedTranslationProvider ? App.cachedTranslationProvider(a.synopsis, translationProvider) : '';
-    const translationRequestKey = `${a.id}:${translationProvider}`;
-    const canTranslateSynopsis = Boolean(a.synopsis && !C.hasCyrillic(a.synopsis));
-    const synopsisMode = state.synopsisModes.get(a.id)
-      || (state.settings.synopsisLang === 'original' ? 'original' : 'translated');
-    const showTranslatedSynopsis = Boolean(canTranslateSynopsis && translatedSynopsis && synopsisMode !== 'original');
-    const synopsis = (showTranslatedSynopsis ? translatedSynopsis : a.synopsis) || 'Описание пока недоступно.';
-    const translating = state.synopsisTranslating.has(translationRequestKey);
-    const synopsisControls = canTranslateSynopsis
-      ? `<div class="synopsis-toolbar">
-          <label class="synopsis-provider">Переводчик
-            <select data-action="synopsis-provider" aria-label="Переводчик описания">
-              <option value="auto"${translationProvider === 'auto' ? ' selected' : ''}>Авто: MyMemory → Google</option>
-              <option value="mymemory"${translationProvider === 'mymemory' ? ' selected' : ''}>MyMemory</option>
-              <option value="google"${translationProvider === 'google' ? ' selected' : ''}>Google Переводчик</option>
-            </select>
-          </label>
-          <span class="synopsis-translation-status" role="status">${translatedSynopsis ? (showTranslatedSynopsis ? `Перевод: ${translatedVia === 'google' ? 'Google' : 'MyMemory'}` : 'Оригинал') : (translating ? 'Переводим…' : 'Перевод пока недоступен')}</span>
-          ${!translatedSynopsis && !translating ? `<button type="button" class="ep-link" data-action="translate-synopsis" data-id="${a.id}">Перевести</button>` : ''}
-          <div class="synopsis-switch" role="group" aria-label="Язык описания">
-            <button type="button" data-action="synopsis-mode" data-id="${a.id}" data-mode="translated" aria-pressed="${showTranslatedSynopsis ? 'true' : 'false'}"${translatedSynopsis ? '' : ' disabled'}>Перевод</button>
-            <button type="button" data-action="synopsis-mode" data-id="${a.id}" data-mode="original" aria-pressed="${!showTranslatedSynopsis ? 'true' : 'false'}">Оригинал</button>
-          </div>
-        </div>`
-      : '';
-
-    const related = state.franchiseById.get(a.id) || [];
-    const ownProgress = watchedCount(a.id);
-    const momentsCount = momentsFor(a.id).length;
-    const episodesCount = a.episodes ? `${ownProgress}/${a.episodes}` : (ownProgress ? String(ownProgress) : '');
-    const activeTab = ['overview', 'seasons', 'episodes', 'moments'].includes(state.modalTab) ? state.modalTab : 'overview';
-    const tabButton = (id, label, count) => `<button type="button" class="modal-tab${activeTab === id ? ' is-active' : ''}" role="tab" id="modal-tab-${id}" aria-selected="${activeTab === id ? 'true' : 'false'}" aria-controls="modal-pane-${id}" tabindex="${activeTab === id ? '0' : '-1'}" data-action="modal-tab" data-tab="${id}">${label}${count ? `<b>${esc(String(count))}</b>` : ''}</button>`;
-    const pane = (id, inner) => `<div class="modal-pane" id="modal-pane-${id}" role="tabpanel" aria-labelledby="modal-tab-${id}"${activeTab === id ? '' : ' hidden'}>${inner}</div>`;
-
-    content.innerHTML = `
-      <div class="modal-grid">
-        <div class="modal-poster">
-          <div class="modal-poster-wrap">
-            <img src="${esc(poster)}" alt="${esc(displayTitle(a))}" data-title="${esc(displayTitle(a))}" data-id="${a.id}"${/^https?:\/\//i.test(poster) ? ` data-poster-src="${esc(poster)}"` : ''}>
-            <div class="modal-side-score">${a.score ? `★ ${a.score.toFixed(2)}` : '★ —'}<small>рейтинг</small></div>
-          </div>
-        </div>
-        <div class="modal-info">
-          <div class="modal-eyebrow">${esc(typeRu(a.type) || 'Аниме')}${a.year ? ' · ' + a.year : ''}</div>
-          <h2 id="modal-title">${esc(mainTitle)}</h2>
-          ${secondaryTitle ? `<p class="modal-alt">${esc(secondaryTitle)}</p>` : ''}
-          <div class="modal-facts">${facts}</div>
-          <div class="modal-actions">
-            <button class="btn ${inW ? 'is-on' : 'btn-primary'}" data-action="add-watched" data-id="${a.id}">${inW ? '✓ В просмотрено' : 'Отметить просмотренным'}</button>
-            <button class="btn btn-ghost ${inP ? 'is-on' : ''}" data-action="add-planned" data-id="${a.id}">${inP ? '◷ В планах' : 'Запланировать'}</button>
-            ${!a.custom ? `<button class="btn btn-ghost" data-action="tiktok-search" data-id="${a.id}">Искать в TikTok</button>` : ''}
-          </div>
-          ${customActions}
-          <div class="modal-tabs" role="tablist" aria-label="Разделы карточки">
-            ${tabButton('overview', 'Обзор')}
-            ${a.custom ? '' : tabButton('seasons', 'Сезоны', related.length ? related.length + 1 : '')}
-            ${tabButton('episodes', 'Серии', episodesCount)}
-            ${tabButton('moments', 'Моменты', momentsCount || '')}
-          </div>
-          ${pane('overview', `
-            <div class="modal-section">
-              <div class="modal-label">Тир-лист</div>
-              <div class="tier-picker">${tiers}</div>
-              <p class="hint">${inW || inP
-                ? 'Выберите уровень — карточка переедет в выбранный тир.'
-                : 'Выберите тир, чтобы сразу добавить тайтл в «Просмотрено».'}</p>
-            </div>
-            <section class="modal-section modal-synopsis-section">
-              <div class="modal-label">Описание</div>
-              ${synopsisControls}
-              <p class="modal-synopsis"${showTranslatedSynopsis ? ' data-translated="1" title="Автоматический перевод"' : ''}>${esc(synopsis)}</p>
-            </section>
-            ${genres ? `<section class="modal-section modal-genres">
-              <div class="modal-label">Жанры</div>
-              <div class="tags">${genres}</div>
-            </section>` : ''}
-            ${tagChips ? `<section class="modal-section modal-tags">
-              <div class="modal-label">Теги</div>
-              <div class="tags">${tagChips}</div>
-              <button class="btn btn-ghost" type="button" data-action="find-similar" data-id="${a.id}">Найти похожие</button>
-            </section>` : ''}
-            ${sourceLine}
-          `)}
-          ${a.custom ? '' : pane('seasons', renderFranchiseSection(a))}
-          ${pane('episodes', `<div class="modal-section modal-episodes">
-            <div class="modal-label">Серии и прогресс</div>
-            ${renderEpisodeBlock(a, 'modal')}
-          </div>`)}
-          ${pane('moments', momentsHTML(a))}
-        </div>      </div>`;
-
-    const fresh = $('.modal-panel');
-    if (fresh) fresh.scrollTop = scrollTop;
-
-    if (!state.franchiseById.has(a.id) && !state.franchiseLoading.has(a.id) && !state.franchiseErrors.has(a.id)) loadFranchise(a);
-
-    if (!a.custom && (!state.epInfo[a.id] || Date.now() - Number(state.epInfo[a.id].fetchedAt || 0) > 2 * 3600000)) {
-      if (a.status === 'В эфире' || !a.episodes) ensureEpisodeInfo(a);
-    }
-  }
   Object.assign(App, {
-    openCustomForm,
-    closeCustomForm,
-    renderCustomForm,
-    momentLabel,
-    momentCardHTML,
-    momentsHTML,
-    openMomentForm,
-    closeMomentForm,
-    renderMomentForm,
-    renderTikTokImport,
-    renderBackup,
-    openBackup,
-    closeBackup,
-    renderUpdateCard,
-    renderSettings,
-    renderStatsScreen,
-    openStats,
-    closeStats,
-    renderCommandResults,
-    openCommand,
-    closeCommand,
-    setCommandQuery,
-    moveCommand,
-    jumpCommand,
-    openCommandResult,
-    openSettings,
-    closeSettings,
     openExchange,
     closeExchange,
     setExchangeMode,
@@ -16369,11 +16446,6 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     exchangeRowHTML,
     renderExchangeComparison,
     renderExchange,
-    renderFranchiseSection,
-    openModal,
-    closeModal,
-    renderModal,
-    switchModalTab,
   });
 })(window.AniTier);
 

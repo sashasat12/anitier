@@ -26,6 +26,7 @@ $renderCards = Read-Text 'app-render-cards.js'
 $renderLists = Read-Text 'app-render-lists.js'
 $renderScreens = Read-Text 'app-render-screens.js'
 $renderModals = Read-Text 'app-render-modals.js'
+$renderExchange = Read-Text 'app-render-exchange.js'
 $ctrlCatalog = Read-Text 'app-ctrl-catalog.js'
 $ctrlNotifications = Read-Text 'app-ctrl-notifications.js'
 $ctrlUpcoming = Read-Text 'app-ctrl-upcoming.js'
@@ -52,6 +53,7 @@ $html = $html.Replace(
   '<script src="../app-render-lists.js" defer></script>' + "`n" +
   '<script src="../app-render-screens.js" defer></script>' + "`n" +
   '<script src="../app-render-modals.js" defer></script>' + "`n" +
+  '<script src="../app-render-exchange.js" defer></script>' + "`n" +
   '<script src="../app-ctrl-catalog.js" defer></script>' + "`n" +
   '<script src="../app-ctrl-notifications.js" defer></script>' + "`n" +
   '<script src="../app-ctrl-upcoming.js" defer></script>' + "`n" +
@@ -61,7 +63,7 @@ $html = $html.Replace(
   '<script src="../app-ctrl-diagnostics.js" defer></script>' + "`n" +
   '<script src="../app.js" defer></script>' + "`n" +
   '<script src="mobile.js" defer></script>',
-  "<script>`n$tags`n</script>`n<script>`n$titlesAniList`n</script>`n<script>`n$titles`n</script>`n<script>`n$changelog`n</script>`n<script>`n$core`n</script>`n<script>`n$store`n</script>`n<script>`n$api`n</script>`n<script>`n$renderCards`n</script>`n<script>`n$renderLists`n</script>`n<script>`n$renderScreens`n</script>`n<script>`n$renderModals`n</script>`n<script>`n$ctrlCatalog`n</script>`n<script>`n$ctrlNotifications`n</script>`n<script>`n$ctrlUpcoming`n</script>`n<script>`n$ctrlBackup`n</script>`n<script>`n$ctrlMoments`n</script>`n<script>`n$ctrlSettings`n</script>`n<script>`n$ctrlDiagnostics`n</script>`n<script>`n$app`n</script>"
+  "<script>`n$tags`n</script>`n<script>`n$titlesAniList`n</script>`n<script>`n$titles`n</script>`n<script>`n$changelog`n</script>`n<script>`n$core`n</script>`n<script>`n$store`n</script>`n<script>`n$api`n</script>`n<script>`n$renderCards`n</script>`n<script>`n$renderLists`n</script>`n<script>`n$renderScreens`n</script>`n<script>`n$renderModals`n</script>`n<script>`n$renderExchange`n</script>`n<script>`n$ctrlCatalog`n</script>`n<script>`n$ctrlNotifications`n</script>`n<script>`n$ctrlUpcoming`n</script>`n<script>`n$ctrlBackup`n</script>`n<script>`n$ctrlMoments`n</script>`n<script>`n$ctrlSettings`n</script>`n<script>`n$ctrlDiagnostics`n</script>`n<script>`n$app`n</script>"
 )
 
 $html = $html.Replace('<link rel="manifest" href="manifest.webmanifest">' + "`n", '')
