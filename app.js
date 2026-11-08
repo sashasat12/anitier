@@ -3128,6 +3128,10 @@
           break;
 
         case 'dismiss-update':
+          if (state.updateCard && state.updateCard.mode === 'ask') {
+            state.settings.updateCheck = 'off';
+            saveState();
+          }
           state.updateCard = null;
           renderUpdateCard();
           break;
@@ -4209,6 +4213,10 @@
     if (state.exchange.open) { closeExchange(); return true; }
     if (state.modalId != null) { closeModal(); return true; }
     if (state.updateCard) {
+      if (state.updateCard.mode === 'ask') {
+        state.settings.updateCheck = 'off';
+        saveState();
+      }
       state.updateCard = null;
       renderUpdateCard();
       return true;

@@ -2148,6 +2148,32 @@
     }
   });
 
+  T.test('app: закрытие вопроса об обновлениях не спрашивает снова', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      await win.__anitierTest.init();
+      const App = win.AniTier;
+      const doc = win.document;
+      const state = win.__anitierTest.state;
+      const card = doc.getElementById('update-card');
+
+      state.settings.updateCheck = 'ask';
+      state.updateCard = { mode: 'ask' };
+      App.renderUpdateCard();
+      T.eq(card.hidden, false, 'Карточка-вопрос показана');
+      card.querySelector('[data-action="dismiss-update"]').click();
+      T.eq(state.settings.updateCheck, 'off', 'Закрытие вопроса сохраняет отказ');
+      T.eq(card.hidden, true);
+      const saved = JSON.parse(win.localStorage.getItem(win.AniTier.LS_KEY) || '{}');
+      T.eq(saved.settings && saved.settings.updateCheck, 'off', 'Ответ сохранён в localStorage');
+      await App.autoCheckUpdates();
+      T.eq(card.hidden, true, 'После закрытия вопрос не появляется снова');
+    } finally {
+      app.close();
+    }
+  });
+
   T.test('app: при запуске спрашивает разрешение на проверку обновлений', async () => {
     const app = await T.mountApp({ query: '?demo=1&test=1' });
     try {
