@@ -127,7 +127,7 @@ JSON.stringify({
 '@
 
   $result = $null
-  for ($i = 0; $i -lt 140; $i++) {
+  for ($i = 0; $i -lt 240; $i++) {
     Start-Sleep -Milliseconds 500
     try {
       $evaluation = Invoke-Cdp -Method 'Runtime.evaluate' -Params @{

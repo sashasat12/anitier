@@ -582,19 +582,93 @@
     return a;
   }
 
+  async function sleep(ms) {
+    await new Promise(resolve => setTimeout(resolve, Math.max(0, ms || 0)));
+  }
+
+  function parseRetryAfter(response) {
+    if (!response || !response.headers || typeof response.headers.get !== 'function') return 0;
+    const raw = String(response.headers.get('Retry-After') || '').trim();
+    if (!raw) return 0;
+    if (/^\d+$/.test(raw)) return Math.min(10000, Math.max(0, Number(raw) * 1000));
+    const at = Date.parse(raw);
+    if (!Number.isFinite(at)) return 0;
+    return Math.min(10000, Math.max(0, at - Date.now()));
+  }
+
+  function retryDelay(attempt, response) {
+    const retryAfter = parseRetryAfter(response);
+    if (retryAfter > 0) return retryAfter;
+    const base = Math.min(4000, 400 * Math.pow(2, attempt));
+    return base + Math.floor(Math.random() * 150);
+  }
+
+  function isRetriableStatus(status) {
+    return status === 429 || (status >= 500 && status <= 599);
+  }
+
+  function isRetriableError(err) {
+    if (!err) return true;
+    if (err.name === 'AbortError') return true;
+    /* fetch выбрасывает TypeError при сетевой ошибке/блокировке. */
+    if (err.name === 'TypeError') return true;
+    return /не отвечает|network|failed to fetch|load failed/i.test(String(err.message || ''));
+  }
+
+  function createRequestLimiter(limit) {
+    const max = Math.max(1, Number(limit) || 1);
+    let active = 0;
+    const queue = [];
+    const next = () => {
+      if (active >= max || !queue.length) return;
+      active += 1;
+      const job = queue.shift();
+      Promise.resolve()
+        .then(job.fn)
+        .then(job.resolve, job.reject)
+        .finally(() => {
+          active -= 1;
+          next();
+        });
+    };
+    return fn => new Promise((resolve, reject) => {
+      queue.push({ fn, resolve, reject });
+      next();
+    });
+  }
+
+  const limitNetworkRequest = createRequestLimiter(4);
+
   async function fetchWithTimeout(url, options = {}, timeoutMs = SEARCH_TIMEOUT) {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-    try {
-      const res = await fetch(url, { ...options, signal: ctrl.signal });
-      if (!res.ok) throw new Error(`Источник ответил ${res.status}`);
-      return await res.json();
-    } catch (err) {
-      if (err && err.name === 'AbortError') throw new Error('Источник не отвечает');
-      throw err;
-    } finally {
-      clearTimeout(timer);
-    }
+    const retries = options && typeof options.retries === 'number' ? Math.max(0, options.retries) : 2;
+    return limitNetworkRequest(async () => {
+      let lastError = null;
+      for (let attempt = 0; attempt <= retries; attempt += 1) {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+        try {
+          const res = await fetch(url, { ...options, signal: ctrl.signal });
+          if (!res.ok) {
+            if (isRetriableStatus(res.status) && attempt < retries) {
+              await sleep(retryDelay(attempt, res));
+              continue;
+            }
+            throw new Error(`Источник ответил ${res.status}`);
+          }
+          return await res.json();
+        } catch (err) {
+          lastError = err && err.name === 'AbortError' ? new Error('Источник не отвечает') : err;
+          if (attempt < retries && isRetriableError(err)) {
+            await sleep(retryDelay(attempt));
+            continue;
+          }
+          throw lastError;
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+      throw lastError || new Error('Источник не отвечает');
+    });
   }
 
   /* Последний релиз на GitHub: версия, ссылка и заметки. */

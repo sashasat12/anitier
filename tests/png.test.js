@@ -92,4 +92,58 @@
       app.close();
     }
   });
+
+  T.test('api: fetchAniList ретраит 429/5xx и уважает Retry-After', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      let retryCalls = 0;
+      app.win.fetch = async (url, opts = {}) => {
+        let vars = {};
+        try { vars = JSON.parse(opts.body || '{}').variables || {}; } catch {}
+        if (vars._retryProbe) {
+          retryCalls += 1;
+          if (retryCalls < 3) return { ok: false, status: retryCalls === 1 ? 429 : 503, headers: { get: n => /retry-after/i.test(n) ? '0' : null } };
+          return { ok: true, status: 200, json: async () => ({ data: { Page: { pageInfo: { hasNextPage: false }, media: [] } } }) };
+        }
+        if (/kitsu\.io/.test(url)) return { ok: true, status: 200, json: async () => ({ data: [], included: [], links: {} }) };
+        return { ok: true, status: 200, json: async () => ({ data: { Page: { pageInfo: { hasNextPage: false }, media: [], airingSchedules: [] } } }) };
+      };
+      const page = await Promise.race([
+        api.fetchAniList({ page: 1, perPage: 1, _retryProbe: 1 }, { cache: false }),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000)),
+      ]);
+      T.assert(page && Array.isArray(page.media), 'После ретраев вернулся ответ AniList');
+      T.eq(retryCalls, 3, 'Было 3 попытки: 429, 503, успех');
+    } finally { app.close(); }
+  });
+
+  T.test('api: fetchAniList не ретраит 4xx кроме 429 и отказывается после лимита', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      let badCalls = 0;
+      let limitCalls = 0;
+      app.win.fetch = async (url, opts = {}) => {
+        let vars = {};
+        try { vars = JSON.parse(opts.body || '{}').variables || {}; } catch {}
+        if (vars._case === 'bad') { badCalls += 1; return { ok: false, status: 400, headers: { get: () => null } }; }
+        if (vars._case === 'limit') { limitCalls += 1; return { ok: false, status: 429, headers: { get: n => /retry-after/i.test(n) ? '0' : null } }; }
+        if (/kitsu\.io/.test(url)) return { ok: true, status: 200, json: async () => ({ data: [], included: [], links: {} }) };
+        return { ok: true, status: 200, json: async () => ({ data: { Page: { pageInfo: { hasNextPage: false }, media: [], airingSchedules: [] } } }) };
+      };
+      let badErr = '';
+      try { await Promise.race([api.fetchAniList({ page: 1, _case: 'bad' }, { cache: false }), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))]); }
+      catch (e) { badErr = e && e.message ? e.message : String(e); }
+      T.includes(badErr, '400', '400 не ретраится и отдаёт ошибку');
+      T.eq(badCalls, 1, 'Для 400 был ровно один запрос');
+      let limitErr = '';
+      try { await Promise.race([api.fetchAniList({ page: 1, _case: 'limit' }, { cache: false }), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))]); }
+      catch (e) { limitErr = e && e.message ? e.message : String(e); }
+      T.includes(limitErr, '429', 'После лимита ретраев 429 возвращает ошибку');
+      T.assert(limitCalls >= 2, '429 ретраится, пока не исчерпан лимит');
+    } finally { app.close(); }
+  });
 })();
