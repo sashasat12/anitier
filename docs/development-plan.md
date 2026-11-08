@@ -25,15 +25,6 @@
 
 ## Пункты
 
-### 38. Вынести кэш постеров из app.js
-
-В `app.js` остался кластер фонового кэширования постеров: `POSTER_FETCH_CONCURRENCY`, `POSTER_QUEUE_LIMIT`, `posterQueue`, `posterQueued`, `posterActive`, `canCachePoster`, `shrinkPoster`, `cachePosterImage`, `pumpPosterQueue`, `queuePosterCache`, `posterQueueStats`.
-
-- Создать `app-ctrl-posters.js` по принятому паттерну (IIFE, широкий destructure из `App`, экспорт через `Object.assign(App, {...})`).
-- Удалить кластер из `app.js`, оставить ленивые алиасы для внутренних вызовов; из экспортного списка убрать имена, которые отдаёт модуль.
-- Подключить модуль в `index.html`, `mobile/index.html`, `mobile/sw.js`, `build-phone.ps1`, `tests/shell.test.js`, `tests/split.test.js`; обновить `AGENTS.md`.
-- Критерий готовности: `tests/poster.test.js` и `tests/perf.test.js` зелёные, `test.ps1` — 217/217 и 12/12, артефакты пересобраны.
-
 ### 39. Вынести PNG тир-листа из app.js
 
 Кластер экспорта PNG: `TIER_IMAGE_GRADIENTS`, `canvasRoundRect`, `loadCanvasImage`, `drawPosterCover`, `drawWrappedText`, `tierPngFileName`, `mapWithLimit`, `tierPngTitle`, `buildTierListPngBlob`, `exportTierPng`.

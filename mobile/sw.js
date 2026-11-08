@@ -30,6 +30,7 @@ const SHELL = [
   '../app-ctrl-notifications.js',
   '../app-ctrl-upcoming.js',
   '../app-ctrl-backup.js',
+  '../app-ctrl-posters.js',
   '../app-ctrl-moments.js',
   '../app-ctrl-settings.js',
   '../app-ctrl-diagnostics.js',
