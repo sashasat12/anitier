@@ -37,7 +37,8 @@
 | `app-render-screens.js` | экраны каталога, уведомлений, календаря, навигация, хеши, утилиты | без сетевых запросов; экспорт в `window.AniTier` |
 | `app-render-modals.js` | модалки, формы, настройки, статистика, обмен, карточка тайтла | без сетевых запросов; экспорт в `window.AniTier` |
 | `app.js` | контроллер, события, drag & drop, запуск | бизнес-логику выносить в `core.js` или `app-store.js` |
-| `app-ctrl-catalog.js`, `app-ctrl-notifications.js`, `app-ctrl-upcoming.js`, `app-ctrl-backup.js` | контроллеры каталога, уведомлений, премьер, копий | экспорт в `window.AniTier`/через `App` по принятому паттерну |
+| `app-ctrl-catalog.js`, `app-ctrl-notifications.js`, `app-ctrl-upcoming.js` | контроллеры каталога, уведомлений, премьер | экспорт в `window.AniTier`/через `App` по принятому паттерну |
+| `app-ctrl-backup.js` | контроллер копий: файл, медиаархив, Google Drive, авто-бэкап | экспорт в `window.AniTier`; сеть только через `app-api.js` |
 | `app-ctrl-moments.js` | контроллер моментов, медиа, TikTok, общего доступа к моментам | экспорт в `window.AniTier`; без DOM-рендера, кроме вызовов рендера |
 | `app-ctrl-settings.js` | контроллер настроек, проверки обновлений, напоминаний релизов, кэша | экспорт в `window.AniTier`; без DOM-рендера, кроме вызовов рендера |
 | `index.html` | разметка и вкладки десктопа | без инлайн-стилей и инлайн-скриптов |
