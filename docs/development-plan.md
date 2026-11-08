@@ -16,14 +16,6 @@
 
 ## Пункты
 
-### 23. P2 — Безопасность Android WebView
-
-Файлы: `android/src/com/anitier/phone/MainActivity.java`, `android/AndroidManifest.xml`.
-
-`allowUniversalAccessFromFileURLs(true)` и `allowFileAccessFromFileURLs(true)` ослабляют защиту. Перейти на `WebViewAssetLoader` с `https://appassets.androidplatform.net`, выключить universal access, проверить API, шрифты и file chooser. `ReleaseNotificationBootReceiver` сделать `exported="false"`.
-
-Готово, когда: APK работает без universal access, внешние ссылки по-прежнему открываются в браузере, есть чек-лист ручной проверки.
-
 ### 24. P2 — Проверки релиза и артефактов
 
 Файлы: `release.ps1`, `tests/core.test.js`.

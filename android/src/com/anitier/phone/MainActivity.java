@@ -18,6 +18,7 @@ import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -26,8 +27,11 @@ import org.json.JSONObject;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import java.io.InputStream;
 import java.io.OutputStream;
 import android.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
 
 public class MainActivity extends Activity {
     private static final int REQUEST_FILE_CHOOSER = 1001;
@@ -37,6 +41,9 @@ public class MainActivity extends Activity {
     private static final String RELEASE_PREFS = "anitier-release-notifications";
     private static final String RELEASE_ENABLED = "enabled";
     private static final String RELEASE_ITEMS = "items";
+    private static final String APP_ASSET_ORIGIN = "https://appassets.androidplatform.net";
+    private static final String APP_ASSET_BASE = APP_ASSET_ORIGIN + "/assets/";
+    private static final String APP_START_URL = APP_ASSET_BASE + "index.html";
 
     /* Пакеты TikTok: обычный, для Европы/Азии и китайская версия Douyin. */
     private static final String[] TIKTOK_PACKAGES = {
@@ -76,8 +83,8 @@ public class MainActivity extends Activity {
         settings.setDatabaseEnabled(true);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
-        settings.setAllowFileAccessFromFileURLs(true);
-        settings.setAllowUniversalAccessFromFileURLs(true);
+        settings.setAllowFileAccessFromFileURLs(false);
+        settings.setAllowUniversalAccessFromFileURLs(false);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
         settings.setSupportZoom(false);
@@ -117,6 +124,12 @@ public class MainActivity extends Activity {
             }
 
             @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                WebResourceResponse response = interceptAppAsset(request.getUrl());
+                return response != null ? response : super.shouldInterceptRequest(view, request);
+            }
+
+            @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 if (request.isForMainFrame()) {
                     return openExternal(request.getUrl());
@@ -132,7 +145,7 @@ public class MainActivity extends Activity {
         });
 
         setContentView(webView);
-        webView.loadUrl("file:///android_asset/index.html");
+        webView.loadUrl(APP_START_URL);
     }
 
     @Override
@@ -169,8 +182,55 @@ public class MainActivity extends Activity {
                 + JSONObject.quote(url) + ")", null);
     }
 
+    private boolean isAppAsset(Uri uri) {
+        return uri != null
+                && "https".equalsIgnoreCase(uri.getScheme())
+                && "appassets.androidplatform.net".equalsIgnoreCase(uri.getHost())
+                && uri.getPath() != null
+                && uri.getPath().startsWith("/assets/");
+    }
+
+    private WebResourceResponse interceptAppAsset(Uri uri) {
+        if (!isAppAsset(uri)) return null;
+        String path = uri.getPath().substring("/assets/".length());
+        if (path.isEmpty() || path.contains("..")) return notFoundResponse();
+        try {
+            InputStream input = getAssets().open(path);
+            String mime = "text/html";
+            String lower = path.toLowerCase();
+            if (lower.endsWith(".js")) mime = "application/javascript";
+            else if (lower.endsWith(".css")) mime = "text/css";
+            else if (lower.endsWith(".json")) mime = "application/json";
+            else if (lower.endsWith(".png")) mime = "image/png";
+            else if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) mime = "image/jpeg";
+            else if (lower.endsWith(".svg")) mime = "image/svg+xml";
+            else if (lower.endsWith(".webmanifest")) mime = "application/manifest+json";
+            else if (lower.endsWith(".woff2")) mime = "font/woff2";
+            else if (lower.endsWith(".woff")) mime = "font/woff";
+            Map<String, String> headers = new HashMap<String, String>();
+            headers.put("Access-Control-Allow-Origin", APP_ASSET_ORIGIN);
+            if (Build.VERSION.SDK_INT >= 21) {
+                return new WebResourceResponse(mime, "utf-8", 200, "OK", headers, input);
+            }
+            return new WebResourceResponse(mime, "utf-8", input);
+        } catch (Exception error) {
+            return notFoundResponse();
+        }
+    }
+
+    private WebResourceResponse notFoundResponse() {
+        if (Build.VERSION.SDK_INT >= 21) {
+            Map<String, String> headers = new HashMap<String, String>();
+            return new WebResourceResponse("text/plain", "utf-8", 404, "Not Found", headers, null);
+        }
+        return null;
+    }
+
     private boolean openExternal(Uri uri) {
         String scheme = uri.getScheme();
+        if (isAppAsset(uri)) {
+            return false;
+        }
         if ("file".equals(scheme) || "about".equals(scheme) || "data".equals(scheme)) {
             return false;
         }
