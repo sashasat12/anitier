@@ -49,6 +49,12 @@
     momentsFor,
     buildBackupPayload,
     applyBackupData,
+    migrateLocalThumbnails,
+    customThumbKey,
+    momentThumbKey,
+    dataUrlToBlob,
+    setLocalImageUrl,
+    isDataImageUrl,
     mediaPut,
     mediaGet,
     mediaDelete,
@@ -633,11 +639,20 @@
       const id = existing ? existing.id : nextCustomId();
       const customId = existing ? existing.customId : newUid();
       let image = existing ? existing.image : '';
+      let imageKey = existing ? String(existing.imageKey || '') : '';
 
       if (file) {
         try { image = await makeImageThumbnail(file); } catch { image = existing ? existing.image : ''; }
         const stored = await mediaPut('images', customId, file);
         if (!stored) toast('Полный постер не сохранился — останется миниатюра');
+        if (image && isDataImageUrl(image)) {
+          imageKey = customThumbKey({ customId, id }) || `custom:${customId}:thumb`;
+          try {
+            const thumbBlob = await dataUrlToBlob(image);
+            await mediaPut('images', imageKey, thumbBlob);
+            setLocalImageUrl(imageKey, image);
+          } catch { /* миниатюра останется в памяти до перезагрузки */ }
+        }
       }
 
       const genres = String(data.get('genres') || '')
@@ -653,6 +668,7 @@
         altTitle: String(data.get('altTitle') || '').trim(),
         originalTitle: String(data.get('altTitle') || '').trim(),
         image,
+        imageKey,
         year: Number(data.get('year')) || null,
         episodes: Number(data.get('episodes')) || null,
         type: String(data.get('type') || ''),
@@ -689,8 +705,11 @@
     if (!window.confirm(`Удалить «${card.title}» из своих карточек и списков?`)) return;
     for (const moment of momentsFor(id)) {
       if (moment.mediaKey) await mediaDelete('media', moment.mediaKey);
+      if (moment.thumbKey) await mediaDelete('images', moment.thumbKey);
     }
     await mediaDelete('images', card.customId);
+    if (card.imageKey) await mediaDelete('images', card.imageKey);
+    await mediaDelete('images', customThumbKey(card));
     deleteCustomCard(id);
     closeModal();
     toast('Карточка удалена');
@@ -698,7 +717,7 @@
 
   async function hydrateCustomImage(id) {
     const card = getCustomCard(id);
-    if (!card || !card.customId || !card.image) return;
+    if (!card || !card.customId) return;
     const blob = await mediaGet('images', card.customId);
     if (!blob || state.modalId !== id) return;
     const img = $('#modal-content .modal-poster img');
@@ -894,13 +913,23 @@
       const stored = await mediaPut('media', mediaKey, file);
       if (!stored) throw new Error('Браузер не смог сохранить файл. Попробуйте файл меньше.');
       let thumb = '';
+      let thumbKey = '';
       try { thumb = await makeFileThumbnail(file); } catch { thumb = ''; }
+      if (thumb && isDataImageUrl(thumb)) {
+        thumbKey = momentThumbKey({ id: mediaKey }) || `moment:${mediaKey}:thumb`;
+        try {
+          const thumbBlob = await dataUrlToBlob(thumb);
+          await mediaPut('images', thumbKey, thumbBlob);
+          setLocalImageUrl(thumbKey, thumb);
+        } catch { thumbKey = ''; }
+      }
       addMoment(animeId, {
         id: mediaKey,
         kind: isGif ? 'gif' : 'video',
         title,
         mediaKey,
         thumb,
+        thumbKey,
         mime: file.type || '',
         size: file.size,
         createdAt: Date.now(),
@@ -1358,10 +1387,12 @@
     }
   }
 
-  async function removeMomentAction(animeId, momentId) {    const moment = findMoment(animeId, momentId);
+  async function removeMomentAction(animeId, momentId) {
+    const moment = findMoment(animeId, momentId);
     if (!moment) return;
     if (!window.confirm('Удалить этот момент?')) return;
     if (moment.mediaKey) await mediaDelete('media', moment.mediaKey);
+    if (moment.thumbKey) await mediaDelete('images', moment.thumbKey);
     removeMoment(animeId, momentId);
     renderModal();
     toast('Момент удалён');
@@ -3477,6 +3508,9 @@
     }
     loadState();
     loadMoments();
+    migrateLocalThumbnails().then((res) => {
+      if (res && (res.migratedCards || res.migratedMoments)) refreshViews();
+    }).catch((err) => console.warn('migrateLocalThumbnails', err));
     renderSearchHistory();
     if (typeof App.applyAppearance === 'function') App.applyAppearance();
     initFilterOptions();

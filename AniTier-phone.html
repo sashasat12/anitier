@@ -9313,6 +9313,7 @@ window.AniTierChangelog = [
   let saveTimer = 0;
   let savePending = false;
   let saveErrorAt = 0;
+  const localImageUrls = new Map();
   const MOMENTS_KEY = 'anitier.moments.v1';
   const TRANSLATIONS_KEY = 'anitier.translations.v1';
   const CUSTOM_LIMIT = 100;
@@ -9966,6 +9967,9 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
   }
 
   function snapshotAnime(a) {
+    const imageKey = String((a && a.imageKey) || '').trim().slice(0, 160);
+    const rawImage = String((a && a.image) || '');
+    const image = isDataImageUrl(rawImage) && imageKey ? '' : (isDataImageUrl(rawImage) ? rawImage : rawImage);
     return {
       id: a.id,
       malId: a.malId ?? null,
@@ -9973,7 +9977,8 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       titleRu: a.titleRu || '',
       altTitle: a.altTitle || '',
       originalTitle: a.originalTitle || '',
-      image: a.image || '',
+      image,
+      imageKey,
       custom: Boolean(a.custom),
       customId: a.customId || '',
       episodes: a.episodes ?? null,
@@ -10030,9 +10035,8 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     const title = String(raw.title == null ? '' : raw.title).trim().slice(0, 300);
     if (!Number.isInteger(id) || id >= 0 || !title) return null;
     const customId = String(raw.customId || '').trim().slice(0, 100) || `legacy-${Math.abs(id)}`;
-    const image = typeof raw.image === 'string' && /^data:image\//i.test(raw.image) && raw.image.length < 700000
-      ? raw.image
-      : '';
+    const imageKey = String(raw.imageKey || '').trim().slice(0, 160);
+    const legacyImage = isDataImageUrl(raw.image) ? String(raw.image) : '';
     const episodes = Number(raw.episodes);
     const score = Number(raw.score);
     const year = Number(raw.year);
@@ -10046,7 +10050,8 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       title,
       altTitle: String(raw.altTitle == null ? '' : raw.altTitle).trim().slice(0, 300),
       originalTitle: String(raw.originalTitle == null ? '' : raw.originalTitle).trim().slice(0, 300),
-      image,
+      imageKey,
+      image: legacyImage || resolveLocalImageUrl(imageKey, ''),
       episodes: Number.isFinite(episodes) && episodes > 0 ? Math.floor(episodes) : null,
       type: String(raw.type == null ? '' : raw.type).trim().slice(0, 40),
       status: String(raw.status == null ? '' : raw.status).trim().slice(0, 40),
@@ -10124,11 +10129,10 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     const mediaKey = String(raw.mediaKey || '').trim().slice(0, 120);
     if (kind === 'tiktok' && !C.isTikTokUrl(url)) return null;
     if (kind !== 'tiktok' && !mediaKey) return null;
-    const thumb = typeof raw.thumb === 'string'
-      && (/^data:image\//i.test(raw.thumb) || /^https:\/\//i.test(raw.thumb))
-      && raw.thumb.length < 500000
-      ? raw.thumb
-      : '';
+    const thumbKey = String(raw.thumbKey || '').trim().slice(0, 160);
+    const rawThumb = typeof raw.thumb === 'string' ? raw.thumb : '';
+    const httpsThumb = /^https:\/\//i.test(rawThumb) && rawThumb.length < 2048 ? rawThumb : '';
+    const legacyThumb = isDataImageUrl(rawThumb) ? rawThumb : '';
     const size = Number(raw.size);
     return {
       id,
@@ -10137,11 +10141,25 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       url,
       videoId: kind === 'tiktok' ? String(raw.videoId || '').replace(/[^0-9]/g, '').slice(0, 32) : '',
       mediaKey,
-      thumb,
+      thumbKey,
+      thumb: httpsThumb || legacyThumb || resolveLocalImageUrl(thumbKey, ''),
       mime: String(raw.mime || '').slice(0, 100),
       size: Number.isFinite(size) && size > 0 ? Math.floor(size) : 0,
       createdAt: Number(raw.createdAt) || Date.now(),
     };
+  }
+
+  function serializeMoment(moment) {
+    const out = { ...moment };
+    if (isDataImageUrl(out.thumb)) delete out.thumb;
+    if (!out.thumbKey) delete out.thumbKey;
+    if (!out.thumb) delete out.thumb;
+    if (!out.mediaKey) delete out.mediaKey;
+    if (!out.videoId) delete out.videoId;
+    if (!out.mime) delete out.mime;
+    if (!out.size) delete out.size;
+    if (!out.url) delete out.url;
+    return out;
   }
 
   function loadMoments() {
@@ -10156,12 +10174,21 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     }
   }
 
+  function serializeMomentsMap() {
+    const out = {};
+    for (const [key, list] of Object.entries(state.moments || {})) {
+      if (!Array.isArray(list) || !list.length) continue;
+      out[key] = list.map(serializeMoment);
+    }
+    return out;
+  }
+
   function saveMoments() {
     try {
-      localStorage.setItem(MOMENTS_KEY, JSON.stringify(state.moments));
+      localStorage.setItem(MOMENTS_KEY, JSON.stringify(serializeMomentsMap()));
     } catch (err) {
       console.warn('moments', err);
-      toast('Не удалось сохранить моменты: браузер не даёт место');
+      reportSaveError(err);
     }
   }
 
@@ -10372,6 +10399,158 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     });
   }
 
+  function isDataImageUrl(value) {
+    return typeof value === 'string' && /^data:image\//i.test(value);
+  }
+
+  async function dataUrlToBlob(dataUrl) {
+    const res = await fetch(String(dataUrl || ''));
+    return res.blob();
+  }
+
+  function customThumbKey(card) {
+    const id = card && (card.customId || card.id);
+    return id ? `custom:${id}:thumb` : '';
+  }
+
+  function momentThumbKey(moment) {
+    const id = moment && moment.id;
+    return id ? `moment:${id}:thumb` : '';
+  }
+
+  function resolveLocalImageUrl(key, value) {
+    if (isDataImageUrl(value)) return value;
+    if (key && localImageUrls.has(key)) return localImageUrls.get(key);
+    if (typeof value === 'string' && /^https?:\/\//i.test(value)) return value;
+    return '';
+  }
+
+  function setLocalImageUrl(key, url) {
+    if (!key) return;
+    if (!url) localImageUrls.delete(key);
+    else localImageUrls.set(key, url);
+  }
+
+  async function hydrateLocalImage(key) {
+    if (!key) return '';
+    if (localImageUrls.has(key)) return localImageUrls.get(key);
+    const blob = await mediaGet('images', key);
+    if (!isBlobLike(blob) || !blob.size) return '';
+    const url = URL.createObjectURL(blob);
+    localImageUrls.set(key, url);
+    return url;
+  }
+
+  function syncCustomImageToLists(id, image, imageKey) {
+    if (!id) return;
+    for (const name of ['watched', 'planned']) {
+      for (const t of TIER_IDS) {
+        for (const item of state.lists[name][t] || []) {
+          if (item && item.id === id) {
+            if (imageKey && !item.imageKey) item.imageKey = imageKey;
+            if (image && !isDataImageUrl(image)) item.image = image;
+          }
+        }
+      }
+    }
+  }
+
+  async function hydrateCardThumbnails(cards) {
+    const list = Array.isArray(cards) ? cards : [];
+    let changed = false;
+    for (const card of list) {
+      const key = String((card && (card.imageKey || customThumbKey(card))) || '').trim();
+      if (!key || !card || isDataImageUrl(card.image)) continue;
+      const url = await hydrateLocalImage(key);
+      if (url && card.image !== url) { card.image = url; changed = true; }
+      if (key && !card.imageKey) { card.imageKey = key; changed = true; }
+      if (card.id && (card.image || card.imageKey)) syncCustomImageToLists(card.id, card.image, card.imageKey);
+    }
+    return changed;
+  }
+
+  async function hydrateMomentThumbnails() {
+    let changed = false;
+    for (const list of Object.values(state.moments || {})) {
+      if (!Array.isArray(list)) continue;
+      for (const moment of list) {
+        if (!moment || !moment.thumbKey || /^https?:\/\//i.test(moment.thumb || '')) continue;
+        const url = await hydrateLocalImage(moment.thumbKey);
+        if (url && moment.thumb !== url) { moment.thumb = url; changed = true; }
+      }
+    }
+    return changed;
+  }
+
+  async function migrateLocalThumbnails() {
+    if (typeof indexedDB === 'undefined') return { migratedCards: 0, migratedMoments: 0 };
+    let migratedCards = 0;
+    let migratedMoments = 0;
+    let changed = false;
+
+    for (const card of state.customCards || []) {
+      if (!card) continue;
+      const key = customThumbKey(card);
+      if (!key) continue;
+      if (isDataImageUrl(card.image) && !card.imageKey) {
+        try {
+          const blob = await dataUrlToBlob(card.image);
+          const stored = await mediaPut('images', key, blob);
+          if (stored) {
+            card.imageKey = key;
+            setLocalImageUrl(key, card.image);
+            migratedCards += 1;
+            changed = true;
+          }
+        } catch (err) {
+          console.warn('custom thumb migrate', err);
+        }
+      } else if (!card.imageKey && key) {
+        card.imageKey = key;
+      }
+      if (card.imageKey && !isDataImageUrl(card.image)) {
+        const url = await hydrateLocalImage(card.imageKey);
+        if (url) card.image = url;
+      }
+    }
+
+    for (const [animeId, list] of Object.entries(state.moments || {})) {
+      if (!Array.isArray(list)) continue;
+      for (const moment of list) {
+        if (!moment) continue;
+        if (isDataImageUrl(moment.thumb) && !moment.thumbKey) {
+          const key = momentThumbKey(moment);
+          try {
+            const blob = await dataUrlToBlob(moment.thumb);
+            const stored = await mediaPut('images', key, blob);
+            if (stored) {
+              moment.thumbKey = key;
+              setLocalImageUrl(key, moment.thumb);
+              migratedMoments += 1;
+              changed = true;
+            }
+          } catch (err) {
+            console.warn('moment thumb migrate', err);
+          }
+        } else if (moment.thumbKey && !/^https?:\/\//i.test(moment.thumb || '')) {
+          const url = await hydrateLocalImage(moment.thumbKey);
+          if (url) moment.thumb = url;
+        }
+      }
+      void animeId;
+    }
+
+    if (changed) {
+      saveStateNow();
+      saveMoments();
+    }
+    await hydrateCardThumbnails(allIn('watched'));
+    await hydrateCardThumbnails(allIn('planned'));
+    await hydrateCardThumbnails(state.customCards);
+    await hydrateMomentThumbnails();
+    return { migratedCards, migratedMoments };
+  }
+
   async function mediaEntries() {
     const db = await openMediaDB();
     if (!db) throw new Error('Хранилище медиа недоступно.');
@@ -10503,6 +10682,19 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     return quota;
   }
 
+  function serializeCustomCard(card) {
+    const out = { ...card };
+    if (isDataImageUrl(out.image) && out.imageKey) out.image = '';
+    if (!out.imageKey) delete out.imageKey;
+    return out;
+  }
+
+  function serializeTierMap(tiers) {
+    const out = {};
+    for (const t of TIER_IDS) out[t] = (tiers && tiers[t] ? tiers[t] : []).map(snapshotAnime);
+    return out;
+  }
+
   function buildStatePayload() {
     const epInfo = {};
     const cutoff = Date.now() - 7 * 86400000;
@@ -10511,9 +10703,9 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     }
     return {
       schemaVersion: SCHEMA_VERSION,
-      watched: state.lists.watched,
-      planned: state.lists.planned,
-      customCards: state.customCards,
+      watched: serializeTierMap(state.lists.watched),
+      planned: serializeTierMap(state.lists.planned),
+      customCards: (state.customCards || []).map(serializeCustomCard),
       progress: state.progress,
       epInfo,
       seenNotifications: [...state.seenNotifications],
@@ -10844,6 +11036,18 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     posterCachedUrl,
     markPosterCached,
     prunePosters,
+    isDataImageUrl,
+    dataUrlToBlob,
+    customThumbKey,
+    momentThumbKey,
+    setLocalImageUrl,
+    hydrateLocalImage,
+    hydrateCardThumbnails,
+    hydrateMomentThumbnails,
+    migrateLocalThumbnails,
+    serializeCustomCard,
+    serializeMoment,
+    serializeMomentsMap,
     migrateState,
     buildStatePayload,
     loadState,
@@ -16204,6 +16408,12 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     momentsFor,
     buildBackupPayload,
     applyBackupData,
+    migrateLocalThumbnails,
+    customThumbKey,
+    momentThumbKey,
+    dataUrlToBlob,
+    setLocalImageUrl,
+    isDataImageUrl,
     mediaPut,
     mediaGet,
     mediaDelete,
@@ -16788,11 +16998,20 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       const id = existing ? existing.id : nextCustomId();
       const customId = existing ? existing.customId : newUid();
       let image = existing ? existing.image : '';
+      let imageKey = existing ? String(existing.imageKey || '') : '';
 
       if (file) {
         try { image = await makeImageThumbnail(file); } catch { image = existing ? existing.image : ''; }
         const stored = await mediaPut('images', customId, file);
         if (!stored) toast('Полный постер не сохранился — останется миниатюра');
+        if (image && isDataImageUrl(image)) {
+          imageKey = customThumbKey({ customId, id }) || `custom:${customId}:thumb`;
+          try {
+            const thumbBlob = await dataUrlToBlob(image);
+            await mediaPut('images', imageKey, thumbBlob);
+            setLocalImageUrl(imageKey, image);
+          } catch { /* миниатюра останется в памяти до перезагрузки */ }
+        }
       }
 
       const genres = String(data.get('genres') || '')
@@ -16808,6 +17027,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
         altTitle: String(data.get('altTitle') || '').trim(),
         originalTitle: String(data.get('altTitle') || '').trim(),
         image,
+        imageKey,
         year: Number(data.get('year')) || null,
         episodes: Number(data.get('episodes')) || null,
         type: String(data.get('type') || ''),
@@ -16844,8 +17064,11 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     if (!window.confirm(`Удалить «${card.title}» из своих карточек и списков?`)) return;
     for (const moment of momentsFor(id)) {
       if (moment.mediaKey) await mediaDelete('media', moment.mediaKey);
+      if (moment.thumbKey) await mediaDelete('images', moment.thumbKey);
     }
     await mediaDelete('images', card.customId);
+    if (card.imageKey) await mediaDelete('images', card.imageKey);
+    await mediaDelete('images', customThumbKey(card));
     deleteCustomCard(id);
     closeModal();
     toast('Карточка удалена');
@@ -16853,7 +17076,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
 
   async function hydrateCustomImage(id) {
     const card = getCustomCard(id);
-    if (!card || !card.customId || !card.image) return;
+    if (!card || !card.customId) return;
     const blob = await mediaGet('images', card.customId);
     if (!blob || state.modalId !== id) return;
     const img = $('#modal-content .modal-poster img');
@@ -17049,13 +17272,23 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       const stored = await mediaPut('media', mediaKey, file);
       if (!stored) throw new Error('Браузер не смог сохранить файл. Попробуйте файл меньше.');
       let thumb = '';
+      let thumbKey = '';
       try { thumb = await makeFileThumbnail(file); } catch { thumb = ''; }
+      if (thumb && isDataImageUrl(thumb)) {
+        thumbKey = momentThumbKey({ id: mediaKey }) || `moment:${mediaKey}:thumb`;
+        try {
+          const thumbBlob = await dataUrlToBlob(thumb);
+          await mediaPut('images', thumbKey, thumbBlob);
+          setLocalImageUrl(thumbKey, thumb);
+        } catch { thumbKey = ''; }
+      }
       addMoment(animeId, {
         id: mediaKey,
         kind: isGif ? 'gif' : 'video',
         title,
         mediaKey,
         thumb,
+        thumbKey,
         mime: file.type || '',
         size: file.size,
         createdAt: Date.now(),
@@ -17513,10 +17746,12 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     }
   }
 
-  async function removeMomentAction(animeId, momentId) {    const moment = findMoment(animeId, momentId);
+  async function removeMomentAction(animeId, momentId) {
+    const moment = findMoment(animeId, momentId);
     if (!moment) return;
     if (!window.confirm('Удалить этот момент?')) return;
     if (moment.mediaKey) await mediaDelete('media', moment.mediaKey);
+    if (moment.thumbKey) await mediaDelete('images', moment.thumbKey);
     removeMoment(animeId, momentId);
     renderModal();
     toast('Момент удалён');
@@ -19632,6 +19867,9 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     }
     loadState();
     loadMoments();
+    migrateLocalThumbnails().then((res) => {
+      if (res && (res.migratedCards || res.migratedMoments)) refreshViews();
+    }).catch((err) => console.warn('migrateLocalThumbnails', err));
     renderSearchHistory();
     if (typeof App.applyAppearance === 'function') App.applyAppearance();
     initFilterOptions();

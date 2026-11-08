@@ -111,4 +111,67 @@
       app.close();
     }
   });
+
+  T.test('storage: миграция миниатюр карточек и моментов в IndexedDB', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const App = app.win.AniTier;
+      if (typeof app.win.indexedDB === 'undefined') return;
+      const img = 'data:image/jpeg;base64,' + btoa('thumb');
+      const rawState = {
+        schemaVersion: 1,
+        watched: { S: [], A: [{ id: -1, customId: 'c1', custom: true, title: 'Карточка', image: img, imageKey: '' }], B: [], C: [], D: [], F: [], N: [] },
+        planned: { S: [], A: [], B: [], C: [], D: [], F: [], N: [] },
+        customCards: [{ id: -1, customId: 'c1', custom: true, title: 'Карточка', image: img }],
+        progress: {}, epInfo: {}, seenNotifications: [],
+        settings: App.normalizeSettings(null),
+        listViews: { watched: {}, planned: {} },
+      };
+      const rawMoments = { '-1': [{ id: 'm1', kind: 'tiktok', url: 'https://www.tiktok.com/@u/video/7412345678901234567', title: 'М', thumb: img, createdAt: 1 }] };
+      app.win.localStorage.setItem(App.LS_KEY, JSON.stringify(rawState));
+      app.win.localStorage.setItem(App.MOMENTS_KEY, JSON.stringify(rawMoments));
+      App.loadState();
+      App.loadMoments();
+      const res = await App.migrateLocalThumbnails();
+      T.assert((res.migratedCards || 0) >= 1, 'мигрирована миниатюра карточки');
+      T.assert((res.migratedMoments || 0) >= 1, 'мигрирована миниатюра момента');
+
+      const savedState = JSON.parse(app.win.localStorage.getItem(App.LS_KEY) || '{}');
+      const stateText = JSON.stringify(savedState);
+      T.assert(!stateText.includes('data:image/jpeg;base64,thumb'), 'data URL карточки не хранится в localStorage');
+      T.assert(savedState.customCards && savedState.customCards[0] && savedState.customCards[0].imageKey, 'сохранён ключ миниатюры карточки');
+
+      const savedMoments = JSON.parse(app.win.localStorage.getItem(App.MOMENTS_KEY) || '{}');
+      const momentsText = JSON.stringify(savedMoments);
+      T.assert(!momentsText.includes('data:image/jpeg;base64,thumb'), 'data URL момента не хранится в localStorage');
+      T.eq(savedMoments['-1'][0].thumbKey, 'moment:m1:thumb', 'сохранён ключ миниатюры момента');
+
+      T.assert(App.state.customCards[0].image, 'миниатюра карточки доступна в памяти после миграции');
+      T.assert(App.momentsFor(-1)[0].thumb, 'миниатюра момента доступна в памяти после миграции');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('storage: сериализация не кладёт data URL миниатюр в localStorage при наличии ключей', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const App = app.win.AniTier;
+      const card = {
+        id: -2, customId: 'c2', custom: true, title: 'К2',
+        image: 'data:image/png;base64,AAAA', imageKey: 'custom:c2:thumb',
+        genres: [], createdAt: 1, updatedAt: 1,
+      };
+      const serialized = App.serializeCustomCard(card);
+      T.eq(serialized.image, '', 'data URL не сериализуется при наличии ключа');
+      T.eq(serialized.imageKey, 'custom:c2:thumb', 'ключ сохранён');
+
+      App.state.customCards = [App.normalizeCustomCard(card)];
+      App.flushStateSave();
+      const saved = JSON.parse(app.win.localStorage.getItem(App.LS_KEY) || '{}');
+      T.assert(!JSON.stringify(saved).includes('data:image/png;base64,AAAA'), 'localStorage не содержит data URL');
+    } finally {
+      app.close();
+    }
+  });
 })();
