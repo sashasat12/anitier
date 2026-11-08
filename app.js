@@ -2111,6 +2111,692 @@
   }
   window.bindModalSwipe = bindModalSwipe;
 
+  /* Реестр действий: data-action → обработчик. Новое действие — одна строка. */
+  const ACTION_HANDLERS = {
+    tab({ e, el }) {
+      e.preventDefault();
+      switchTab(el.dataset.tab);
+    },
+
+    open({ e, id }) {
+      if (e.target.closest('button')) return;
+      if (id != null) {
+        openModal(id);
+        translateModalSynopsis(id);
+      }
+    },
+
+    'synopsis-mode'({ el, id }) {
+      if (id == null || !['translated', 'original'].includes(el.dataset.mode)) return;
+      const anime = getAnime(id);
+      if (!anime) return;
+      if (el.dataset.mode === 'translated' && !cachedTranslation(anime.synopsis, state.settings.translationProvider || 'auto')) return;
+      state.synopsisModes.set(id, el.dataset.mode);
+      renderModal();
+    },
+
+    'translate-synopsis'({ id }) {
+      if (id != null) translateModalSynopsis(id);
+    },
+
+    'tiktok-search'({ id }) {
+      const anime = getAnime(id);
+      const query = anime ? [anime.title, anime.altTitle].filter(Boolean).join(' ') : '';
+      if (query) openTikTokSearch(query);
+    },
+
+    'moment-open-tiktok'({ el, id }) {
+      const moment = findMoment(id, el.dataset.moment);
+      if (moment) openTikTokUrl(moment.url);
+    },
+
+    'tiktok-import-open-video'() {
+      openTikTokUrl(state.tiktokImport.url);
+    },
+
+    'tiktok-import-save'({ id }) {
+      saveSharedTikTok(id);
+    },
+
+    'close-tiktok-import'() {
+      closeTikTokImport();
+    },
+
+    'add-watched'({ id }) {
+      toggleList('watched', getAnime(id));
+    },
+
+    'quick-close'() {
+      closeQuickMenu();
+    },
+
+    'quick-open'({ id }) {
+      closeQuickMenu();
+      openModal(id);
+    },
+
+    'quick-watched'({ id }) {
+      toggleList('watched', getAnime(id));
+      closeQuickMenu();
+    },
+
+    'quick-planned'({ id }) {
+      toggleList('planned', getAnime(id));
+      closeQuickMenu();
+    },
+
+    'add-planned'({ id }) {
+      toggleList('planned', getAnime(id));
+    },
+
+    remove({ el, id }) {
+      const list = el.dataset.list || (hasIn('planned', id) ? 'planned' : 'watched');
+      const anime = getAnime(id);
+      const tier = findTier(list, id) || 'N';
+      if (removeFromList(list, id)) {
+        toast('Тайтл убран из тир-листа', {
+          actionLabel: 'Отменить',
+          duration: 5000,
+          onAction: () => { if (anime) addToList(list, anime, tier, true); },
+        });
+      }
+    },
+
+    'set-tier'({ el, id }) {
+      const a = getAnime(id);
+      if (!a) return;
+      const tier = el.dataset.tier;
+      if (!hasIn('watched', id) && !hasIn('planned', id)) {
+        addToList('watched', a, tier);
+      } else {
+        const list = hasIn('watched', id) ? 'watched' : 'planned';
+        moveToTier(list, id, tier);
+      }
+    },
+
+    'retry-franchise'({ id }) {
+      state.franchiseById.delete(id);
+      state.franchiseErrors.delete(id);
+      if (state.franchiseFullById) state.franchiseFullById.delete(id);
+      if (state.franchiseFullLoading) state.franchiseFullLoading.delete(id);
+      renderModal();
+    },
+
+    'franchise-full'({ id }) {
+      const anime = getAnime(id);
+      if (!anime) return;
+      if (!state.franchiseFullLoading) state.franchiseFullLoading = new Set();
+      if (state.franchiseFullLoading.has(id)) return;
+      state.franchiseFullLoading.add(id);
+      renderModal();
+      Promise.resolve((App.fetchAnimeFranchise || App.fetchAnimeRelations)(anime, { depth: 2 }))
+        .then(relations => {
+          const allowed = new Set(['PREQUEL', 'SEQUEL', 'PARENT', 'SIDE_STORY', 'SPIN_OFF', 'SUMMARY', 'ALTERNATIVE', 'ALTERNATIVE_SETTING', 'ADAPTATION', 'CHARACTER', 'OTHER']);
+          const seen = new Set();
+          const links = [];
+          for (const relation of Array.isArray(relations) ? relations : []) {
+            if (!relation || !relation.anime) continue;
+            if (relation.anime.id === anime.id) continue;
+            if (seen.has(relation.anime.id)) continue;
+            seen.add(relation.anime.id);
+            links.push({ relationType: relation.relationType, anime: relation.anime });
+          }
+          if (!state.franchiseFullById) state.franchiseFullById = new Map();
+          state.franchiseFullById.set(id, links);
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (state.franchiseFullLoading) state.franchiseFullLoading.delete(id);
+          if (state.modalId === id) renderModal();
+        });
+    },
+
+    'modal-tab'({ el }) {
+      switchModalTab(el.dataset.tab, { focus: true });
+    },
+
+    'franchise-more'({ id }) {
+      if (!state.franchiseExpanded) state.franchiseExpanded = new Set();
+      if (state.franchiseExpanded.has(id)) state.franchiseExpanded.delete(id);
+      else state.franchiseExpanded.add(id);
+      renderModal();
+    },
+
+    'toggle-ep'({ el, id }) {
+      const ep = Number(el.dataset.ep);
+      if (id != null && Number.isInteger(ep) && ep > 0) toggleEpisode(id, ep);
+    },
+
+    'ep-all'({ el, id }) {
+      const max = Number(el.dataset.max) || 0;
+      if (id != null && max > 0) {
+        const before = watchedList(id);
+        setWatchedUpTo(id, max, max);
+        toast(`Отмечены все ${max} ${epWord(max)}`, {
+          actionLabel: 'Отменить',
+          duration: 5000,
+          onAction: () => { restoreProgress(id, before); App.renderContinue(); },
+        });
+      }
+    },
+
+    'ep-reset'({ id }) {
+      if (id != null) {
+        const before = watchedList(id);
+        clearProgress(id);
+        toast('Прогресс серий сброшен', {
+          actionLabel: 'Отменить',
+          duration: 5000,
+          onAction: () => { restoreProgress(id, before); App.renderContinue(); },
+        });
+      }
+    },
+
+    'quick-watch'({ id }) {
+      if (id == null) return;
+      const anime = getAnime(id);
+      if (!anime) return;
+      const before = watchedList(id);
+      const stats = episodeStats(anime);
+      const max = stats.available || stats.total || 0;
+      const count = watchedCount(id);
+      if (!max) { toast('Не знаем, сколько серий у этого тайтла'); return; }
+      if (count >= max) { toast('Все известные серии уже отмечены'); return; }
+      setWatchedUpTo(id, count + 1, max);
+      App.renderContinue();
+      toast(`Отмечена ${count + 1}-я серия`, {
+        actionLabel: 'Отменить',
+        duration: 5000,
+        onAction: () => { restoreProgress(id, before); App.renderContinue(); },
+      });
+    },
+
+    'random-planned'() {
+      const items = listVisibleItems('planned');
+      const pick = C.randomItem(items);
+      if (!pick) { toast('В «Запланировано» нет тайтлов под текущие фильтры'); return; }
+      toast(`Выпало: «${pick.title}»`);
+      openModal(pick.id);
+    },
+
+    mode({ el }) {
+      const mode = el.dataset.mode;
+      if (!mode) return;
+      state.db.mode = mode;
+      state.db.query = '';
+      state.db.touched = true;
+      const input = $('#search-input');
+      if (input) input.value = '';
+      syncModeChips();
+      persistCatalogPreferences();
+      App.fetchDB(true);
+    },
+
+    'toggle-hide-mine'({ el }) {
+      state.db.hideMine = !state.db.hideMine;
+      el.classList.toggle('is-active', state.db.hideMine);
+      el.setAttribute('aria-pressed', state.db.hideMine ? 'true' : 'false');
+      persistCatalogPreferences();
+      App.fetchDB(true);
+    },
+
+    'toggle-filters'({ el }) {
+      const panel = $('#db-filters');
+      if (!panel) return;
+      panel.hidden = !panel.hidden;
+      el.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
+      if (panel.hidden) closeFilterMenus();
+    },
+
+    'db-more-menu'() {
+      toggleDBMoreMenu();
+    },
+
+    'toggle-upcoming-filters'({ el }) {
+      if (state.upcoming.view && state.upcoming.view.mine) return;
+      const panel = $('#upcoming-filters');
+      if (!panel) return;
+      panel.hidden = !panel.hidden;
+      el.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
+    },
+
+    'upcoming-more-menu'({ el }) {
+      const menu = $('#upcoming-more-menu');
+      if (!menu) return;
+      const willOpen = menu.hidden;
+      menu.hidden = !willOpen;
+      el.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    },
+
+    'list-more-menu'({ el }) {
+      const listKey = el.dataset.list;
+      if (!listKey) return;
+      $$('.list-more-menu').forEach(menu => { if (menu.dataset.listMenu !== listKey) menu.hidden = true; });
+      const menu = document.querySelector(`.list-more-menu[data-list-menu="${listKey}"]`);
+      const willOpen = menu ? menu.hidden : false;
+      if (menu) {
+        menu.hidden = !willOpen;
+        el.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+      }
+    },
+
+    'toggle-continue'() {
+      state.continueCollapsed = !state.continueCollapsed;
+      syncContinueToggle();
+    },
+
+    'filter-menu'({ el }) {
+      const key = el.dataset.filterMenu;
+      const menu = document.querySelector(`[data-filter-panel="${key}"]`);
+      const willOpen = menu ? menu.hidden : false;
+      closeFilterMenus();
+      if (menu && willOpen) {
+        menu.hidden = false;
+        el.setAttribute('aria-expanded', 'true');
+        if (key === 'tags') {
+          /* Поиск и скрытые пункты — состояние прошлого открытия,
+             поэтому меню каждый раз начинается с полного списка. */
+          const search = menu.querySelector('.filter-menu-search input');
+          if (search) search.value = '';
+          menu.querySelectorAll('.filter-option, .filter-menu-group').forEach(item => { item.hidden = false; });
+          const scroll = menu.querySelector('.filter-menu-scroll');
+          if (scroll) scroll.scrollTop = 0;
+
+          const field = el.closest('.filter-field');
+          if (field && !document.body.classList.contains('mobile-app')) {
+            const rect = field.getBoundingClientRect();
+            const width = Math.min(320, window.innerWidth - 24);
+            const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12));
+            menu.style.width = `${width}px`;
+            menu.style.left = `${left - rect.left}px`;
+            menu.style.right = 'auto';
+          } else {
+            /* На телефоне меню — шторка над навигацией: размеры задаёт CSS. */
+            menu.style.removeProperty('width');
+            menu.style.removeProperty('left');
+            menu.style.removeProperty('right');
+          }
+        }
+        if (key !== 'tags') {
+          const first = menu.querySelector('input:not([type="hidden"])');
+          if (first) first.focus({ preventScroll: true });
+        }
+      }
+    },
+
+    'reset-filters'() {
+      resetDBFilters();
+      state.db.touched = true;
+      syncModeChips();
+      persistCatalogPreferences();
+      App.fetchDB(true);
+    },
+
+    'load-more'() {
+      App.fetchDB();
+    },
+
+    refresh() {
+      refreshCurrent();
+    },
+
+    'refresh-notifications'() {
+      App.fetchNotifications(true, { reload: true });
+    },
+
+    'release-notifications'() {
+      toggleReleaseNotifications();
+    },
+
+    'notif-tab'({ el }) {
+      if (C.NOTIF_TABS.includes(el.dataset.notifTab)) {
+        state.notifications.tab = el.dataset.notifTab;
+        state.notifications.tabTouched = true;
+        renderNotifications();
+      }
+    },
+
+    'refresh-upcoming'() {
+      App.fetchUpcoming(true, { reload: true });
+    },
+
+    'retry-db'() {
+      App.fetchDB(true, { reload: true });
+    },
+
+    'retry-notifications'() {
+      App.fetchNotifications(true, { reload: true });
+    },
+
+    'retry-upcoming'() {
+      App.fetchUpcoming(true, { reload: true });
+    },
+
+    'reset-upcoming'() {
+      const view = state.upcoming.view || (state.upcoming.view = {});
+      const mine = Boolean(view.mine);
+      view.query = '';
+      if (!mine) {
+        view.filters = C.normalizeFilters(C.DEFAULT_FILTERS);
+        view.month = '';
+        view.sort = 'date';
+      }
+      view.mine = mine;
+      const search = $('#upcoming-search');
+      if (search) search.value = '';
+      App.renderUpcoming();
+    },
+
+    'toggle-upcoming-mine'() {
+      if (!state.upcoming.view) state.upcoming.view = {};
+      state.upcoming.view.mine = !state.upcoming.view.mine;
+      const upPanel = $('#upcoming-filters');
+      if (upPanel && state.upcoming.view.mine) upPanel.hidden = true;
+      App.renderUpcoming();
+    },
+
+    'export-ics'() {
+      const items = C.buildCalendarItems(state.notifications, state.epInfo);
+      if (!items.length) { toast('Ближайших серий нет — нечего сохранять'); return; }
+      const text = C.buildIcs(items);
+      downloadText(text, 'anitier-episodes.ics', 'text/calendar');
+      toast(`Календарь сохранён: ${items.length} ${plural(items.length, 'серия', 'серии', 'серий')}`);
+    },
+
+    'toggle-list-filters'({ el }) {
+      const name = el.dataset.list === 'planned' ? 'planned' : 'watched';
+      const panel = document.getElementById('list-filters-' + name);
+      if (!panel) return;
+      panel.hidden = !panel.hidden;
+      el.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
+      el.classList.toggle('is-active', !panel.hidden || C.countActiveFilters(C.normalizeFilters((state.listViews[name] || {}).filters)) > 0);
+    },
+
+    'reset-list'({ el }) {
+      const name = el.dataset.list === 'planned' ? 'planned' : 'watched';
+      const previous = state.listViews[name] || {};
+      state.listViews[name] = {
+        query: '',
+        filters: C.normalizeFilters(C.DEFAULT_FILTERS),
+        sort: C.normalizeListSort(previous.sort),
+      };
+      saveState();
+      renderTierList(name);
+    },
+
+    'retry-all'() {
+      retryAll();
+    },
+
+    'close-modal'() {
+      closeModal();
+    },
+
+    'open-backup'() {
+      closeSettings();
+      openBackup();
+    },
+
+    'open-settings'() {
+      openSettings();
+    },
+
+    'open-stats'() {
+      openStats();
+    },
+
+    'close-stats'() {
+      closeStats();
+    },
+
+    'open-command'() {
+      openCommand();
+    },
+
+    'close-command'() {
+      closeCommand();
+    },
+
+    'command-open'({ el }) {
+      openCommandResult(Number(el.dataset.index));
+    },
+
+    'close-settings'() {
+      closeSettings();
+    },
+
+    'check-updates'() {
+      checkForUpdates();
+    },
+
+    'update-allow'() {
+      state.settings.updateCheck = 'on';
+      state.settings.lastUpdateCheck = 0;
+      state.updateCard = null;
+      saveState();
+      renderUpdateCard();
+      toast('Проверяем обновления…');
+      autoCheckUpdates({ announce: true });
+    },
+
+    'update-deny'() {
+      state.settings.updateCheck = 'off';
+      state.updateCard = null;
+      saveState();
+      renderUpdateCard();
+    },
+
+    'dismiss-update'() {
+      if (state.updateCard && state.updateCard.mode === 'ask') {
+        state.settings.updateCheck = 'off';
+        saveState();
+      }
+      state.updateCard = null;
+      renderUpdateCard();
+    },
+
+    'open-update'() {
+      if (state.updateCard && state.updateCard.url) openExternalLink(state.updateCard.url);
+      state.updateCard = null;
+      renderUpdateCard();
+    },
+
+    'open-changelog'() {
+      state.settingsScreen.view = 'changelog';
+      renderSettings();
+      const panel = $('#settings-panel');
+      if (panel) panel.scrollTop = 0;
+    },
+
+    'settings-back'() {
+      state.settingsScreen.view = 'main';
+      renderSettings();
+      const panel = $('#settings-panel');
+      if (panel) panel.scrollTop = 0;
+    },
+
+    'open-link'({ el }) {
+      openExternalLink(el.dataset.url);
+    },
+
+    'open-exchange'() {
+      closeSettings();
+      openExchange('export', state.tab === 'planned' ? 'planned' : 'watched');
+    },
+
+    'close-backup'() {
+      closeBackup();
+    },
+
+    'backup-download'() {
+      saveBackupFile();
+    },
+
+    'media-export'() {
+      exportMediaFile();
+    },
+
+    'backup-drive-save'() {
+      saveBackupToDrive();
+    },
+
+    'backup-drive-load'() {
+      restoreFromDrive();
+    },
+
+    'new-custom'() {
+      openCustomForm();
+    },
+
+    'edit-custom'({ id }) {
+      openCustomForm(id);
+    },
+
+    'delete-custom'({ id }) {
+      removeCustomCard(id);
+    },
+
+    'close-custom'() {
+      closeCustomForm();
+    },
+
+    'moment-add'({ id }) {
+      openMomentForm(id);
+    },
+
+    'close-moment'() {
+      closeMomentForm();
+    },
+
+    'moment-mode'({ el }) {
+      captureMomentDraft();
+      state.momentForm.mode = el.dataset.mode === 'file' ? 'file' : 'tiktok';
+      state.momentForm.error = '';
+      renderMomentForm();
+    },
+
+    'moment-play'({ el, id }) {
+      playMoment(id, el.dataset.moment, el);
+    },
+
+    'moment-share'({ el, id }) {
+      shareMoment(id, el.dataset.moment);
+    },
+
+    'moment-delete'({ el, id }) {
+      removeMomentAction(id, el.dataset.moment);
+    },
+
+    'exchange-export'({ el }) {
+      openExchange('export', el.dataset.list || state.tab);
+    },
+
+    'exchange-import'() {
+      openExchange('import', state.tab);
+    },
+
+    'exchange-mode'({ el }) {
+      setExchangeMode(el.dataset.mode);
+    },
+
+    'exchange-import-pick'({ el }) {
+      const input = $('#import-list-file');
+      if (!input) return;
+      state.exchange.importSource = el.dataset.source === 'mal' ? 'mal' : 'shikimori';
+      input.value = '';
+      input.click();
+    },
+
+    'exchange-import-confirm'() {
+      confirmImportList();
+    },
+
+    'exchange-import-cancel'() {
+      cancelImportList();
+    },
+
+    'exchange-list'({ el }) {
+      switchExchangeList(el.dataset.list);
+    },
+
+    'exchange-copy'() {
+      copyShareCode();
+    },
+
+    'tier-png'({ el }) {
+      exportTierPng(el.dataset.list || state.exchange.list);
+    },
+
+    'exchange-parse'() {
+      parseImportCode();
+    },
+
+    'exchange-clear'() {
+      clearExchangeCode();
+    },
+
+    'exchange-filter'({ el }) {
+      state.exchange.filter = el.dataset.filter || 'all';
+      renderExchange();
+    },
+
+    'exchange-add'({ id }) {
+      addExchangeItem(id);
+    },
+
+    'close-exchange'() {
+      closeExchange();
+    },
+
+    'random-db'() {
+      const pool = state.db.items.filter(Boolean);
+      if (!pool.length) {
+        toast('Сначала загрузите базу');
+        return;
+      }
+      openModal(pool[Math.floor(Math.random() * pool.length)].id);
+    },
+
+    'find-tag'({ el }) {
+      findSimilarByTags([el.dataset.tag]);
+    },
+
+    'find-genre'({ el }) {
+      findSimilarByGenre(el.dataset.genre);
+    },
+
+    'clear-tag-filter'() {
+      state.db.filters = C.normalizeFilters({ ...state.db.filters, tags: [] });
+      state.db.touched = true;
+      syncFilterUI();
+      persistCatalogPreferences();
+      App.fetchDB(true);
+      closeFilterMenus();
+    },
+
+    'stats-find-genre'({ el }) {
+      if (typeof closeStats === 'function') closeStats();
+      findSimilarByGenre(el.dataset.genre);
+    },
+
+    'stats-find-tag'({ el }) {
+      if (typeof closeStats === 'function') closeStats();
+      findSimilarByTags([el.dataset.tag]);
+    },
+
+    'find-similar'({ id }) {
+      const anime = getAnime(id);
+      findSimilarByTags(anime && Array.isArray(anime.tags) ? anime.tags.slice(0, 2) : []);
+    },
+
+    'find-more'() {
+      switchTab('db');
+      setTimeout(() => {
+        const input = $('#search-input');
+        if (input) { input.focus(); input.select(); }
+      }, 80);
+    },
+  };
   function bindEvents() {
     if (eventsBound) return;
     eventsBound = true;
@@ -2149,723 +2835,9 @@
       const action = el.dataset.action;
       const id = el.dataset.id != null ? Number(el.dataset.id) : null;
 
-      switch (action) {
-        case 'tab':
-          e.preventDefault();
-          switchTab(el.dataset.tab);
-          break;
-
-        case 'open':
-          if (e.target.closest('button')) return;
-          if (id != null) {
-            openModal(id);
-            translateModalSynopsis(id);
-          }
-          break;
-
-        case 'synopsis-mode': {
-          if (id == null || !['translated', 'original'].includes(el.dataset.mode)) break;
-          const anime = getAnime(id);
-          if (!anime) break;
-          if (el.dataset.mode === 'translated' && !cachedTranslation(anime.synopsis, state.settings.translationProvider || 'auto')) break;
-          state.synopsisModes.set(id, el.dataset.mode);
-          renderModal();
-          break;
-        }
-
-        case 'translate-synopsis':
-          if (id != null) translateModalSynopsis(id);
-          break;
-
-        case 'tiktok-search': {
-          const anime = getAnime(id);
-          const query = anime ? [anime.title, anime.altTitle].filter(Boolean).join(' ') : '';
-          if (query) openTikTokSearch(query);
-          break;
-        }
-
-        case 'moment-open-tiktok': {
-          const moment = findMoment(id, el.dataset.moment);
-          if (moment) openTikTokUrl(moment.url);
-          break;
-        }
-
-        case 'tiktok-import-open-video':
-          openTikTokUrl(state.tiktokImport.url);
-          break;
-
-        case 'tiktok-import-save':
-          saveSharedTikTok(id);
-          break;
-
-        case 'close-tiktok-import':
-          closeTikTokImport();
-          break;
-
-        case 'add-watched':
-          toggleList('watched', getAnime(id));
-          break;
-
-        case 'quick-close':
-          closeQuickMenu();
-          break;
-
-        case 'quick-open':
-          closeQuickMenu();
-          openModal(id);
-          break;
-
-        case 'quick-watched':
-          toggleList('watched', getAnime(id));
-          closeQuickMenu();
-          break;
-
-        case 'quick-planned':
-          toggleList('planned', getAnime(id));
-          closeQuickMenu();
-          break;
-
-        case 'add-planned':
-          toggleList('planned', getAnime(id));
-          break;
-
-        case 'remove': {
-          const list = el.dataset.list || (hasIn('planned', id) ? 'planned' : 'watched');
-          const anime = getAnime(id);
-          const tier = findTier(list, id) || 'N';
-          if (removeFromList(list, id)) {
-            toast('Тайтл убран из тир-листа', {
-              actionLabel: 'Отменить',
-              duration: 5000,
-              onAction: () => { if (anime) addToList(list, anime, tier, true); },
-            });
-          }
-          break;
-        }
-
-        case 'set-tier': {
-          const a = getAnime(id);
-          if (!a) break;
-          const tier = el.dataset.tier;
-          if (!hasIn('watched', id) && !hasIn('planned', id)) {
-            addToList('watched', a, tier);
-          } else {
-            const list = hasIn('watched', id) ? 'watched' : 'planned';
-            moveToTier(list, id, tier);
-          }
-          break;
-        }
-
-        case 'retry-franchise':
-          state.franchiseById.delete(id);
-          state.franchiseErrors.delete(id);
-          if (state.franchiseFullById) state.franchiseFullById.delete(id);
-          if (state.franchiseFullLoading) state.franchiseFullLoading.delete(id);
-          renderModal();
-          break;
-
-        case 'franchise-full': {
-          const anime = getAnime(id);
-          if (!anime) break;
-          if (!state.franchiseFullLoading) state.franchiseFullLoading = new Set();
-          if (state.franchiseFullLoading.has(id)) break;
-          state.franchiseFullLoading.add(id);
-          renderModal();
-          Promise.resolve((App.fetchAnimeFranchise || App.fetchAnimeRelations)(anime, { depth: 2 }))
-            .then(relations => {
-              const allowed = new Set(['PREQUEL', 'SEQUEL', 'PARENT', 'SIDE_STORY', 'SPIN_OFF', 'SUMMARY', 'ALTERNATIVE', 'ALTERNATIVE_SETTING', 'ADAPTATION', 'CHARACTER', 'OTHER']);
-              const seen = new Set();
-              const links = [];
-              for (const relation of Array.isArray(relations) ? relations : []) {
-                if (!relation || !relation.anime) continue;
-                if (relation.anime.id === anime.id) continue;
-                if (seen.has(relation.anime.id)) continue;
-                seen.add(relation.anime.id);
-                links.push({ relationType: relation.relationType, anime: relation.anime });
-              }
-              if (!state.franchiseFullById) state.franchiseFullById = new Map();
-              state.franchiseFullById.set(id, links);
-            })
-            .catch(() => {})
-            .finally(() => {
-              if (state.franchiseFullLoading) state.franchiseFullLoading.delete(id);
-              if (state.modalId === id) renderModal();
-            });
-          break;
-        }
-
-        case 'modal-tab':
-          switchModalTab(el.dataset.tab, { focus: true });
-          break;
-
-        case 'franchise-more': {
-          if (!state.franchiseExpanded) state.franchiseExpanded = new Set();
-          if (state.franchiseExpanded.has(id)) state.franchiseExpanded.delete(id);
-          else state.franchiseExpanded.add(id);
-          renderModal();
-          break;
-        }
-
-        case 'toggle-ep': {
-          const ep = Number(el.dataset.ep);
-          if (id != null && Number.isInteger(ep) && ep > 0) toggleEpisode(id, ep);
-          break;
-        }
-
-        case 'ep-all': {
-          const max = Number(el.dataset.max) || 0;
-          if (id != null && max > 0) {
-            const before = watchedList(id);
-            setWatchedUpTo(id, max, max);
-            toast(`Отмечены все ${max} ${epWord(max)}`, {
-              actionLabel: 'Отменить',
-              duration: 5000,
-              onAction: () => { restoreProgress(id, before); App.renderContinue(); },
-            });
-          }
-          break;
-        }
-
-        case 'ep-reset':
-          if (id != null) {
-            const before = watchedList(id);
-            clearProgress(id);
-            toast('Прогресс серий сброшен', {
-              actionLabel: 'Отменить',
-              duration: 5000,
-              onAction: () => { restoreProgress(id, before); App.renderContinue(); },
-            });
-          }
-          break;
-
-        case 'quick-watch': {
-          if (id == null) break;
-          const anime = getAnime(id);
-          if (!anime) break;
-          const before = watchedList(id);
-          const stats = episodeStats(anime);
-          const max = stats.available || stats.total || 0;
-          const count = watchedCount(id);
-          if (!max) { toast('Не знаем, сколько серий у этого тайтла'); break; }
-          if (count >= max) { toast('Все известные серии уже отмечены'); break; }
-          setWatchedUpTo(id, count + 1, max);
-          App.renderContinue();
-          toast(`Отмечена ${count + 1}-я серия`, {
-            actionLabel: 'Отменить',
-            duration: 5000,
-            onAction: () => { restoreProgress(id, before); App.renderContinue(); },
-          });
-          break;
-        }
-
-        case 'random-planned': {
-          const items = listVisibleItems('planned');
-          const pick = C.randomItem(items);
-          if (!pick) { toast('В «Запланировано» нет тайтлов под текущие фильтры'); break; }
-          toast(`Выпало: «${pick.title}»`);
-          openModal(pick.id);
-          break;
-        }
-
-        case 'mode': {
-          const mode = el.dataset.mode;
-          if (!mode) break;
-          state.db.mode = mode;
-          state.db.query = '';
-          state.db.touched = true;
-          const input = $('#search-input');
-          if (input) input.value = '';
-          syncModeChips();
-          persistCatalogPreferences();
-          App.fetchDB(true);
-          break;
-        }
-
-        case 'toggle-hide-mine': {
-          state.db.hideMine = !state.db.hideMine;
-          el.classList.toggle('is-active', state.db.hideMine);
-          el.setAttribute('aria-pressed', state.db.hideMine ? 'true' : 'false');
-          persistCatalogPreferences();
-          App.fetchDB(true);
-          break;
-        }
-
-        case 'toggle-filters': {
-          const panel = $('#db-filters');
-          if (!panel) break;
-          panel.hidden = !panel.hidden;
-          el.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
-          if (panel.hidden) closeFilterMenus();
-          break;
-        }
-
-        case 'db-more-menu':
-          toggleDBMoreMenu();
-          break;
-
-        case 'toggle-upcoming-filters': {
-          if (state.upcoming.view && state.upcoming.view.mine) break;
-          const panel = $('#upcoming-filters');
-          if (!panel) break;
-          panel.hidden = !panel.hidden;
-          el.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
-          break;
-        }
-
-        case 'upcoming-more-menu': {
-          const menu = $('#upcoming-more-menu');
-          if (!menu) break;
-          const willOpen = menu.hidden;
-          menu.hidden = !willOpen;
-          el.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
-          break;
-        }
-
-        case 'list-more-menu': {
-          const listKey = el.dataset.list;
-          if (!listKey) break;
-          $$('.list-more-menu').forEach(menu => { if (menu.dataset.listMenu !== listKey) menu.hidden = true; });
-          const menu = document.querySelector(`.list-more-menu[data-list-menu="${listKey}"]`);
-          const willOpen = menu ? menu.hidden : false;
-          if (menu) {
-            menu.hidden = !willOpen;
-            el.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
-          }
-          break;
-        }
-
-        case 'toggle-continue': {
-          state.continueCollapsed = !state.continueCollapsed;
-          syncContinueToggle();
-          break;
-        }
-
-        case 'filter-menu': {
-          const key = el.dataset.filterMenu;
-          const menu = document.querySelector(`[data-filter-panel="${key}"]`);
-          const willOpen = menu ? menu.hidden : false;
-          closeFilterMenus();
-          if (menu && willOpen) {
-            menu.hidden = false;
-            el.setAttribute('aria-expanded', 'true');
-            if (key === 'tags') {
-              /* Поиск и скрытые пункты — состояние прошлого открытия,
-                 поэтому меню каждый раз начинается с полного списка. */
-              const search = menu.querySelector('.filter-menu-search input');
-              if (search) search.value = '';
-              menu.querySelectorAll('.filter-option, .filter-menu-group').forEach(item => { item.hidden = false; });
-              const scroll = menu.querySelector('.filter-menu-scroll');
-              if (scroll) scroll.scrollTop = 0;
-
-              const field = el.closest('.filter-field');
-              if (field && !document.body.classList.contains('mobile-app')) {
-                const rect = field.getBoundingClientRect();
-                const width = Math.min(320, window.innerWidth - 24);
-                const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12));
-                menu.style.width = `${width}px`;
-                menu.style.left = `${left - rect.left}px`;
-                menu.style.right = 'auto';
-              } else {
-                /* На телефоне меню — шторка над навигацией: размеры задаёт CSS. */
-                menu.style.removeProperty('width');
-                menu.style.removeProperty('left');
-                menu.style.removeProperty('right');
-              }
-            }
-            if (key !== 'tags') {
-              const first = menu.querySelector('input:not([type="hidden"])');
-              if (first) first.focus({ preventScroll: true });
-            }
-          }
-          break;
-        }
-
-        case 'reset-filters':
-          resetDBFilters();
-          state.db.touched = true;
-          syncModeChips();
-          persistCatalogPreferences();
-          App.fetchDB(true);
-          break;
-
-        case 'load-more':
-          App.fetchDB();
-          break;
-
-        case 'refresh':
-          refreshCurrent();
-          break;
-
-        case 'refresh-notifications':
-          App.fetchNotifications(true, { reload: true });
-          break;
-
-        case 'release-notifications':
-          toggleReleaseNotifications();
-          break;
-
-        case 'notif-tab':
-          if (C.NOTIF_TABS.includes(el.dataset.notifTab)) {
-            state.notifications.tab = el.dataset.notifTab;
-            state.notifications.tabTouched = true;
-            renderNotifications();
-          }
-          break;
-
-        case 'refresh-upcoming':
-          App.fetchUpcoming(true, { reload: true });
-          break;
-
-        case 'retry-db':
-          App.fetchDB(true, { reload: true });
-          break;
-
-        case 'retry-notifications':
-          App.fetchNotifications(true, { reload: true });
-          break;
-
-        case 'retry-upcoming':
-          App.fetchUpcoming(true, { reload: true });
-          break;
-
-        case 'reset-upcoming': {
-          const view = state.upcoming.view || (state.upcoming.view = {});
-          const mine = Boolean(view.mine);
-          view.query = '';
-          if (!mine) {
-            view.filters = C.normalizeFilters(C.DEFAULT_FILTERS);
-            view.month = '';
-            view.sort = 'date';
-          }
-          view.mine = mine;
-          const search = $('#upcoming-search');
-          if (search) search.value = '';
-          App.renderUpcoming();
-          break;
-        }
-
-        case 'toggle-upcoming-mine':
-          if (!state.upcoming.view) state.upcoming.view = {};
-          state.upcoming.view.mine = !state.upcoming.view.mine;
-          const upPanel = $('#upcoming-filters');
-          if (upPanel && state.upcoming.view.mine) upPanel.hidden = true;
-          App.renderUpcoming();
-          break;
-
-        case 'export-ics': {
-          const items = C.buildCalendarItems(state.notifications, state.epInfo);
-          if (!items.length) { toast('Ближайших серий нет — нечего сохранять'); break; }
-          const text = C.buildIcs(items);
-          downloadText(text, 'anitier-episodes.ics', 'text/calendar');
-          toast(`Календарь сохранён: ${items.length} ${plural(items.length, 'серия', 'серии', 'серий')}`);
-          break;
-        }
-
-        case 'toggle-list-filters': {
-          const name = el.dataset.list === 'planned' ? 'planned' : 'watched';
-          const panel = document.getElementById('list-filters-' + name);
-          if (!panel) break;
-          panel.hidden = !panel.hidden;
-          el.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
-          el.classList.toggle('is-active', !panel.hidden || C.countActiveFilters(C.normalizeFilters((state.listViews[name] || {}).filters)) > 0);
-          break;
-        }
-
-        case 'reset-list': {
-          const name = el.dataset.list === 'planned' ? 'planned' : 'watched';
-          const previous = state.listViews[name] || {};
-          state.listViews[name] = {
-            query: '',
-            filters: C.normalizeFilters(C.DEFAULT_FILTERS),
-            sort: C.normalizeListSort(previous.sort),
-          };
-          saveState();
-          renderTierList(name);
-          break;
-        }
-
-        case 'retry-all':
-          retryAll();
-          break;
-
-        case 'close-modal':
-          closeModal();
-          break;
-
-        case 'open-backup':
-          closeSettings();
-          openBackup();
-          break;
-
-        case 'open-settings':
-          openSettings();
-          break;
-
-        case 'open-stats':
-          openStats();
-          break;
-
-        case 'close-stats':
-          closeStats();
-          break;
-
-        case 'open-command':
-          openCommand();
-          break;
-
-        case 'close-command':
-          closeCommand();
-          break;
-
-        case 'command-open':
-          openCommandResult(Number(el.dataset.index));
-          break;
-
-        case 'close-settings':
-          closeSettings();
-          break;
-
-        case 'check-updates':
-          checkForUpdates();
-          break;
-
-        case 'update-allow':
-          state.settings.updateCheck = 'on';
-          state.settings.lastUpdateCheck = 0;
-          state.updateCard = null;
-          saveState();
-          renderUpdateCard();
-          toast('Проверяем обновления…');
-          autoCheckUpdates({ announce: true });
-          break;
-
-        case 'update-deny':
-          state.settings.updateCheck = 'off';
-          state.updateCard = null;
-          saveState();
-          renderUpdateCard();
-          break;
-
-        case 'dismiss-update':
-          if (state.updateCard && state.updateCard.mode === 'ask') {
-            state.settings.updateCheck = 'off';
-            saveState();
-          }
-          state.updateCard = null;
-          renderUpdateCard();
-          break;
-
-        case 'open-update':
-          if (state.updateCard && state.updateCard.url) openExternalLink(state.updateCard.url);
-          state.updateCard = null;
-          renderUpdateCard();
-          break;
-
-        case 'open-changelog':
-          state.settingsScreen.view = 'changelog';
-          renderSettings();
-          {
-            const panel = $('#settings-panel');
-            if (panel) panel.scrollTop = 0;
-          }
-          break;
-
-        case 'settings-back':
-          state.settingsScreen.view = 'main';
-          renderSettings();
-          {
-            const panel = $('#settings-panel');
-            if (panel) panel.scrollTop = 0;
-          }
-          break;
-
-        case 'open-link':
-          openExternalLink(el.dataset.url);
-          break;
-        case 'open-exchange':
-          closeSettings();
-          openExchange('export', state.tab === 'planned' ? 'planned' : 'watched');
-          break;
-
-        case 'close-backup':
-          closeBackup();
-          break;
-
-        case 'backup-download':
-          saveBackupFile();
-          break;
-
-        case 'media-export':
-          exportMediaFile();
-          break;
-
-        case 'backup-drive-save':
-          saveBackupToDrive();
-          break;
-
-        case 'backup-drive-load':
-          restoreFromDrive();
-          break;
-
-        case 'new-custom':
-          openCustomForm();
-          break;
-
-        case 'edit-custom':
-          openCustomForm(id);
-          break;
-
-        case 'delete-custom':
-          removeCustomCard(id);
-          break;
-
-        case 'close-custom':
-          closeCustomForm();
-          break;
-
-        case 'moment-add':
-          openMomentForm(id);
-          break;
-
-        case 'close-moment':
-          closeMomentForm();
-          break;
-
-        case 'moment-mode':
-          captureMomentDraft();
-          state.momentForm.mode = el.dataset.mode === 'file' ? 'file' : 'tiktok';
-          state.momentForm.error = '';
-          renderMomentForm();
-          break;
-
-        case 'moment-play':
-          playMoment(id, el.dataset.moment, el);
-          break;
-
-        case 'moment-share':
-          shareMoment(id, el.dataset.moment);
-          break;
-
-        case 'moment-delete':
-          removeMomentAction(id, el.dataset.moment);
-          break;
-
-        case 'exchange-export':
-          openExchange('export', el.dataset.list || state.tab);
-          break;
-
-        case 'exchange-import':
-          openExchange('import', state.tab);
-          break;
-
-        case 'exchange-mode':
-          setExchangeMode(el.dataset.mode);
-          break;
-
-        case 'exchange-import-pick': {
-          const input = $('#import-list-file');
-          if (!input) break;
-          state.exchange.importSource = el.dataset.source === 'mal' ? 'mal' : 'shikimori';
-          input.value = '';
-          input.click();
-          break;
-        }
-
-        case 'exchange-import-confirm':
-          confirmImportList();
-          break;
-
-        case 'exchange-import-cancel':
-          cancelImportList();
-          break;
-
-        case 'exchange-list':
-          switchExchangeList(el.dataset.list);
-          break;
-
-        case 'exchange-copy':
-          copyShareCode();
-          break;
-
-        case 'tier-png':
-          exportTierPng(el.dataset.list || state.exchange.list);
-          break;
-
-        case 'exchange-parse':
-          parseImportCode();
-          break;
-
-        case 'exchange-clear':
-          clearExchangeCode();
-          break;
-
-        case 'exchange-filter':
-          state.exchange.filter = el.dataset.filter || 'all';
-          renderExchange();
-          break;
-
-        case 'exchange-add':
-          addExchangeItem(id);
-          break;
-
-        case 'close-exchange':
-          closeExchange();
-          break;
-
-        case 'random-db': {
-          const pool = state.db.items.filter(Boolean);
-          if (!pool.length) {
-            toast('Сначала загрузите базу');
-            break;
-          }
-          openModal(pool[Math.floor(Math.random() * pool.length)].id);
-          break;
-        }
-
-        case 'find-tag':
-          findSimilarByTags([el.dataset.tag]);
-          break;
-
-        case 'find-genre':
-          findSimilarByGenre(el.dataset.genre);
-          break;
-
-        case 'clear-tag-filter':
-          state.db.filters = C.normalizeFilters({ ...state.db.filters, tags: [] });
-          state.db.touched = true;
-          syncFilterUI();
-          persistCatalogPreferences();
-          App.fetchDB(true);
-          closeFilterMenus();
-          break;
-
-        case 'stats-find-genre':
-          if (typeof closeStats === 'function') closeStats();
-          findSimilarByGenre(el.dataset.genre);
-          break;
-
-        case 'stats-find-tag':
-          if (typeof closeStats === 'function') closeStats();
-          findSimilarByTags([el.dataset.tag]);
-          break;
-
-        case 'find-similar': {
-          const anime = getAnime(id);
-          findSimilarByTags(anime && Array.isArray(anime.tags) ? anime.tags.slice(0, 2) : []);
-          break;
-        }
-
-        case 'find-more':
-          switchTab('db');
-          setTimeout(() => {
-            const input = $('#search-input');
-            if (input) { input.focus(); input.select(); }
-          }, 80);
-          break;
-
-        default:
-          break;
-      }
+      const handler = ACTION_HANDLERS[action];
+      if (handler) handler({ e, el, id, action });
+      else if (TEST_MODE) console.warn('AniTier: неизвестное действие', action);
     });
 
     document.addEventListener('submit', e => {
@@ -3825,6 +3797,7 @@
     const call = (name, local) => (...a) => (local || App[name] || (() => {}))(...a);
     window.__anitierTest = {
       state, init,
+      actionHandlers: ACTION_HANDLERS,
       fetchAniList: call('fetchAniList', typeof fetchAniList !== 'undefined' ? fetchAniList : undefined),
       fetchRussianTitles: call('fetchRussianTitles', App.fetchRussianTitles),
       enrichRussianTitles: call('enrichRussianTitles'),
