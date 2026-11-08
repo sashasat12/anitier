@@ -814,7 +814,8 @@
     }
 
     const sw = await (await fetch('../mobile/sw.js')).text();
-    T.assert(/const CACHE = 'anitier-mobile-v\d+';/.test(sw), 'В service worker задана версия кеша');
+    const cache = (sw.match(/const\s+CACHE\s*=\s*'([^']+)'/) || [])[1] || '';
+    T.assert(cache.includes(version), 'В service worker CACHE должна содержать версию ' + version);
   });
 
   T.test('core: группировка франшизы раскладывает части и сортирует по дате', () => {
@@ -893,5 +894,34 @@
       { relationType: 'PREQUEL', anime: { id: 2, title: 'С датой', airedFrom: '2019-01-01' } },
     ], { id: 3, title: 'Текущий', airedFrom: '2020-01-01' });
     T.eq(built.groups[0].list.map(link => link.anime.id).join(','), '2,3,1', 'Бездатные части в конце');
+  });
+
+
+  function collectAttrs(html, attr) {
+    const re = new RegExp(attr + "=(?:\"([^\"]+)\"|'([^']+)')", 'g');
+    const out = new Set();
+    let m;
+    while ((m = re.exec(String(html || '')))) out.add(m[1] || m[2]);
+    return [...out].filter(v => !v.includes('${')).sort();
+  }
+
+  T.test('разметка: id и data-action совпадают между desktop и mobile', async () => {
+    const [desktop, mobile] = await Promise.all([
+      fetch('../index.html').then(r => r.text()),
+      fetch('../mobile/index.html').then(r => r.text()),
+    ]);
+    const desktopActions = collectAttrs(desktop, 'data-action');
+    const mobileActions = collectAttrs(mobile, 'data-action');
+    T.eq(desktopActions, mobileActions, 'data-action различаются');
+
+    const ignoreIds = new Set(['g']); // id из SVG data URI favicon
+    const allowedOnlyDesktop = new Set(['footer-version']);
+    const allowedOnlyMobile = new Set(['install-app']);
+    const desktopIds = collectAttrs(desktop, 'id').filter(v => !ignoreIds.has(v));
+    const mobileIds = collectAttrs(mobile, 'id').filter(v => !ignoreIds.has(v));
+    const onlyDesktop = desktopIds.filter(v => !mobileIds.includes(v));
+    const onlyMobile = mobileIds.filter(v => !desktopIds.includes(v));
+    T.eq(onlyDesktop.filter(v => !allowedOnlyDesktop.has(v)), [], 'id только в desktop (неожиданные)');
+    T.eq(onlyMobile.filter(v => !allowedOnlyMobile.has(v)), [], 'id только в mobile (неожиданные)');
   });
 })();

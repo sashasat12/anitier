@@ -68,6 +68,14 @@ foreach ($html in @('index.html', (Join-Path 'mobile' 'index.html'))) {
   }
 }
 
+$swText = Read-Text (Join-Path $root 'mobile\sw.js')
+$swCache = [regex]::Match($swText, "const\s+CACHE\s*=\s*'([^']+)'").Groups[1].Value
+if (-not $swCache) {
+  $problems += 'mobile/sw.js: не найден CACHE'
+} elseif ($swCache -notmatch [regex]::Escape($version)) {
+  $problems += "mobile/sw.js: CACHE '$swCache' не содержит версию '$version'"
+}
+
 if ($problems.Count -gt 0) {
   foreach ($problem in $problems) {
     Write-Host "ПРОБЛЕМА: $problem" -ForegroundColor Red
@@ -88,8 +96,16 @@ Invoke-Script (Join-Path $root 'build-phone.ps1')
 Invoke-Script (Join-Path $root 'android\build-apk.ps1')
 
 $apkPath = Join-Path $root 'AniTier.apk'
+$phonePath = Join-Path $root 'AniTier-phone.html'
 if (-not (Test-Path $apkPath)) { throw 'AniTier.apk не собрался.' }
-Write-Host 'Артефакты готовы: AniTier-phone.html, AniTier.apk' -ForegroundColor Green
+if (-not (Test-Path $phonePath)) { throw 'AniTier-phone.html не собрался.' }
+$phoneText = Read-Text $phonePath
+if ($phoneText -notmatch [regex]::Escape($version)) {
+  throw "AniTier-phone.html не содержит версию $version — артефакт устарел."
+}
+$apkInfo = Get-Item $apkPath
+if ($apkInfo.Length -lt 1024) { throw 'AniTier.apk слишком мал — сборка повреждена.' }
+Write-Host 'Артефакты готовы и актуальны: AniTier-phone.html, AniTier.apk' -ForegroundColor Green
 
 # --- git: без флагов ничего не трогаем ---
 function Invoke-Git([string[]]$arguments) {
