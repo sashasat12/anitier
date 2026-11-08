@@ -2629,6 +2629,10 @@
           break;
         }
 
+        case 'translate-synopsis':
+          if (id != null) translateModalSynopsis(id);
+          break;
+
         case 'tiktok-search': {
           const anime = getAnime(id);
           const query = anime ? [anime.title, anime.altTitle].filter(Boolean).join(' ') : '';
@@ -4260,6 +4264,7 @@
     scrollPageBy,
     openExternalLink,
     renderSearchHistory,
+    translateModalSynopsis,
     init,
   });
 

@@ -1309,6 +1309,45 @@
     }
   });
 
+  T.test('app: описание переводится при любом открытии карточки', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      App.clearTranslationCache();
+      await win.__anitierTest.init();
+      let requests = 0;
+      win.fetch = async url => {
+        requests += 1;
+        const host = new URL(url).hostname;
+        if (host === 'api.mymemory.translated.net') {
+          return { ok: true, status: 200, json: async () => ({ responseStatus: 200, responseData: { translatedText: 'Перевод при открытии.' } }) };
+        }
+        throw new Error(`Неожиданный запрос: ${url}`);
+      };
+      const anime = App.mapAniList(rawAniList(9002, 'Open Path', {
+        idMal: 69002,
+        description: 'A story that should be translated on any open path.',
+      }));
+      const state = win.__anitierTest.state;
+      state.byId.set(anime.id, anime);
+      state.franchiseById.set(anime.id, []);
+      App.openModal(anime.id);
+      const started = Date.now();
+      while (Date.now() - started < 5000) {
+        const el = win.document.querySelector('.modal-synopsis');
+        if (el && el.textContent === 'Перевод при открытии.') break;
+        await new Promise(r => setTimeout(r, 40));
+      }
+      const el = win.document.querySelector('.modal-synopsis');
+      T.eq(el && el.textContent, 'Перевод при открытии.', `Автоперевод не запустился: modal=${win.__anitierTest.state.modalId} text=${el && el.textContent} req=${requests} hasFn=${typeof App.translateModalSynopsis}`);
+      T.assert(requests >= 1, 'Должен быть запрос перевода');
+    } finally {
+      app.win.AniTier.clearTranslationCache();
+      app.close();
+    }
+  });
+
   T.test('app: в описании карточки можно переключить перевод и оригинал', async () => {
     const app = await T.mountApp({ query: '?demo=1&test=1' });
     try {

@@ -2548,6 +2548,14 @@
     if (a.custom && App.hydrateCustomImage) App.hydrateCustomImage(id);
     if (!opts.fromHash) writeLocationHash();
     if (typeof bindModalSwipe === 'function') bindModalSwipe();
+    /* Автоперевод при любом открытии, если пользователь не выбрал оригинал. */
+    const synopsisMode = state.synopsisModes && state.synopsisModes.get(id);
+    const wantsTranslation = synopsisMode !== 'original'
+      && !(state.settings && state.settings.synopsisLang === 'original');
+    if (wantsTranslation && a.synopsis && C.hasCyrillic && !C.hasCyrillic(a.synopsis)
+      && typeof App.translateModalSynopsis === 'function') {
+      App.translateModalSynopsis(id);
+    }
   }
 
   function franchiseRelationLabel(type) {
@@ -2761,6 +2769,7 @@
       || (state.settings.synopsisLang === 'original' ? 'original' : 'translated');
     const showTranslatedSynopsis = Boolean(canTranslateSynopsis && translatedSynopsis && synopsisMode !== 'original');
     const synopsis = (showTranslatedSynopsis ? translatedSynopsis : a.synopsis) || 'Описание пока недоступно.';
+    const translating = state.synopsisTranslating.has(translationRequestKey);
     const synopsisControls = canTranslateSynopsis
       ? `<div class="synopsis-toolbar">
           <label class="synopsis-provider">Переводчик
@@ -2770,7 +2779,8 @@
               <option value="google"${translationProvider === 'google' ? ' selected' : ''}>Google Переводчик</option>
             </select>
           </label>
-          <span class="synopsis-translation-status" role="status">${translatedSynopsis ? (showTranslatedSynopsis ? `Перевод: ${translatedVia === 'google' ? 'Google' : 'MyMemory'}` : 'Оригинал') : (state.synopsisTranslating.has(translationRequestKey) ? 'Переводим…' : 'Перевод пока недоступен')}</span>
+          <span class="synopsis-translation-status" role="status">${translatedSynopsis ? (showTranslatedSynopsis ? `Перевод: ${translatedVia === 'google' ? 'Google' : 'MyMemory'}` : 'Оригинал') : (translating ? 'Переводим…' : 'Перевод пока недоступен')}</span>
+          ${!translatedSynopsis && !translating ? `<button type="button" class="ep-link" data-action="translate-synopsis" data-id="${a.id}">Перевести</button>` : ''}
           <div class="synopsis-switch" role="group" aria-label="Язык описания">
             <button type="button" data-action="synopsis-mode" data-id="${a.id}" data-mode="translated" aria-pressed="${showTranslatedSynopsis ? 'true' : 'false'}"${translatedSynopsis ? '' : ' disabled'}>Перевод</button>
             <button type="button" data-action="synopsis-mode" data-id="${a.id}" data-mode="original" aria-pressed="${!showTranslatedSynopsis ? 'true' : 'false'}">Оригинал</button>
