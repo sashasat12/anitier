@@ -28,6 +28,7 @@ const SHELL = [
   '../app-render-exchange.js',
   '../app-render-png.js',
   '../app-render-settings.js',
+  '../app-render-command.js',
   '../app-ctrl-catalog.js',
   '../app-ctrl-notifications.js',
   '../app-ctrl-upcoming.js',

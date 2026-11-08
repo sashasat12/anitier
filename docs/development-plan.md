@@ -25,15 +25,6 @@
 
 ## Пункты
 
-### 42. Вынести глобальный поиск из app-render-modals.js
-
-Кластер палитры команд: `commandReturnFocus`, `commandWhereLabel`, `syncCommandSelection`, `renderCommandResults`, `openCommand`, `canRestoreFocus`, `closeCommand`, `setCommandQuery`, `moveCommand`, `jumpCommand`, `openCommandResult`.
-
-- Создать `app-render-command.js`, перенести кластер и его приватное состояние.
-- Удалить кластер из `app-render-modals.js`, экспортные имена отдать модулю.
-- Подключить модуль во всех пяти местах; обновить `AGENTS.md`.
-- Критерий готовности: `tests/command.test.js` зелёный, `test.ps1` — 217/217 и 12/12; после пункта `app-render-modals.js` — только формы, моменты, карточка тайтла и франшиза; артефакты пересобраны.
-
 ### 43. Настроить CI на GitHub Actions
 
 Локальный `test.ps1` — единственная защита от регрессий; на push в `main` и в pull request ничего не запускается.
