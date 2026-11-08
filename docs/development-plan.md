@@ -25,15 +25,6 @@
 
 ## Пункты
 
-### 41. Вынести настройки и статистику профиля из app-render-modals.js
-
-`app-render-modals.js` (71 КБ) смешивает формы, настройки, статистику, палитру команд и карточку тайтла. Первый шаг — экраны настроек и статистики: `changelogHTML`, `renderSettings`, `openSettings`, `closeSettings`, `renderUpdateCard`, `statsTierRows`, `renderStatsScreen`, `openStats`, `closeStats`.
-
-- Создать `app-render-settings.js` по паттерну рендер-модуля (широкий destructure, перекрёстные вызовы через `App.*`).
-- Удалить кластер и его имена из экспорта `app-render-modals.js`, добавить алиасы для оставшихся вызовов внутри модалок.
-- Подключить модуль во всех пяти местах; обновить `AGENTS.md`.
-- Критерий готовности: `tests/stats.test.js`, `tests/a11y.test.js` зелёные; сценарии `desktop-settings`, `desktop-stats`, `mobile-settings`, `mobile-stats` без изменений; артефакты пересобраны.
-
 ### 42. Вынести глобальный поиск из app-render-modals.js
 
 Кластер палитры команд: `commandReturnFocus`, `commandWhereLabel`, `syncCommandSelection`, `renderCommandResults`, `openCommand`, `canRestoreFocus`, `closeCommand`, `setCommandQuery`, `moveCommand`, `jumpCommand`, `openCommandResult`.
