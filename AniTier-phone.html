@@ -6539,6 +6539,15 @@ window.AniTierTitlesRu = {
 
 window.AniTierChangelog = [
   {
+    version: '1.48.0',
+    date: '9 ноября 2026',
+    title: 'Франшиза загружается быстрее',
+    items: [
+      'Кнопка «Показать всю франшизу» загружает связанные части параллельно, а не по одной.',
+      'Большие франшизы (40+ частей) открываются заметно быстрее; одновременно идёт не больше 4 запросов, чтобы не упереться в лимит AniList.',
+    ],
+  },
+  {
     version: '1.47.1',
     date: '9 ноября 2026',
     title: 'Проверка резервных копий',
@@ -9022,7 +9031,7 @@ window.AniTierChangelog = [
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.47.1';
+  const APP_VERSION = '1.48.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -12127,40 +12136,66 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     }
   }
 
+  /* Ограниченный параллелизм: AniList не любит шквал запросов. */
+  const FRANCHISE_CONCURRENCY = 4;
+
+  async function mapWithLimit(items, limit, worker) {
+    const list = Array.isArray(items) ? items : [];
+    const out = new Array(list.length);
+    let next = 0;
+    const size = Math.max(1, Math.min(Number(limit) || 1, list.length || 1));
+    const run = async () => {
+      while (next < list.length) {
+        const index = next;
+        next += 1;
+        out[index] = await worker(list[index], index);
+      }
+    };
+    await Promise.all(Array.from({ length: size }, run));
+    return out;
+  }
+
   async function fetchAnimeFranchise(anime, opts = {}) {
     if (!anime || anime.custom) return [];
     const depth = Number(opts.depth) || 2;
     const limit = Number(opts.limit) || 60;
-    const seen = new Set();
-    const queue = [];
     const rootId = anime.id;
-    seen.add(rootId);
-    queue.push({ anime: anime, depth: 0 });
+    const queue = [{ anime, depth: 0 }];
     const collected = new Map();
     collected.set(rootId, anime);
     let head = 0;
     while (head < queue.length && collected.size < limit) {
-      const current = queue[head++];
-      const relations = await fetchAnimeRelations(current.anime).catch(() => []);
-      for (const rel of Array.isArray(relations) ? relations : []) {
-        if (!rel || !rel.anime) continue;
-        const relAnime = rel.anime;
-        const relId = relAnime.id;
-        if (!relId) continue;
-        if (!collected.has(relId)) {
+      const wave = queue.slice(head);
+      head = queue.length;
+      const relationsList = await mapWithLimit(wave, FRANCHISE_CONCURRENCY, item => (
+        fetchAnimeRelations(item.anime).catch(() => [])
+      ));
+      for (let w = 0; w < wave.length; w += 1) {
+        const current = wave[w];
+        const relations = relationsList[w];
+        for (const rel of Array.isArray(relations) ? relations : []) {
+          if (!rel || !rel.anime) continue;
+          const relAnime = rel.anime;
+          const relId = relAnime.id;
+          if (!relId || collected.has(relId)) continue;
           collected.set(relId, relAnime);
           if (current.depth + 1 < depth && (rel.relationType === 'PREQUEL' || rel.relationType === 'PARENT' || rel.relationType === 'SEQUEL')) {
             queue.push({ anime: relAnime, depth: current.depth + 1 });
           }
+          if (collected.size >= limit) break;
         }
+        if (collected.size >= limit) break;
       }
     }
-    /* Собираем все связи между найденными узлами. */
-    const graph = [];
+    /* Собираем все связи между найденными узлами — тоже параллельно. */
     const ids = [...collected.keys()];
-    for (const id of ids) {
-      const node = collected.get(id);
-      const relations = await fetchAnimeRelations(node).catch(() => []);
+    const relationsById = await mapWithLimit(ids, FRANCHISE_CONCURRENCY, id => (
+      fetchAnimeRelations(collected.get(id)).catch(() => [])
+    ));
+    const graph = [];
+    for (let i = 0; i < ids.length; i += 1) {
+      const id = ids[i];
+      const relations = relationsById[i];
       for (const rel of Array.isArray(relations) ? relations : []) {
         if (!rel || !rel.anime) continue;
         if (!collected.has(rel.anime.id)) continue;
@@ -12180,7 +12215,6 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     if (out.length) return out;
     return fetchAnimeRelations(anime);
   }
-
   async function fetchAnimeRelations(anime) {
     if (!anime || anime.custom) return [];
     if (Array.isArray(anime.relations)) return anime.relations;

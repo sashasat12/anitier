@@ -3249,6 +3249,47 @@
     }
   });
 
+  T.test('api: полная франшиза грузит связи параллельно', async () => {
+    let active = 0;
+    let maxActive = 0;
+    const app = await T.mountApp({
+      query: '?test=1',
+      setup(win) {
+        win.fetch = async (url, fetchOptions = {}) => {
+          const body = JSON.parse(fetchOptions.body || '{}');
+          const vars = body.variables || {};
+          const id = Number(vars.id);
+          active += 1;
+          maxActive = Math.max(maxActive, active);
+          await new Promise(resolve => setTimeout(resolve, 30));
+          active -= 1;
+          const edges = id === 1000
+            ? Array.from({ length: 20 }, (_, index) => ({
+              relationType: 'SIDE_STORY',
+              node: rawAniList(2000 + index, 'Часть ' + (index + 1)),
+            }))
+            : [];
+          const node = rawAniList(id, 'Часть ' + id, { relations: { edges } });
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ data: { Page: { pageInfo: { hasNextPage: false }, media: [node] } } }),
+          };
+        };
+      },
+    });
+    try {
+      const api = app.win.__anitierTest;
+      await api.init();
+      const anime = { id: 1000, anilistId: 1000, title: 'Корень', type: 'TV', year: 2020, airedFrom: '2020-01-01' };
+      const links = await app.win.AniTier.fetchAnimeFranchise(anime, { depth: 2 });
+      T.eq(links.length, 20, 'все 20 частей найдены');
+      T.assert(maxActive >= 2, 'связи грузятся параллельно, максимум одновременно: ' + maxActive);
+    } finally {
+      app.close();
+    }
+  });
+
   T.test('app: кнопка «Показать всю франшизу» догружает части', async () => {
     const calls = [];
     const app = await T.mountApp({ query: '?test=1', setup(win) { win.fetch = baseFetch(calls); } });
