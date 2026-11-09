@@ -56,19 +56,41 @@
 
       const iframe = document.createElement('iframe');
       iframe.style.cssText = `position:fixed;left:-20000px;top:0;width:${width}px;height:${height}px;border:0;`;
-      iframe.src = `../index.html${query}`;
+      document.body.appendChild(iframe);
 
-      const loaded = new Promise((resolve, reject) => {
-        iframe.onload = resolve;
+      const load = src => new Promise((resolve, reject) => {
+        iframe.onload = () => resolve();
         iframe.onerror = reject;
+        iframe.src = src;
       });
 
-      document.body.appendChild(iframe);
-      await loaded;
+      /* Однопоточный serve.ps1 изредка не отдаёт один из модулей, и init
+         падает на «... is not a function». Перезагружаем страницу. */
+      const ready = win => Boolean(win && win.__anitierTest)
+        && typeof win.AniTier.renderTierList === 'function'
+        && typeof win.AniTier.initFilterOptions === 'function'
+        && typeof win.AniTier.fetchUpcoming === 'function'
+        && typeof win.AniTier.saveState === 'function';
+
+      let lastError = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const src = `../index.html${query}${attempt ? `&retry=${attempt}` : ''}`;
+        await load(src);
+        try {
+          await T.waitFor(() => ready(iframe.contentWindow), 'Приложение не загрузило все модули', 10000);
+          lastError = null;
+          break;
+        } catch (err) {
+          lastError = err;
+        }
+      }
+      if (lastError) {
+        iframe.remove();
+        throw lastError;
+      }
 
       const win = iframe.contentWindow;
       try {
-        await T.waitFor(() => win.__anitierTest, 'Приложение не выставило тестовый API', 10000);
         if (win.__anitierTest.clearPersistentApiCache) await win.__anitierTest.clearPersistentApiCache();
         win.localStorage.clear();
         if (setup) await setup(win);
