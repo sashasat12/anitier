@@ -96,10 +96,10 @@ const {
       <span class="update-card-kicker">Доступно обновление</span>
       <h3>AniTier ${esc(version)}</h3>
       <p>У вас ${esc(C.APP_VERSION)}. ${card.apk
-        ? 'Скачайте APK и установите поверх — списки и настройки сохранятся.'
+        ? 'Нажмите «Скачать» — файл загрузится в приложении и откроется установщик. Списки и настройки сохранятся.'
         : 'Откройте релиз на GitHub и установите свежую версию.'}</p>
       <div class="update-card-actions">
-        <button class="btn btn-primary" type="button" data-action="open-update">${card.apk ? 'Скачать APK' : 'Открыть релиз'}</button>
+        <button class="btn btn-primary" type="button" data-action="open-update">${card.apk ? 'Скачать обновление' : 'Открыть релиз'}</button>
         <button class="btn btn-ghost" type="button" data-action="dismiss-update">Позже</button>
       </div>
     </div>`;
@@ -170,8 +170,12 @@ const {
       updateStatus = `<p class="backup-status${screen.error ? ' is-error' : ''}" role="status">${esc(screen.message)}</p>`;
     }
     const release = screen.latest;
+    const apkBridge = typeof window !== 'undefined' ? window.AniTierAndroid : null;
+    const canDownload = Boolean(apkBridge && typeof apkBridge.downloadUpdate === 'function');
     const releaseLink = release && release.url && C.compareVersions(release.version, version) > 0
-      ? `<button class="btn btn-ghost" type="button" data-action="open-link" data-url="${esc(release.url)}">Открыть релиз ${esc(release.version)}</button>`
+      ? (canDownload
+        ? `<button class="btn btn-primary" type="button" data-action="download-update" data-version="${esc(release.version)}">Скачать обновление ${esc(release.version)}</button>`
+        : `<button class="btn btn-ghost" type="button" data-action="open-link" data-url="${esc(release.url)}">Открыть релиз ${esc(release.version)}</button>`)
       : '';
 
     box.innerHTML = `<h2 id="settings-title">Настройки</h2>

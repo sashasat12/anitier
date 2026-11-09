@@ -6539,6 +6539,17 @@ window.AniTierTitlesRu = {
 
 window.AniTierChangelog = [
   {
+    version: '1.44.0',
+    date: '9 ноября 2026',
+    title: 'Обновление скачивается прямо в приложении',
+    items: [
+      'Кнопка «Скачать обновление» загружает APK внутри AniTier и сразу открывает установщик — GitHub в браузере больше не нужен.',
+      'Прогресс загрузки виден в шторке уведомлений; после установки списки, прогресс и настройки остаются на месте.',
+      'В первый раз Android попросит разрешить установку из AniTier — приложение сразу открывает нужный экран настроек.',
+      'В настройках та же кнопка «Скачать обновление» вместо перехода на сайт GitHub; в браузере всё как раньше.',
+    ],
+  },
+  {
     version: '1.43.0',
     date: '9 ноября 2026',
     title: 'Страховочная копия и возврат старых списков',
@@ -8813,7 +8824,7 @@ window.AniTierChangelog = [
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.43.0';
+  const APP_VERSION = '1.44.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -16502,10 +16513,10 @@ const {
       <span class="update-card-kicker">Доступно обновление</span>
       <h3>AniTier ${esc(version)}</h3>
       <p>У вас ${esc(C.APP_VERSION)}. ${card.apk
-        ? 'Скачайте APK и установите поверх — списки и настройки сохранятся.'
+        ? 'Нажмите «Скачать» — файл загрузится в приложении и откроется установщик. Списки и настройки сохранятся.'
         : 'Откройте релиз на GitHub и установите свежую версию.'}</p>
       <div class="update-card-actions">
-        <button class="btn btn-primary" type="button" data-action="open-update">${card.apk ? 'Скачать APK' : 'Открыть релиз'}</button>
+        <button class="btn btn-primary" type="button" data-action="open-update">${card.apk ? 'Скачать обновление' : 'Открыть релиз'}</button>
         <button class="btn btn-ghost" type="button" data-action="dismiss-update">Позже</button>
       </div>
     </div>`;
@@ -16576,8 +16587,12 @@ const {
       updateStatus = `<p class="backup-status${screen.error ? ' is-error' : ''}" role="status">${esc(screen.message)}</p>`;
     }
     const release = screen.latest;
+    const apkBridge = typeof window !== 'undefined' ? window.AniTierAndroid : null;
+    const canDownload = Boolean(apkBridge && typeof apkBridge.downloadUpdate === 'function');
     const releaseLink = release && release.url && C.compareVersions(release.version, version) > 0
-      ? `<button class="btn btn-ghost" type="button" data-action="open-link" data-url="${esc(release.url)}">Открыть релиз ${esc(release.version)}</button>`
+      ? (canDownload
+        ? `<button class="btn btn-primary" type="button" data-action="download-update" data-version="${esc(release.version)}">Скачать обновление ${esc(release.version)}</button>`
+        : `<button class="btn btn-ghost" type="button" data-action="open-link" data-url="${esc(release.url)}">Открыть релиз ${esc(release.version)}</button>`)
       : '';
 
     box.innerHTML = `<h2 id="settings-title">Настройки</h2>
@@ -18705,7 +18720,8 @@ const {
 
   function showUpdateAvailable(release) {
     const bridge = releaseBridge();
-    const apk = Boolean(bridge && typeof bridge.openUrl === 'function');
+    /* В APK качаем и ставим сами; в браузере открываем релиз. */
+    const apk = Boolean(bridge && typeof bridge.downloadUpdate === 'function');
     const base = String(C.GITHUB_URL || '').replace(/\/+$/, '');
     state.updateCard = {
       mode: 'available',
@@ -18714,6 +18730,35 @@ const {
       url: apk ? `${base}/releases/latest/download/AniTier.apk` : (release.url || base),
     };
     renderUpdateCard();
+  }
+
+  /* true — загрузка пошла (или ссылка открыта); false — не получилось. */
+  function startApkDownload(url, version) {
+    const bridge = releaseBridge();
+    if (bridge && typeof bridge.downloadUpdate === 'function') {
+      try {
+        if (bridge.downloadUpdate(url, version || '')) {
+          toast('Скачиваем обновление — установщик откроется сам');
+          return true;
+        }
+        return false;
+      } catch (err) {
+        console.warn('AniTier: не удалось начать загрузку обновления', err);
+      }
+    }
+    openExternalLink(url);
+    return true;
+  }
+
+  function downloadUpdate() {
+    const card = state.updateCard;
+    if (!card || !card.url) return false;
+    return startApkDownload(card.url, (card.release && card.release.version) || '');
+  }
+
+  function downloadUpdateVersion(version) {
+    const base = String(C.GITHUB_URL || '').replace(/\/+$/, '');
+    return startApkDownload(`${base}/releases/latest/download/AniTier.apk`, version);
   }
 
   async function autoCheckUpdates(options) {
@@ -18861,6 +18906,8 @@ const {
     toggleReleaseNotifications,
     onReleaseNotificationPermissionResult,
     showUpdateAvailable,
+    downloadUpdate,
+    downloadUpdateVersion,
     autoCheckUpdates,
     checkForUpdates,
     openExternalLink,
@@ -20973,9 +21020,18 @@ try { window.onReleaseNotificationPermissionResult = onReleaseNotificationPermis
     },
 
     'open-update'() {
-      if (state.updateCard && state.updateCard.url) openExternalLink(state.updateCard.url);
-      state.updateCard = null;
-      renderUpdateCard();
+      const card = state.updateCard;
+      if (!card || !card.url) return;
+      const started = typeof App.downloadUpdate === 'function' ? App.downloadUpdate() : false;
+      if (started || !card.apk) {
+        state.updateCard = null;
+        renderUpdateCard();
+      }
+    },
+
+    'download-update'({ el }) {
+      const version = el && el.dataset ? el.dataset.version || '' : '';
+      if (typeof App.downloadUpdateVersion === 'function') App.downloadUpdateVersion(version);
     },
 
     'open-changelog'() {

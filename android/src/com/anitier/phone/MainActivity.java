@@ -2,16 +2,20 @@ package com.anitier.phone;
 
 import android.app.Activity;
 import android.app.AlarmManager;
+import android.app.DownloadManager;
 import android.app.PendingIntent;
 import android.app.NotificationManager;
+import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Environment;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
@@ -24,6 +28,7 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.provider.Settings;
 import android.widget.Toast;
 import org.json.JSONObject;
 import java.util.regex.Matcher;
@@ -80,6 +85,8 @@ public class MainActivity extends Activity {
     private boolean enablingReleaseNotifications;
     private String pendingLegacyJson;
     private WebView legacyView;
+    private long updateDownloadId = -1;
+    private BroadcastReceiver updateDownloadReceiver;
 
     @SuppressWarnings("deprecation")
     @Override
@@ -529,6 +536,78 @@ public class MainActivity extends Activity {
         }
     }
 
+    /* Обновление качается внутри приложения: DownloadManager и установщик. */
+    private boolean startUpdateDownload(String url, String version) {
+        if (url == null || !url.startsWith("https://")) return false;
+        if (Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls()) {
+            runOnUiThread(() -> {
+                Toast.makeText(this, "Разрешите установку приложений из AniTier и нажмите «Скачать обновление» ещё раз", Toast.LENGTH_LONG).show();
+                try {
+                    startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                            Uri.parse("package:" + getPackageName())));
+                } catch (Exception ignored) {
+                }
+            });
+            return false;
+        }
+        try {
+            DownloadManager manager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+            if (manager == null) return false;
+            String safeVersion = version == null ? "" : version.replaceAll("[^0-9A-Za-z._-]", "");
+            if (safeVersion.length() > 20) safeVersion = safeVersion.substring(0, 20);
+            String fileName = "AniTier" + (safeVersion.isEmpty() ? "" : "-" + safeVersion) + ".apk";
+            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+            request.setTitle("AniTier " + safeVersion);
+            request.setDescription("Обновление AniTier");
+            request.setMimeType("application/vnd.android.package-archive");
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            request.setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, fileName);
+            updateDownloadId = manager.enqueue(request);
+            registerUpdateReceiver();
+            runOnUiThread(() -> Toast.makeText(this, "Скачиваем обновление…", Toast.LENGTH_SHORT).show());
+            return true;
+        } catch (Exception error) {
+            runOnUiThread(() -> Toast.makeText(this, "Не удалось начать загрузку", Toast.LENGTH_SHORT).show());
+            return false;
+        }
+    }
+
+    private void registerUpdateReceiver() {
+        if (updateDownloadReceiver != null) return;
+        updateDownloadReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
+                if (id != updateDownloadId) return;
+                installDownloadedUpdate(id);
+            }
+        };
+        IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
+        if (Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(updateDownloadReceiver, filter, Context.RECEIVER_EXPORTED);
+        } else {
+            registerReceiver(updateDownloadReceiver, filter);
+        }
+    }
+
+    private void installDownloadedUpdate(long id) {
+        DownloadManager manager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+        if (manager == null) return;
+        Uri uri = manager.getUriForDownloadedFile(id);
+        if (uri == null) {
+            Toast.makeText(this, "Не удалось скачать обновление", Toast.LENGTH_LONG).show();
+            return;
+        }
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setDataAndType(uri, "application/vnd.android.package-archive");
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            startActivity(intent);
+        } catch (Exception error) {
+            Toast.makeText(this, "Не удалось открыть установщик", Toast.LENGTH_LONG).show();
+        }
+    }
+
     private class BackupBridge {
         @JavascriptInterface
         public void openUrl(String url) {
@@ -591,6 +670,11 @@ public void scheduleReleaseNotifications(String json) {
         @JavascriptInterface
         public boolean openTikTok(String url) {
             return MainActivity.this.openTikTok(url);
+        }
+
+        @JavascriptInterface
+        public boolean downloadUpdate(String url, String version) {
+            return startUpdateDownload(url, version);
         }
 
         @JavascriptInterface
@@ -734,6 +818,10 @@ public void scheduleReleaseNotifications(String json) {
 
     @Override
     protected void onDestroy() {
+        if (updateDownloadReceiver != null) {
+            try { unregisterReceiver(updateDownloadReceiver); } catch (Exception ignored) { }
+            updateDownloadReceiver = null;
+        }
         if (webView != null) {
             webView.stopLoading();
             webView.loadUrl("about:blank");

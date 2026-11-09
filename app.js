@@ -1195,9 +1195,18 @@ try { window.onReleaseNotificationPermissionResult = onReleaseNotificationPermis
     },
 
     'open-update'() {
-      if (state.updateCard && state.updateCard.url) openExternalLink(state.updateCard.url);
-      state.updateCard = null;
-      renderUpdateCard();
+      const card = state.updateCard;
+      if (!card || !card.url) return;
+      const started = typeof App.downloadUpdate === 'function' ? App.downloadUpdate() : false;
+      if (started || !card.apk) {
+        state.updateCard = null;
+        renderUpdateCard();
+      }
+    },
+
+    'download-update'({ el }) {
+      const version = el && el.dataset ? el.dataset.version || '' : '';
+      if (typeof App.downloadUpdateVersion === 'function') App.downloadUpdateVersion(version);
     },
 
     'open-changelog'() {

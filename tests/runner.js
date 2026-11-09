@@ -70,6 +70,7 @@
         && typeof win.AniTier.renderTierList === 'function'
         && typeof win.AniTier.initFilterOptions === 'function'
         && typeof win.AniTier.fetchUpcoming === 'function'
+        && typeof win.AniTier.fetchNotifications === 'function'
         && typeof win.AniTier.saveState === 'function';
 
       let lastError = null;

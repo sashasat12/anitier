@@ -2300,13 +2300,17 @@
     }
   });
 
-  T.test('app: в APK карточка обновления ведёт на APK', async () => {
+  T.test('app: в APK карточка обновления качает APK внутри приложения', async () => {
     const app = await T.mountApp({ query: '?demo=1&test=1' });
     try {
       const win = app.win;
       await win.__anitierTest.init();
       const App = win.AniTier;
-      win.AniTierAndroid = { openUrl: () => {} };
+      const calls = [];
+      win.AniTierAndroid = {
+        openUrl: url => calls.push(['open', url]),
+        downloadUpdate: (url, version) => { calls.push(['download', url, version]); return true; },
+      };
       App.showUpdateAvailable({
         version: '99.0.0',
         name: '',
@@ -2315,8 +2319,15 @@
       });
       const card = win.document.getElementById('update-card');
       T.eq(card.hidden, false);
-      T.includes(card.textContent, 'Скачать APK', 'В APK предлагаем скачать APK');
+      T.includes(card.textContent, 'Скачать обновление', 'В APK предлагаем скачать файл');
       T.includes(win.__anitierTest.state.updateCard.url, '/releases/latest/download/AniTier.apk');
+
+      card.querySelector('[data-action="open-update"]').click();
+      T.eq(calls.length, 1, 'Нажатие начинает загрузку');
+      T.eq(calls[0][0], 'download', 'Открывается загрузка, а не браузер');
+      T.includes(calls[0][1], '/releases/latest/download/AniTier.apk', 'Ссылка ведёт на APK релиза');
+      T.eq(calls[0][2], '99.0.0', 'Версия передаётся в загрузку');
+      T.eq(card.hidden, true, 'Карточка скрывается после старта загрузки');
     } finally {
       app.close();
     }

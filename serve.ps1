@@ -66,8 +66,8 @@ while ($true) {
   $client = $listener.AcceptTcpClient()
   try {
     # Браузер открывает «предсоединения» и молчит в них. Не ждём такой
-    # сокет: если за 100 мс не пришло ни байта, закрываем и берём следующий.
-    if (-not $client.Client.Poll(100000, [System.Net.Sockets.SelectMode]::SelectRead)) {
+    # сокет: если за 500 мс не пришло ни байта, закрываем и берём следующий.
+    if (-not $client.Client.Poll(500000, [System.Net.Sockets.SelectMode]::SelectRead)) {
       $client.Close()
       continue
     }

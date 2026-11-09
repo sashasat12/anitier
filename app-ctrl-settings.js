@@ -64,7 +64,8 @@
 
   function showUpdateAvailable(release) {
     const bridge = releaseBridge();
-    const apk = Boolean(bridge && typeof bridge.openUrl === 'function');
+    /* В APK качаем и ставим сами; в браузере открываем релиз. */
+    const apk = Boolean(bridge && typeof bridge.downloadUpdate === 'function');
     const base = String(C.GITHUB_URL || '').replace(/\/+$/, '');
     state.updateCard = {
       mode: 'available',
@@ -73,6 +74,35 @@
       url: apk ? `${base}/releases/latest/download/AniTier.apk` : (release.url || base),
     };
     renderUpdateCard();
+  }
+
+  /* true — загрузка пошла (или ссылка открыта); false — не получилось. */
+  function startApkDownload(url, version) {
+    const bridge = releaseBridge();
+    if (bridge && typeof bridge.downloadUpdate === 'function') {
+      try {
+        if (bridge.downloadUpdate(url, version || '')) {
+          toast('Скачиваем обновление — установщик откроется сам');
+          return true;
+        }
+        return false;
+      } catch (err) {
+        console.warn('AniTier: не удалось начать загрузку обновления', err);
+      }
+    }
+    openExternalLink(url);
+    return true;
+  }
+
+  function downloadUpdate() {
+    const card = state.updateCard;
+    if (!card || !card.url) return false;
+    return startApkDownload(card.url, (card.release && card.release.version) || '');
+  }
+
+  function downloadUpdateVersion(version) {
+    const base = String(C.GITHUB_URL || '').replace(/\/+$/, '');
+    return startApkDownload(`${base}/releases/latest/download/AniTier.apk`, version);
   }
 
   async function autoCheckUpdates(options) {
@@ -220,6 +250,8 @@
     toggleReleaseNotifications,
     onReleaseNotificationPermissionResult,
     showUpdateAvailable,
+    downloadUpdate,
+    downloadUpdateVersion,
     autoCheckUpdates,
     checkForUpdates,
     openExternalLink,
