@@ -11094,6 +11094,9 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
   function saveStateNow() {
     savePending = false;
     if (saveTimer) { clearTimeout(saveTimer); saveTimer = 0; }
+    /* Восстановление копии пишет localStorage само: запись из памяти
+       перезагрузки затёрла бы свежие данные. */
+    if (App && App._suppressStateSave) return false;
     try {
       localStorage.setItem(LS_KEY, JSON.stringify(buildStatePayload()));
       if (App && typeof App.onStatePersisted === 'function') {
@@ -15133,6 +15136,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
           <p>В старой сборке остались списки — ${legacyInfo.cards} ${legacyInfo.cards === 1 ? 'карточка' : 'карточек'}. Их можно вернуть: текущие списки, прогресс и настройки будут заменены.</p>
           <div class="form-actions">
             <button class="btn btn-primary" type="button" data-action="safety-legacy-restore"${disabled}>Вернуть списки</button>
+            <button class="btn btn-ghost" type="button" data-action="safety-legacy-download"${disabled}>Скачать файл</button>
           </div>
         </div>`
       : '';
@@ -19576,6 +19580,7 @@ const {
 
   function writeItems(items) {
     let written = 0;
+    const failed = [];
     for (const key of C.SAFETY_KEYS) {
       const value = items && items[key];
       if (typeof value !== 'string' || !value) continue;
@@ -19583,15 +19588,26 @@ const {
         localStorage.setItem(key, value);
         written++;
       } catch (err) {
+        failed.push(key);
         console.warn('restore', err);
       }
     }
-    return written;
+    /* Главное — состояние списков: без него восстановление не считается. */
+    let stateOk = false;
+    try {
+      stateOk = Boolean(items[LS_KEY]) && localStorage.getItem(LS_KEY) === items[LS_KEY];
+    } catch {
+      stateOk = false;
+    }
+    return { ok: stateOk, written, failed };
   }
 
   function markRestored(kind) {
     try { localStorage.setItem(RESTORED_KEY, kind); } catch { /* не критично */ }
     infoCache = null;
+    /* Запись из памяти при выгрузке страницы перезаписала бы
+       восстановленные данные старым состоянием. */
+    App._suppressStateSave = true;
     if (!App._testNoReload) location.reload();
     return true;
   }
@@ -19606,7 +19622,7 @@ const {
     }
     const snapshot = readSnapshot();
     if (!snapshot || !snapshot.cards) return false;
-    if (!writeItems(snapshot.items)) return false;
+    if (!writeItems(snapshot.items).ok) return false;
     return markRestored('snapshot');
   }
 
@@ -19625,7 +19641,7 @@ const {
       }
       return false;
     }
-    if (!writeItems(items)) return false;
+    if (!writeItems(items).ok) return false;
     clearLegacyFile();
     legacyInfoCache = null;
     return markRestored('legacy');
@@ -19651,6 +19667,13 @@ const {
     try { api.clearLegacyData(); } catch { /* не критично */ }
   }
 
+  /* Сырые данные прошлой сборки: нужны для ручного разбора и отладки. */
+  function legacyRawText() {
+    const api = bridge();
+    if (!api || typeof api.loadLegacyData !== 'function') return '';
+    try { return api.loadLegacyData() || ''; } catch { return ''; }
+  }
+
   /* Для карточки в резервной копии: есть ли что возвращать из прошлой сборки. */
   function legacyBackupInfo() {
     if (!bridge()) return null;
@@ -19669,7 +19692,13 @@ const {
     if (!window.confirm('Вернуть списки из прошлой версии приложения? Текущие списки, прогресс и настройки будут заменены.')) {
       return false;
     }
-    if (!writeItems(items)) return false;
+    const result = writeItems(items);
+    if (!result.ok) {
+      if (typeof App.setBackupMessage === 'function') {
+        App.setBackupMessage('Не удалось записать списки: в хранилище не хватило места. Копия прошлой версии сохранена — попробуйте ещё раз.', true);
+      }
+      return false;
+    }
     clearLegacyFile();
     legacyInfoCache = null;
     return markRestored('legacy');
@@ -19704,7 +19733,12 @@ const {
     if (!window.confirm('Восстановить страховочную копию? Текущие списки, прогресс и настройки будут заменены.')) {
       return false;
     }
-    if (!writeItems(snapshot.items)) return false;
+    if (!writeItems(snapshot.items).ok) {
+      if (typeof App.setBackupMessage === 'function') {
+        App.setBackupMessage('Не удалось записать страховочную копию: в хранилище не хватило места.', true);
+      }
+      return false;
+    }
     return markRestored('snapshot');
   }
 
@@ -19732,6 +19766,7 @@ const {
     recoverOnBoot,
     receiveLegacyData,
     legacyBackupInfo,
+    legacyRawText,
     restoreLegacyManually,
     announceRestore,
     bindSafetyLifecycle,
@@ -20997,6 +21032,16 @@ try { window.onReleaseNotificationPermissionResult = onReleaseNotificationPermis
 
     'safety-legacy-restore'() {
       if (typeof App.restoreLegacyManually === 'function') App.restoreLegacyManually();
+    },
+
+    'safety-legacy-download'() {
+      const text = typeof App.legacyRawText === 'function' ? App.legacyRawText() : '';
+      if (!text) {
+        if (typeof App.setBackupMessage === 'function') App.setBackupMessage('Данных прошлой версии больше нет.', true);
+        return;
+      }
+      App.downloadText(text, 'anitier-legacy-backup.json', 'application/json');
+      if (typeof App.setBackupMessage === 'function') App.setBackupMessage('Выберите папку — файл прошлой версии сохранится туда.', false);
     },
 
     'media-export'() {

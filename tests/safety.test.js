@@ -122,4 +122,22 @@
       app.close();
     }
   });
+  T.test('safety: запись из памяти не затирает восстановленные данные', async () => {
+    const app = await T.mountApp({ query: '?test=1' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      const restored = JSON.stringify({
+        watched: { S: [{ id: 7, title: 'Блич' }], A: [], B: [], C: [], D: [], F: [], N: [] },
+        planned: { S: [], A: [], B: [], C: [], D: [], F: [], N: [] },
+      });
+      win.localStorage.setItem(App.LS_KEY, restored);
+      App._suppressStateSave = true;
+      App.flushStateSave();
+      T.eq(win.localStorage.getItem(App.LS_KEY), restored, 'восстановленные данные не затёрты');
+      App._suppressStateSave = false;
+    } finally {
+      app.close();
+    }
+  });
 })();

@@ -1256,6 +1256,16 @@ try { window.onReleaseNotificationPermissionResult = onReleaseNotificationPermis
       if (typeof App.restoreLegacyManually === 'function') App.restoreLegacyManually();
     },
 
+    'safety-legacy-download'() {
+      const text = typeof App.legacyRawText === 'function' ? App.legacyRawText() : '';
+      if (!text) {
+        if (typeof App.setBackupMessage === 'function') App.setBackupMessage('Данных прошлой версии больше нет.', true);
+        return;
+      }
+      App.downloadText(text, 'anitier-legacy-backup.json', 'application/json');
+      if (typeof App.setBackupMessage === 'function') App.setBackupMessage('Выберите папку — файл прошлой версии сохранится туда.', false);
+    },
+
     'media-export'() {
       exportMediaFile();
     },

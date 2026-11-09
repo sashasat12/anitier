@@ -95,6 +95,7 @@
 
   function writeItems(items) {
     let written = 0;
+    const failed = [];
     for (const key of C.SAFETY_KEYS) {
       const value = items && items[key];
       if (typeof value !== 'string' || !value) continue;
@@ -102,15 +103,26 @@
         localStorage.setItem(key, value);
         written++;
       } catch (err) {
+        failed.push(key);
         console.warn('restore', err);
       }
     }
-    return written;
+    /* Главное — состояние списков: без него восстановление не считается. */
+    let stateOk = false;
+    try {
+      stateOk = Boolean(items[LS_KEY]) && localStorage.getItem(LS_KEY) === items[LS_KEY];
+    } catch {
+      stateOk = false;
+    }
+    return { ok: stateOk, written, failed };
   }
 
   function markRestored(kind) {
     try { localStorage.setItem(RESTORED_KEY, kind); } catch { /* не критично */ }
     infoCache = null;
+    /* Запись из памяти при выгрузке страницы перезаписала бы
+       восстановленные данные старым состоянием. */
+    App._suppressStateSave = true;
     if (!App._testNoReload) location.reload();
     return true;
   }
@@ -125,7 +137,7 @@
     }
     const snapshot = readSnapshot();
     if (!snapshot || !snapshot.cards) return false;
-    if (!writeItems(snapshot.items)) return false;
+    if (!writeItems(snapshot.items).ok) return false;
     return markRestored('snapshot');
   }
 
@@ -144,7 +156,7 @@
       }
       return false;
     }
-    if (!writeItems(items)) return false;
+    if (!writeItems(items).ok) return false;
     clearLegacyFile();
     legacyInfoCache = null;
     return markRestored('legacy');
@@ -170,6 +182,13 @@
     try { api.clearLegacyData(); } catch { /* не критично */ }
   }
 
+  /* Сырые данные прошлой сборки: нужны для ручного разбора и отладки. */
+  function legacyRawText() {
+    const api = bridge();
+    if (!api || typeof api.loadLegacyData !== 'function') return '';
+    try { return api.loadLegacyData() || ''; } catch { return ''; }
+  }
+
   /* Для карточки в резервной копии: есть ли что возвращать из прошлой сборки. */
   function legacyBackupInfo() {
     if (!bridge()) return null;
@@ -188,7 +207,13 @@
     if (!window.confirm('Вернуть списки из прошлой версии приложения? Текущие списки, прогресс и настройки будут заменены.')) {
       return false;
     }
-    if (!writeItems(items)) return false;
+    const result = writeItems(items);
+    if (!result.ok) {
+      if (typeof App.setBackupMessage === 'function') {
+        App.setBackupMessage('Не удалось записать списки: в хранилище не хватило места. Копия прошлой версии сохранена — попробуйте ещё раз.', true);
+      }
+      return false;
+    }
     clearLegacyFile();
     legacyInfoCache = null;
     return markRestored('legacy');
@@ -223,7 +248,12 @@
     if (!window.confirm('Восстановить страховочную копию? Текущие списки, прогресс и настройки будут заменены.')) {
       return false;
     }
-    if (!writeItems(snapshot.items)) return false;
+    if (!writeItems(snapshot.items).ok) {
+      if (typeof App.setBackupMessage === 'function') {
+        App.setBackupMessage('Не удалось записать страховочную копию: в хранилище не хватило места.', true);
+      }
+      return false;
+    }
     return markRestored('snapshot');
   }
 
@@ -251,6 +281,7 @@
     recoverOnBoot,
     receiveLegacyData,
     legacyBackupInfo,
+    legacyRawText,
     restoreLegacyManually,
     announceRestore,
     bindSafetyLifecycle,

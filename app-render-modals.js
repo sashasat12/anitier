@@ -299,6 +299,7 @@
           <p>В старой сборке остались списки — ${legacyInfo.cards} ${legacyInfo.cards === 1 ? 'карточка' : 'карточек'}. Их можно вернуть: текущие списки, прогресс и настройки будут заменены.</p>
           <div class="form-actions">
             <button class="btn btn-primary" type="button" data-action="safety-legacy-restore"${disabled}>Вернуть списки</button>
+            <button class="btn btn-ghost" type="button" data-action="safety-legacy-download"${disabled}>Скачать файл</button>
           </div>
         </div>`
       : '';
