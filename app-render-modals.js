@@ -312,17 +312,16 @@
     const safetyBlock = safety
       ? `<div class="backup-block">
           <h3>Страховочная копия на устройстве</h3>
-          <p>Приложение само сохраняет списки, прогресс и настройки в свою память. Копия переживает обновление приложения и очистку данных страницы.</p>
+          <p>Приложение само сохраняет списки, прогресс и настройки в свою память. Хранится 2 копии: свежая и предыдущая. Копия переживает обновление приложения и очистку данных страницы.</p>
           <p class="form-note">${safetyWhen
-            ? `Последняя: ${esc(safetyWhen)}${safetyInfo.cards ? ` · карточек — ${safetyInfo.cards}` : ''}.`
+            ? `Последняя: ${esc(safetyWhen)}${safetyInfo.cards ? ` · карточек — ${safetyInfo.cards}` : ''}${safetyInfo.previousSavedAt ? ` · предыдущая: ${esc(new Date(safetyInfo.previousSavedAt).toLocaleString('ru-RU'))}` : ' · пока одна копия'}.`
             : 'Пока не создана — сохраните вручную или подождите минуту после изменений.'}</p>
           <div class="form-actions">
             <button class="btn btn-primary" type="button" data-action="safety-save"${disabled}>${f.busy ? 'Подождите…' : 'Сохранить сейчас'}</button>
             <button class="btn btn-ghost" type="button" data-action="safety-restore"${disabled}${safetyInfo && safetyInfo.cards ? '' : ' disabled'}>Восстановить</button>
             <button class="btn btn-ghost" type="button" data-action="safety-merge"${disabled}${safetyInfo && safetyInfo.cards ? '' : ' disabled'}>Объединить</button>
           </div>
-        </div>`
-      : '';
+        </div>`      : '';
     const status = f.message
       ? `<p class="backup-status${f.error ? ' is-error' : ''}" role="status">${esc(f.message)}</p>`
       : '';
@@ -334,10 +333,10 @@
             <span>Авто-бэкап</span>
             <select data-action="settings-drive-auto" aria-label="Авто-бэкап в Google Drive"${disabled}>
               <option value="off"${state.settings.driveAutoBackup ? '' : ' selected'}>Выключен</option>
-              <option value="on"${state.settings.driveAutoBackup ? ' selected' : ''}>Раз в сутки</option>
+              <option value="on"${state.settings.driveAutoBackup ? ' selected' : ''}>Раз в 3 дня</option>
             </select>
           </label>
-          <p class="form-note">Копия сохраняется при открытии приложения, если прошли сутки. Для тихой записи нужен действующий вход в Google; иначе сохраните вручную.</p>
+          <p class="form-note">Копия сохраняется при открытии приложения, если прошло 3 дня. Для тихой записи нужен действующий вход в Google; иначе сохраните вручную.</p>
           <div class="form-actions">
             <button class="btn btn-primary" type="button" data-action="backup-drive-save"${disabled}>${f.busy ? 'Подождите…' : 'Сохранить в Google Drive'}</button>
             <button class="btn btn-ghost" type="button" data-action="backup-drive-load"${disabled}>Восстановить последнюю версию</button>

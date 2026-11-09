@@ -162,6 +162,40 @@
       app.close();
     }
   });
+    T.test('safety: хранится 2 копии страховочного снимка', async () => {
+    const app = await T.mountApp({ query: '?test=1' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      const box = fakeBridge(win);
+      const putState = (id) => win.localStorage.setItem(App.LS_KEY, JSON.stringify({
+        watched: { S: [{ id, title: 'T' + id }], A: [], B: [], C: [], D: [], F: [], N: [] },
+        planned: { S: [], A: [], B: [], C: [], D: [], F: [], N: [] },
+        settings: {},
+      }));
+
+      putState(1);
+      T.eq(App.saveSnapshotNow(), true, 'первая копия записана');
+      let parsed = win.AniTierCore.parseSafetySnapshot(box.snapshot);
+      T.eq(parsed.previous, null, 'сначала одна копия');
+
+      putState(2);
+      T.eq(App.saveSnapshotNow(), true, 'вторая копия записана');
+      parsed = win.AniTierCore.parseSafetySnapshot(box.snapshot);
+      T.assert(parsed.previous, 'после второго сохранения есть предыдущая копия');
+      T.eq(JSON.parse(parsed.items[App.LS_KEY]).watched.S[0].id, 2, 'свежая копия — новая');
+      T.eq(JSON.parse(parsed.previous.items[App.LS_KEY]).watched.S[0].id, 1, 'предыдущая копия сохранена');
+
+      putState(3);
+      T.eq(App.saveSnapshotNow(), true, 'третья копия записана');
+      parsed = win.AniTierCore.parseSafetySnapshot(box.snapshot);
+      T.eq(JSON.parse(parsed.items[App.LS_KEY]).watched.S[0].id, 3, 'свежая обновилась');
+      T.eq(JSON.parse(parsed.previous.items[App.LS_KEY]).watched.S[0].id, 2, 'хранится только одна предыдущая копия');
+    } finally {
+      app.close();
+    }
+  });
+
   T.test('safety: запись из памяти не затирает восстановленные данные', async () => {
     const app = await T.mountApp({ query: '?test=1' });
     try {

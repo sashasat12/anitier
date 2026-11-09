@@ -1827,42 +1827,56 @@
     } finally { app.close(); }
   });
 
-  T.test('app: Google Drive сохраняет копию multipart и перезаписывает файл', async () => {
+  T.test('app: Google Drive сохраняет копию, оставляя 2 файла (свежий и предыдущий)', async () => {
     const app = await T.mountApp({ query: '?demo=1&test=1' });
 
     try {
       const calls = [];
       app.win.fetch = async (url, options = {}) => {
-        calls.push({
-          url: String(url),
-          method: options.method || 'GET',
-          headers: options.headers || {},
-          body: options.body,
-        });
-        const body = String(url).includes('/upload/drive/')
-          ? { id: 'file-1', name: 'anitier-backup.json' }
-          : { files: [{ id: 'file-1', name: 'anitier-backup.json' }] };
-        return new Response(JSON.stringify(body), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        });
+        const u = String(url);
+        calls.push({ url: u, method: options.method || 'GET', headers: options.headers || {}, body: options.body });
+        let body = {};
+        if (u.includes('/upload/drive/')) {
+          body = { id: 'new-1', name: 'anitier-backup.json', modifiedTime: '2026-11-09T00:00:00Z' };
+        } else if (u.includes('/drive/v3/files') && options.method === 'DELETE') {
+          return new Response('', { status: 204 });
+        } else if (u.includes('/drive/v3/files?')) {
+          if (u.includes(encodeURIComponent("name = 'anitier-backup.json'"))) {
+            body = { files: [{ id: 'cur-1', name: 'anitier-backup.json' }] };
+          } else if (u.includes(encodeURIComponent("name = 'anitier-backup-prev.json'"))) {
+            body = { files: [{ id: 'prev-1', name: 'anitier-backup-prev.json' }] };
+          } else {
+            body = { files: [] };
+          }
+        } else if (/\/drive\/v3\/files\//.test(u) && options.method === 'PATCH' && !u.includes('/upload/')) {
+          body = { id: 'cur-1', name: 'anitier-backup-prev.json' };
+        } else {
+          body = { files: [] };
+        }
+        return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
       };
 
       const saved = await app.win.AniTier.driveSaveBackup('token', '{"kind":"test"}');
-      T.eq(saved.id, 'file-1');
-      T.eq(calls.length, 2);
-      T.includes(calls[0].url, 'drive/v3/files?');
-      T.eq(calls[1].method, 'PATCH');
-      T.includes(calls[1].headers['Content-Type'], 'multipart/related; boundary=');
-      const multipart = await calls[1].body.text();
-      T.includes(multipart, '"name":"anitier-backup.json"');
-      T.includes(multipart, '{"kind":"test"}');
-      T.assert(multipart.startsWith('--'), 'Тело должно начинаться с multipart-границы');
+      T.eq(saved.id, 'new-1', 'возвращена новая текущая копия');
+      T.eq(saved.name, 'anitier-backup.json');
+
+      const findCalls = calls.filter(c => c.method === 'GET' && c.url.includes('/drive/v3/files?'));
+      T.eq(findCalls.length, 2, 'ищутся текущая и предыдущая копии');
+
+      const del = calls.find(c => c.method === 'DELETE' && c.url.includes('/drive/v3/files/prev-1'));
+      T.assert(del, 'старая предыдущая копия удаляется');
+
+      const rename = calls.find(c => c.method === 'PATCH' && c.url.includes('/drive/v3/files/cur-1') && !c.url.includes('/upload/'));
+      T.assert(rename, 'текущая копия переименовывается в предыдущую');
+      T.includes(String(rename.body), 'anitier-backup-prev.json');
+
+      const upload = calls.find(c => c.method === 'POST' && c.url.includes('/upload/drive/'));
+      T.assert(upload, 'новая копия загружается как текущая');
+      T.includes(upload.headers['Content-Type'], 'multipart/related; boundary=');
     } finally {
       app.close();
     }
   });
-
   T.test('app: системная кнопка «назад» закрывает модалку и возвращает на базу', async () => {
     const app = await T.mountApp({ query: '?demo=1&test=1' });
     try {

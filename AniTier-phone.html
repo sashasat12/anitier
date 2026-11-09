@@ -6539,6 +6539,17 @@ window.AniTierTitlesRu = {
 
 window.AniTierChangelog = [
   {
+    version: '1.47.0',
+    date: '9 ноября 2026',
+    title: 'Резервные копии раз в 3 дня и в двух экземплярах',
+    items: [
+      'Авто-бэкап в Google Drive теперь запускается раз в 3 дня, а не каждый день.',
+      'В Google Drive хранится 2 копии: свежая и предыдущая. Если последняя копия повреждена, приложение попробует предыдущую.',
+      'Страховочная копия на устройстве тоже хранит 2 снимка — свежий и предыдущий.',
+      'В настройках резервной копии видно, когда сохранена предыдущая копия.',
+    ],
+  },
+  {
     version: '1.46.1',
     date: '9 ноября 2026',
     title: 'Исправлены сезоны Гуррен-Лаганна',
@@ -8381,7 +8392,9 @@ window.AniTierChangelog = [
 
   /* ---------------- страховочная копия в памяти приложения ---------------- */
   const SAFETY_KIND = 'anitier.safety';
-  const SAFETY_VERSION = 1;
+  const SAFETY_VERSION = 2;
+  const SAFETY_READ_VERSIONS = [1, 2];
+  const SAFETY_KEEP = 2;
   const SAFETY_KEYS = ['anitier.v1', 'anitier.moments.v1', 'anitier.translations.v1'];
 
   /* Снимок ключей localStorage: строки как есть, без разбора схемы. */
@@ -8395,6 +8408,7 @@ window.AniTierChangelog = [
     return {
       kind: SAFETY_KIND,
       version: SAFETY_VERSION,
+    SAFETY_KEEP,
       savedAt: Number(savedAt) || Date.now(),
       items: out,
     };
@@ -8416,6 +8430,16 @@ window.AniTierChangelog = [
     return total;
   }
 
+  function normalizeSafetySlot(slot) {
+    if (!slot || typeof slot !== 'object') return null;
+    const items = slot.items && typeof slot.items === 'object' ? slot.items : null;
+    if (!items) return null;
+    const state = typeof items[SAFETY_KEYS[0]] === 'string' ? items[SAFETY_KEYS[0]] : '';
+    const cards = countSnapshotCards(state);
+    if (!cards) return null;
+    return { savedAt: Number(slot.savedAt) || 0, items, cards };
+  }
+
   function parseSafetySnapshot(text) {
     let payload = null;
     try {
@@ -8426,15 +8450,16 @@ window.AniTierChangelog = [
     if (!payload || typeof payload !== 'object' || payload.kind !== SAFETY_KIND) {
       throw new Error('Это не страховочная копия AniTier.');
     }
-    if (Number(payload.version) !== SAFETY_VERSION) {
+    if (!SAFETY_READ_VERSIONS.includes(Number(payload.version))) {
       throw new Error('Версия страховочной копии не поддерживается.');
     }
-    const items = payload.items && typeof payload.items === 'object' ? payload.items : {};
-    const state = typeof items[SAFETY_KEYS[0]] === 'string' ? items[SAFETY_KEYS[0]] : '';
+    const current = normalizeSafetySlot(payload) || { savedAt: Number(payload.savedAt) || 0, items: {}, cards: 0 };
+    const previous = normalizeSafetySlot(payload.previous);
     return {
-      savedAt: Number(payload.savedAt) || 0,
-      items,
-      cards: countSnapshotCards(state),
+      savedAt: current.savedAt,
+      items: current.items,
+      cards: current.cards,
+      previous,
     };
   }
 
@@ -8987,7 +9012,7 @@ window.AniTierChangelog = [
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.46.1';
+  const APP_VERSION = '1.47.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -12951,6 +12976,8 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
 
   /* ---------------- Google Drive ---------------- */
   const DRIVE_FILE_NAME = 'anitier-backup.json';
+  const DRIVE_PREV_FILE_NAME = 'anitier-backup-prev.json';
+  const DRIVE_KEEP = 2;
 
   async function driveRequest(url, token, options = {}) {
     const headers = { ...(options.headers || {}), Authorization: `Bearer ${token}` };
@@ -12973,8 +13000,8 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     return res;
   }
 
-  async function driveFindBackup(token) {
-    const query = encodeURIComponent(`name = '${DRIVE_FILE_NAME}' and trashed = false`);
+  async function driveFindNamedBackup(token, name) {
+    const query = encodeURIComponent(`name = '${name}' and trashed = false`);
     const fields = encodeURIComponent('files(id,name,modifiedTime,size)');
     const url = `https://www.googleapis.com/drive/v3/files?spaces=drive&q=${query}&fields=${fields}&orderBy=modifiedTime desc&pageSize=1`;
     const res = await driveRequest(url, token);
@@ -12982,9 +13009,26 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     return json && Array.isArray(json.files) && json.files.length ? json.files[0] : null;
   }
 
-  async function driveSaveBackup(token, text) {
-    const existing = await driveFindBackup(token);
-    const metadata = { name: DRIVE_FILE_NAME, mimeType: 'application/json' };
+  async function driveFindBackup(token) {
+    return driveFindNamedBackup(token, DRIVE_FILE_NAME);
+  }
+
+  async function driveDeleteFile(token, fileId) {
+    if (!fileId) return;
+    await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`, token, { method: 'DELETE' });
+  }
+
+  async function driveRenameFile(token, fileId, name) {
+    if (!fileId) return;
+    await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`, token, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+  }
+
+  async function driveUploadNew(token, name, text) {
+    const metadata = { name, mimeType: 'application/json' };
     const boundary = `anitier-${Date.now().toString(36)}`;
     const body = new Blob([
       `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`,
@@ -12993,25 +13037,51 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       text,
       `\r\n--${boundary}--`,
     ], { type: `multipart/related; boundary=${boundary}` });
-    const base = existing
-      ? `https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(existing.id)}?uploadType=multipart&fields=id,name,modifiedTime`
-      : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,modifiedTime';
-    const res = await driveRequest(base, token, {
-      method: existing ? 'PATCH' : 'POST',
+    const res = await driveRequest('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,modifiedTime', token, {
+      method: 'POST',
       headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
       body,
     });
     return res.json();
   }
 
-  async function driveLoadBackup(token) {
-    const file = await driveFindBackup(token);
-    if (!file) throw new Error('В Google Drive нет резервной копии AniTier.');
+  /* Храним 2 копии: текущая -> предыдущая, новая -> текущая. */
+  async function driveSaveBackup(token, text) {
+    let current = null;
+    let prev = null;
+    try { current = await driveFindNamedBackup(token, DRIVE_FILE_NAME); } catch { /* продолжаем */ }
+    try { prev = await driveFindNamedBackup(token, DRIVE_PREV_FILE_NAME); } catch { /* продолжаем */ }
+    if (DRIVE_KEEP >= 2 && current) {
+      try { if (prev) await driveDeleteFile(token, prev.id); } catch { /* старая копия необязательна */ }
+      try { await driveRenameFile(token, current.id, DRIVE_PREV_FILE_NAME); } catch { /* если не вышло, просто перезапишем текущую */ }
+    }
+    return driveUploadNew(token, DRIVE_FILE_NAME, text);
+  }
+
+  async function driveReadFile(token, file) {
     const res = await driveRequest(
       `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.id)}?alt=media`,
       token,
     );
     return { text: await res.text(), file };
+  }
+
+  /* Загружаем свежую копию; если она битая/недоступна — пробуем предыдущую. */
+  async function driveLoadBackup(token) {
+    const names = [DRIVE_FILE_NAME, DRIVE_PREV_FILE_NAME];
+    let lastError = null;
+    for (const name of names) {
+      let file = null;
+      try { file = await driveFindNamedBackup(token, name); } catch (err) { lastError = err; file = null; }
+      if (!file) continue;
+      try {
+        const loaded = await driveReadFile(token, file);
+        try { C.parseBackupJson(loaded.text); return loaded; }
+        catch (parseErr) { lastError = parseErr; }
+      } catch (err) { lastError = err; }
+    }
+    if (lastError) throw lastError;
+    throw new Error('В Google Drive нет резервной копии AniTier.');
   }
 
   async function fillAltPage(s, revision) {
@@ -15387,17 +15457,16 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     const safetyBlock = safety
       ? `<div class="backup-block">
           <h3>Страховочная копия на устройстве</h3>
-          <p>Приложение само сохраняет списки, прогресс и настройки в свою память. Копия переживает обновление приложения и очистку данных страницы.</p>
+          <p>Приложение само сохраняет списки, прогресс и настройки в свою память. Хранится 2 копии: свежая и предыдущая. Копия переживает обновление приложения и очистку данных страницы.</p>
           <p class="form-note">${safetyWhen
-            ? `Последняя: ${esc(safetyWhen)}${safetyInfo.cards ? ` · карточек — ${safetyInfo.cards}` : ''}.`
+            ? `Последняя: ${esc(safetyWhen)}${safetyInfo.cards ? ` · карточек — ${safetyInfo.cards}` : ''}${safetyInfo.previousSavedAt ? ` · предыдущая: ${esc(new Date(safetyInfo.previousSavedAt).toLocaleString('ru-RU'))}` : ' · пока одна копия'}.`
             : 'Пока не создана — сохраните вручную или подождите минуту после изменений.'}</p>
           <div class="form-actions">
             <button class="btn btn-primary" type="button" data-action="safety-save"${disabled}>${f.busy ? 'Подождите…' : 'Сохранить сейчас'}</button>
             <button class="btn btn-ghost" type="button" data-action="safety-restore"${disabled}${safetyInfo && safetyInfo.cards ? '' : ' disabled'}>Восстановить</button>
             <button class="btn btn-ghost" type="button" data-action="safety-merge"${disabled}${safetyInfo && safetyInfo.cards ? '' : ' disabled'}>Объединить</button>
           </div>
-        </div>`
-      : '';
+        </div>`      : '';
     const status = f.message
       ? `<p class="backup-status${f.error ? ' is-error' : ''}" role="status">${esc(f.message)}</p>`
       : '';
@@ -15409,10 +15478,10 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
             <span>Авто-бэкап</span>
             <select data-action="settings-drive-auto" aria-label="Авто-бэкап в Google Drive"${disabled}>
               <option value="off"${state.settings.driveAutoBackup ? '' : ' selected'}>Выключен</option>
-              <option value="on"${state.settings.driveAutoBackup ? ' selected' : ''}>Раз в сутки</option>
+              <option value="on"${state.settings.driveAutoBackup ? ' selected' : ''}>Раз в 3 дня</option>
             </select>
           </label>
-          <p class="form-note">Копия сохраняется при открытии приложения, если прошли сутки. Для тихой записи нужен действующий вход в Google; иначе сохраните вручную.</p>
+          <p class="form-note">Копия сохраняется при открытии приложения, если прошло 3 дня. Для тихой записи нужен действующий вход в Google; иначе сохраните вручную.</p>
           <div class="form-actions">
             <button class="btn btn-primary" type="button" data-action="backup-drive-save"${disabled}>${f.busy ? 'Подождите…' : 'Сохранить в Google Drive'}</button>
             <button class="btn btn-ghost" type="button" data-action="backup-drive-load"${disabled}>Восстановить последнюю версию</button>
@@ -17899,7 +17968,7 @@ const {
 
   const MEDIA_ARCHIVE_LIMIT = 500 * 1024 * 1024;
 
-  const AUTO_BACKUP_INTERVAL = 24 * 60 * 60 * 1000;
+  const AUTO_BACKUP_INTERVAL = 3 * 24 * 60 * 60 * 1000;
 
   const AUTO_BACKUP_RETRY = 6 * 60 * 60 * 1000;
 
@@ -19911,9 +19980,23 @@ const {
     try {
       const snapshot = C.makeSafetySnapshot(collectItems(), Date.now());
       if (!Object.keys(snapshot.items).length) return false;
+      let previous = null;
+      try {
+        const existing = readSnapshot();
+        if (existing && existing.cards) {
+          previous = { savedAt: existing.savedAt, items: existing.items };
+        }
+      } catch { /* первая копия */ }
+      if (previous) snapshot.previous = previous;
       if (!api.saveSnapshot(JSON.stringify(snapshot))) return false;
       lastSavedAt = snapshot.savedAt;
-      infoCache = { savedAt: lastSavedAt, cards: snapshotCards(snapshot.items), bytes: 0 };
+      infoCache = {
+        savedAt: lastSavedAt,
+        cards: snapshotCards(snapshot.items),
+        bytes: 0,
+        previousSavedAt: previous ? (Number(previous.savedAt) || 0) : 0,
+        copies: previous ? 2 : 1,
+      };
       return true;
     } catch (err) {
       console.warn('saveSnapshot', err);
@@ -19950,8 +20033,14 @@ const {
     if (infoCache) return infoCache;
     const snapshot = readSnapshot();
     infoCache = snapshot
-      ? { savedAt: snapshot.savedAt, cards: snapshot.cards, bytes: 0 }
-      : { savedAt: 0, cards: 0, bytes: 0 };
+      ? {
+          savedAt: snapshot.savedAt,
+          cards: snapshot.cards,
+          bytes: 0,
+          previousSavedAt: snapshot.previous ? (Number(snapshot.previous.savedAt) || 0) : 0,
+          copies: snapshot.previous ? 2 : 1,
+        }
+      : { savedAt: 0, cards: 0, bytes: 0, previousSavedAt: 0, copies: 0 };
     return infoCache;
   }
 
@@ -19998,9 +20087,12 @@ const {
       return false;
     }
     const snapshot = readSnapshot();
-    if (!snapshot || !snapshot.cards) return false;
-    if (!writeItems(snapshot.items).ok) return false;
-    return markRestored('snapshot');
+    if (!snapshot) return false;
+    const candidates = [snapshot, snapshot.previous].filter(s => s && s.cards && s.items);
+    for (const slot of candidates) {
+      if (writeItems(slot.items).ok) return markRestored('snapshot');
+    }
+    return false;
   }
 
   /* Данные из старой сборки (адрес file://) присылает MainActivity. */

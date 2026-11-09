@@ -985,6 +985,39 @@
     T.eq(C.countSnapshotCards('null'), 0);
   });
 
+  T.test('core: страховочная копия хранит 2 слота и читает старый формат', () => {
+    const C = core();
+    const makeState = (id) => JSON.stringify({
+      watched: { S: [{ id }], A: [], B: [], C: [], D: [], F: [], N: [] },
+      planned: { S: [], A: [], B: [], C: [], D: [], F: [], N: [] },
+    });
+    const oldV1 = {
+      kind: 'anitier.safety',
+      version: 1,
+      savedAt: 100,
+      items: { 'anitier.v1': makeState(1) },
+    };
+    const parsedOld = C.parseSafetySnapshot(JSON.stringify(oldV1));
+    T.eq(parsedOld.cards, 1, 'старый формат читается');
+    T.eq(parsedOld.savedAt, 100);
+    T.eq(parsedOld.previous, null, 'в старом формате нет предыдущей копии');
+
+    const withPrev = {
+      kind: 'anitier.safety',
+      version: 2,
+      savedAt: 200,
+      items: { 'anitier.v1': makeState(2) },
+      previous: { savedAt: 100, items: { 'anitier.v1': makeState(1) } },
+    };
+    const parsed = C.parseSafetySnapshot(JSON.stringify(withPrev));
+    T.eq(parsed.cards, 1, 'свежая копия на месте');
+    T.eq(parsed.savedAt, 200);
+    T.assert(parsed.previous, 'есть предыдущая копия');
+    T.eq(parsed.previous.savedAt, 100);
+    T.eq(parsed.previous.cards, 1);
+    T.eq(JSON.parse(parsed.previous.items['anitier.v1']).watched.S[0].id, 1, 'предыдущие данные сохранены');
+  });
+
   T.test('core: слияние сохраняет текущее и добавляет старое', () => {
     const C = core();
     const current = {

@@ -32,7 +32,7 @@
 
   const MEDIA_ARCHIVE_LIMIT = 500 * 1024 * 1024;
 
-  const AUTO_BACKUP_INTERVAL = 24 * 60 * 60 * 1000;
+  const AUTO_BACKUP_INTERVAL = 3 * 24 * 60 * 60 * 1000;
 
   const AUTO_BACKUP_RETRY = 6 * 60 * 60 * 1000;
 

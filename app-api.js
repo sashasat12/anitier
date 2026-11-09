@@ -1209,6 +1209,8 @@
 
   /* ---------------- Google Drive ---------------- */
   const DRIVE_FILE_NAME = 'anitier-backup.json';
+  const DRIVE_PREV_FILE_NAME = 'anitier-backup-prev.json';
+  const DRIVE_KEEP = 2;
 
   async function driveRequest(url, token, options = {}) {
     const headers = { ...(options.headers || {}), Authorization: `Bearer ${token}` };
@@ -1231,8 +1233,8 @@
     return res;
   }
 
-  async function driveFindBackup(token) {
-    const query = encodeURIComponent(`name = '${DRIVE_FILE_NAME}' and trashed = false`);
+  async function driveFindNamedBackup(token, name) {
+    const query = encodeURIComponent(`name = '${name}' and trashed = false`);
     const fields = encodeURIComponent('files(id,name,modifiedTime,size)');
     const url = `https://www.googleapis.com/drive/v3/files?spaces=drive&q=${query}&fields=${fields}&orderBy=modifiedTime desc&pageSize=1`;
     const res = await driveRequest(url, token);
@@ -1240,9 +1242,26 @@
     return json && Array.isArray(json.files) && json.files.length ? json.files[0] : null;
   }
 
-  async function driveSaveBackup(token, text) {
-    const existing = await driveFindBackup(token);
-    const metadata = { name: DRIVE_FILE_NAME, mimeType: 'application/json' };
+  async function driveFindBackup(token) {
+    return driveFindNamedBackup(token, DRIVE_FILE_NAME);
+  }
+
+  async function driveDeleteFile(token, fileId) {
+    if (!fileId) return;
+    await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`, token, { method: 'DELETE' });
+  }
+
+  async function driveRenameFile(token, fileId, name) {
+    if (!fileId) return;
+    await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`, token, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+  }
+
+  async function driveUploadNew(token, name, text) {
+    const metadata = { name, mimeType: 'application/json' };
     const boundary = `anitier-${Date.now().toString(36)}`;
     const body = new Blob([
       `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`,
@@ -1251,25 +1270,51 @@
       text,
       `\r\n--${boundary}--`,
     ], { type: `multipart/related; boundary=${boundary}` });
-    const base = existing
-      ? `https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(existing.id)}?uploadType=multipart&fields=id,name,modifiedTime`
-      : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,modifiedTime';
-    const res = await driveRequest(base, token, {
-      method: existing ? 'PATCH' : 'POST',
+    const res = await driveRequest('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,modifiedTime', token, {
+      method: 'POST',
       headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
       body,
     });
     return res.json();
   }
 
-  async function driveLoadBackup(token) {
-    const file = await driveFindBackup(token);
-    if (!file) throw new Error('В Google Drive нет резервной копии AniTier.');
+  /* Храним 2 копии: текущая -> предыдущая, новая -> текущая. */
+  async function driveSaveBackup(token, text) {
+    let current = null;
+    let prev = null;
+    try { current = await driveFindNamedBackup(token, DRIVE_FILE_NAME); } catch { /* продолжаем */ }
+    try { prev = await driveFindNamedBackup(token, DRIVE_PREV_FILE_NAME); } catch { /* продолжаем */ }
+    if (DRIVE_KEEP >= 2 && current) {
+      try { if (prev) await driveDeleteFile(token, prev.id); } catch { /* старая копия необязательна */ }
+      try { await driveRenameFile(token, current.id, DRIVE_PREV_FILE_NAME); } catch { /* если не вышло, просто перезапишем текущую */ }
+    }
+    return driveUploadNew(token, DRIVE_FILE_NAME, text);
+  }
+
+  async function driveReadFile(token, file) {
     const res = await driveRequest(
       `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.id)}?alt=media`,
       token,
     );
     return { text: await res.text(), file };
+  }
+
+  /* Загружаем свежую копию; если она битая/недоступна — пробуем предыдущую. */
+  async function driveLoadBackup(token) {
+    const names = [DRIVE_FILE_NAME, DRIVE_PREV_FILE_NAME];
+    let lastError = null;
+    for (const name of names) {
+      let file = null;
+      try { file = await driveFindNamedBackup(token, name); } catch (err) { lastError = err; file = null; }
+      if (!file) continue;
+      try {
+        const loaded = await driveReadFile(token, file);
+        try { C.parseBackupJson(loaded.text); return loaded; }
+        catch (parseErr) { lastError = parseErr; }
+      } catch (err) { lastError = err; }
+    }
+    if (lastError) throw lastError;
+    throw new Error('В Google Drive нет резервной копии AniTier.');
   }
 
   async function fillAltPage(s, revision) {

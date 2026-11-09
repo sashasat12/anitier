@@ -49,9 +49,23 @@
     try {
       const snapshot = C.makeSafetySnapshot(collectItems(), Date.now());
       if (!Object.keys(snapshot.items).length) return false;
+      let previous = null;
+      try {
+        const existing = readSnapshot();
+        if (existing && existing.cards) {
+          previous = { savedAt: existing.savedAt, items: existing.items };
+        }
+      } catch { /* первая копия */ }
+      if (previous) snapshot.previous = previous;
       if (!api.saveSnapshot(JSON.stringify(snapshot))) return false;
       lastSavedAt = snapshot.savedAt;
-      infoCache = { savedAt: lastSavedAt, cards: snapshotCards(snapshot.items), bytes: 0 };
+      infoCache = {
+        savedAt: lastSavedAt,
+        cards: snapshotCards(snapshot.items),
+        bytes: 0,
+        previousSavedAt: previous ? (Number(previous.savedAt) || 0) : 0,
+        copies: previous ? 2 : 1,
+      };
       return true;
     } catch (err) {
       console.warn('saveSnapshot', err);
@@ -88,8 +102,14 @@
     if (infoCache) return infoCache;
     const snapshot = readSnapshot();
     infoCache = snapshot
-      ? { savedAt: snapshot.savedAt, cards: snapshot.cards, bytes: 0 }
-      : { savedAt: 0, cards: 0, bytes: 0 };
+      ? {
+          savedAt: snapshot.savedAt,
+          cards: snapshot.cards,
+          bytes: 0,
+          previousSavedAt: snapshot.previous ? (Number(snapshot.previous.savedAt) || 0) : 0,
+          copies: snapshot.previous ? 2 : 1,
+        }
+      : { savedAt: 0, cards: 0, bytes: 0, previousSavedAt: 0, copies: 0 };
     return infoCache;
   }
 
@@ -136,9 +156,12 @@
       return false;
     }
     const snapshot = readSnapshot();
-    if (!snapshot || !snapshot.cards) return false;
-    if (!writeItems(snapshot.items).ok) return false;
-    return markRestored('snapshot');
+    if (!snapshot) return false;
+    const candidates = [snapshot, snapshot.previous].filter(s => s && s.cards && s.items);
+    for (const slot of candidates) {
+      if (writeItems(slot.items).ok) return markRestored('snapshot');
+    }
+    return false;
   }
 
   /* Данные из старой сборки (адрес file://) присылает MainActivity. */

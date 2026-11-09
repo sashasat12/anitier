@@ -1194,7 +1194,9 @@
 
   /* ---------------- страховочная копия в памяти приложения ---------------- */
   const SAFETY_KIND = 'anitier.safety';
-  const SAFETY_VERSION = 1;
+  const SAFETY_VERSION = 2;
+  const SAFETY_READ_VERSIONS = [1, 2];
+  const SAFETY_KEEP = 2;
   const SAFETY_KEYS = ['anitier.v1', 'anitier.moments.v1', 'anitier.translations.v1'];
 
   /* Снимок ключей localStorage: строки как есть, без разбора схемы. */
@@ -1208,6 +1210,7 @@
     return {
       kind: SAFETY_KIND,
       version: SAFETY_VERSION,
+    SAFETY_KEEP,
       savedAt: Number(savedAt) || Date.now(),
       items: out,
     };
@@ -1229,6 +1232,16 @@
     return total;
   }
 
+  function normalizeSafetySlot(slot) {
+    if (!slot || typeof slot !== 'object') return null;
+    const items = slot.items && typeof slot.items === 'object' ? slot.items : null;
+    if (!items) return null;
+    const state = typeof items[SAFETY_KEYS[0]] === 'string' ? items[SAFETY_KEYS[0]] : '';
+    const cards = countSnapshotCards(state);
+    if (!cards) return null;
+    return { savedAt: Number(slot.savedAt) || 0, items, cards };
+  }
+
   function parseSafetySnapshot(text) {
     let payload = null;
     try {
@@ -1239,15 +1252,16 @@
     if (!payload || typeof payload !== 'object' || payload.kind !== SAFETY_KIND) {
       throw new Error('Это не страховочная копия AniTier.');
     }
-    if (Number(payload.version) !== SAFETY_VERSION) {
+    if (!SAFETY_READ_VERSIONS.includes(Number(payload.version))) {
       throw new Error('Версия страховочной копии не поддерживается.');
     }
-    const items = payload.items && typeof payload.items === 'object' ? payload.items : {};
-    const state = typeof items[SAFETY_KEYS[0]] === 'string' ? items[SAFETY_KEYS[0]] : '';
+    const current = normalizeSafetySlot(payload) || { savedAt: Number(payload.savedAt) || 0, items: {}, cards: 0 };
+    const previous = normalizeSafetySlot(payload.previous);
     return {
-      savedAt: Number(payload.savedAt) || 0,
-      items,
-      cards: countSnapshotCards(state),
+      savedAt: current.savedAt,
+      items: current.items,
+      cards: current.cards,
+      previous,
     };
   }
 
@@ -1800,7 +1814,7 @@
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.46.1';
+  const APP_VERSION = '1.47.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
