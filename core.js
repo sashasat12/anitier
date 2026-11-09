@@ -1800,7 +1800,7 @@
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.46.0';
+  const APP_VERSION = '1.46.1';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -1896,11 +1896,18 @@
   }
 
   function buildFranchiseGroups(related, currentAnime) {
-    if (!Array.isArray(related)) related = [];
-    const byDate = (a, b) => (franchiseDateKey(a) - franchiseDateKey(b)) || ((a.anime && a.anime.id) || 0) - ((b.anime && b.anime.id) || 0);
-    const current = currentAnime ? { anime: currentAnime, relationType: 'CURRENT' } : null;
-    const mainLinks = related.filter(link => isFranchiseMain(link && link.relationType)).slice().sort(byDate);
-    const extras = related.filter(link => !isFranchiseMain(link && link.relationType)).slice().sort(byDate);
+    const safeRelated = (Array.isArray(related) ? related : []).filter(
+      link => link && link.anime && link.anime.id != null,
+    );
+    const byDate = (a, b) => (
+      franchiseDateKey(a) - franchiseDateKey(b)
+      || (((a && a.anime && a.anime.id) || 0) - ((b && b.anime && b.anime.id) || 0))
+    );
+    const current = currentAnime && currentAnime.id != null
+      ? { anime: currentAnime, relationType: 'CURRENT' }
+      : null;
+    const mainLinks = safeRelated.filter(link => isFranchiseMain(link.relationType)).slice().sort(byDate);
+    const extras = safeRelated.filter(link => !isFranchiseMain(link.relationType)).slice().sort(byDate);
 
     const films = [];
     const specials = [];
@@ -1932,7 +1939,7 @@
     if (others.length) groups.push({ id: 'others', title: 'Другие', list: others });
 
     if (!mainLinks.length && extras.length && current) {
-      groups = [{ id: 'all', title: 'Порядок просмотра', list: [...related, current].slice().sort(byDate), numbered: true }];
+      groups = [{ id: 'all', title: 'Порядок просмотра', list: [...safeRelated, current].slice().sort(byDate), numbered: true }];
     } else if (mainLinks.length && films.length === 0 && specials.length === 0 && summaries.length === 0 && spinoffs.length === 0 && alternatives.length === 0 && others.length === 0) {
       groups = [{ id: 'main', title: 'Основной сериал', list: ([...mainLinks, current].filter(Boolean)).slice().sort(byDate), numbered: true }];
     } else if (!mainLinks.length && extras.length === 0 && current) {

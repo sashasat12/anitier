@@ -869,6 +869,25 @@
     T.eq(built.preview, C.FRANCHISE_PREVIEW, 'Размер предпросмотра берётся из константы');
   });
 
+  T.test('core: франшиза не ломается на связях без аниме', () => {
+    const C = core();
+    const related = [
+      { relationType: 'SIDE_STORY', anime: { id: 10622, title: 'OVA', type: 'OVA', year: 2008, airedFrom: '2008-01-01' } },
+      { relationType: 'SPIN_OFF', anime: null },
+      { relationType: 'SPIN_OFF' },
+      null,
+      { relationType: 'SPIN_OFF', anime: { id: 4705, title: 'PW1', type: 'SPECIAL', year: 2008, airedFrom: '2008-06-01' } },
+    ];
+    const current = { id: 2001, title: 'Гуррен-Лаганн', type: 'TV', year: 2007, airedFrom: '2007-04-01' };
+    const built = C.buildFranchiseGroups(related, current);
+    const ids = built.groups.flatMap(g => (g.list || []).map(l => l.anime && l.anime.id)).filter(Boolean);
+    T.assert(ids.includes(2001), 'текущий тайтл на месте');
+    T.assert(ids.includes(10622), 'валидная связь сохранена');
+    T.assert(ids.includes(4705), 'вторая валидная связь сохранена');
+    T.eq(ids.filter(id => id == null).length, 0, 'пустых записей нет');
+    T.eq(built.total, 3, 'считаются только валидные записи');
+  });
+
   T.test('core: без основной линии франшиза идёт одним списком по дате', () => {
     const C = core();
     const make = (id, type, year, relationType) => ({

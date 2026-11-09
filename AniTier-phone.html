@@ -6539,6 +6539,26 @@ window.AniTierTitlesRu = {
 
 window.AniTierChangelog = [
   {
+    version: '1.46.1',
+    date: '9 ноября 2026',
+    title: 'Исправлены сезоны Гуррен-Лаганна',
+    items: [
+      'Вкладка «Сезоны» больше не ломается, если в связанных тайтлах попалась пустая или неполная запись.',
+      'Связанные части франшизы показываются как раньше, а битые записи просто пропускаются.',
+    ],
+  },
+  {
+    version: '1.46.0',
+    date: '9 ноября 2026',
+    title: 'Копия уходит в Google Drive из приложения',
+    items: [
+      'В APK появилась кнопка «Сохранить в Google Drive»: копия открывается в системном меню «Поделиться», выберите «Мой диск» — и файл сохранится туда.',
+      'Вход в Google не нужен: файл загружает само приложение Drive, поэтому способ работает и на телефоне.',
+      'Если Drive не видно в первом ряду, прокрутите список приложений влево — «Мой диск» обычно дальше.',
+      'На сайте и в PWA Google Drive работает как раньше, через вход Google и OAuth.',
+    ],
+  },
+  {
     version: '1.45.0',
     date: '9 ноября 2026',
     title: 'Слияние старых данных с текущими',
@@ -8967,7 +8987,7 @@ window.AniTierChangelog = [
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.45.0';
+  const APP_VERSION = '1.46.1';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -9063,11 +9083,18 @@ window.AniTierChangelog = [
   }
 
   function buildFranchiseGroups(related, currentAnime) {
-    if (!Array.isArray(related)) related = [];
-    const byDate = (a, b) => (franchiseDateKey(a) - franchiseDateKey(b)) || ((a.anime && a.anime.id) || 0) - ((b.anime && b.anime.id) || 0);
-    const current = currentAnime ? { anime: currentAnime, relationType: 'CURRENT' } : null;
-    const mainLinks = related.filter(link => isFranchiseMain(link && link.relationType)).slice().sort(byDate);
-    const extras = related.filter(link => !isFranchiseMain(link && link.relationType)).slice().sort(byDate);
+    const safeRelated = (Array.isArray(related) ? related : []).filter(
+      link => link && link.anime && link.anime.id != null,
+    );
+    const byDate = (a, b) => (
+      franchiseDateKey(a) - franchiseDateKey(b)
+      || (((a && a.anime && a.anime.id) || 0) - ((b && b.anime && b.anime.id) || 0))
+    );
+    const current = currentAnime && currentAnime.id != null
+      ? { anime: currentAnime, relationType: 'CURRENT' }
+      : null;
+    const mainLinks = safeRelated.filter(link => isFranchiseMain(link.relationType)).slice().sort(byDate);
+    const extras = safeRelated.filter(link => !isFranchiseMain(link.relationType)).slice().sort(byDate);
 
     const films = [];
     const specials = [];
@@ -9099,7 +9126,7 @@ window.AniTierChangelog = [
     if (others.length) groups.push({ id: 'others', title: 'Другие', list: others });
 
     if (!mainLinks.length && extras.length && current) {
-      groups = [{ id: 'all', title: 'Порядок просмотра', list: [...related, current].slice().sort(byDate), numbered: true }];
+      groups = [{ id: 'all', title: 'Порядок просмотра', list: [...safeRelated, current].slice().sort(byDate), numbered: true }];
     } else if (mainLinks.length && films.length === 0 && specials.length === 0 && summaries.length === 0 && spinoffs.length === 0 && alternatives.length === 0 && others.length === 0) {
       groups = [{ id: 'main', title: 'Основной сериал', list: ([...mainLinks, current].filter(Boolean)).slice().sort(byDate), numbered: true }];
     } else if (!mainLinks.length && extras.length === 0 && current) {
@@ -15504,7 +15531,8 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
   const MODAL_TABS = ['overview', 'seasons', 'episodes', 'moments'];
 
   function franchiseCardHTML(link, opts = {}) {
-    const item = link.anime;
+    const item = link && link.anime;
+    if (!item || item.id == null) return '';
     const tier = findTier('watched', item.id) || findTier('planned', item.id);
     const progress = watchedCount(item.id);
     const isCurrent = link.relationType === 'CURRENT';
@@ -15515,17 +15543,18 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
       ? `<span class="franchise-order" aria-hidden="true">${opts.order}</span>`
       : '';
     const here = isCurrent ? '<span class="franchise-here">Вы здесь</span>' : '';
-    return `<article class="franchise-link${isCurrent ? ' franchise-current' : ''}" data-action="open" data-id="${item.id}" tabindex="0" role="button"${isCurrent ? ' aria-current="true"' : ''} aria-label="${isCurrent ? 'Текущая часть: ' : 'Открыть: '}${esc(displayTitle(item))}">
-      <span class="franchise-poster"><img ${imgAttrs(item)}>${item.score ? `<span class="franchise-score">★ ${item.score.toFixed(1)}</span>` : ''}<span class="franchise-link-arrow" aria-hidden="true">›</span></span>
+    const scoreNum = Number(item.score);
+    const score = Number.isFinite(scoreNum) ? scoreNum.toFixed(1) : '';
+    return `<article class="franchise-link${isCurrent ? ' franchise-current' : ''}" data-action="open" data-id="${item.id}" tabindex="0" role="button"${isCurrent ? ' aria-current="true"' : ''} aria-label="${isCurrent ? 'Текущий тайтл: ' : 'Открыть: '}${esc(displayTitle(item))}">
+      <span class="franchise-poster"><img ${imgAttrs(item)}>${score ? `<span class="franchise-score">★ ${score}</span>` : ''}<span class="franchise-link-arrow" aria-hidden="true">→</span></span>
       <span class="franchise-link-main">
         <span class="franchise-link-kind">${order}${esc(franchiseRelationLabel(link.relationType))}${here}</span>
         <b>${esc(displayTitle(item))}</b>
-        <small>${esc(meta || 'Данные уточняются')}</small>
+        <small>${esc(meta || 'Данных немного')}</small>
         <span class="franchise-link-status">${esc(listStatus)}${progressStatus ? ` · ${esc(progressStatus)}` : ''}</span>
       </span>
     </article>`;
   }
-
   function renderFranchiseSection(anime) {
     if (anime.custom) return '';
     const related = state.franchiseById.get(anime.id);
@@ -15594,7 +15623,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
         links.push(relation);
       }
       /* Только хронология: иначе фильмы и OVA прыгают в конец списка. */
-      links.sort((a, b) => (franchiseDate(a) - franchiseDate(b)) || (a.anime.id - b.anime.id));
+      links.sort((a, b) => (franchiseDate(a) - franchiseDate(b)) || (((a && a.anime && a.anime.id) || 0) - ((b && b.anime && b.anime.id) || 0)));
       state.franchiseById.set(anime.id, links);
     }).catch(error => {
       state.franchiseErrors.set(anime.id, error && error.message ? error.message : 'Не удалось загрузить порядок просмотра');

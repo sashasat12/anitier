@@ -456,7 +456,8 @@
   const MODAL_TABS = ['overview', 'seasons', 'episodes', 'moments'];
 
   function franchiseCardHTML(link, opts = {}) {
-    const item = link.anime;
+    const item = link && link.anime;
+    if (!item || item.id == null) return '';
     const tier = findTier('watched', item.id) || findTier('planned', item.id);
     const progress = watchedCount(item.id);
     const isCurrent = link.relationType === 'CURRENT';
@@ -467,17 +468,18 @@
       ? `<span class="franchise-order" aria-hidden="true">${opts.order}</span>`
       : '';
     const here = isCurrent ? '<span class="franchise-here">Вы здесь</span>' : '';
-    return `<article class="franchise-link${isCurrent ? ' franchise-current' : ''}" data-action="open" data-id="${item.id}" tabindex="0" role="button"${isCurrent ? ' aria-current="true"' : ''} aria-label="${isCurrent ? 'Текущая часть: ' : 'Открыть: '}${esc(displayTitle(item))}">
-      <span class="franchise-poster"><img ${imgAttrs(item)}>${item.score ? `<span class="franchise-score">★ ${item.score.toFixed(1)}</span>` : ''}<span class="franchise-link-arrow" aria-hidden="true">›</span></span>
+    const scoreNum = Number(item.score);
+    const score = Number.isFinite(scoreNum) ? scoreNum.toFixed(1) : '';
+    return `<article class="franchise-link${isCurrent ? ' franchise-current' : ''}" data-action="open" data-id="${item.id}" tabindex="0" role="button"${isCurrent ? ' aria-current="true"' : ''} aria-label="${isCurrent ? 'Текущий тайтл: ' : 'Открыть: '}${esc(displayTitle(item))}">
+      <span class="franchise-poster"><img ${imgAttrs(item)}>${score ? `<span class="franchise-score">★ ${score}</span>` : ''}<span class="franchise-link-arrow" aria-hidden="true">→</span></span>
       <span class="franchise-link-main">
         <span class="franchise-link-kind">${order}${esc(franchiseRelationLabel(link.relationType))}${here}</span>
         <b>${esc(displayTitle(item))}</b>
-        <small>${esc(meta || 'Данные уточняются')}</small>
+        <small>${esc(meta || 'Данных немного')}</small>
         <span class="franchise-link-status">${esc(listStatus)}${progressStatus ? ` · ${esc(progressStatus)}` : ''}</span>
       </span>
     </article>`;
   }
-
   function renderFranchiseSection(anime) {
     if (anime.custom) return '';
     const related = state.franchiseById.get(anime.id);
@@ -546,7 +548,7 @@
         links.push(relation);
       }
       /* Только хронология: иначе фильмы и OVA прыгают в конец списка. */
-      links.sort((a, b) => (franchiseDate(a) - franchiseDate(b)) || (a.anime.id - b.anime.id));
+      links.sort((a, b) => (franchiseDate(a) - franchiseDate(b)) || (((a && a.anime && a.anime.id) || 0) - ((b && b.anime && b.anime.id) || 0)));
       state.franchiseById.set(anime.id, links);
     }).catch(error => {
       state.franchiseErrors.set(anime.id, error && error.message ? error.message : 'Не удалось загрузить порядок просмотра');
