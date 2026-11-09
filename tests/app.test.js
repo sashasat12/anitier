@@ -3214,4 +3214,31 @@
       app.close();
     }
   });
+
+  T.test('app: в APK копия уходит в Google Drive через меню «Поделиться»', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const win = app.win;
+      await win.__anitierTest.init();
+      const App = win.AniTier;
+      const calls = [];
+      win.AniTierAndroid = {
+        shareBackup(json, name) { calls.push([name, json]); return true; },
+      };
+      App.state.lists.watched.S = [{ id: 1, title: 'Тест' }];
+      App.openBackup();
+      const doc = win.document;
+      const btn = doc.querySelector('[data-action="backup-drive-share"]');
+      T.assert(btn, 'В APK есть кнопка отправки в Google Drive');
+      btn.click();
+      T.eq(calls.length, 1, 'Мост получил копию');
+      T.eq(calls[0][0], 'anitier-backup.json', 'Имя файла копии');
+      const payload = JSON.parse(calls[0][1]);
+      T.eq(payload.kind, 'anitier.backup', 'Передан формат резервной копии');
+      T.assert(payload.data && payload.data.state, 'В копии есть состояние списков');
+      App.closeBackup();
+    } finally {
+      app.close();
+    }
+  });
 })();

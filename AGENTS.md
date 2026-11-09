@@ -129,7 +129,7 @@ powershell -ExecutionPolicy Bypass -File .\graph-versions.ps1 -Diff v1.8.1 v1.9.
 - Если оба источника недоступны — демо-режим (`?demo=1`) с локальной подборкой.
 - Офлайн-оболочку кеширует service worker (`mobile/sw.js`); при изменении файлов оболочки поднимать версию кеша.
 - Ключи `localStorage`: `anitier.v1` — списки, прогресс, свои карточки (миниатюры), настройки; `anitier.moments.v1` — метаданные моментов; `anitier.translations.v1` — кэш переводов. Полные постеры и медиа моментов лежат в IndexedDB `anitier-media` (хранилища `images` и `media`) и в резервную копию не входят.
-- Google Drive доступен только на сайте и в PWA (`https://`/`http://`), в APK — файловая копия через системный диалог Android.
+- Google Drive: на сайте и в PWA — через Google Sign-In (`https://`/`http://`); в APK — через системное меню «Поделиться» (файл отдаёт `ExportProvider`), без OAuth.
 
 ## Релиз
 

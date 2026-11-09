@@ -291,6 +291,8 @@
     const drive = App.driveAvailable ? App.driveAvailable() : false;
     const disabled = f.busy ? ' disabled' : '';
     const safety = App.safetyAvailable ? App.safetyAvailable() : false;
+    const canShareDrive = typeof window !== 'undefined' && window.AniTierAndroid
+      && typeof window.AniTierAndroid.shareBackup === 'function';
     const safetyInfo = safety && App.safetySnapshotInfo ? App.safetySnapshotInfo() : null;
     const legacyInfo = safety && App.legacyBackupInfo ? App.legacyBackupInfo() : null;
     const legacyBlock = legacyInfo
@@ -341,10 +343,18 @@
             <button class="btn btn-ghost" type="button" data-action="backup-drive-load"${disabled}>Восстановить последнюю версию</button>
           </div>
         </div>`
-      : `<div class="backup-block">
-          <h3>Google Drive</h3>
-          <p class="form-note">Google Drive доступен на сайте и в PWA. В APK используйте файл — он сохраняется через системный диалог.</p>
-        </div>`;
+      : canShareDrive
+        ? `<div class="backup-block">
+            <h3>Google Drive</h3>
+            <p>Отправьте копию в приложение Google Drive через системное меню: выберите Drive и папку. Вход в Google не нужен.</p>
+            <div class="form-actions">
+              <button class="btn btn-primary" type="button" data-action="backup-drive-share"${disabled}>Сохранить в Google Drive</button>
+            </div>
+          </div>`
+        : `<div class="backup-block">
+            <h3>Google Drive</h3>
+            <p class="form-note">Google Drive доступен на сайте и в PWA. В APK используйте файл — он сохраняется через системный диалог.</p>
+          </div>`;
     box.innerHTML = `<h2 id="backup-title">Резервная копия</h2>
       <p class="custom-sub">Списки, прогресс, свои карточки, моменты, настройки и кэш переводов. В копию входят миниатюры, но не полные постеры, видео и GIF — они остаются в этом браузере.</p>
       <div class="backup-block">

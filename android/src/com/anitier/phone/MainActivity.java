@@ -608,6 +608,23 @@ public class MainActivity extends Activity {
         }
     }
 
+    /* Копия уходит в другое приложение (Google Drive и т. п.) через «Поделиться». */
+    private void shareExportedFile(Uri uri) {
+        try {
+            Intent send = new Intent(Intent.ACTION_SEND);
+            send.setType("application/json");
+            send.putExtra(Intent.EXTRA_STREAM, uri);
+            send.putExtra(Intent.EXTRA_SUBJECT, "AniTier — резервная копия");
+            send.putExtra(Intent.EXTRA_TEXT, "Резервная копия AniTier");
+            send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            Intent chooser = Intent.createChooser(send, "Сохранить копию в Google Drive");
+            chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(chooser);
+        } catch (Exception error) {
+            Toast.makeText(this, "Не удалось открыть меню «Поделиться»", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private class BackupBridge {
         @JavascriptInterface
         public void openUrl(String url) {
@@ -675,6 +692,27 @@ public void scheduleReleaseNotifications(String json) {
         @JavascriptInterface
         public boolean downloadUpdate(String url, String version) {
             return startUpdateDownload(url, version);
+        }
+
+        @JavascriptInterface
+        public boolean shareBackup(String json, String fileName) {
+            if (json == null || json.isEmpty()) return false;
+            String name = fileName == null || fileName.isEmpty()
+                    ? "anitier-backup.json"
+                    : fileName.replaceAll("[^0-9A-Za-z._-]", "_");
+            try {
+                File dir = new File(getCacheDir(), "exports");
+                if (!dir.exists() && !dir.mkdirs()) return false;
+                File file = new File(dir, name);
+                try (FileOutputStream out = new FileOutputStream(file)) {
+                    out.write(json.getBytes(StandardCharsets.UTF_8));
+                }
+                Uri uri = Uri.parse("content://" + ExportProvider.AUTHORITY + "/" + name);
+                runOnUiThread(() -> shareExportedFile(uri));
+                return true;
+            } catch (Exception error) {
+                return false;
+            }
         }
 
         @JavascriptInterface

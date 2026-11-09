@@ -15339,6 +15339,8 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     const drive = App.driveAvailable ? App.driveAvailable() : false;
     const disabled = f.busy ? ' disabled' : '';
     const safety = App.safetyAvailable ? App.safetyAvailable() : false;
+    const canShareDrive = typeof window !== 'undefined' && window.AniTierAndroid
+      && typeof window.AniTierAndroid.shareBackup === 'function';
     const safetyInfo = safety && App.safetySnapshotInfo ? App.safetySnapshotInfo() : null;
     const legacyInfo = safety && App.legacyBackupInfo ? App.legacyBackupInfo() : null;
     const legacyBlock = legacyInfo
@@ -15389,10 +15391,18 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
             <button class="btn btn-ghost" type="button" data-action="backup-drive-load"${disabled}>Восстановить последнюю версию</button>
           </div>
         </div>`
-      : `<div class="backup-block">
-          <h3>Google Drive</h3>
-          <p class="form-note">Google Drive доступен на сайте и в PWA. В APK используйте файл — он сохраняется через системный диалог.</p>
-        </div>`;
+      : canShareDrive
+        ? `<div class="backup-block">
+            <h3>Google Drive</h3>
+            <p>Отправьте копию в приложение Google Drive через системное меню: выберите Drive и папку. Вход в Google не нужен.</p>
+            <div class="form-actions">
+              <button class="btn btn-primary" type="button" data-action="backup-drive-share"${disabled}>Сохранить в Google Drive</button>
+            </div>
+          </div>`
+        : `<div class="backup-block">
+            <h3>Google Drive</h3>
+            <p class="form-note">Google Drive доступен на сайте и в PWA. В APK используйте файл — он сохраняется через системный диалог.</p>
+          </div>`;
     box.innerHTML = `<h2 id="backup-title">Резервная копия</h2>
       <p class="custom-sub">Списки, прогресс, свои карточки, моменты, настройки и кэш переводов. В копию входят миниатюры, но не полные постеры, видео и GIF — они остаются в этом браузере.</p>
       <div class="backup-block">
@@ -17994,6 +18004,30 @@ const {
     toast('Резервная копия скачана');
   }
 
+  /* APK: отправить копию в Google Drive через системное меню «Поделиться». */
+  function shareBackupToDrive() {
+    const bridge = window.AniTierAndroid;
+    if (!bridge || typeof bridge.shareBackup !== 'function') return false;
+    let text = '';
+    try {
+      text = JSON.stringify(buildBackupPayload(), null, 2);
+    } catch (err) {
+      setBackupMessage(err && err.message ? err.message : 'Не удалось собрать копию.', true);
+      return false;
+    }
+    try {
+      if (bridge.shareBackup(text, C.BACKUP_FILE)) {
+        setBackupMessage('Выберите Google Drive в системном меню — копия сохранится туда.', false);
+        toast('Выберите Google Drive в списке приложений');
+        return true;
+      }
+    } catch (err) {
+      console.warn('AniTier: не удалось поделиться копией', err);
+    }
+    setBackupMessage('Не удалось отправить копию в Drive.', true);
+    return false;
+  }
+
   async function restoreBackupText(text, source) {
     if (!C.isBackupSizeAllowed(String(text == null ? '' : text).length)) {
       setBackupMessage('Файл больше 30 МБ — это не резервная копия AniTier.', true);
@@ -18315,6 +18349,7 @@ const {
     watchedList,
     downloadText,
     saveBackupFile,
+    shareBackupToDrive,
     restoreBackupText,
     restoreBackupFile,
     mergeBackupText,
@@ -21442,6 +21477,10 @@ try { window.onReleaseNotificationPermissionResult = onReleaseNotificationPermis
 
     'backup-drive-load'() {
       restoreFromDrive();
+    },
+
+    'backup-drive-share'() {
+      if (typeof App.shareBackupToDrive === 'function') App.shareBackupToDrive();
     },
 
     'new-custom'() {

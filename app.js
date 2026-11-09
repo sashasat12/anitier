@@ -1295,6 +1295,10 @@ try { window.onReleaseNotificationPermissionResult = onReleaseNotificationPermis
       restoreFromDrive();
     },
 
+    'backup-drive-share'() {
+      if (typeof App.shareBackupToDrive === 'function') App.shareBackupToDrive();
+    },
+
     'new-custom'() {
       openCustomForm();
     },

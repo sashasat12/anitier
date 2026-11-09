@@ -166,6 +166,30 @@
     toast('Резервная копия скачана');
   }
 
+  /* APK: отправить копию в Google Drive через системное меню «Поделиться». */
+  function shareBackupToDrive() {
+    const bridge = window.AniTierAndroid;
+    if (!bridge || typeof bridge.shareBackup !== 'function') return false;
+    let text = '';
+    try {
+      text = JSON.stringify(buildBackupPayload(), null, 2);
+    } catch (err) {
+      setBackupMessage(err && err.message ? err.message : 'Не удалось собрать копию.', true);
+      return false;
+    }
+    try {
+      if (bridge.shareBackup(text, C.BACKUP_FILE)) {
+        setBackupMessage('Выберите Google Drive в системном меню — копия сохранится туда.', false);
+        toast('Выберите Google Drive в списке приложений');
+        return true;
+      }
+    } catch (err) {
+      console.warn('AniTier: не удалось поделиться копией', err);
+    }
+    setBackupMessage('Не удалось отправить копию в Drive.', true);
+    return false;
+  }
+
   async function restoreBackupText(text, source) {
     if (!C.isBackupSizeAllowed(String(text == null ? '' : text).length)) {
       setBackupMessage('Файл больше 30 МБ — это не резервная копия AniTier.', true);
@@ -487,6 +511,7 @@
     watchedList,
     downloadText,
     saveBackupFile,
+    shareBackupToDrive,
     restoreBackupText,
     restoreBackupFile,
     mergeBackupText,
