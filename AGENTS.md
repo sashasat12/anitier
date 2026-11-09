@@ -119,7 +119,7 @@ powershell -ExecutionPolicy Bypass -File .\graph-versions.ps1 -Diff v1.8.1 v1.9.
 ## Тесты
 
 - Каждый багфикс и каждая новая чистая функция в `core.js` — с тестом в `tests/core.test.js`.
-- Поведение UI — `tests/app.test.js`; мобильная оболочка — `tests/mobile.test.js`; обмен тир-листами — `tests/exchange.test.js`.
+- Поведение UI — `tests/app.test.js`; мобильная оболочка — `tests/mobile.test.js`; обмен тир-листами — `tests/exchange.test.js`; нагрузка (1000 тайтлов, все окна и сезоны) — `tests/stress.test.js`.
 - API раннера: `T.test(name, fn)`, `T.assert`, `T.eq`, `T.includes`, `T.waitFor`. Тесты асинхронные, сеть мокать, а не ходить в реальные AniList/Kitsu.
 - Перед тем как сказать «готово», прогнать `test.ps1` целиком.
 
