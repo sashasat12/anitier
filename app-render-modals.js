@@ -460,9 +460,9 @@
     const tier = findTier('watched', item.id) || findTier('planned', item.id);
     const progress = watchedCount(item.id);
     const isCurrent = link.relationType === 'CURRENT';
-    const meta = [typeRu(item.type) || '', item.year || '', item.episodes ? `${item.episodes} серий` : ''].filter(Boolean).join(' · ');
-    const listStatus = tier ? `В тире ${tier}` : 'Не в тир-листе';
-    const progressStatus = progress ? `Просмотрено ${progress}${item.episodes ? ` из ${item.episodes}` : ''}` : '';
+    const meta = [typeRu(item.type) || '', item.year || '', item.episodes ? `${item.episodes} сер.` : ''].filter(Boolean).join(' · ');
+    const listStatus = tier ? `В тире ${tier}` : 'Не в списке';
+    const progressStatus = progress ? ` · ${progress}${item.episodes ? `/${item.episodes}` : ''}` : '';
     const order = Number.isFinite(opts.order)
       ? `<span class="franchise-order" aria-hidden="true">${opts.order}</span>`
       : '';
@@ -470,13 +470,15 @@
     const scoreNum = Number(item.score);
     const score = Number.isFinite(scoreNum) ? scoreNum.toFixed(1) : '';
     return `<article class="franchise-link${isCurrent ? ' franchise-current' : ''}" data-action="open" data-id="${item.id}" tabindex="0" role="button"${isCurrent ? ' aria-current="true"' : ''} aria-label="${isCurrent ? 'Текущий тайтл: ' : 'Открыть: '}${esc(displayTitle(item))}">
-      <span class="franchise-poster"><img ${imgAttrs(item)}>${score ? `<span class="franchise-score">★ ${score}</span>` : ''}<span class="franchise-link-arrow" aria-hidden="true">→</span></span>
+      <span class="franchise-poster"><img ${imgAttrs(item)}></span>
       <span class="franchise-link-main">
         <span class="franchise-link-kind">${order}${esc(franchiseRelationLabel(link.relationType))}${here}</span>
         <b>${esc(displayTitle(item))}</b>
         <small>${esc(meta || 'Данных немного')}</small>
-        <span class="franchise-link-status">${esc(listStatus)}${progressStatus ? ` · ${esc(progressStatus)}` : ''}</span>
+        <span class="franchise-link-status">${esc(listStatus)}${progressStatus ? esc(progressStatus) : ''}</span>
       </span>
+      ${score ? `<span class="franchise-score">★ ${score}</span>` : ''}
+      <span class="franchise-link-arrow" aria-hidden="true">→</span>
     </article>`;
   }
   function renderFranchiseSection(anime) {

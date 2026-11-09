@@ -37,12 +37,12 @@
       T.includes(nav.textContent, 'Просмотрено', 'Раздел просмотренного подписан понятно');
       T.assert(!nav.textContent.includes('Смотрю'), 'Старая подпись «Смотрю» убрана');
       T.assert(!tabs.some(tab => tab.scrollWidth > tab.clientWidth + 1), 'Подпись вкладки не помещается');
-      const franchiseScroller = doc.createElement('div');
-      franchiseScroller.className = 'franchise-list';
-      doc.body.appendChild(franchiseScroller);
-      T.eq(getComputedStyle(franchiseScroller).gridAutoFlow, 'column', 'Сезоны должны прокручиваться по горизонтали');
-      T.eq(getComputedStyle(franchiseScroller).overflowX, 'auto', 'Список сезонов должен реагировать на свайп');
-      franchiseScroller.remove();
+      const franchiseList = doc.createElement('div');
+      franchiseList.className = 'franchise-list';
+      doc.body.appendChild(franchiseList);
+      T.eq(getComputedStyle(franchiseList).display, 'flex', 'Сезоны должны заполнять ширину компактным списком');
+      T.eq(getComputedStyle(franchiseList).flexDirection, 'column', 'Сезоны должны идти строками сверху вниз');
+      franchiseList.remove();
 
       const gridColumns = getComputedStyle(doc.querySelector('#db-grid'))
         .gridTemplateColumns

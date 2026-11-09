@@ -410,22 +410,27 @@ body.mobile-app .moment-actions { gap: 10px; }
 body.mobile-app .custom-new { width: 100%; }
 body.mobile-app .franchise-section { min-width: 0; padding: 12px; }
 body.mobile-app .franchise-list {
-  width: 100%;
-  min-width: 0;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, calc((100% - 11px) / 2));
-  grid-template-columns: none;
-  overflow-x: auto;
-  overscroll-behavior-inline: contain;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-  padding: 2px 2px 9px;
-}
-body.mobile-app .franchise-list::-webkit-scrollbar { display: none; }
-body.mobile-app .franchise-link { scroll-snap-align: start; }
-body.mobile-app .franchise-link-main { gap: 5px; padding: 9px; }
-body.mobile-app .franchise-link-main b { font-size: 11px; }
-body.mobile-app .franchise-link-status { font-size: 8.5px; }
+    width: 100%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow: visible;
+  }
+  body.mobile-app .franchise-link {
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "poster main arrow"
+      "poster score score";
+    align-items: start;
+    gap: 6px 10px;
+    padding: 8px 9px;
+  }
+  body.mobile-app .franchise-poster { width: 42px; height: 58px; }
+  body.mobile-app .franchise-link-main b { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 12.5px; }
+  body.mobile-app .franchise-link-status { font-size: 10px; }
+  body.mobile-app .franchise-score { justify-self: start; font-size: 10px; padding: 3px 7px; }
+  body.mobile-app .franchise-link-arrow { width: 26px; height: 26px; font-size: 16px; }
 
 /* ---------- мелочи ---------- */
 body.mobile-app .btn:not(.btn-tiny),

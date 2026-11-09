@@ -1817,33 +1817,38 @@ button { font-family: inherit; }
 }
 .mal-link:hover { color: #fff; }
 
-/* ---------- карточки порядка просмотра ---------- */
+/* ---------- порядок просмотра / сезоны ---------- */
 .franchise-intro { margin: -3px 0 13px; color: var(--muted); font-size: 12px; line-height: 1.45; }
 .franchise-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 11px;
-}
-.franchise-link {
-  min-width: 0;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding: 0;
+  gap: 8px;
+  width: 100%;
+}
+.franchise-link {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto auto;
+  grid-template-areas: "poster main score arrow";
+  align-items: center;
+  gap: 10px 12px;
+  padding: 8px 10px;
   border: 1px solid var(--line);
-  border-radius: 13px;
+  border-radius: 12px;
   background: linear-gradient(160deg, rgba(255,255,255,.055), rgba(255,255,255,.018));
   color: var(--text);
   text-align: left;
   cursor: pointer;
-  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
 }
 .franchise-link:hover {
-  transform: translateY(-3px);
   border-color: rgba(255, 77, 141, .5);
-  box-shadow: 0 12px 28px rgba(0,0,0,.26);
+  box-shadow: 0 8px 22px rgba(0,0,0,.22);
+  background: linear-gradient(160deg, rgba(255,255,255,.07), rgba(255,255,255,.025));
 }
-.franchise-link:focus-visible { outline: 2px solid #ff6e9f; outline-offset: 3px; }
+.franchise-link:focus-visible { outline: 2px solid #ff6e9f; outline-offset: 2px; }
 .franchise-current {
   border-color: rgba(255, 77, 141, .65);
   background: linear-gradient(160deg, rgba(255,77,141,.15), rgba(138,92,255,.08));
@@ -1851,93 +1856,83 @@ button { font-family: inherit; }
 }
 .franchise-current:hover { border-color: rgba(255, 77, 141, .85); }
 .franchise-poster {
+  grid-area: poster;
   position: relative;
   display: block;
-  width: 100%;
-  aspect-ratio: 2 / 3;
+  width: 46px;
+  height: 64px;
+  border-radius: 8px;
   overflow: hidden;
   background: #10121b;
-}
-.franchise-poster::after {
-  content: '';
-  position: absolute;
-  inset: 45% 0 0;
-  background: linear-gradient(transparent, rgba(7,8,14,.72));
-  pointer-events: none;
+  flex: none;
 }
 .franchise-poster img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.franchise-score {
-  position: absolute;
-  z-index: 1;
-  top: 8px;
-  right: 8px;
-  padding: 4px 7px;
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: 8px;
-  background: rgba(8,10,16,.78);
-  color: #ffd27a;
+.franchise-link-main {
+  grid-area: main;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+.franchise-link-kind {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 100%;
+  color: #d1c0ff;
   font-size: 10px;
   font-weight: 800;
-  backdrop-filter: blur(8px);
-}
-.franchise-link-arrow {
-  position: absolute;
-  z-index: 1;
-  right: 9px;
-  bottom: 9px;
-  width: 28px;
-  height: 28px;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(255,255,255,.25);
-  border-radius: 50%;
-  background: rgba(8,10,16,.7);
-  color: white;
-  font-size: 20px;
-  line-height: 1;
-  transition: transform .18s ease, background .18s ease;
-}
-.franchise-link:hover .franchise-link-arrow { transform: translateX(2px); background: rgba(255,77,141,.8); }
-.franchise-link-main { min-width: 0; display: flex; flex: 1; flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px; }
-.franchise-link-kind {
-  max-width: 100%;
-  padding: 4px 7px;
-  overflow: hidden;
-  border: 1px solid rgba(138,92,255,.28);
-  border-radius: 7px;
-  background: rgba(138,92,255,.12);
-  color: #d1c0ff;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: .045em;
+  letter-spacing: .04em;
   line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   text-transform: uppercase;
 }
-.franchise-current .franchise-link-kind { border-color: rgba(255,77,141,.3); background: rgba(255,77,141,.13); color: #ffb3cd; }
+.franchise-current .franchise-link-kind { color: #ffb3cd; }
 .franchise-link-main b {
-  display: -webkit-box;
+  display: block;
   width: 100%;
   overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  font-size: 12px;
-  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  line-height: 1.3;
 }
-.franchise-link-main small { color: var(--muted); font-size: 10px; line-height: 1.3; }
+.franchise-link-main small { color: var(--muted); font-size: 11px; line-height: 1.3; }
 .franchise-link-status {
-  display: -webkit-box;
-  width: 100%;
-  margin-top: auto;
-  overflow: hidden;
   color: #aab2c7;
-  font-size: 9px;
-  line-height: 1.35;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  font-size: 10.5px;
+  line-height: 1.3;
 }
 .franchise-current .franchise-link-status { color: #ffc2d5; }
+.franchise-score {
+  grid-area: score;
+  padding: 4px 8px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 8px;
+  background: rgba(8,10,16,.5);
+  color: #ffd27a;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  align-self: center;
+}
+.franchise-link-arrow {
+  grid-area: arrow;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 50%;
+  background: rgba(8,10,16,.45);
+  color: rgba(255,255,255,.85);
+  font-size: 18px;
+  line-height: 1;
+  transition: transform .18s ease, background .18s ease, border-color .18s ease;
+  align-self: center;
+}
+.franchise-link:hover .franchise-link-arrow { transform: translateX(2px); background: rgba(255,77,141,.75); border-color: rgba(255,77,141,.5); }
 .franchise-section > .hint { margin-top: 12px; }
 
 /* ---------- свои карточки и моменты ---------- */
@@ -4014,22 +4009,27 @@ body.mobile-app .moment-actions { gap: 10px; }
 body.mobile-app .custom-new { width: 100%; }
 body.mobile-app .franchise-section { min-width: 0; padding: 12px; }
 body.mobile-app .franchise-list {
-  width: 100%;
-  min-width: 0;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, calc((100% - 11px) / 2));
-  grid-template-columns: none;
-  overflow-x: auto;
-  overscroll-behavior-inline: contain;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-  padding: 2px 2px 9px;
-}
-body.mobile-app .franchise-list::-webkit-scrollbar { display: none; }
-body.mobile-app .franchise-link { scroll-snap-align: start; }
-body.mobile-app .franchise-link-main { gap: 5px; padding: 9px; }
-body.mobile-app .franchise-link-main b { font-size: 11px; }
-body.mobile-app .franchise-link-status { font-size: 8.5px; }
+    width: 100%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow: visible;
+  }
+  body.mobile-app .franchise-link {
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "poster main arrow"
+      "poster score score";
+    align-items: start;
+    gap: 6px 10px;
+    padding: 8px 9px;
+  }
+  body.mobile-app .franchise-poster { width: 42px; height: 58px; }
+  body.mobile-app .franchise-link-main b { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 12.5px; }
+  body.mobile-app .franchise-link-status { font-size: 10px; }
+  body.mobile-app .franchise-score { justify-self: start; font-size: 10px; padding: 3px 7px; }
+  body.mobile-app .franchise-link-arrow { width: 26px; height: 26px; font-size: 16px; }
 
 /* ---------- мелочи ---------- */
 body.mobile-app .btn:not(.btn-tiny),
@@ -6539,6 +6539,15 @@ window.AniTierTitlesRu = {
 
 window.AniTierChangelog = [
   {
+    version: '1.48.1',
+    date: '9 ноября 2026',
+    title: 'Сезоны и франшиза влезают в экран',
+    items: [
+      'Вкладка «Сезоны» показывает связанные части компактными строками, которые заполняют ширину — большие франшизы больше не занимают экран постерами.',
+      'Группы, порядок, переход к тайтлу, прогресс, «Показать ещё» и «Показать всю франшизу» работают как раньше.',
+    ],
+  },
+  {
     version: '1.48.0',
     date: '9 ноября 2026',
     title: 'Франшиза загружается быстрее',
@@ -9031,7 +9040,7 @@ window.AniTierChangelog = [
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.48.0';
+  const APP_VERSION = '1.48.1';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -15654,9 +15663,9 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     const tier = findTier('watched', item.id) || findTier('planned', item.id);
     const progress = watchedCount(item.id);
     const isCurrent = link.relationType === 'CURRENT';
-    const meta = [typeRu(item.type) || '', item.year || '', item.episodes ? `${item.episodes} серий` : ''].filter(Boolean).join(' · ');
-    const listStatus = tier ? `В тире ${tier}` : 'Не в тир-листе';
-    const progressStatus = progress ? `Просмотрено ${progress}${item.episodes ? ` из ${item.episodes}` : ''}` : '';
+    const meta = [typeRu(item.type) || '', item.year || '', item.episodes ? `${item.episodes} сер.` : ''].filter(Boolean).join(' · ');
+    const listStatus = tier ? `В тире ${tier}` : 'Не в списке';
+    const progressStatus = progress ? ` · ${progress}${item.episodes ? `/${item.episodes}` : ''}` : '';
     const order = Number.isFinite(opts.order)
       ? `<span class="franchise-order" aria-hidden="true">${opts.order}</span>`
       : '';
@@ -15664,13 +15673,15 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     const scoreNum = Number(item.score);
     const score = Number.isFinite(scoreNum) ? scoreNum.toFixed(1) : '';
     return `<article class="franchise-link${isCurrent ? ' franchise-current' : ''}" data-action="open" data-id="${item.id}" tabindex="0" role="button"${isCurrent ? ' aria-current="true"' : ''} aria-label="${isCurrent ? 'Текущий тайтл: ' : 'Открыть: '}${esc(displayTitle(item))}">
-      <span class="franchise-poster"><img ${imgAttrs(item)}>${score ? `<span class="franchise-score">★ ${score}</span>` : ''}<span class="franchise-link-arrow" aria-hidden="true">→</span></span>
+      <span class="franchise-poster"><img ${imgAttrs(item)}></span>
       <span class="franchise-link-main">
         <span class="franchise-link-kind">${order}${esc(franchiseRelationLabel(link.relationType))}${here}</span>
         <b>${esc(displayTitle(item))}</b>
         <small>${esc(meta || 'Данных немного')}</small>
-        <span class="franchise-link-status">${esc(listStatus)}${progressStatus ? ` · ${esc(progressStatus)}` : ''}</span>
+        <span class="franchise-link-status">${esc(listStatus)}${progressStatus ? esc(progressStatus) : ''}</span>
       </span>
+      ${score ? `<span class="franchise-score">★ ${score}</span>` : ''}
+      <span class="franchise-link-arrow" aria-hidden="true">→</span>
     </article>`;
   }
   function renderFranchiseSection(anime) {
