@@ -213,6 +213,65 @@
     }
   }
 
+  /* Объединение: файл обычной копии или выгрузка прошлой версии. */
+  async function mergeBackupText(text, source) {
+    const raw = String(text == null ? '' : text);
+    if (!C.isBackupSizeAllowed(raw.length)) {
+      setBackupMessage('Файл больше 30 МБ — это не резервная копия AniTier.', true);
+      return false;
+    }
+    let data = null;
+    let legacy = false;
+    let parseError = null;
+    try {
+      data = C.parseBackupJson(raw).data;
+    } catch (err) {
+      parseError = err;
+      let items = null;
+      try { items = JSON.parse(raw); } catch { items = null; }
+      data = items ? C.safetyItemsToBackup(items) : null;
+      legacy = Boolean(data);
+    }
+    if (!data) {
+      setBackupMessage(parseError && parseError.message ? parseError.message : 'Не удалось прочитать файл.', true);
+      return false;
+    }
+    const where = source ? ` из «${source}»` : '';
+    if (!window.confirm(`Объединить данные${where} с текущими? Списки сохранятся, недостающие карточки добавятся, настройки придут из файла.`)) {
+      return false;
+    }
+    try {
+      const result = App.mergeBackupData(data);
+      restoreCatalogPreferences();
+      syncLangUI();
+      if (typeof App.applyAppearance === 'function') App.applyAppearance();
+      if (typeof App.renderSearchHistory === 'function') App.renderSearchHistory();
+      updateBell();
+      if (state.tab === 'db') App.fetchDB(true);
+      const extra = legacy ? ', настройки из файла прошлой версии' : '';
+      setBackupMessage(`Объединено: +${result.added} карточек, +${result.addedCustom} своих${extra}.`, false);
+      toast('Данные объединены');
+      return true;
+    } catch (err) {
+      setBackupMessage(err && err.message ? err.message : 'Не удалось объединить данные.', true);
+      return false;
+    }
+  }
+
+  async function mergeBackupFile(file) {
+    if (!file) return;
+    if (!C.isBackupSizeAllowed(file.size)) {
+      setBackupMessage('Файл больше 30 МБ — это не резервная копия AniTier.', true);
+      return;
+    }
+    try {
+      const text = await readTextFile(file);
+      await mergeBackupText(text, file.name || 'файл');
+    } catch (err) {
+      setBackupMessage(err && err.message ? err.message : 'Не удалось прочитать файл.', true);
+    }
+  }
+
   async function buildMediaArchive() {
     const entries = await mediaEntries();
     const totalBytes = entries.reduce((sum, entry) => sum + entry.blob.size, 0);
@@ -430,6 +489,8 @@
     saveBackupFile,
     restoreBackupText,
     restoreBackupFile,
+    mergeBackupText,
+    mergeBackupFile,
     buildMediaArchive,
     androidSaveMedia,
     exportMediaFile,

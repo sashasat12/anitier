@@ -1064,6 +1064,60 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     };
   }
 
+  /* Слияние копии с текущими данными: текущее важнее, из копии берём недостающее. */
+  function mergeBackupData(data) {
+    const incoming = data && data.state;
+    if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) {
+      throw new Error('В копии нет данных приложения.');
+    }
+    const readJson = (key) => {
+      try {
+        const raw = JSON.parse(localStorage.getItem(key) || 'null');
+        return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+      } catch {
+        return {};
+      }
+    };
+
+    const merged = C.mergeStates(readJson(LS_KEY), incoming);
+
+    const currentMoments = readJson(MOMENTS_KEY);
+    const incomingMoments = data.moments && typeof data.moments === 'object' && !Array.isArray(data.moments)
+      ? data.moments
+      : {};
+    const moments = {};
+    for (const group of new Set([...Object.keys(currentMoments), ...Object.keys(incomingMoments)])) {
+      const list = [
+        ...(Array.isArray(currentMoments[group]) ? currentMoments[group] : []),
+        ...(Array.isArray(incomingMoments[group]) ? incomingMoments[group] : []),
+      ];
+      const seen = new Set();
+      const items = list.filter(moment => {
+        const id = String((moment && moment.id) || '');
+        if (!id || seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
+      if (items.length) moments[group] = items;
+    }
+
+    const translations = {
+      ...readJson(TRANSLATIONS_KEY),
+      ...(data.translations && typeof data.translations === 'object' && !Array.isArray(data.translations)
+        ? data.translations
+        : {}),
+    };
+
+    const result = applyBackupData({ state: merged.state, moments, translations });
+    return {
+      ...result,
+      added: merged.stats.addedCards,
+      addedCustom: merged.stats.addedCustom,
+      kept: merged.stats.keptCards,
+      conflicts: merged.stats.conflicts,
+    };
+  }
+
   /* ---------------- IndexedDB для картинок и медиа ---------------- */
   let mediaDbPromise = null;
 
@@ -1809,6 +1863,7 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     removeMoment,
     buildBackupPayload,
     applyBackupData,
+    mergeBackupData,
     openMediaDB,
     mediaPut,
     mediaGet,

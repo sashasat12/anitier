@@ -219,6 +219,62 @@
     return markRestored('legacy');
   }
 
+  function mergeSummary(result) {
+    const parts = [];
+    if (result.added) parts.push(`+${result.added} ${result.added === 1 ? 'карточка' : 'карточек'}`);
+    if (result.addedCustom) parts.push(`+${result.addedCustom} своих`);
+    if (!parts.length) parts.push('новых карточек нет');
+    return `Объединено: ${parts.join(', ')}. Настройки взяты из прошлой версии.`;
+  }
+
+  function mergeLegacyManually() {
+    const items = readLegacyItems();
+    const data = items ? C.safetyItemsToBackup(items) : null;
+    if (!data) {
+      if (typeof App.setBackupMessage === 'function') App.setBackupMessage('Данных прошлой версии больше нет.', true);
+      return false;
+    }
+    if (!window.confirm('Объединить данные прошлой версии с текущими? Списки сохранятся, недостающие карточки добавятся, настройки придут из прошлой версии.')) {
+      return false;
+    }
+    try {
+      const result = App.mergeBackupData(data);
+      clearLegacyFile();
+      legacyInfoCache = null;
+      if (typeof App.setBackupMessage === 'function') App.setBackupMessage(mergeSummary(result), false);
+      if (typeof App.toast === 'function') App.toast('Данные прошлой версии объединены с текущими');
+      return true;
+    } catch (err) {
+      if (typeof App.setBackupMessage === 'function') {
+        App.setBackupMessage(err && err.message ? err.message : 'Не удалось объединить данные.', true);
+      }
+      return false;
+    }
+  }
+
+  function mergeSnapshotManually() {
+    const snapshot = readSnapshot();
+    const data = snapshot ? C.safetyItemsToBackup(snapshot.items) : null;
+    if (!data) {
+      if (typeof App.setBackupMessage === 'function') App.setBackupMessage('Страховочная копия пуста.', true);
+      return false;
+    }
+    if (!window.confirm('Объединить страховочную копию с текущими данными? Списки сохранятся, недостающие карточки добавятся, настройки придут из копии.')) {
+      return false;
+    }
+    try {
+      const result = App.mergeBackupData(data);
+      if (typeof App.setBackupMessage === 'function') App.setBackupMessage(mergeSummary(result), false);
+      if (typeof App.toast === 'function') App.toast('Страховочная копия объединена с текущими данными');
+      return true;
+    } catch (err) {
+      if (typeof App.setBackupMessage === 'function') {
+        App.setBackupMessage(err && err.message ? err.message : 'Не удалось объединить копию.', true);
+      }
+      return false;
+    }
+  }
+
   /* Сообщение после перезагрузки: откуда вернулись данные. */
   function announceRestore() {
     let kind = '';
@@ -283,6 +339,8 @@
     legacyBackupInfo,
     legacyRawText,
     restoreLegacyManually,
+    mergeLegacyManually,
+    mergeSnapshotManually,
     announceRestore,
     bindSafetyLifecycle,
     onStatePersisted,

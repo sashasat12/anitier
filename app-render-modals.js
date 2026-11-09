@@ -296,9 +296,10 @@
     const legacyBlock = legacyInfo
       ? `<div class="backup-block">
           <h3>Данные прошлой версии</h3>
-          <p>В старой сборке остались списки — ${legacyInfo.cards} ${legacyInfo.cards === 1 ? 'карточка' : 'карточек'}. Их можно вернуть: текущие списки, прогресс и настройки будут заменены.</p>
+          <p>В старой сборке остались списки — ${legacyInfo.cards} ${legacyInfo.cards === 1 ? 'карточка' : 'карточек'}. «Объединить» добавит недостающее к текущим спискам и вернёт настройки, «Вернуть списки» заменит текущие данные.</p>
           <div class="form-actions">
-            <button class="btn btn-primary" type="button" data-action="safety-legacy-restore"${disabled}>Вернуть списки</button>
+            <button class="btn btn-primary" type="button" data-action="safety-legacy-merge"${disabled}>Объединить</button>
+            <button class="btn btn-ghost" type="button" data-action="safety-legacy-restore"${disabled}>Вернуть списки</button>
             <button class="btn btn-ghost" type="button" data-action="safety-legacy-download"${disabled}>Скачать файл</button>
           </div>
         </div>`
@@ -316,6 +317,7 @@
           <div class="form-actions">
             <button class="btn btn-primary" type="button" data-action="safety-save"${disabled}>${f.busy ? 'Подождите…' : 'Сохранить сейчас'}</button>
             <button class="btn btn-ghost" type="button" data-action="safety-restore"${disabled}${safetyInfo && safetyInfo.cards ? '' : ' disabled'}>Восстановить</button>
+            <button class="btn btn-ghost" type="button" data-action="safety-merge"${disabled}${safetyInfo && safetyInfo.cards ? '' : ' disabled'}>Объединить</button>
           </div>
         </div>`
       : '';
@@ -347,11 +349,14 @@
       <p class="custom-sub">Списки, прогресс, свои карточки, моменты, настройки и кэш переводов. В копию входят миниатюры, но не полные постеры, видео и GIF — они остаются в этом браузере.</p>
       <div class="backup-block">
         <h3>Файл</h3>
-        <p>Скачайте JSON-файл и храните его где удобно. Восстановление заменит текущие списки, прогресс и настройки.</p>
+        <p>Скачайте JSON-файл и храните его где удобно. «Восстановить» заменит текущие списки, «Объединить» добавит недостающее и вернёт настройки из файла.</p>
         <div class="form-actions">
           <button class="btn btn-primary" type="button" data-action="backup-download"${disabled}>Скачать файл</button>
           <label class="btn btn-ghost file-btn${f.busy ? ' is-disabled' : ''}">Восстановить из файла
             <input type="file" accept=".json,application/json" data-action="backup-file"${disabled} hidden>
+          </label>
+          <label class="btn btn-ghost file-btn${f.busy ? ' is-disabled' : ''}">Объединить из файла
+            <input type="file" accept=".json,application/json" data-action="backup-merge-file"${disabled} hidden>
           </label>
         </div>
       </div>

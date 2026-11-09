@@ -1251,6 +1251,138 @@
     };
   }
 
+  /* ---------------- слияние состояний (старое + текущее) ---------------- */
+  /* Настройки, которые привязаны к устройству и времени, при слиянии
+     остаются текущими: старые отметки времени только путают проверки. */
+  const MERGE_SETTINGS_SKIP = ['lastUpdateCheck', 'lastDriveBackupTry'];
+
+  function mergeTierLists(current, incoming) {
+    const cur = current && typeof current === 'object' ? current : {};
+    const inc = incoming && typeof incoming === 'object' ? incoming : {};
+    const out = {};
+    const currentIds = new Set();
+    for (const tier of TIER_IDS) {
+      for (const item of (Array.isArray(cur[tier]) ? cur[tier] : [])) {
+        if (item && item.id != null) currentIds.add(item.id);
+      }
+    }
+    const stats = { added: 0, kept: 0, conflicts: 0 };
+    for (const tier of TIER_IDS) {
+      const list = Array.isArray(cur[tier]) ? cur[tier].slice() : [];
+      const seen = new Set(list.map(item => item && item.id).filter(id => id != null));
+      for (const item of (Array.isArray(inc[tier]) ? inc[tier] : [])) {
+        if (!item || item.id == null) continue;
+        if (seen.has(item.id)) { stats.kept++; continue; }
+        /* Уже есть в другом тире — оставляем текущее место. */
+        if (currentIds.has(item.id)) { stats.conflicts++; continue; }
+        list.push(item);
+        seen.add(item.id);
+        stats.added++;
+      }
+      out[tier] = list;
+    }
+    return { tiers: out, stats };
+  }
+
+  function mergeProgress(current, incoming) {
+    const out = {};
+    const cur = current && typeof current === 'object' ? current : {};
+    const inc = incoming && typeof incoming === 'object' ? incoming : {};
+    const ids = new Set([...Object.keys(cur), ...Object.keys(inc)]);
+    for (const id of ids) {
+      const a = cur[id] || {};
+      const b = inc[id] || {};
+      const watched = [...new Set([
+        ...(Array.isArray(a.watched) ? a.watched : []),
+        ...(Array.isArray(b.watched) ? b.watched : []),
+      ].map(Number).filter(n => Number.isInteger(n) && n > 0))].sort((x, y) => x - y);
+      if (!watched.length && !a.updated && !b.updated) continue;
+      out[id] = {
+        watched,
+        updated: Math.max(Number(a.updated) || 0, Number(b.updated) || 0),
+      };
+    }
+    return out;
+  }
+
+  function mergeCustomCards(current, incoming) {
+    const out = [];
+    const seen = new Set();
+    const keyOf = card => String((card && (card.customId || ('id:' + card.id))) || '');
+    for (const card of (Array.isArray(current) ? current : [])) {
+      const key = keyOf(card);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(card);
+    }
+    let added = 0;
+    for (const card of (Array.isArray(incoming) ? incoming : [])) {
+      const key = keyOf(card);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(card);
+      added++;
+    }
+    return { cards: out, added };
+  }
+
+  /* Слияние двух сохранений: текущее важнее, из старого добавляем недостающее. */
+  function mergeStates(current, incoming) {
+    const cur = current && typeof current === 'object' ? current : {};
+    const inc = incoming && typeof incoming === 'object' ? incoming : {};
+
+    const watched = mergeTierLists(cur.watched, inc.watched);
+    const planned = mergeTierLists(cur.planned, inc.planned);
+    const custom = mergeCustomCards(cur.customCards, inc.customCards);
+
+    const settings = { ...(cur.settings || {}) };
+    for (const [key, value] of Object.entries(inc.settings || {})) {
+      if (MERGE_SETTINGS_SKIP.includes(key)) continue;
+      if (value !== undefined) settings[key] = value;
+    }
+
+    const epInfo = { ...(inc.epInfo || {}), ...(cur.epInfo || {}) };
+    const seenNotifications = [...new Set([
+      ...(Array.isArray(cur.seenNotifications) ? cur.seenNotifications : []),
+      ...(Array.isArray(inc.seenNotifications) ? inc.seenNotifications : []),
+    ])];
+
+    return {
+      state: {
+        watched: watched.tiers,
+        planned: planned.tiers,
+        customCards: custom.cards,
+        progress: mergeProgress(cur.progress, inc.progress),
+        epInfo,
+        seenNotifications,
+        listViews: cur.listViews || {},
+        settings,
+      },
+      stats: {
+        addedCards: watched.stats.added + planned.stats.added,
+        keptCards: watched.stats.kept + planned.stats.kept,
+        conflicts: watched.stats.conflicts + planned.stats.conflicts,
+        addedCustom: custom.added,
+      },
+    };
+  }
+
+  /* Данные страховочной копии или прошлой сборки → формат резервной копии. */
+  function safetyItemsToBackup(items) {
+    const source = items && typeof items === 'object' ? items : {};
+    const parse = text => {
+      if (typeof text !== 'string' || !text) return null;
+      try { return JSON.parse(text); } catch { return null; }
+    };
+    const state = parse(source[SAFETY_KEYS[0]]);
+    if (!state || typeof state !== 'object' || Array.isArray(state)) return null;
+    return {
+      state,
+      moments: parse(source[SAFETY_KEYS[1]]) || {},
+      translations: parse(source[SAFETY_KEYS[2]]) || {},
+    };
+  }
+
   /* ---------------- резервные копии и моменты ---------------- */
   const BACKUP_KIND = 'anitier.backup';
   const BACKUP_VERSION = 2;
@@ -1668,7 +1800,7 @@
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.44.0';
+  const APP_VERSION = '1.45.0';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -2373,6 +2505,8 @@
     makeSafetySnapshot,
     countSnapshotCards,
     parseSafetySnapshot,
+    safetyItemsToBackup,
+    mergeStates,
     makeTierShare,
     encodeTierShare,
     parseTierShare,

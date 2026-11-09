@@ -95,8 +95,48 @@
       T.includes(text, 'Страховочная копия на устройстве', 'блок страховочной копии показан');
       T.includes(text, 'Данные прошлой версии', 'блок данных прошлой версии показан');
       T.assert(doc.querySelector('[data-action="safety-save"]'), 'есть кнопка сохранения копии');
+      T.assert(doc.querySelector('[data-action="safety-merge"]'), 'есть кнопка объединения копии');
+      T.assert(doc.querySelector('[data-action="safety-legacy-merge"]'), 'есть кнопка объединения старых списков');
+      T.assert(doc.querySelector('[data-action="backup-merge-file"]'), 'есть объединение из файла');
       T.assert(doc.querySelector('[data-action="safety-legacy-restore"]'), 'есть кнопка возврата старых списков');
       App.closeBackup();
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('safety: данные прошлой версии объединяются с текущими', async () => {
+    const app = await T.mountApp({ query: '?test=1' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      const bridge = fakeBridge(win);
+      const legacyState = {
+        schemaVersion: 1,
+        watched: { S: [{ id: 2, title: 'Старый' }], A: [], B: [], C: [], D: [], F: [], N: [] },
+        planned: { S: [], A: [], B: [], C: [], D: [], F: [], N: [] },
+        customCards: [{ id: -2, customId: 'c2', title: 'Старая своя', genres: [] }],
+        progress: {},
+        settings: { theme: 'amoled', titleLang: 'original' },
+      };
+      win.AniTierAndroid.loadLegacyData = () => JSON.stringify({ 'anitier.v1': JSON.stringify(legacyState) });
+      win.AniTierAndroid.clearLegacyData = () => { bridge.cleared = true; return true; };
+      win.confirm = () => true;
+      win.localStorage.setItem(App.LS_KEY, JSON.stringify({
+        schemaVersion: 1,
+        watched: { S: [{ id: 1, title: 'Текущий' }], A: [], B: [], C: [], D: [], F: [], N: [] },
+        planned: { S: [], A: [], B: [], C: [], D: [], F: [], N: [] },
+        customCards: [],
+        progress: {},
+        settings: { theme: 'dark', titleLang: 'ru' },
+      }));
+
+      T.eq(App.mergeLegacyManually(), true, 'слияние выполнено');
+      const saved = JSON.parse(win.localStorage.getItem(App.LS_KEY) || '{}');
+      T.eq(saved.watched.S.map(a => a.id), [1, 2], 'старая карточка добавлена к текущей');
+      T.eq(saved.settings.theme, 'amoled', 'настройки вернулись из прошлой версии');
+      T.eq(saved.customCards.length, 1, 'своя карточка вернулась');
+      T.eq(bridge.cleared, true, 'файл прошлой версии очищен после слияния');
     } finally {
       app.close();
     }

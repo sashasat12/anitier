@@ -1261,6 +1261,14 @@ try { window.onReleaseNotificationPermissionResult = onReleaseNotificationPermis
       if (typeof App.restoreSnapshotManually === 'function') App.restoreSnapshotManually();
     },
 
+    'safety-merge'() {
+      if (typeof App.mergeSnapshotManually === 'function') App.mergeSnapshotManually();
+    },
+
+    'safety-legacy-merge'() {
+      if (typeof App.mergeLegacyManually === 'function') App.mergeLegacyManually();
+    },
+
     'safety-legacy-restore'() {
       if (typeof App.restoreLegacyManually === 'function') App.restoreLegacyManually();
     },
@@ -1524,6 +1532,14 @@ try { window.onReleaseNotificationPermissionResult = onReleaseNotificationPermis
       const file = input.files && input.files[0];
       input.value = '';
       restoreBackupFile(file);
+    });
+
+    document.addEventListener('change', e => {
+      const input = e.target;
+      if (!input || input.dataset.action !== 'backup-merge-file') return;
+      const file = input.files && input.files[0];
+      input.value = '';
+      if (typeof App.mergeBackupFile === 'function') App.mergeBackupFile(file);
     });
 
     document.addEventListener('change', e => {

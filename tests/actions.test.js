@@ -5,7 +5,7 @@
 
   /* Действия, которые обрабатываются не кликом, а change/input. */
   const NON_CLICK = [
-    'backup-file', 'media-file', 'import-list-file',
+    'backup-file', 'backup-merge-file', 'media-file', 'import-list-file',
     'ep-slider',
     'settings-search-lang', 'settings-theme', 'settings-density', 'settings-font',
     'settings-drive-auto', 'settings-update-check',

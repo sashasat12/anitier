@@ -966,6 +966,60 @@
     T.eq(C.countSnapshotCards('null'), 0);
   });
 
+  T.test('core: слияние сохраняет текущее и добавляет старое', () => {
+    const C = core();
+    const current = {
+      watched: {
+        S: [{ id: 1, title: 'Текущий' }], A: [], B: [], C: [], D: [], F: [], N: [],
+      },
+      planned: { S: [], A: [{ id: 9, title: 'План' }], B: [], C: [], D: [], F: [], N: [] },
+      customCards: [{ id: -1, customId: 'c1', title: 'Своя' }],
+      progress: { 1: { watched: [1, 2], updated: 10 } },
+      settings: { theme: 'amoled', titleLang: 'ru', lastUpdateCheck: 111 },
+    };
+    const incoming = {
+      watched: {
+        S: [{ id: 2, title: 'Старый' }], A: [], B: [{ id: 3, title: 'Ещё' }], C: [], D: [], F: [], N: [],
+      },
+      planned: { S: [], A: [{ id: 9, title: 'План' }], B: [], C: [], D: [], F: [], N: [] },
+      customCards: [{ id: -1, customId: 'c1', title: 'Своя' }, { id: -2, customId: 'c2', title: 'Новая своя' }],
+      progress: { 1: { watched: [2, 3], updated: 5 } },
+      settings: { theme: 'dark', titleLang: 'original', lastUpdateCheck: 999 },
+    };
+
+    const merged = C.mergeStates(current, incoming);
+    T.eq(merged.state.watched.S.map(a => a.id), [1, 2], 'к текущему добавлены старые карточки');
+    T.eq(merged.state.watched.B.map(a => a.id), [3], 'карточка из другого тира добавлена');
+    T.eq(merged.state.planned.A.map(a => a.id), [9], 'дубликат в планах не задвоился');
+    T.eq(merged.state.customCards.map(c => c.customId), ['c1', 'c2'], 'свои карточки объединены');
+    T.eq(merged.state.progress['1'].watched, [1, 2, 3], 'прогресс объединён');
+    T.eq(merged.state.progress['1'].updated, 10, 'берём более свежую отметку прогресса');
+    T.eq(merged.state.settings.theme, 'dark', 'настройки приходят из старого сохранения');
+    T.eq(merged.state.settings.lastUpdateCheck, 111, 'служебное время проверки не перезаписывается');
+    T.eq(merged.stats.addedCards, 2, 'посчитаны добавленные карточки');
+    T.eq(merged.stats.addedCustom, 1, 'посчитаны добавленные свои карточки');
+    T.eq(merged.stats.keptCards, 1, 'дубликат в планах считается сохранённым');
+    T.eq(merged.stats.conflicts, 0, 'конфликтов в этом наборе нет');
+  });
+
+  T.test('core: слияние не теряет карточку, если она уже стоит в другом тире', () => {
+    const C = core();
+    const current = {
+      watched: { S: [], A: [{ id: 5, title: 'Есть' }], B: [], C: [], D: [], F: [], N: [] },
+      planned: { S: [], A: [], B: [], C: [], D: [], F: [], N: [] },
+      settings: {},
+    };
+    const incoming = {
+      watched: { S: [{ id: 5, title: 'Есть' }], A: [], B: [], C: [], D: [], F: [], N: [] },
+      planned: { S: [], A: [], B: [], C: [], D: [], F: [], N: [] },
+      settings: {},
+    };
+    const merged = C.mergeStates(current, incoming);
+    T.eq(merged.state.watched.S.length, 0, 'в старое место не продублировано');
+    T.eq(merged.state.watched.A.map(a => a.id), [5], 'осталось текущее место карточки');
+    T.eq(merged.stats.conflicts, 1);
+  });
+
   T.test('разметка: id и data-action совпадают между desktop и mobile', async () => {
     const [desktop, mobile] = await Promise.all([
       fetch('../index.html').then(r => r.text()),
