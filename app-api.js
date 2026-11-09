@@ -1299,24 +1299,29 @@
     return { text: await res.text(), file };
   }
 
-  /* Загружаем свежую копию; если она битая/недоступна — пробуем предыдущую. */
+  /* Загружаем свежую копию; если она битая — пробуем предыдущую.
+     Сетевую ошибку не прячем: иначе можно молча вернуть старые данные. */
   async function driveLoadBackup(token) {
-    const names = [DRIVE_FILE_NAME, DRIVE_PREV_FILE_NAME];
-    let lastError = null;
-    for (const name of names) {
-      let file = null;
-      try { file = await driveFindNamedBackup(token, name); } catch (err) { lastError = err; file = null; }
-      if (!file) continue;
+    const primary = await driveFindNamedBackup(token, DRIVE_FILE_NAME);
+    if (primary) {
+      const loaded = await driveReadFile(token, primary);
       try {
-        const loaded = await driveReadFile(token, file);
-        try { C.parseBackupJson(loaded.text); return loaded; }
-        catch (parseErr) { lastError = parseErr; }
-      } catch (err) { lastError = err; }
+        C.parseBackupJson(loaded.text);
+        return loaded;
+      } catch (parseErr) {
+        /* Копия AniTier, но не подходит по версии: не подменяем её старой. */
+        let looksLikeBackup = false;
+        try {
+          const payload = JSON.parse(loaded.text);
+          looksLikeBackup = Boolean(payload && (payload.kind === C.BACKUP_KIND || payload['anitier.v1']));
+        } catch { /* битый JSON — пробуем предыдущую */ }
+        if (looksLikeBackup) return loaded;
+      }
     }
-    if (lastError) throw lastError;
+    const previous = await driveFindNamedBackup(token, DRIVE_PREV_FILE_NAME);
+    if (previous) return driveReadFile(token, previous);
     throw new Error('В Google Drive нет резервной копии AniTier.');
   }
-
   async function fillAltPage(s, revision) {
     const alt = s.alt;
     const resolved = await resolveSearchQuery(s.query, state.settings && state.settings.searchLang);

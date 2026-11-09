@@ -196,6 +196,36 @@
     }
   });
 
+  T.test('safety: битая свежая копия не мешает восстановить предыдущую', async () => {
+    const app = await T.mountApp({ query: '?test=1' });
+    try {
+      const win = app.win;
+      const App = win.AniTier;
+      App._testNoReload = true;
+      win.confirm = () => true;
+      const box = fakeBridge(win);
+      const goodState = JSON.stringify({
+        watched: { S: [{ id: 7, title: 'Блич' }], A: [], B: [], C: [], D: [], F: [], N: [] },
+        planned: { S: [], A: [], B: [], C: [], D: [], F: [], N: [] },
+      });
+      box.snapshot = JSON.stringify({
+        kind: 'anitier.safety',
+        version: 2,
+        savedAt: 200,
+        items: {},
+        previous: { savedAt: 100, items: { 'anitier.v1': goodState } },
+      });
+
+      const info = App.safetySnapshotInfo();
+      T.eq(info.cards, 1, 'в настройках видна предыдущая копия');
+      T.eq(App.restoreSnapshotManually(), true, 'восстановление сработало');
+      const saved = JSON.parse(win.localStorage.getItem(App.LS_KEY) || 'null');
+      T.assert(saved && saved.watched && saved.watched.S[0].id === 7, 'данные взяты из предыдущей копии');
+    } finally {
+      app.close();
+    }
+  });
+
   T.test('safety: запись из памяти не затирает восстановленные данные', async () => {
     const app = await T.mountApp({ query: '?test=1' });
     try {

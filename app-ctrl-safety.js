@@ -51,10 +51,8 @@
       if (!Object.keys(snapshot.items).length) return false;
       let previous = null;
       try {
-        const existing = readSnapshot();
-        if (existing && existing.cards) {
-          previous = { savedAt: existing.savedAt, items: existing.items };
-        }
+        const existing = snapshotSlots(readSnapshot())[0];
+        if (existing) previous = { savedAt: existing.savedAt, items: existing.items };
       } catch { /* первая копия */ }
       if (previous) snapshot.previous = previous;
       if (!api.saveSnapshot(JSON.stringify(snapshot))) return false;
@@ -96,18 +94,36 @@
     }
   }
 
+  /* Свежий слот, а если он битый — предыдущий. */
+  function snapshotSlots(snapshot) {
+    if (!snapshot) return [];
+    const out = [];
+    if (snapshot.cards && snapshot.items) {
+      out.push({ savedAt: snapshot.savedAt, items: snapshot.items, cards: snapshot.cards });
+    }
+    const prev = snapshot.previous;
+    if (prev && prev.cards && prev.items) {
+      out.push({ savedAt: prev.savedAt, items: prev.items, cards: prev.cards });
+    }
+    return out;
+  }
+
   /* Дата и число карточек для карточки в настройках. */
   function safetySnapshotInfo() {
     if (!bridge()) return null;
     if (infoCache) return infoCache;
     const snapshot = readSnapshot();
-    infoCache = snapshot
+    const slots = snapshotSlots(snapshot);
+    const best = slots[0] || null;
+    const currentValid = Boolean(snapshot && snapshot.cards && snapshot.items);
+    const previousValid = Boolean(snapshot && snapshot.previous && snapshot.previous.cards && snapshot.previous.items);
+    infoCache = best
       ? {
-          savedAt: snapshot.savedAt,
-          cards: snapshot.cards,
+          savedAt: best.savedAt,
+          cards: best.cards,
           bytes: 0,
-          previousSavedAt: snapshot.previous ? (Number(snapshot.previous.savedAt) || 0) : 0,
-          copies: snapshot.previous ? 2 : 1,
+          previousSavedAt: currentValid && previousValid ? (Number(snapshot.previous.savedAt) || 0) : 0,
+          copies: (currentValid ? 1 : 0) + (previousValid ? 1 : 0),
         }
       : { savedAt: 0, cards: 0, bytes: 0, previousSavedAt: 0, copies: 0 };
     return infoCache;
@@ -155,10 +171,8 @@
     } catch {
       return false;
     }
-    const snapshot = readSnapshot();
-    if (!snapshot) return false;
-    const candidates = [snapshot, snapshot.previous].filter(s => s && s.cards && s.items);
-    for (const slot of candidates) {
+    const slots = snapshotSlots(readSnapshot());
+    for (const slot of slots) {
       if (writeItems(slot.items).ok) return markRestored('snapshot');
     }
     return false;
@@ -276,8 +290,8 @@
   }
 
   function mergeSnapshotManually() {
-    const snapshot = readSnapshot();
-    const data = snapshot ? C.safetyItemsToBackup(snapshot.items) : null;
+    const slot = snapshotSlots(readSnapshot())[0];
+    const data = slot ? C.safetyItemsToBackup(slot.items) : null;
     if (!data) {
       if (typeof App.setBackupMessage === 'function') App.setBackupMessage('Страховочная копия пуста.', true);
       return false;
@@ -319,15 +333,15 @@
   }
 
   function restoreSnapshotManually() {
-    const snapshot = readSnapshot();
-    if (!snapshot || !snapshot.cards) {
+    const slot = snapshotSlots(readSnapshot())[0];
+    if (!slot) {
       if (typeof App.setBackupMessage === 'function') App.setBackupMessage('Страховочная копия пуста.', true);
       return false;
     }
     if (!window.confirm('Восстановить страховочную копию? Текущие списки, прогресс и настройки будут заменены.')) {
       return false;
     }
-    if (!writeItems(snapshot.items).ok) {
+    if (!writeItems(slot.items).ok) {
       if (typeof App.setBackupMessage === 'function') {
         App.setBackupMessage('Не удалось записать страховочную копию: в хранилище не хватило места.', true);
       }

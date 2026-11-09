@@ -6539,6 +6539,16 @@ window.AniTierTitlesRu = {
 
 window.AniTierChangelog = [
   {
+    version: '1.47.1',
+    date: '9 ноября 2026',
+    title: 'Проверка резервных копий',
+    items: [
+      'Если свежая страховочная копия на устройстве повреждена, приложение восстановит предыдущую, а не сообщит, что копий нет.',
+      'Google Drive не подменяет свежую копию старой, если она создана более новой версией AniTier — вместо этого попросит обновить приложение.',
+      'При сетевой ошибке чтения копии приложение сообщает об ошибке, а не восстанавливает молча предыдущую.',
+    ],
+  },
+  {
     version: '1.47.0',
     date: '9 ноября 2026',
     title: 'Резервные копии раз в 3 дня и в двух экземплярах',
@@ -9012,7 +9022,7 @@ window.AniTierChangelog = [
   }
 
   /* ---------------- версия, GitHub и обновления ---------------- */
-  const APP_VERSION = '1.47.0';
+  const APP_VERSION = '1.47.1';
   const GITHUB_URL = 'https://github.com/sashasat12/anitier';
 
   /* Данные истории лежат в changelog.js: core.js не растёт с каждой версией. */
@@ -13066,24 +13076,29 @@ ${line2 ? `<text x="180" y="478" font-family="Manrope,Segoe UI,Arial,sans-serif"
     return { text: await res.text(), file };
   }
 
-  /* Загружаем свежую копию; если она битая/недоступна — пробуем предыдущую. */
+  /* Загружаем свежую копию; если она битая — пробуем предыдущую.
+     Сетевую ошибку не прячем: иначе можно молча вернуть старые данные. */
   async function driveLoadBackup(token) {
-    const names = [DRIVE_FILE_NAME, DRIVE_PREV_FILE_NAME];
-    let lastError = null;
-    for (const name of names) {
-      let file = null;
-      try { file = await driveFindNamedBackup(token, name); } catch (err) { lastError = err; file = null; }
-      if (!file) continue;
+    const primary = await driveFindNamedBackup(token, DRIVE_FILE_NAME);
+    if (primary) {
+      const loaded = await driveReadFile(token, primary);
       try {
-        const loaded = await driveReadFile(token, file);
-        try { C.parseBackupJson(loaded.text); return loaded; }
-        catch (parseErr) { lastError = parseErr; }
-      } catch (err) { lastError = err; }
+        C.parseBackupJson(loaded.text);
+        return loaded;
+      } catch (parseErr) {
+        /* Копия AniTier, но не подходит по версии: не подменяем её старой. */
+        let looksLikeBackup = false;
+        try {
+          const payload = JSON.parse(loaded.text);
+          looksLikeBackup = Boolean(payload && (payload.kind === C.BACKUP_KIND || payload['anitier.v1']));
+        } catch { /* битый JSON — пробуем предыдущую */ }
+        if (looksLikeBackup) return loaded;
+      }
     }
-    if (lastError) throw lastError;
+    const previous = await driveFindNamedBackup(token, DRIVE_PREV_FILE_NAME);
+    if (previous) return driveReadFile(token, previous);
     throw new Error('В Google Drive нет резервной копии AniTier.');
   }
-
   async function fillAltPage(s, revision) {
     const alt = s.alt;
     const resolved = await resolveSearchQuery(s.query, state.settings && state.settings.searchLang);
@@ -19982,10 +19997,8 @@ const {
       if (!Object.keys(snapshot.items).length) return false;
       let previous = null;
       try {
-        const existing = readSnapshot();
-        if (existing && existing.cards) {
-          previous = { savedAt: existing.savedAt, items: existing.items };
-        }
+        const existing = snapshotSlots(readSnapshot())[0];
+        if (existing) previous = { savedAt: existing.savedAt, items: existing.items };
       } catch { /* первая копия */ }
       if (previous) snapshot.previous = previous;
       if (!api.saveSnapshot(JSON.stringify(snapshot))) return false;
@@ -20027,18 +20040,36 @@ const {
     }
   }
 
+  /* Свежий слот, а если он битый — предыдущий. */
+  function snapshotSlots(snapshot) {
+    if (!snapshot) return [];
+    const out = [];
+    if (snapshot.cards && snapshot.items) {
+      out.push({ savedAt: snapshot.savedAt, items: snapshot.items, cards: snapshot.cards });
+    }
+    const prev = snapshot.previous;
+    if (prev && prev.cards && prev.items) {
+      out.push({ savedAt: prev.savedAt, items: prev.items, cards: prev.cards });
+    }
+    return out;
+  }
+
   /* Дата и число карточек для карточки в настройках. */
   function safetySnapshotInfo() {
     if (!bridge()) return null;
     if (infoCache) return infoCache;
     const snapshot = readSnapshot();
-    infoCache = snapshot
+    const slots = snapshotSlots(snapshot);
+    const best = slots[0] || null;
+    const currentValid = Boolean(snapshot && snapshot.cards && snapshot.items);
+    const previousValid = Boolean(snapshot && snapshot.previous && snapshot.previous.cards && snapshot.previous.items);
+    infoCache = best
       ? {
-          savedAt: snapshot.savedAt,
-          cards: snapshot.cards,
+          savedAt: best.savedAt,
+          cards: best.cards,
           bytes: 0,
-          previousSavedAt: snapshot.previous ? (Number(snapshot.previous.savedAt) || 0) : 0,
-          copies: snapshot.previous ? 2 : 1,
+          previousSavedAt: currentValid && previousValid ? (Number(snapshot.previous.savedAt) || 0) : 0,
+          copies: (currentValid ? 1 : 0) + (previousValid ? 1 : 0),
         }
       : { savedAt: 0, cards: 0, bytes: 0, previousSavedAt: 0, copies: 0 };
     return infoCache;
@@ -20086,10 +20117,8 @@ const {
     } catch {
       return false;
     }
-    const snapshot = readSnapshot();
-    if (!snapshot) return false;
-    const candidates = [snapshot, snapshot.previous].filter(s => s && s.cards && s.items);
-    for (const slot of candidates) {
+    const slots = snapshotSlots(readSnapshot());
+    for (const slot of slots) {
       if (writeItems(slot.items).ok) return markRestored('snapshot');
     }
     return false;
@@ -20207,8 +20236,8 @@ const {
   }
 
   function mergeSnapshotManually() {
-    const snapshot = readSnapshot();
-    const data = snapshot ? C.safetyItemsToBackup(snapshot.items) : null;
+    const slot = snapshotSlots(readSnapshot())[0];
+    const data = slot ? C.safetyItemsToBackup(slot.items) : null;
     if (!data) {
       if (typeof App.setBackupMessage === 'function') App.setBackupMessage('Страховочная копия пуста.', true);
       return false;
@@ -20250,15 +20279,15 @@ const {
   }
 
   function restoreSnapshotManually() {
-    const snapshot = readSnapshot();
-    if (!snapshot || !snapshot.cards) {
+    const slot = snapshotSlots(readSnapshot())[0];
+    if (!slot) {
       if (typeof App.setBackupMessage === 'function') App.setBackupMessage('Страховочная копия пуста.', true);
       return false;
     }
     if (!window.confirm('Восстановить страховочную копию? Текущие списки, прогресс и настройки будут заменены.')) {
       return false;
     }
-    if (!writeItems(snapshot.items).ok) {
+    if (!writeItems(slot.items).ok) {
       if (typeof App.setBackupMessage === 'function') {
         App.setBackupMessage('Не удалось записать страховочную копию: в хранилище не хватило места.', true);
       }

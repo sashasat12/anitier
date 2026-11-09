@@ -1877,6 +1877,58 @@
       app.close();
     }
   });
+  T.test('app: Google Drive не подменяет копию новой версии предыдущей', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const calls = [];
+      const newer = JSON.stringify({ kind: 'anitier.backup', version: 999, data: {} });
+      app.win.fetch = async (url) => {
+        const u = String(url);
+        calls.push(u);
+        if (u.includes('/cur?alt=media')) return new Response(newer, { status: 200 });
+        if (u.includes('/prev?alt=media')) return new Response('{"kind":"anitier.backup","version":1,"data":{}}', { status: 200 });
+        if (u.includes('anitier-backup-prev.json')) {
+          return new Response(JSON.stringify({ files: [{ id: 'prev', name: 'anitier-backup-prev.json' }] }), { status: 200 });
+        }
+        if (u.includes('anitier-backup.json')) {
+          return new Response(JSON.stringify({ files: [{ id: 'cur', name: 'anitier-backup.json' }] }), { status: 200 });
+        }
+        return new Response(JSON.stringify({ files: [] }), { status: 200 });
+      };
+
+      const loaded = await app.win.AniTier.driveLoadBackup('token');
+      T.eq(loaded.text, newer, 'возвращена свежая копия, даже если она новее приложения');
+      T.eq(calls.some(u => u.includes('anitier-backup-prev.json')), false, 'предыдущая копия не подставляется');
+    } finally {
+      app.close();
+    }
+  });
+
+  T.test('app: Google Drive берёт предыдущую копию, если свежая битая', async () => {
+    const app = await T.mountApp({ query: '?demo=1&test=1' });
+    try {
+      const good = JSON.stringify({ kind: 'anitier.backup', version: 1, data: {} });
+      app.win.fetch = async (url) => {
+        const u = String(url);
+        if (u.includes('/cur?alt=media')) return new Response('не json', { status: 200 });
+        if (u.includes('/prev?alt=media')) return new Response(good, { status: 200 });
+        if (u.includes('anitier-backup-prev.json')) {
+          return new Response(JSON.stringify({ files: [{ id: 'prev', name: 'anitier-backup-prev.json' }] }), { status: 200 });
+        }
+        if (u.includes('anitier-backup.json')) {
+          return new Response(JSON.stringify({ files: [{ id: 'cur', name: 'anitier-backup.json' }] }), { status: 200 });
+        }
+        return new Response(JSON.stringify({ files: [] }), { status: 200 });
+      };
+
+      const loaded = await app.win.AniTier.driveLoadBackup('token');
+      T.eq(loaded.text, good, 'битая свежая копия пропущена');
+      T.eq(loaded.file.id, 'prev', 'взята предыдущая копия');
+    } finally {
+      app.close();
+    }
+  });
+
   T.test('app: системная кнопка «назад» закрывает модалку и возвращает на базу', async () => {
     const app = await T.mountApp({ query: '?demo=1&test=1' });
     try {
